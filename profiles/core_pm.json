@@ -1,0 +1,41 @@
+{
+  "companies": [
+  "Stripe",
+  "Brex",
+  "Datadog",
+  "Okta",
+  "Twilio",
+  "Atlassian",
+  "Zoom",
+  "Cloudflare",
+  "Snowflake",
+  "Nvidia",
+  "ServiceNow",
+  "MongoDB",
+  "Elastic",
+  "Asana",
+  "Dropbox",
+  "Uber",
+  "Lyft",
+  "Airbnb",
+  "Coinbase",
+  "Robinhood",
+  "Plaid",
+  "Affirm",
+  "Chime",
+  "Marqeta",
+  "Notion",
+  "Figma",
+  "Miro",
+  "HubSpot",
+  "Salesforce",
+  "Shopify",
+  "Box"
+  ],
+  "filter": {
+    "include_tags": ["core_pm"],
+    "exclude_tags": [],
+    "min_priority": 0
+  }
+}
+
