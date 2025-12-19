@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+.venv/
+
+# Pytest
+.pytest_cache/
+
+# Env files
+.env
+
+# OS junk
+.DS_Store

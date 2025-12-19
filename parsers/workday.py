@@ -28,15 +28,11 @@ def fetch_workday(company: str, api_url: str, base_url: str | None = None):
         for p in postings:
             title = p.get("title")
 
-
-
-
-            raw_locations = p.get("locationsText") or p.get("locations") or []
-            if isinstance(raw_locations, list):
-                loc_str = ", ".join(raw_locations)
+            locations = p.get("locationsText") or p.get("locations") or []
+            if isinstance(locations, list):
+                loc_str = ", ".join(locations)
             else:
-
-                loc_str = str(raw_locations) if raw_locations else ""
+                loc_str = str(locations) if locations else ""
 
             external_path = p.get("externalPath") or p.get("externalUrl") or ""
             if base_url and external_path:
