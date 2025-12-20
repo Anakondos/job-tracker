@@ -147,6 +147,20 @@
         font-size: 12px;
         color: var(--muted);
         font-weight: 600;
+        user-select: none;
+        cursor: pointer;
+      }
+      th.sortable:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      th.activeSort {
+        color: var(--text);
+      }
+      .sortIcon {
+        display: inline-block;
+        margin-left: 6px;
+        color: var(--muted);
+        font-size: 11px;
       }
       tr:hover td {
         background: rgba(255, 255, 255, 0.02);
@@ -310,6 +324,19 @@
           </label>
 
           <label>
+            Geo priority
+            <select id="geoMode">
+              <option value="nc_priority" selected>
+                NC/Raleigh + Neighbor + Remote USA
+              </option>
+              <option value="local_only">Local only (Raleigh area)</option>
+              <option value="neighbor_only">Neighbor states only</option>
+              <option value="remote_usa">Remote USA only</option>
+              <option value="all">All locations</option>
+            </select>
+          </label>
+
+          <label>
             Role
             <select id="roleFilter">
               <option value="all">All</option>
@@ -393,16 +420,44 @@
           <table id="jobsTable">
             <thead>
               <tr>
-                <th style="width: 150px">Company</th>
-                <th>Title</th>
-                <th style="width: 280px">Location</th>
-                <th style="width: 170px">Updated</th>
-                <th style="width: 120px">ATS</th>
+                <th
+                  class="sortable"
+                  data-table="jobs"
+                  data-key="company"
+                  style="width: 150px"
+                >
+                  Company<span class="sortIcon" id="jobsSort_company"></span>
+                </th>
+                <th class="sortable" data-table="jobs" data-key="title">
+                  Title<span class="sortIcon" id="jobsSort_title"></span>
+                </th>
+                <th
+                  class="sortable"
+                  data-table="jobs"
+                  data-key="location"
+                  style="width: 280px"
+                >
+                  Location<span class="sortIcon" id="jobsSort_location"></span>
+                </th>
+                <th
+                  class="sortable"
+                  data-table="jobs"
+                  data-key="updated_at"
+                  style="width: 170px"
+                >
+                  Updated<span class="sortIcon" id="jobsSort_updated_at"></span>
+                </th>
+                <th
+                  class="sortable"
+                  data-table="jobs"
+                  data-key="ats"
+                  style="width: 120px"
+                >
+                  ATS<span class="sortIcon" id="jobsSort_ats"></span>
+                </th>
               </tr>
             </thead>
-            <tbody>
-              <!-- rows -->
-            </tbody>
+            <tbody></tbody>
           </table>
         </div>
 
@@ -427,18 +482,57 @@
           <table id="companiesTable">
             <thead>
               <tr>
-                <th style="width: 220px">Company</th>
-                <th style="width: 110px" class="right">Found</th>
-                <th style="width: 140px">ATS</th>
+                <th
+                  class="sortable"
+                  data-table="companies"
+                  data-key="company"
+                  style="width: 220px"
+                >
+                  Company<span
+                    class="sortIcon"
+                    id="companiesSort_company"
+                  ></span>
+                </th>
+                <th
+                  class="sortable right"
+                  data-table="companies"
+                  data-key="positions_priority"
+                  style="width: 140px"
+                >
+                  Priority<span
+                    class="sortIcon"
+                    id="companiesSort_positions_priority"
+                  ></span>
+                </th>
+                <th
+                  class="sortable right"
+                  data-table="companies"
+                  data-key="positions_total"
+                  style="width: 110px"
+                >
+                  Total<span
+                    class="sortIcon"
+                    id="companiesSort_positions_total"
+                  ></span>
+                </th>
+                <th
+                  class="sortable"
+                  data-table="companies"
+                  data-key="ats"
+                  style="width: 140px"
+                >
+                  ATS<span class="sortIcon" id="companiesSort_ats"></span>
+                </th>
                 <th>ATS URL</th>
-                <th style="width: 120px">Jobs</th>
+                <th style="width: 160px">Jobs</th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
+
         <div class="muted" style="margin-top: 10px">
-          Tip: “Show jobs” switches back to Jobs and applies company filter.
+          Tip: “Show jobs (X)” switches back to Jobs and applies company filter.
         </div>
       </div>
     </div>
@@ -448,8 +542,16 @@
       let ALL_JOBS = [];
       let LAST_LOADED_AT = null;
 
-      let selectedStates = []; // array of strings like "NC" or "Texas"
+      let selectedStates = [];
       let remoteUsaOnly = false;
+
+      // Sorting state
+      const SORT = {
+        jobs: { key: "score", dir: "desc" }, // default: keep server geo-priority
+        companies: { key: "positions_priority", dir: "desc" }, // default: priority then total
+      };
+
+      let LAST_COMPANIES = [];
 
       const debugCounts = {
         afterRole: 0,
@@ -461,7 +563,6 @@
       };
 
       // ---------- STATE LIST (US + DC) ----------
-      // You can add territories if needed.
       const US_STATES = [
         { code: "AL", name: "Alabama" },
         { code: "AK", name: "Alaska" },
@@ -516,7 +617,7 @@
         { code: "DC", name: "District of Columbia" },
       ];
 
-      // ---------- LOCATION NORMALIZATION ----------
+      // ---------- LOCATION NORMALIZATION (CLIENT) ----------
       function normalizeLocation(raw) {
         const out = {
           raw: raw || "",
@@ -526,10 +627,8 @@
           remote: false,
           remote_scope: "",
         };
-
         const s = (raw || "").toLowerCase();
 
-        // Remote detection (USA)
         if (
           s.includes("remote") &&
           (s.includes("us") || s.includes("usa") || s.includes("united states"))
@@ -541,13 +640,9 @@
           out.remote_scope = "global";
         }
 
-        // Try to extract state by code or full name from the raw location string.
-        // We do a "best effort" match.
         for (const st of US_STATES) {
           const code = st.code.toLowerCase();
           const name = st.name.toLowerCase();
-
-          // Match patterns: ", nc" or " nc" or "(nc)" etc.
           if (
             s.includes(", " + code) ||
             s.endsWith(" " + code) ||
@@ -565,23 +660,109 @@
           }
         }
 
-        // City: naive approach: take first token before comma
-        if (raw && raw.includes(",")) {
-          out.city = raw.split(",")[0].trim();
-        } else {
-          // sometimes location is like "Raleigh, NC" already handled
-          out.city = "";
-        }
-
+        if (raw && raw.includes(",")) out.city = raw.split(",")[0].trim();
         return out;
       }
 
-      // attach location_norm to jobs once loaded
       function enrichJobsLocationNorm(jobs) {
         for (const j of jobs) {
-          j.location_norm = normalizeLocation(j.location || "");
+          if (!j.location_norm)
+            j.location_norm = normalizeLocation(j.location || "");
         }
         return jobs;
+      }
+
+      // ---------- SORT HELPERS ----------
+      function getSortIcon(dir) {
+        if (dir === "asc") return "▲";
+        if (dir === "desc") return "▼";
+        return "";
+      }
+
+      function setActiveSortUI(tableName, key, dir) {
+        const ths = document.querySelectorAll(`th[data-table="${tableName}"]`);
+        ths.forEach((th) => th.classList.remove("activeSort"));
+        const active = document.querySelector(
+          `th[data-table="${tableName}"][data-key="${key}"]`
+        );
+        if (active) active.classList.add("activeSort");
+
+        // Clear all icons
+        const icons = document.querySelectorAll(
+          `span[id^="${tableName}Sort_"]`
+        );
+        icons.forEach((s) => (s.textContent = ""));
+
+        const icon = document.getElementById(`${tableName}Sort_${key}`);
+        if (icon) icon.textContent = getSortIcon(dir);
+      }
+
+      function compareValues(a, b, dir) {
+        const isNumA = typeof a === "number";
+        const isNumB = typeof b === "number";
+        if (isNumA && isNumB) return dir === "asc" ? a - b : b - a;
+
+        const sa = (a ?? "").toString().toLowerCase();
+        const sb = (b ?? "").toString().toLowerCase();
+        if (sa < sb) return dir === "asc" ? -1 : 1;
+        if (sa > sb) return dir === "asc" ? 1 : -1;
+        return 0;
+      }
+
+      function sortJobs(jobs) {
+        const { key, dir } = SORT.jobs;
+
+        // Special: "score" might not exist on client; but server provides it. Fallback to 0.
+        const out = [...jobs];
+        out.sort((j1, j2) => compareValues(j1[key] ?? 0, j2[key] ?? 0, dir));
+        return out;
+      }
+
+      function sortCompanies(companies) {
+        const { key, dir } = SORT.companies;
+
+        const out = [...companies];
+        out.sort((c1, c2) => {
+          // Primary compare by selected key
+          const v = compareValues(c1[key] ?? 0, c2[key] ?? 0, dir);
+          if (v !== 0) return v;
+
+          // Secondary default: positions_total desc (if sorting by priority)
+          if (key !== "positions_total") {
+            const v2 = compareValues(
+              c1.positions_total ?? 0,
+              c2.positions_total ?? 0,
+              "desc"
+            );
+            if (v2 !== 0) return v2;
+          }
+
+          // Tertiary: company asc
+          return compareValues(c1.company ?? "", c2.company ?? "", "asc");
+        });
+        return out;
+      }
+
+      function toggleSort(tableName, key) {
+        const current = SORT[tableName];
+        if (current.key === key) {
+          current.dir = current.dir === "asc" ? "desc" : "asc";
+        } else {
+          current.key = key;
+          // defaults
+          current.dir = tableName === "companies" ? "desc" : "asc";
+          if (tableName === "jobs" && key === "updated_at")
+            current.dir = "desc";
+          if (tableName === "jobs" && key === "score") current.dir = "desc";
+        }
+        setActiveSortUI(tableName, current.key, current.dir);
+
+        if (tableName === "jobs") {
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(sortJobs(filtered));
+        } else {
+          renderCompanies(sortCompanies(LAST_COMPANIES));
+        }
       }
 
       // ---------- FILTER HELPERS ----------
@@ -589,10 +770,9 @@
         if (!location_norm) return false;
         const jobState = (location_norm.state || "").toLowerCase();
         const jobStateFull = (location_norm.state_full || "").toLowerCase();
-
-        return selectedStates.some((selState) => {
-          selState = selState.toLowerCase();
-          return selState === jobState || selState === jobStateFull;
+        return selectedStates.some((sel) => {
+          const s = sel.toLowerCase();
+          return s === jobState || s === jobStateFull;
         });
       }
 
@@ -616,11 +796,10 @@
 
         let filtered = jobs;
 
-        // Role
+        // Role (client quick)
         filtered = filtered.filter((job) => {
           if (role === "all") return true;
-          if (!job.title) return false;
-          const t = job.title.toLowerCase();
+          const t = (job.title || "").toLowerCase();
           if (role === "product") return t.includes("product");
           if (role === "program") return t.includes("program");
           if (role === "project") return t.includes("project");
@@ -628,7 +807,7 @@
         });
         debugCounts.afterRole = filtered.length;
 
-        // Location (US / non-US / all) — quick heuristic based on raw string
+        // Location (US / non-US / all)
         filtered = filtered.filter((job) => {
           if (loc === "all") return true;
           const l = (job.location || "").toLowerCase();
@@ -645,7 +824,7 @@
         });
         debugCounts.afterLocation = filtered.length;
 
-        // Company
+        // Company contains
         filtered = filtered.filter((job) => {
           if (!companyFilter) return true;
           return (job.company || "")
@@ -665,7 +844,7 @@
         }
         debugCounts.afterSearch = filtered.length;
 
-        // City (comma-separated)
+        // City (comma-separated list)
         if (cityFilter) {
           const cities = cityFilter
             .toLowerCase()
@@ -674,19 +853,19 @@
             .filter(Boolean);
           filtered = filtered.filter((job) => {
             const ln = job.location_norm;
-            if (!ln) return false;
-            const city = (ln.city || "").toLowerCase();
+            const city = (ln?.city || "").toLowerCase();
             return cities.includes(city);
           });
         }
         debugCounts.afterCity = filtered.length;
 
-        // State + Remote USA combined logic
+        // State + Remote USA combined
         if (remoteUsaOnly && selectedStates.length > 0) {
-          filtered = filtered.filter((job) => {
-            const ln = job.location_norm;
-            return matchStatesInJob(ln) || isRemoteUSA(ln);
-          });
+          filtered = filtered.filter(
+            (job) =>
+              matchStatesInJob(job.location_norm) ||
+              isRemoteUSA(job.location_norm)
+          );
         } else if (remoteUsaOnly) {
           filtered = filtered.filter((job) => isRemoteUSA(job.location_norm));
         } else if (selectedStates.length > 0) {
@@ -694,9 +873,7 @@
             matchStatesInJob(job.location_norm)
           );
         }
-
         debugCounts.afterState = filtered.length;
-        debugCounts.afterCity = filtered.length;
 
         return filtered;
       }
@@ -707,7 +884,7 @@
           ? `Loaded: ${ALL_JOBS.length} jobs at ${LAST_LOADED_AT}`
           : "Not loaded yet";
         const filterText = LAST_LOADED_AT
-          ? `Filtered: ${debugCounts.afterCity} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, state+remote/${debugCounts.afterState})`
+          ? `Filtered: ${debugCounts.afterState} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, state+remote/${debugCounts.afterState})`
           : "";
         statusSpan.textContent = filterText
           ? `${baseText} | ${filterText}`
@@ -717,25 +894,69 @@
       function renderJobs(jobs) {
         const tbody = document.querySelector("#jobsTable tbody");
         tbody.innerHTML = "";
-
         for (const job of jobs) {
           const row = document.createElement("tr");
           const url = job.job_url || job.url || "#";
           row.innerHTML = `
-        <td>${escapeHtml(job.company || "")}</td>
-        <td><a href="${escapeAttr(
-          url
-        )}" target="_blank" rel="noopener">${escapeHtml(
+            <td>${escapeHtml(job.company || "")}</td>
+            <td><a href="${escapeAttr(
+              url
+            )}" target="_blank" rel="noopener">${escapeHtml(
             job.title || ""
           )}</a></td>
-        <td>${escapeHtml(job.location || "")}</td>
-        <td>${escapeHtml(job.updated_at || "")}</td>
-        <td>${escapeHtml(job.ats || "")}</td>
-      `;
+            <td>${escapeHtml(job.location || "")}</td>
+            <td>${escapeHtml(job.updated_at || "")}</td>
+            <td>${escapeHtml(job.ats || "")}</td>
+          `;
           tbody.appendChild(row);
         }
-
         updateStatus();
+      }
+
+      function renderCompanies(companies) {
+        const tbody = document.querySelector("#companiesTable tbody");
+        tbody.innerHTML = "";
+
+        for (const c of companies || []) {
+          const tr = document.createElement("tr");
+
+          const priority = c.positions_priority ?? 0;
+          const total = c.positions_total ?? 0;
+
+          const atsUrl = c.jobs_list_url || c.board_url || c.url || "";
+          const openAts = atsUrl
+            ? `<a href="${escapeAttr(
+                atsUrl
+              )}" target="_blank" rel="noopener">Open ATS</a>`
+            : `<span class="muted">—</span>`;
+
+          tr.innerHTML = `
+            <td>${escapeHtml(c.company || "")}</td>
+            <td class="right">${escapeHtml(String(priority))}</td>
+            <td class="right">${escapeHtml(String(total))}</td>
+            <td>${escapeHtml(c.ats || "")}</td>
+            <td>${openAts}</td>
+            <td>
+              <button type="button" data-company="${escapeAttr(
+                c.company || ""
+              )}">Show jobs (${escapeHtml(String(priority))})</button>
+            </td>
+          `;
+
+          tr.querySelector("button")?.addEventListener("click", () => {
+            activateTab("jobs");
+            document.getElementById("companyFilter").value = c.company || "";
+
+            // keep geo mode as-is; reload jobs to be consistent with server-side geo filtering
+            // If jobs already loaded, re-filter instantly; otherwise user can click Load jobs
+            if (ALL_JOBS.length > 0) {
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(sortJobs(filtered));
+            }
+          });
+
+          tbody.appendChild(tr);
+        }
       }
 
       function escapeHtml(s) {
@@ -756,9 +977,24 @@
       }
 
       // ---------- LOADING ----------
+      function setLoading(isLoading, text) {
+        const btn = document.getElementById("loadBtn");
+        const dot = document.getElementById("loadDot");
+        const label = document.getElementById("loadText");
+
+        btn.disabled = isLoading;
+        label.textContent = text;
+
+        dot.classList.remove("ok", "bad");
+        if (isLoading) dot.classList.add("bad");
+        if (!isLoading && text === "Loaded") dot.classList.add("ok");
+        if (!isLoading && text === "Error") dot.classList.add("bad");
+      }
+
       async function loadJobsOnce() {
         const profile = document.getElementById("profileFilter").value;
         const ats = document.getElementById("atsFilter").value;
+        const geoMode = document.getElementById("geoMode").value;
 
         setLoading(true, "Loading…");
         try {
@@ -766,7 +1002,9 @@
             profile
           )}&ats_filter=${encodeURIComponent(
             ats
-          )}&role_filter=all&location_filter=all`;
+          )}&role_filter=all&location_filter=all&geo_mode=${encodeURIComponent(
+            geoMode
+          )}`;
           const res = await fetch(url);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -774,10 +1012,11 @@
           ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
           LAST_LOADED_AT = new Date().toLocaleString();
 
-          // Apply filters immediately
-          const filtered = applyFilters(ALL_JOBS);
-          renderJobs(filtered);
+          // default sort UI
+          setActiveSortUI("jobs", SORT.jobs.key, SORT.jobs.dir);
 
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(sortJobs(filtered));
           setLoading(false, "Loaded");
         } catch (e) {
           console.error(e);
@@ -806,60 +1045,24 @@
         if (!isLoading && text === "Error") dot.classList.add("bad");
       }
 
-      function renderCompanies(companies) {
-        const tbody = document.querySelector("#companiesTable tbody");
-        tbody.innerHTML = "";
-
-        for (const c of companies || []) {
-          const tr = document.createElement("tr");
-          const found =
-            c.positions_found === null || c.positions_found === undefined
-              ? ""
-              : String(c.positions_found);
-          const atsUrl = c.board_url || c.jobs_list_url || c.url || "";
-          const atsCell = c.ats || "";
-          const openAts = atsUrl
-            ? `<a href="${escapeAttr(
-                atsUrl
-              )}" target="_blank" rel="noopener">Open ATS</a>`
-            : `<span class="muted">—</span>`;
-          tr.innerHTML = `
-        <td>${escapeHtml(c.company || "")}</td>
-        <td class="right">${escapeHtml(found)}</td>
-        <td>${escapeHtml(atsCell)}</td>
-        <td>${openAts}</td>
-        <td><button type="button" data-company="${escapeAttr(
-          c.company || ""
-        )}">Show jobs</button></td>
-      `;
-
-          tr.querySelector("button")?.addEventListener("click", () => {
-            // switch to Jobs tab + apply company filter
-            activateTab("jobs");
-            document.getElementById("companyFilter").value = c.company || "";
-
-            // If jobs already loaded, re-filter instantly; otherwise prompt user to load
-            if (ALL_JOBS.length > 0) {
-              const filtered = applyFilters(ALL_JOBS);
-              renderJobs(filtered);
-            }
-          });
-
-          tbody.appendChild(tr);
-        }
-      }
-
       async function loadCompanies() {
         const profile = document.getElementById("profileFilter").value;
+        const geoMode = document.getElementById("geoMode").value;
+
         setCompaniesLoading(true, "Loading…");
         try {
           const url = `/companies?profile=${encodeURIComponent(
             profile
-          )}&include_counts=true`;
+          )}&include_counts=true&geo_mode=${encodeURIComponent(geoMode)}`;
           const res = await fetch(url);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
           const data = await res.json();
-          renderCompanies(data.companies || []);
+          LAST_COMPANIES = data.companies || [];
+
+          setActiveSortUI("companies", SORT.companies.key, SORT.companies.dir);
+          renderCompanies(sortCompanies(LAST_COMPANIES));
+
           setCompaniesLoading(false, "Loaded");
         } catch (e) {
           console.error(e);
@@ -869,20 +1072,6 @@
             "Failed to load companies. Check terminal logs (uvicorn) and /companies endpoint."
           );
         }
-      }
-
-      function setLoading(isLoading, text) {
-        const btn = document.getElementById("loadBtn");
-        const dot = document.getElementById("loadDot");
-        const label = document.getElementById("loadText");
-
-        btn.disabled = isLoading;
-        label.textContent = text;
-
-        dot.classList.remove("ok", "bad");
-        if (isLoading) dot.classList.add("bad");
-        if (!isLoading && text === "Loaded") dot.classList.add("ok");
-        if (!isLoading && text === "Error") dot.classList.add("bad");
       }
 
       // ---------- MULTI-SELECT UI ----------
@@ -906,7 +1095,6 @@
         list.innerHTML = "";
 
         const q = (filterText || "").trim().toLowerCase();
-
         const items = US_STATES.filter((st) => {
           if (!q) return true;
           return (
@@ -918,37 +1106,26 @@
         for (const st of items) {
           const div = document.createElement("div");
           div.className = "msItem";
-          const checked =
-            selectedStates.includes(st.code) ||
-            selectedStates.includes(st.name);
+          const checked = selectedStates.includes(st.code);
           div.innerHTML = `
-        <input type="checkbox" ${checked ? "checked" : ""} />
-        <div>
-          <div style="color: var(--text); font-size:13px;">${st.code} — ${
-            st.name
-          }</div>
-        </div>
-      `;
+            <input type="checkbox" ${checked ? "checked" : ""} />
+            <div><div style="color: var(--text); font-size:13px;">${
+              st.code
+            } — ${st.name}</div></div>
+          `;
           div.addEventListener("click", (ev) => {
-            // allow clicking row toggles
             ev.preventDefault();
-
-            // We store states as CODE only to avoid confusion (recommended)
             const key = st.code;
-
-            if (selectedStates.includes(key)) {
+            if (selectedStates.includes(key))
               selectedStates = selectedStates.filter((x) => x !== key);
-            } else {
-              selectedStates.push(key);
-            }
+            else selectedStates.push(key);
 
             syncStateButton();
             renderStateList(document.getElementById("stateSearch").value);
 
-            // Re-apply filters instantly
             if (ALL_JOBS.length > 0) {
               const filtered = applyFilters(ALL_JOBS);
-              renderJobs(filtered);
+              renderJobs(sortJobs(filtered));
             }
           });
           list.appendChild(div);
@@ -997,6 +1174,16 @@
         .getElementById("tabCompanies")
         .addEventListener("click", () => activateTab("companies"));
 
+      // Sorting clicks
+      document.querySelectorAll("th.sortable").forEach((th) => {
+        th.addEventListener("click", () => {
+          const tableName = th.getAttribute("data-table");
+          const key = th.getAttribute("data-key");
+          if (!tableName || !key) return;
+          toggleSort(tableName, key);
+        });
+      });
+
       // Filter inputs -> apply instantly
       const filterIds = [
         "roleFilter",
@@ -1006,18 +1193,22 @@
         "cityFilter",
         "profileFilter",
         "atsFilter",
+        "geoMode",
       ];
       for (const id of filterIds) {
         const el = document.getElementById(id);
         if (!el) continue;
+
         el.addEventListener("change", () => {
-          // NOTE: profile/ats changes do not auto-reload; you press Load jobs.
-          if (id === "profileFilter" || id === "atsFilter") {
-            // just update UI label; actual data changes after Load
+          if (
+            id === "profileFilter" ||
+            id === "atsFilter" ||
+            id === "geoMode"
+          ) {
+            // Dataset changes after Load jobs; but we still refilter current data
             if (ALL_JOBS.length > 0) {
-              // re-filter current dataset
               const filtered = applyFilters(ALL_JOBS);
-              renderJobs(filtered);
+              renderJobs(sortJobs(filtered));
             } else {
               updateStatus();
             }
@@ -1025,13 +1216,14 @@
           }
           if (ALL_JOBS.length > 0) {
             const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
+            renderJobs(sortJobs(filtered));
           }
         });
+
         el.addEventListener("input", () => {
           if (ALL_JOBS.length > 0) {
             const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
+            renderJobs(sortJobs(filtered));
           }
         });
       }
@@ -1042,7 +1234,7 @@
           remoteUsaOnly = !!e.target.checked;
           if (ALL_JOBS.length > 0) {
             const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
+            renderJobs(sortJobs(filtered));
           }
         });
 
@@ -1061,25 +1253,24 @@
         renderStateList(document.getElementById("stateSearch").value);
         if (ALL_JOBS.length > 0) {
           const filtered = applyFilters(ALL_JOBS);
-          renderJobs(filtered);
+          renderJobs(sortJobs(filtered));
         }
       });
-      document.getElementById("stateSearch").addEventListener("input", (e) => {
-        renderStateList(e.target.value);
-      });
+      document
+        .getElementById("stateSearch")
+        .addEventListener("input", (e) => renderStateList(e.target.value));
 
-      // Close state menu when clicking outside
       document.addEventListener("click", (e) => {
         const ms = document.getElementById("stateMultiSelect");
-        if (!ms.contains(e.target)) {
-          closeStateMenu();
-        }
+        if (!ms.contains(e.target)) closeStateMenu();
       });
 
       // Init
       syncStateButton();
       renderStateList("");
       updateStatus();
+      setActiveSortUI("jobs", SORT.jobs.key, SORT.jobs.dir);
+      setActiveSortUI("companies", SORT.companies.key, SORT.companies.dir);
     </script>
   </body>
 </html>
