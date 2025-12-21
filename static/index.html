@@ -167,6 +167,22 @@
         text-align: right;
       }
 
+      /* Sortable headers */
+      th.sortable {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+      th.sortable:hover {
+        color: var(--text);
+      }
+      .sortIcon {
+        display: inline-block;
+        margin-left: 6px;
+        opacity: 0.7;
+        font-size: 11px;
+      }
+
       /* Multi-select dropdown */
       .ms {
         position: relative;
@@ -412,12 +428,44 @@
         <table id="jobsTable">
           <thead>
             <tr>
-              <th style="width: 150px">Company</th>
-              <th>Title</th>
-              <th style="width: 280px">Location</th>
-              <th style="width: 170px">Updated</th>
-              <th style="width: 120px">ATS</th>
-              <th style="width: 140px">Status</th>
+              <th
+                class="sortable"
+                style="width: 150px"
+                onclick="sortTable('company')"
+              >
+                Company <span class="sortIcon" id="sortIcon-company">⬍</span>
+              </th>
+              <th class="sortable" onclick="sortTable('title')">
+                Title <span class="sortIcon" id="sortIcon-title">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 280px"
+                onclick="sortTable('location')"
+              >
+                Location <span class="sortIcon" id="sortIcon-location">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 170px"
+                onclick="sortTable('updated')"
+              >
+                Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 120px"
+                onclick="sortTable('ats')"
+              >
+                ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 140px"
+                onclick="sortTable('status')"
+              >
+                Status <span class="sortIcon" id="sortIcon-status">⬍</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -453,6 +501,73 @@
         afterCity: 0,
         afterStatus: 0,
       };
+
+      // ---------- SORT STATE ----------
+      let CURRENT_SORT = { column: null, asc: true };
+
+      function setSortIcon(col, icon) {
+        const el = document.getElementById(`sortIcon-${col}`);
+        if (el) el.textContent = icon;
+      }
+
+      function resetAllSortIcons() {
+        ["company", "title", "location", "updated", "ats", "status"].forEach(
+          (c) => setSortIcon(c, "⬍")
+        );
+      }
+
+      function updateSortIcons() {
+        resetAllSortIcons();
+        if (!CURRENT_SORT.column) return;
+        setSortIcon(CURRENT_SORT.column, CURRENT_SORT.asc ? "▲" : "▼");
+      }
+
+      // keepDirection=true when re-applying sort after re-render
+      function sortTable(column, keepDirection = false) {
+        const tbody = document.querySelector("#jobsTable tbody");
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+
+        if (!keepDirection) {
+          if (CURRENT_SORT.column === column) {
+            CURRENT_SORT.asc = !CURRENT_SORT.asc;
+          } else {
+            CURRENT_SORT.column = column;
+            CURRENT_SORT.asc = true;
+          }
+        } else {
+          CURRENT_SORT.column = column;
+        }
+
+        const asc = !!CURRENT_SORT.asc;
+
+        rows.sort((a, b) => {
+          const av = a.dataset[column] || "";
+          const bv = b.dataset[column] || "";
+
+          if (column === "updated") {
+            const ad = Date.parse(av) || 0;
+            const bd = Date.parse(bv) || 0;
+            return asc ? ad - bd : bd - ad;
+          }
+
+          // stable, case-insensitive
+          const cmp = av.localeCompare(bv, undefined, { sensitivity: "base" });
+          return asc ? cmp : -cmp;
+        });
+
+        // re-append in order
+        for (const r of rows) tbody.appendChild(r);
+
+        updateSortIcons();
+      }
+
+      function applyCurrentSortIfAny() {
+        if (CURRENT_SORT.column) {
+          sortTable(CURRENT_SORT.column, true);
+        } else {
+          updateSortIcons();
+        }
+      }
 
       // ---------- STATE LIST (US + DC) ----------
       const US_STATES = [
@@ -783,6 +898,14 @@
 
           const st = job.application_status || "New";
 
+          // dataset for sorting (case-insensitive)
+          row.dataset.company = (job.company || "").trim();
+          row.dataset.title = (job.title || "").trim();
+          row.dataset.location = (job.location || "").trim();
+          row.dataset.updated = (job.updated_at || "").trim();
+          row.dataset.ats = (job.ats || "").trim();
+          row.dataset.status = (st || "New").trim();
+
           row.innerHTML = `
         <td>${escapeHtml(job.company || "")}</td>
         <td><a href="${escapeAttr(
@@ -815,12 +938,14 @@
 
             // optimistic update
             job.application_status = newStatus;
+            row.dataset.status = newStatus;
 
             const ok = await persistStatus(profile, key, newStatus);
             if (!ok) {
               // revert
               e.target.value = st;
               job.application_status = st;
+              row.dataset.status = st;
             } else {
               // if status filter active, re-render
               const filtered = applyFilters(ALL_JOBS);
@@ -830,6 +955,7 @@
         }
 
         updateStatus(jobs);
+        applyCurrentSortIfAny();
       }
 
       function escapeHtml(s) {
@@ -1069,6 +1195,7 @@
       syncStateButton();
       renderStateList("");
       updateStatus();
+      updateSortIcons();
     </script>
   </body>
 </html>
