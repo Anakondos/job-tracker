@@ -1,28 +1,19 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
+import json
 from collections import Counter
-from typing import Any, Optional
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
 from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
-
-# SmartRecruiters optional
-try:
-    from parsers.smartrecruiters import fetch_smartrecruiters  # type: ignore
-except Exception:  # pragma: no cover
-    fetch_smartrecruiters = None  # type: ignore
-
-from storage import load_profile, get_status_map, update_job_status
+from parsers.smartrecruiters import fetch_smartrecruiters  # если нет – можно временно закомментить
+from storage import load_profile
 from utils.normalize import normalize_location, classify_role, STATE_MAP
 
 
-# Cache last fetch status per company: "profile:company" -> status dict
+# Кэш статуса по компаниям: "profile:company" -> {ok, error, checked_at, ats, url}
 company_fetch_status: dict[str, dict] = {}
 
 # Geo scoring/bucketing configuration
@@ -53,163 +44,10 @@ def compute_geo_bucket_and_score(loc_norm: dict | None) -> tuple[str, int]:
     return "unknown", 0
 
 
-def _is_us_location(location: str | None) -> bool:
-    if not location:
-        return False
-    loc = location.lower()
-    if "united states" in loc or "usa" in loc or "us" in loc:
-        return True
-    us_markers = [
-        ", ca",
-        ", ny",
-        ", wa",
-        ", ma",
-        ", tx",
-        ", co",
-        ", il",
-        ", ga",
-        ", nc",
-        "washington, dc",
-        "new york, ny",
-        "san francisco",
-        "remote - us",
-    ]
-    return any(m in loc for m in us_markers)
-
-
-def _parse_date_to_utc(datestr: str | None) -> datetime | None:
-    """
-    Parse ISO-ish string into timezone-aware UTC datetime.
-    Accepts 'Z' suffix.
-    If parsed datetime is naive, assume UTC.
-    """
-    if not datestr:
-        return None
-    try:
-        ds = datestr.strip()
-        if ds.endswith("Z"):
-            ds = ds[:-1] + "+00:00"
-        dt = datetime.fromisoformat(ds)
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
-    except Exception:
-        return None
-
-
-def _normalize_cfg(cfg: dict) -> dict:
-    """
-    Support both schemas:
-      - {company, url}
-      - {name, board_url}
-    Keep original cfg fields too.
-    """
-    out = dict(cfg or {})
-    out["company"] = cfg.get("company") or cfg.get("name") or ""
-    out["url"] = cfg.get("url") or cfg.get("board_url") or ""
-    out["ats"] = cfg.get("ats", "") or ""
-    out["industry"] = cfg.get("industry", "") or ""
-    out["api_url"] = cfg.get("api_url") or cfg.get("apiEndpoint") or ""
-    return out
-
-
-def _mark_company_status(profile: str, cfg: dict, ok: bool, error: str | None = None):
-    cfgn = _normalize_cfg(cfg)
-    key = f"{profile}:{cfgn.get('company', '')}"
-    company_fetch_status[key] = {
-        "ok": ok,
-        "error": error or "",
-        "checked_at": datetime.utcnow().isoformat() + "Z",
-        "ats": cfgn.get("ats", ""),
-        "url": cfgn.get("url", ""),
-    }
-
-
-def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
-    """
-    Unified ATS fetch + enrich job fields:
-      - location_norm
-      - role_family, role_confidence, role_reason
-      - company_data
-      - geo_bucket, geo_score
-    """
-    cfgn = _normalize_cfg(cfg)
-    company = cfgn.get("company", "")
-    ats = cfgn.get("ats", "")
-    url = cfgn.get("url", "")
-
-    try:
-        if ats == "greenhouse":
-            jobs = fetch_greenhouse(company, url)
-        elif ats == "lever":
-            jobs = fetch_lever(company, url)
-        elif ats == "smartrecruiters" and fetch_smartrecruiters:
-            jobs = fetch_smartrecruiters(company, url)  # type: ignore[misc]
-        else:
-            jobs = []
-
-        _mark_company_status(profile, cfgn, ok=True)
-
-        for j in jobs:
-            j["company"] = company
-            j["industry"] = cfgn.get("industry", "")
-            j["ats"] = ats
-
-            # normalize location
-            loc_norm = normalize_location(j.get("location"))
-            j["location_norm"] = loc_norm
-
-            # classify role
-            role = classify_role(j.get("title"), j.get("description") or j.get("jd") or "")
-            j["role_family"] = role.get("role_family")
-            j["role_confidence"] = role.get("confidence")
-            j["role_reason"] = role.get("reason")
-
-            # company config data
-            j["company_data"] = {
-                "priority": cfgn.get("priority", 0),
-                "hq_state": cfgn.get("hq_state", None),
-                "region": cfgn.get("region", None),
-                "tags": cfgn.get("tags", []),
-            }
-
-            # geo bucket + score
-            bucket, score = compute_geo_bucket_and_score(loc_norm)
-            j["geo_bucket"] = bucket
-            j["geo_score"] = score
-
-        return jobs
-
-    except Exception as e:  # noqa: BLE001
-        _mark_company_status(profile, cfgn, ok=False, error=str(e))
-        print(f"Error for {company}: {e}")
-        return []
-
-
-def _match_geo_bucket(bucket: str, geo_mode: str) -> bool:
-    if geo_mode == "all":
-        return True
-    if geo_mode == "nc_priority":
-        return bucket in {"local", "nc", "neighbor", "remote_usa"}
-    if geo_mode == "local_only":
-        return bucket == "local"
-    if geo_mode == "neighbor_only":
-        return bucket == "neighbor"
-    if geo_mode == "remote_usa":
-        return bucket == "remote_usa"
-    return True
-
-
-def _job_key(job: dict) -> str:
-    # Iteration 1: key = job_url (fallback url)
-    return (job.get("job_url") or job.get("url") or "").strip()
-
-
-# ----------------- API -----------------
 app = FastAPI(
     title="Job Tracker",
     description="Simple job aggregator for Product / PM roles from ATS",
-    version="0.3.1",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -222,67 +60,127 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+def _is_us_location(location: str | None) -> bool:
+    if not location:
+        return False
+    loc = location.lower()
+    if "united states" in loc or "usa" in loc or "us" in loc:
+        return True
+    # очень грубый хак по штатам
+    us_markers = [
+        ", ca", ", ny", ", wa", ", ma", ", tx", ", co", ", il", ", ga", ", nc",
+        "washington, dc", "new york, ny", "san francisco", "remote - us",
+    ]
+    return any(m in loc for m in us_markers)
+
+
+def _mark_company_status(profile: str, cfg: dict, ok: bool, error: str | None = None):
+    key = f"{profile}:{cfg.get('company', '')}"
+    company_fetch_status[key] = {
+        "ok": ok,
+        "error": error or "",
+        "checked_at": datetime.utcnow().isoformat() + "Z",
+        "ats": cfg.get("ats", ""),
+        "url": cfg.get("url", ""),
+    }
+
+
+def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
+    """
+    Унифицированный вызов парсеров + запись статуса компании.
+    Также добавляет нормализованную локацию, классификацию роли, geo bucket/score, company_data.
+    """
+    company = cfg.get("company", "")
+    ats = cfg.get("ats", "")
+    url = cfg.get("url", "")
+
+    try:
+        if ats == "greenhouse":
+            jobs = fetch_greenhouse(company, url)
+        elif ats == "lever":
+            jobs = fetch_lever(company, url)
+        elif ats == "smartrecruiters":
+            jobs = fetch_smartrecruiters(company, url)
+        else:
+            jobs = []
+
+        # записываем успех
+        _mark_company_status(profile, cfg, ok=True)
+
+        # добавляем мета-инфу к каждой вакансии
+        for j in jobs:
+            j["company"] = company
+            j["industry"] = cfg.get("industry", "")
+            j["ats"] = ats
+
+            # нормализация локации
+            loc_norm = normalize_location(j.get("location"))
+            j["location_norm"] = loc_norm
+
+            # классификация роли
+            role = classify_role(j.get("title"), j.get("description") or j.get("jd") or "")
+            j["role_family"] = role.get("role_family")
+            j["role_confidence"] = role.get("confidence")
+            j["role_reason"] = role.get("reason")
+
+            # company data (for scoring/prioritization)
+            j["company_data"] = {
+                "priority": cfg.get("priority", 0),
+                "hq_state": cfg.get("hq_state", None),
+                "region": cfg.get("region", None),
+                "tags": cfg.get("tags", []),
+            }
+
+            # geo bucket + score
+            bucket, score = compute_geo_bucket_and_score(loc_norm)
+            j["geo_bucket"] = bucket
+            j["geo_score"] = score
+
+        return jobs
+
+    except Exception as e:  # noqa: BLE001
+        # фиксируем ошибку, но не валим весь /jobs
+        _mark_company_status(profile, cfg, ok=False, error=str(e))
+        print(f"Error for {company}: {e}")
+        return []
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 
-class JobStatusUpdate(BaseModel):
-    job_url: str
-    status: str  # New / Applied / Answered / Rejected / clear
-    company: Optional[str] = None
-    title: Optional[str] = None
-
-
-@app.get("/job_status")
-def api_get_job_status():
-    """
-    Returns job status map keyed by job_url.
-    """
-    return {"status_map": get_status_map()}
-
-
-@app.post("/job_status")
-def api_update_job_status(payload: JobStatusUpdate):
-    """
-    Update job status by job_url.
-    status: New / Applied / Answered / Rejected
-    status=clear -> remove entry
-    """
-    update_job_status(
-        job_url=payload.job_url,
-        status=payload.status,
-        company=payload.company,
-        title=payload.title,
-    )
-    return {"ok": True}
-
-
 @app.get("/jobs")
 async def get_jobs(
-    profile: str = Query("all", description="profiles/*.json (или all)"),
+    profile: str = Query("all", description="Имя профиля из папки profiles/*.json"),
     ats_filter: str = Query("all", description="all / greenhouse / lever / smartrecruiters"),
     role_filter: str = Query("all", description="all / product / tpm_program / project / other"),
     location_filter: str = Query("all", description="all / us / nonus"),
-    company_filter: str = Query("", description="substring match"),
-    search: str = Query("", description="search title/location/company"),
-    states: str = Query("", description="Comma-separated states, e.g. NC,VA,South Carolina"),
-    include_remote_usa: bool = Query(False, description="If true and states provided: state OR Remote-USA"),
-    state: str = Query("", description="(deprecated) state substring filter"),
-    city: str = Query("", description="city substring filter"),
-    geo_mode: str = Query("nc_priority", description="all / nc_priority / local_only / neighbor_only / remote_usa"),
+    company_filter: str = Query("", description="подстрока в названии компании"),
+    search: str = Query("", description="поиск по title+location"),
+    states: str = Query("", description="Comma-separated US state codes or full names, e.g. NC,VA,South Carolina"),
+    include_remote_usa: bool = Query(False, description="Include Remote-USA roles in addition to state selection"),
+    state: str = Query("", description="(deprecated) Filter by state substring"),
+    city: str = Query("", description="Filter by city substring"),
+    geo_mode: str = Query("all", description="all / nc_priority / local_only / neighbor_only / remote_usa"),
 ):
+    """
+    Основной эндпоинт: собирает вакансии по профилю и фильтрам.
+    """
     companies_cfg = load_profile(profile)
     all_jobs: list[dict] = []
 
     for cfg in companies_cfg:
-        cfgn = _normalize_cfg(cfg)
-        ats = cfgn.get("ats", "")
+        ats = cfg.get("ats", "")
         if ats_filter != "all" and ats_filter != ats:
             continue
-        all_jobs.extend(_fetch_for_company(profile, cfgn))
 
-    # --- filters ---
+        jobs = _fetch_for_company(profile, cfg)
+        all_jobs.extend(jobs)
+
+    # --- фильтры на уровне вакансий ---
+
+    # parse states CSV to normalized list of 2-letter codes
     raw_states = [s.strip() for s in states.split(",") if s.strip()]
     normalized_states: list[str] = []
     for s in raw_states:
@@ -295,6 +193,7 @@ async def get_jobs(
             normalized_states.append(s.upper())
 
     states_set_upper = set(ns.upper() for ns in normalized_states)
+    cities_set = set([city.lower()]) if city else set()
 
     def match_role(job: dict) -> bool:
         if role_filter == "all":
@@ -322,15 +221,15 @@ async def get_jobs(
         if not search:
             return True
         s = search.lower()
-        haystack = f"{job.get('title', '')} {job.get('location', '')} {job.get('company', '')}".lower()
+        haystack = f"{job.get('title', '')} {job.get('location', '')}".lower()
         return s in haystack
 
     def match_states(job: dict) -> bool:
         loc_norm = job.get("location_norm", {}) or {}
-
-        job_states: list[str] = []
+        # Collect job states as 2-letter codes where possible
+        job_states = []
         if isinstance(loc_norm.get("states"), list):
-            job_states.extend([str(st).upper() for st in (loc_norm.get("states") or []) if st])
+            job_states.extend([str(st).upper() for st in loc_norm.get("states") if st])
         if loc_norm.get("state"):
             job_states.append(str(loc_norm.get("state")).upper())
         if loc_norm.get("state_full"):
@@ -338,20 +237,24 @@ async def get_jobs(
             if sf in STATE_MAP:
                 job_states.append(STATE_MAP[sf])
 
-        remote_usa = bool(loc_norm.get("remote")) and (str(loc_norm.get("remote_scope") or "").lower() == "usa")
-
-        if not normalized_states and not include_remote_usa:
-            return True
-
+        # Remote-USA flag
+        remote_usa = bool(loc_norm.get("remote")) and (str(loc_norm.get("remote_scope") or "").lower() in ["usa", "us"])
         state_matches = any(ns in job_states for ns in states_set_upper)
 
-        if include_remote_usa and normalized_states:
+        # New behavior: states selection and remote toggle are independent.
+        # - If states are selected: match any selected state.
+        # - If include_remote_usa is true: ALSO allow Remote-USA roles.
+        # - If neither states nor remote filter is active: do not filter by state.
+        if normalized_states and include_remote_usa:
             return state_matches or remote_usa
-        if include_remote_usa and not normalized_states:
+        if normalized_states and not include_remote_usa:
+            return state_matches
+        if not normalized_states and include_remote_usa:
             return remote_usa
-        return state_matches
+        return True
 
     def match_old_state(job: dict) -> bool:
+        # fallback old state substring filter
         if not state:
             return True
         loc = job.get("location", "") or ""
@@ -362,13 +265,23 @@ async def get_jobs(
             return True
         loc_norm = job.get("location_norm", {}) or {}
         if loc_norm:
-            return city.lower() in str(loc_norm.get("city") or "").lower()
+            return city.lower() == str(loc_norm.get("city") or "").lower()
         loc = job.get("location", "") or ""
         return city.lower() in loc.lower()
 
     def match_geo(job: dict) -> bool:
         bucket = job.get("geo_bucket", "unknown")
-        return _match_geo_bucket(bucket, geo_mode)
+        if geo_mode == "all":
+            return True
+        elif geo_mode == "nc_priority":
+            return bucket in ["local", "nc", "neighbor", "remote_usa"]
+        elif geo_mode == "local_only":
+            return bucket == "local"
+        elif geo_mode == "neighbor_only":
+            return bucket == "neighbor"
+        elif geo_mode == "remote_usa":
+            return bucket == "remote_usa"
+        return True
 
     filtered: list[dict] = []
     for j in all_jobs:
@@ -390,27 +303,54 @@ async def get_jobs(
             continue
         filtered.append(j)
 
-    # --- score + sort ---
+    # compute score and sort
+    def parse_date(datestr: str | None):
+        if not datestr:
+            return None
+        try:
+            # Support:
+            # - ISO strings with timezone offset (aware)
+            # - trailing Z (UTC)
+            # - naive timestamps (assume UTC)
+            ds = datestr
+            if ds.endswith("Z"):
+                ds = ds[:-1] + "+00:00"
+            dt = datetime.fromisoformat(ds)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except Exception:
+            return None
+
     now = datetime.now(timezone.utc)
     for job in filtered:
         score = 0
-
         loc_norm = job.get("location_norm", {}) or {}
+
         job_state_upper = (loc_norm.get("state") or "").upper()
+        job_city_lower = (loc_norm.get("city") or "").lower()
         job_remote_scope = (loc_norm.get("remote_scope") or "").lower()
         job_remote = bool(loc_norm.get("remote"))
 
+        # Prefer explicit states/cities selections
         if states_set_upper and job_state_upper in states_set_upper:
             score += 30
+        if cities_set and job_city_lower in cities_set:
+            score += 15
+
+        # If include_remote_usa requested, give a boost
         if include_remote_usa and job_remote_scope == "usa":
             score += 20
+        # small credit for any remote if no states filtering but city preference
         if not states_set_upper and not city and job_remote:
             score += 5
 
+        # Company priority
         company_data = job.get("company_data") or {}
         score += int(company_data.get("priority") or 0)
 
-        updated = _parse_date_to_utc(job.get("updated_at"))
+        # Freshness penalty
+        updated = parse_date(job.get("updated_at"))
         if updated:
             age_days = (now - updated).days
             if age_days > 60:
@@ -418,59 +358,38 @@ async def get_jobs(
             elif age_days > 30:
                 score -= 10
 
+        # Add geo_score as primary weight
         score += int(job.get("geo_score", 0))
+
         job["score"] = score
 
+    # сортировка по score, затем по updated_at
     filtered.sort(key=lambda j: (j.get("score", 0), str(j.get("updated_at") or "")), reverse=True)
-
-    # --- attach application status ---
-    status_map = get_status_map()
-    for job in filtered:
-        key = _job_key(job)
-        st = status_map.get(key, {})
-        # Default for Iteration 1: New
-        job["application_status"] = st.get("status", "New")
 
     return {"count": len(filtered), "jobs": filtered}
 
 
 @app.get("/companies")
 def get_companies(
-    profile: str = Query("all", description="profiles/*.json (или all)"),
-    include_counts: bool = Query(False, description="If true: fetch jobs per company to compute counts"),
-    geo_mode: str = Query("nc_priority", description="Same as /jobs geo_mode"),
+    profile: str = Query("all", description="Имя профиля из profiles/*.json"),
 ):
     """
-    Companies list for UI. Default include_counts=False so list is instant.
-    When include_counts=True -> actually fetch ATS and compute totals/priority.
+    Возвращает список ВСЕХ компаний профиля + статус последней попытки fetch'а.
     """
     companies_cfg = load_profile(profile)
-    items: list[dict[str, Any]] = []
+    items: list[dict] = []
 
     for cfg in companies_cfg:
-        cfgn = _normalize_cfg(cfg)
-        company_name = cfgn.get("company", "")
+        company_name = cfg.get("company", "")
         key = f"{profile}:{company_name}"
         st = company_fetch_status.get(key, {})
-
-        positions_total = None
-        positions_priority = None
-
-        if include_counts:
-            jobs = _fetch_for_company(profile, cfgn)
-            positions_total = len(jobs)
-            positions_priority = sum(
-                1 for j in jobs if _match_geo_bucket(j.get("geo_bucket", "unknown"), geo_mode)
-            )
 
         items.append(
             {
                 "company": company_name,
-                "industry": cfgn.get("industry", ""),
-                "ats": cfgn.get("ats", ""),
-                "jobs_list_url": cfgn.get("url", ""),
-                "positions_total": positions_total,
-                "positions_priority": positions_priority,
+                "industry": cfg.get("industry", ""),
+                "ats": cfg.get("ats", ""),
+                "url": cfg.get("url", ""),
                 "last_ok": st.get("ok", None),
                 "last_error": st.get("error", ""),
                 "last_checked": st.get("checked_at", ""),
@@ -480,13 +399,36 @@ def get_companies(
     return {"count": len(items), "companies": items}
 
 
+@app.get("/profiles/{name}")
+async def get_profile_companies(name: str):
+    companies = load_profile(name)
+    result_companies = []
+    for c in companies:
+        result_companies.append({
+            "id": c.get("id"),
+            "name": c.get("name"),
+            "ats": c.get("ats", ""),
+            "board_url": c.get("board_url", ""),
+            "tags": c.get("tags", []),
+            "priority": c.get("priority", 0),
+            "hq_state": c.get("hq_state", None),
+            "region": c.get("region", None)
+        })
+    return {"count": len(result_companies), "companies": result_companies}
+
+
 @app.get("/debug/location_stats")
 async def location_stats(profile: str = Query("all")):
+    """
+    Возвращает статистику по нормализованным локациям вакансий для указанного профиля.
+    """
     companies_cfg = load_profile(profile)
 
     all_jobs: list[dict] = []
+    # Собираем все вакансии аналогично /jobs через _fetch_for_company
     for cfg in companies_cfg:
-        all_jobs.extend(_fetch_for_company(profile, cfg))
+        jobs = _fetch_for_company(profile, cfg)
+        all_jobs.extend(jobs)
 
     total_jobs = len(all_jobs)
     remote_usa_count = 0
