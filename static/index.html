@@ -246,6 +246,14 @@
       .checkboxRow input {
         min-width: auto;
       }
+
+      /* Status select inside table */
+      .statusSelect {
+        min-width: 120px;
+        padding: 7px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -286,6 +294,17 @@
             <option value="product">Product</option>
             <option value="program">Program</option>
             <option value="project">Project</option>
+          </select>
+        </label>
+
+        <label>
+          Status
+          <select id="statusFilter">
+            <option value="all">All</option>
+            <option value="New">New</option>
+            <option value="Applied">Applied</option>
+            <option value="Answered">Answered</option>
+            <option value="Rejected">Rejected</option>
           </select>
         </label>
 
@@ -398,6 +417,7 @@
               <th style="width: 280px">Location</th>
               <th style="width: 170px">Updated</th>
               <th style="width: 120px">ATS</th>
+              <th style="width: 140px">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -421,6 +441,9 @@
       let includeNonUS = false;
       let includeRemoteUSA = true;
 
+      // Job status cache: job_key -> status
+      let STATUS_MAP = {};
+
       const debugCounts = {
         afterRole: 0,
         afterLocation: 0,
@@ -428,6 +451,7 @@
         afterSearch: 0,
         afterState: 0,
         afterCity: 0,
+        afterStatus: 0,
       };
 
       // ---------- STATE LIST (US + DC) ----------
@@ -545,6 +569,8 @@
       function enrichJobsLocationNorm(jobs) {
         for (const j of jobs) {
           j.location_norm = normalizeLocation(j.location || "");
+          // status fallback
+          if (!j.application_status) j.application_status = "New";
         }
         return jobs;
       }
@@ -583,12 +609,15 @@
 
       function applyFilters(jobs) {
         const role = document.getElementById("roleFilter").value;
-        // US is always on; Non-US is optional
+        const status = document.getElementById("statusFilter").value;
         const nonus = includeNonUS;
+
         const companyFilter = document
           .getElementById("companyFilter")
           .value.trim();
+
         const cityFilter = document.getElementById("cityFilter").value.trim();
+
         const search = (document.getElementById("searchFilter")?.value || "")
           .trim()
           .toLowerCase();
@@ -611,7 +640,7 @@
         filtered = filtered.filter((job) => {
           const isUS = isUSHeuristic(job);
           if (isUS) return true;
-          return nonus; // include non-US only when checkbox enabled
+          return nonus;
         });
         debugCounts.afterLocation = filtered.length;
 
@@ -651,10 +680,7 @@
         }
         debugCounts.afterCity = filtered.length;
 
-        // States + Remote(USA) are independent toggles.
-        // - If states are selected: match selected states
-        // - If Remote(USA) enabled: also include Remote-USA roles
-        // - If neither is active: do not filter by state/remote
+        // States + Remote(USA) independent toggles
         const hasStateFilter = selectedStates.length > 0;
         const hasRemoteFilter = !!includeRemoteUSA;
         if (hasStateFilter || hasRemoteFilter) {
@@ -665,14 +691,20 @@
             return okState || okRemote || (!hasStateFilter && !hasRemoteFilter);
           });
         }
-
         debugCounts.afterState = filtered.length;
+
+        // Status filter (last stage)
+        filtered = filtered.filter((job) => {
+          if (status === "all") return true;
+          const st = job.application_status || "New";
+          return st === status;
+        });
+        debugCounts.afterStatus = filtered.length;
 
         return filtered;
       }
 
       function computeGeoSummary(jobs) {
-        // counts are computed on the *currently filtered* list
         let nc = 0;
         let neighbor = 0;
         let remote = 0;
@@ -701,8 +733,13 @@
         const baseText = LAST_LOADED_AT
           ? `Loaded: ${ALL_JOBS.length} jobs at ${LAST_LOADED_AT}`
           : "Not loaded yet";
+
+        const filteredCount = latestFilteredJobs
+          ? latestFilteredJobs.length
+          : debugCounts.afterStatus;
+
         const filterText = LAST_LOADED_AT
-          ? `Filtered: ${debugCounts.afterState} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
+          ? `Filtered: ${filteredCount} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
           : "";
 
         let geoText = "";
@@ -710,19 +747,42 @@
           const g = computeGeoSummary(latestFilteredJobs);
           geoText = `Geo: NC=${g.nc} | Neighbor=${g.neighbor} | Remote=${g.remote}`;
         }
+
         const parts = [baseText];
         if (filterText) parts.push(filterText);
         if (geoText) parts.push(geoText);
         statusSpan.textContent = parts.join(" | ");
       }
 
+      async function persistStatus(profile, job_key, status) {
+        try {
+          const res = await fetch("/job_status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile, job_key, status }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return true;
+        } catch (e) {
+          console.error(e);
+          alert("Failed to save status. Check server logs.");
+          return false;
+        }
+      }
+
       function renderJobs(jobs) {
         const tbody = document.querySelector("#jobsTable tbody");
         tbody.innerHTML = "";
 
+        const profile = document.getElementById("profileFilter").value;
+
         for (const job of jobs) {
           const row = document.createElement("tr");
           const url = job.job_url || job.url || "#";
+          const jobKey = job.job_key || url || "";
+
+          const st = job.application_status || "New";
+
           row.innerHTML = `
         <td>${escapeHtml(job.company || "")}</td>
         <td><a href="${escapeAttr(
@@ -733,8 +793,40 @@
         <td>${escapeHtml(job.location || "")}</td>
         <td>${escapeHtml(job.updated_at || "")}</td>
         <td>${escapeHtml(job.ats || "")}</td>
+        <td>
+          <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
+            ${["New", "Applied", "Answered", "Rejected"]
+              .map(
+                (x) =>
+                  `<option value="${x}" ${
+                    x === st ? "selected" : ""
+                  }>${x}</option>`
+              )
+              .join("")}
+          </select>
+        </td>
       `;
           tbody.appendChild(row);
+
+          const sel = row.querySelector("select.statusSelect");
+          sel.addEventListener("change", async (e) => {
+            const newStatus = e.target.value;
+            const key = e.target.getAttribute("data-jobkey") || "";
+
+            // optimistic update
+            job.application_status = newStatus;
+
+            const ok = await persistStatus(profile, key, newStatus);
+            if (!ok) {
+              // revert
+              e.target.value = st;
+              job.application_status = st;
+            } else {
+              // if status filter active, re-render
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            }
+          });
         }
 
         updateStatus(jobs);
@@ -764,11 +856,13 @@
 
         setLoading(true, "Loading…");
         try {
+          // server uses profile & ats_filter only; UI applies the rest locally
           const url = `/jobs?profile=${encodeURIComponent(
             profile
           )}&ats_filter=${encodeURIComponent(
             ats
           )}&role_filter=all&location_filter=all`;
+
           const res = await fetch(url);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -776,7 +870,6 @@
           ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
           LAST_LOADED_AT = new Date().toLocaleString();
 
-          // Apply filters immediately
           const filtered = applyFilters(ALL_JOBS);
           renderJobs(filtered);
 
@@ -840,9 +933,7 @@
         for (const st of items) {
           const div = document.createElement("div");
           div.className = "msItem";
-          const checked =
-            selectedStates.includes(st.code) ||
-            selectedStates.includes(st.name);
+          const checked = selectedStates.includes(st.code);
           div.innerHTML = `
         <input type="checkbox" ${checked ? "checked" : ""} />
         <div>
@@ -889,6 +980,7 @@
 
       const filterIds = [
         "roleFilter",
+        "statusFilter",
         "companyFilter",
         "searchFilter",
         "cityFilter",

@@ -1,16 +1,108 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 import json
 from collections import Counter
+from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
 from parsers.smartrecruiters import fetch_smartrecruiters  # если нет – можно временно закомментить
 from storage import load_profile
 from utils.normalize import normalize_location, classify_role, STATE_MAP
+
+
+# -----------------------------
+# Runtime/local state files
+# -----------------------------
+JOB_STATUS_FILE = Path("job_status.json")
+
+VALID_APPLICATION_STATUSES = ["New", "Applied", "Answered", "Rejected"]
+
+
+def _safe_read_json(path: Path) -> dict:
+    try:
+        if not path.exists():
+            return {}
+        txt = path.read_text(encoding="utf-8").strip()
+        if not txt:
+            return {}
+        return json.loads(txt)
+    except Exception:
+        return {}
+
+
+def _safe_write_json(path: Path, data: dict) -> None:
+    try:
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        print(f"Failed to write {path}: {e}")
+
+
+def _load_job_status_map(profile: str) -> dict[str, str]:
+    """
+    Returns dict: job_key -> status
+    Stored format:
+      {
+        "profiles": {
+          "all": {"<job_key>":"Applied", ...},
+          "fintech": {...}
+        }
+      }
+    """
+    root = _safe_read_json(JOB_STATUS_FILE)
+    profiles = root.get("profiles") if isinstance(root, dict) else None
+    if not isinstance(profiles, dict):
+        return {}
+    mp = profiles.get(profile)
+    if isinstance(mp, dict):
+        # ensure values are strings
+        out: dict[str, str] = {}
+        for k, v in mp.items():
+            if isinstance(k, str) and isinstance(v, str):
+                out[k] = v
+        return out
+    return {}
+
+
+def _set_job_status(profile: str, job_key: str, status: str) -> None:
+    status_norm = status if status in VALID_APPLICATION_STATUSES else "New"
+    root = _safe_read_json(JOB_STATUS_FILE)
+    if not isinstance(root, dict):
+        root = {}
+    profiles = root.get("profiles")
+    if not isinstance(profiles, dict):
+        profiles = {}
+        root["profiles"] = profiles
+    mp = profiles.get(profile)
+    if not isinstance(mp, dict):
+        mp = {}
+        profiles[profile] = mp
+    mp[job_key] = status_norm
+    _safe_write_json(JOB_STATUS_FILE, root)
+
+
+def compute_job_key(job: dict) -> str:
+    """
+    Stable key for status tracking.
+    Preference:
+      1) job_url
+      2) url
+      3) (company|title|location)
+    """
+    url = (job.get("job_url") or job.get("url") or "").strip()
+    if url:
+        return url
+    company = (job.get("company") or "").strip()
+    title = (job.get("title") or "").strip()
+    location = (job.get("location") or "").strip()
+    return f"{company}|{title}|{location}".strip("|")
 
 
 # Кэш статуса по компаниям: "profile:company" -> {ok, error, checked_at, ats, url}
@@ -47,7 +139,7 @@ def compute_geo_bucket_and_score(loc_norm: dict | None) -> tuple[str, int]:
 app = FastAPI(
     title="Job Tracker",
     description="Simple job aggregator for Product / PM roles from ATS",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 app.add_middleware(
@@ -150,6 +242,32 @@ def health():
     return {"status": "ok"}
 
 
+class StatusUpdate(BaseModel):
+    profile: str = "all"
+    job_key: str
+    status: str
+
+
+@app.get("/job_status")
+def get_job_status(profile: str = Query("all")):
+    """
+    Return status map for a profile:
+      { "count": N, "statuses": { job_key: status } }
+    """
+    mp = _load_job_status_map(profile)
+    return {"count": len(mp), "statuses": mp}
+
+
+@app.post("/job_status")
+def update_job_status(payload: StatusUpdate):
+    """
+    Update status for a job_key under a profile.
+    """
+    status = payload.status if payload.status in VALID_APPLICATION_STATUSES else "New"
+    _set_job_status(payload.profile, payload.job_key, status)
+    return {"ok": True, "profile": payload.profile, "job_key": payload.job_key, "status": status}
+
+
 @app.get("/jobs")
 async def get_jobs(
     profile: str = Query("all", description="Имя профиля из папки profiles/*.json"),
@@ -177,6 +295,9 @@ async def get_jobs(
 
         jobs = _fetch_for_company(profile, cfg)
         all_jobs.extend(jobs)
+
+    # Load status map once
+    status_map = _load_job_status_map(profile)
 
     # --- фильтры на уровне вакансий ---
 
@@ -221,7 +342,7 @@ async def get_jobs(
         if not search:
             return True
         s = search.lower()
-        haystack = f"{job.get('title', '')} {job.get('location', '')}".lower()
+        haystack = f"{job.get('title', '')} {job.get('location', '')} {job.get('company', '')}".lower()
         return s in haystack
 
     def match_states(job: dict) -> bool:
@@ -242,9 +363,6 @@ async def get_jobs(
         state_matches = any(ns in job_states for ns in states_set_upper)
 
         # New behavior: states selection and remote toggle are independent.
-        # - If states are selected: match any selected state.
-        # - If include_remote_usa is true: ALSO allow Remote-USA roles.
-        # - If neither states nor remote filter is active: do not filter by state.
         if normalized_states and include_remote_usa:
             return state_matches or remote_usa
         if normalized_states and not include_remote_usa:
@@ -308,10 +426,6 @@ async def get_jobs(
         if not datestr:
             return None
         try:
-            # Support:
-            # - ISO strings with timezone offset (aware)
-            # - trailing Z (UTC)
-            # - naive timestamps (assume UTC)
             ds = datestr
             if ds.endswith("Z"):
                 ds = ds[:-1] + "+00:00"
@@ -341,7 +455,6 @@ async def get_jobs(
         # If include_remote_usa requested, give a boost
         if include_remote_usa and job_remote_scope == "usa":
             score += 20
-        # small credit for any remote if no states filtering but city preference
         if not states_set_upper and not city and job_remote:
             score += 5
 
@@ -363,7 +476,11 @@ async def get_jobs(
 
         job["score"] = score
 
-    # сортировка по score, затем по updated_at
+        # Attach job_key + status
+        job_key = compute_job_key(job)
+        job["job_key"] = job_key
+        job["application_status"] = status_map.get(job_key, "New")
+
     filtered.sort(key=lambda j: (j.get("score", 0), str(j.get("updated_at") or "")), reverse=True)
 
     return {"count": len(filtered), "jobs": filtered}
@@ -425,7 +542,6 @@ async def location_stats(profile: str = Query("all")):
     companies_cfg = load_profile(profile)
 
     all_jobs: list[dict] = []
-    # Собираем все вакансии аналогично /jobs через _fetch_for_company
     for cfg in companies_cfg:
         jobs = _fetch_for_company(profile, cfg)
         all_jobs.extend(jobs)
