@@ -2,23 +2,27 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from collections import Counter
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
 
-# Если у тебя нет файла parsers/smartrecruiters.py — закомментируй следующий импорт
-from parsers.smartrecruiters import fetch_smartrecruiters
+# SmartRecruiters optional
+try:
+    from parsers.smartrecruiters import fetch_smartrecruiters  # type: ignore
+except Exception:  # pragma: no cover
+    fetch_smartrecruiters = None  # type: ignore
 
-from storage import load_profile
+from storage import load_profile, get_status_map, update_job_status
 from utils.normalize import normalize_location, classify_role, STATE_MAP
 
 
-# Кэш статуса по компаниям: "profile:company" -> {ok, error, checked_at, ats, url}
+# Cache last fetch status per company: "profile:company" -> status dict
 company_fetch_status: dict[str, dict] = {}
 
 # Geo scoring/bucketing configuration
@@ -109,19 +113,6 @@ def _normalize_cfg(cfg: dict) -> dict:
     return out
 
 
-def _ats_label(cfg: dict) -> str:
-    """
-    If ATS has no API access (or we rely on HTML scraping), show 'no Access'.
-    For now: mark Workday types as no Access unless api_url is provided.
-    """
-    ats = (cfg.get("ats") or "").strip()
-    api_url = (cfg.get("api_url") or "").strip()
-
-    if ats in {"workday", "workday_json"} and not api_url:
-        return "no Access"
-    return ats or ""
-
-
 def _mark_company_status(profile: str, cfg: dict, ok: bool, error: str | None = None):
     cfgn = _normalize_cfg(cfg)
     key = f"{profile}:{cfgn.get('company', '')}"
@@ -141,7 +132,6 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
       - role_family, role_confidence, role_reason
       - company_data
       - geo_bucket, geo_score
-      - score (computed later in /jobs)
     """
     cfgn = _normalize_cfg(cfg)
     company = cfgn.get("company", "")
@@ -153,8 +143,8 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
             jobs = fetch_greenhouse(company, url)
         elif ats == "lever":
             jobs = fetch_lever(company, url)
-        elif ats == "smartrecruiters":
-            jobs = fetch_smartrecruiters(company, url)
+        elif ats == "smartrecruiters" and fetch_smartrecruiters:
+            jobs = fetch_smartrecruiters(company, url)  # type: ignore[misc]
         else:
             jobs = []
 
@@ -197,15 +187,6 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
 
 
 def _match_geo_bucket(bucket: str, geo_mode: str) -> bool:
-    """
-    Server-side geo filter.
-    geo_mode:
-      - all
-      - nc_priority (local, nc, neighbor, remote_usa)
-      - local_only
-      - neighbor_only
-      - remote_usa
-    """
     if geo_mode == "all":
         return True
     if geo_mode == "nc_priority":
@@ -219,10 +200,16 @@ def _match_geo_bucket(bucket: str, geo_mode: str) -> bool:
     return True
 
 
+def _job_key(job: dict) -> str:
+    # Iteration 1: key = job_url (fallback url)
+    return (job.get("job_url") or job.get("url") or "").strip()
+
+
+# ----------------- API -----------------
 app = FastAPI(
     title="Job Tracker",
     description="Simple job aggregator for Product / PM roles from ATS",
-    version="0.3.0",
+    version="0.3.1",
 )
 
 app.add_middleware(
@@ -238,6 +225,37 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+class JobStatusUpdate(BaseModel):
+    job_url: str
+    status: str  # New / Applied / Answered / Rejected / clear
+    company: Optional[str] = None
+    title: Optional[str] = None
+
+
+@app.get("/job_status")
+def api_get_job_status():
+    """
+    Returns job status map keyed by job_url.
+    """
+    return {"status_map": get_status_map()}
+
+
+@app.post("/job_status")
+def api_update_job_status(payload: JobStatusUpdate):
+    """
+    Update job status by job_url.
+    status: New / Applied / Answered / Rejected
+    status=clear -> remove entry
+    """
+    update_job_status(
+        job_url=payload.job_url,
+        status=payload.status,
+        company=payload.company,
+        title=payload.title,
+    )
+    return {"ok": True}
 
 
 @app.get("/jobs")
@@ -379,27 +397,19 @@ async def get_jobs(
 
         loc_norm = job.get("location_norm", {}) or {}
         job_state_upper = (loc_norm.get("state") or "").upper()
-        job_city_lower = (loc_norm.get("city") or "").lower()
         job_remote_scope = (loc_norm.get("remote_scope") or "").lower()
         job_remote = bool(loc_norm.get("remote"))
 
-        # Explicit state selection boost
         if states_set_upper and job_state_upper in states_set_upper:
             score += 30
-
-        # Remote-USA boost when option enabled
         if include_remote_usa and job_remote_scope == "usa":
             score += 20
-
-        # small credit for any remote when no explicit geo filter provided
         if not states_set_upper and not city and job_remote:
             score += 5
 
-        # Company priority
         company_data = job.get("company_data") or {}
         score += int(company_data.get("priority") or 0)
 
-        # Freshness penalty
         updated = _parse_date_to_utc(job.get("updated_at"))
         if updated:
             age_days = (now - updated).days
@@ -408,12 +418,18 @@ async def get_jobs(
             elif age_days > 30:
                 score -= 10
 
-        # Main weight: geo_score
         score += int(job.get("geo_score", 0))
-
         job["score"] = score
 
     filtered.sort(key=lambda j: (j.get("score", 0), str(j.get("updated_at") or "")), reverse=True)
+
+    # --- attach application status ---
+    status_map = get_status_map()
+    for job in filtered:
+        key = _job_key(job)
+        st = status_map.get(key, {})
+        # Default for Iteration 1: New
+        job["application_status"] = st.get("status", "New")
 
     return {"count": len(filtered), "jobs": filtered}
 
@@ -421,18 +437,12 @@ async def get_jobs(
 @app.get("/companies")
 def get_companies(
     profile: str = Query("all", description="profiles/*.json (или all)"),
-    include_counts: bool = Query(True, description="If true: fetch jobs per company to compute counts"),
+    include_counts: bool = Query(False, description="If true: fetch jobs per company to compute counts"),
     geo_mode: str = Query("nc_priority", description="Same as /jobs geo_mode"),
 ):
     """
-    Companies list:
-      - company
-      - total jobs (positions_total)
-      - priority jobs (positions_priority) according to geo_mode
-      - ats label (no Access)
-      - board url (jobs_list_url)
-      - last status
-    Sorted: priority desc, total desc, company asc
+    Companies list for UI. Default include_counts=False so list is instant.
+    When include_counts=True -> actually fetch ATS and compute totals/priority.
     """
     companies_cfg = load_profile(profile)
     items: list[dict[str, Any]] = []
@@ -457,10 +467,8 @@ def get_companies(
             {
                 "company": company_name,
                 "industry": cfgn.get("industry", ""),
-                "ats": _ats_label(cfgn),
-                "ats_raw": cfgn.get("ats", ""),
+                "ats": cfgn.get("ats", ""),
                 "jobs_list_url": cfgn.get("url", ""),
-                "api_url": cfgn.get("api_url", ""),
                 "positions_total": positions_total,
                 "positions_priority": positions_priority,
                 "last_ok": st.get("ok", None),
@@ -469,41 +477,7 @@ def get_companies(
             }
         )
 
-    def _n(v):
-        return int(v) if isinstance(v, int) else 0
-
-    items.sort(
-        key=lambda x: (
-            _n(x.get("positions_priority")),
-            _n(x.get("positions_total")),
-            (x.get("company") or "").lower(),
-        ),
-        reverse=True,
-    )
-
     return {"count": len(items), "companies": items}
-
-
-@app.get("/profiles/{name}")
-async def get_profile_companies(name: str):
-    companies = load_profile(name)
-    result_companies = []
-    for c in companies:
-        result_companies.append(
-            {
-                "id": c.get("id"),
-                "name": c.get("name"),
-                "company": c.get("company"),
-                "ats": c.get("ats", ""),
-                "board_url": c.get("board_url", ""),
-                "url": c.get("url", ""),
-                "tags": c.get("tags", []),
-                "priority": c.get("priority", 0),
-                "hq_state": c.get("hq_state", None),
-                "region": c.get("region", None),
-            }
-        )
-    return {"count": len(result_companies), "companies": result_companies}
 
 
 @app.get("/debug/location_stats")

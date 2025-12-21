@@ -89,12 +89,6 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
-      .row {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-      }
       .pill {
         display: inline-flex;
         gap: 8px;
@@ -120,7 +114,6 @@
         background: var(--danger);
       }
 
-      /* Table */
       .tableWrap {
         margin-top: 14px;
         border: 1px solid var(--border);
@@ -147,20 +140,6 @@
         font-size: 12px;
         color: var(--muted);
         font-weight: 600;
-        user-select: none;
-        cursor: pointer;
-      }
-      th.sortable:hover {
-        background: rgba(255, 255, 255, 0.03);
-      }
-      th.activeSort {
-        color: var(--text);
-      }
-      .sortIcon {
-        display: inline-block;
-        margin-left: 6px;
-        color: var(--muted);
-        font-size: 11px;
       }
       tr:hover td {
         background: rgba(255, 255, 255, 0.02);
@@ -172,96 +151,11 @@
       a:hover {
         text-decoration: underline;
       }
-
       .muted {
         color: var(--muted);
         font-size: 12px;
       }
-      .right {
-        text-align: right;
-      }
 
-      /* Multi-select dropdown */
-      .ms {
-        position: relative;
-        min-width: 240px;
-      }
-      .msBtn {
-        width: 100%;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-      }
-      .msBtn .count {
-        color: var(--muted);
-        font-size: 12px;
-      }
-      .msMenu {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 0;
-        width: 100%;
-        max-height: 320px;
-        overflow: auto;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 8px;
-        display: none;
-        z-index: 50;
-        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-      }
-      .ms.open .msMenu {
-        display: block;
-      }
-      .msSearch {
-        width: calc(100% - 22px);
-        margin: 6px 0 8px;
-        padding: 9px 10px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.02);
-      }
-      .msItem {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        padding: 8px 8px;
-        border-radius: 10px;
-        cursor: pointer;
-      }
-      .msItem:hover {
-        background: rgba(255, 255, 255, 0.04);
-      }
-      .msFooter {
-        display: flex;
-        gap: 8px;
-        margin-top: 8px;
-      }
-      .msFooter button {
-        flex: 1;
-        padding: 9px 10px;
-        border-radius: 10px;
-      }
-      .ghost {
-        opacity: 0.45;
-      }
-      .checkboxRow {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        padding: 10px 10px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.02);
-      }
-      .checkboxRow input {
-        min-width: auto;
-      }
-
-      /* Tabs */
       .tabs {
         display: flex;
         gap: 10px;
@@ -282,6 +176,19 @@
       .view.active {
         display: block;
       }
+
+      /* Status select in table */
+      .statusSel {
+        min-width: 130px;
+      }
+      .updatedCell {
+        line-height: 1.25;
+        white-space: nowrap;
+      }
+      .updatedCell .t {
+        color: var(--muted);
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -299,7 +206,6 @@
     </header>
 
     <div class="wrap">
-      <!-- JOBS VIEW -->
       <div id="jobsView" class="view active">
         <div class="controls">
           <label>
@@ -368,49 +274,8 @@
             />
           </label>
 
-          <!-- Multi-state dropdown -->
-          <div class="ms" id="stateMultiSelect">
-            <label>States (multi)</label>
-            <button class="msBtn" id="stateBtn" type="button">
-              <span id="stateBtnText">Select states…</span>
-              <span class="count" id="stateBtnCount">0</span>
-            </button>
-            <div class="msMenu" id="stateMenu">
-              <input
-                class="msSearch"
-                id="stateSearch"
-                placeholder="Search state… (NC, Texas, etc.)"
-              />
-              <div id="stateList"></div>
-              <div class="msFooter">
-                <button type="button" id="stateClear" class="ghost">
-                  Clear
-                </button>
-                <button type="button" id="stateClose">Done</button>
-              </div>
-            </div>
-          </div>
-
-          <label>
-            Cities (comma separated)
-            <input id="cityFilter" placeholder="e.g., Raleigh, Charlotte" />
-          </label>
-
-          <div class="checkboxRow">
-            <input type="checkbox" id="remoteUsaOnly" />
-            <label
-              for="remoteUsaOnly"
-              style="gap: 0; margin: 0; color: var(--text); font-size: 13px"
-            >
-              Include Remote (USA)
-              <div class="muted">
-                When states selected: state OR Remote(USA)
-              </div>
-            </label>
-          </div>
-
           <button id="loadBtn" class="primary" type="button">Load jobs</button>
-          <span class="pill" id="loadPill"
+          <span class="pill"
             ><span class="dot" id="loadDot"></span
             ><span id="loadText">Idle</span></span
           >
@@ -420,41 +285,12 @@
           <table id="jobsTable">
             <thead>
               <tr>
-                <th
-                  class="sortable"
-                  data-table="jobs"
-                  data-key="company"
-                  style="width: 150px"
-                >
-                  Company<span class="sortIcon" id="jobsSort_company"></span>
-                </th>
-                <th class="sortable" data-table="jobs" data-key="title">
-                  Title<span class="sortIcon" id="jobsSort_title"></span>
-                </th>
-                <th
-                  class="sortable"
-                  data-table="jobs"
-                  data-key="location"
-                  style="width: 280px"
-                >
-                  Location<span class="sortIcon" id="jobsSort_location"></span>
-                </th>
-                <th
-                  class="sortable"
-                  data-table="jobs"
-                  data-key="updated_at"
-                  style="width: 170px"
-                >
-                  Updated<span class="sortIcon" id="jobsSort_updated_at"></span>
-                </th>
-                <th
-                  class="sortable"
-                  data-table="jobs"
-                  data-key="ats"
-                  style="width: 120px"
-                >
-                  ATS<span class="sortIcon" id="jobsSort_ats"></span>
-                </th>
+                <th style="width: 150px">Company</th>
+                <th>Title</th>
+                <th style="width: 280px">Location</th>
+                <th style="width: 120px">Updated</th>
+                <th style="width: 120px">ATS</th>
+                <th style="width: 150px">Application</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -462,502 +298,23 @@
         </div>
 
         <div class="muted" style="margin-top: 10px">
-          Tip: Load jobs once, then all filters apply instantly on the client.
+          Tip: Load jobs once, then filters apply instantly.
         </div>
       </div>
 
-      <!-- COMPANIES VIEW -->
       <div id="companiesView" class="view">
-        <div class="row" style="justify-content: space-between">
-          <div class="pill">
-            <span class="dot" id="companiesDot"></span
-            ><span id="companiesText">Idle</span>
-          </div>
-          <button id="loadCompaniesBtn" class="primary" type="button">
-            Load companies
-          </button>
-        </div>
-
-        <div class="tableWrap" style="margin-top: 14px">
-          <table id="companiesTable">
-            <thead>
-              <tr>
-                <th
-                  class="sortable"
-                  data-table="companies"
-                  data-key="company"
-                  style="width: 220px"
-                >
-                  Company<span
-                    class="sortIcon"
-                    id="companiesSort_company"
-                  ></span>
-                </th>
-                <th
-                  class="sortable right"
-                  data-table="companies"
-                  data-key="positions_priority"
-                  style="width: 140px"
-                >
-                  Priority<span
-                    class="sortIcon"
-                    id="companiesSort_positions_priority"
-                  ></span>
-                </th>
-                <th
-                  class="sortable right"
-                  data-table="companies"
-                  data-key="positions_total"
-                  style="width: 110px"
-                >
-                  Total<span
-                    class="sortIcon"
-                    id="companiesSort_positions_total"
-                  ></span>
-                </th>
-                <th
-                  class="sortable"
-                  data-table="companies"
-                  data-key="ats"
-                  style="width: 140px"
-                >
-                  ATS<span class="sortIcon" id="companiesSort_ats"></span>
-                </th>
-                <th>ATS URL</th>
-                <th style="width: 160px">Jobs</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div class="muted" style="margin-top: 10px">
-          Tip: “Show jobs (X)” switches back to Jobs and applies company filter.
+        <div class="muted">
+          Companies view is unchanged in Iteration 1 (we only implemented Job
+          status + date/time formatting).
         </div>
       </div>
     </div>
 
     <script>
-      // ---------- GLOBAL STATE ----------
       let ALL_JOBS = [];
       let LAST_LOADED_AT = null;
 
-      let selectedStates = [];
-      let remoteUsaOnly = false;
-
-      // Sorting state
-      const SORT = {
-        jobs: { key: "score", dir: "desc" }, // default: keep server geo-priority
-        companies: { key: "positions_priority", dir: "desc" }, // default: priority then total
-      };
-
-      let LAST_COMPANIES = [];
-
-      const debugCounts = {
-        afterRole: 0,
-        afterLocation: 0,
-        afterCompany: 0,
-        afterSearch: 0,
-        afterState: 0,
-        afterCity: 0,
-      };
-
-      // ---------- STATE LIST (US + DC) ----------
-      const US_STATES = [
-        { code: "AL", name: "Alabama" },
-        { code: "AK", name: "Alaska" },
-        { code: "AZ", name: "Arizona" },
-        { code: "AR", name: "Arkansas" },
-        { code: "CA", name: "California" },
-        { code: "CO", name: "Colorado" },
-        { code: "CT", name: "Connecticut" },
-        { code: "DE", name: "Delaware" },
-        { code: "FL", name: "Florida" },
-        { code: "GA", name: "Georgia" },
-        { code: "HI", name: "Hawaii" },
-        { code: "ID", name: "Idaho" },
-        { code: "IL", name: "Illinois" },
-        { code: "IN", name: "Indiana" },
-        { code: "IA", name: "Iowa" },
-        { code: "KS", name: "Kansas" },
-        { code: "KY", name: "Kentucky" },
-        { code: "LA", name: "Louisiana" },
-        { code: "ME", name: "Maine" },
-        { code: "MD", name: "Maryland" },
-        { code: "MA", name: "Massachusetts" },
-        { code: "MI", name: "Michigan" },
-        { code: "MN", name: "Minnesota" },
-        { code: "MS", name: "Mississippi" },
-        { code: "MO", name: "Missouri" },
-        { code: "MT", name: "Montana" },
-        { code: "NE", name: "Nebraska" },
-        { code: "NV", name: "Nevada" },
-        { code: "NH", name: "New Hampshire" },
-        { code: "NJ", name: "New Jersey" },
-        { code: "NM", name: "New Mexico" },
-        { code: "NY", name: "New York" },
-        { code: "NC", name: "North Carolina" },
-        { code: "ND", name: "North Dakota" },
-        { code: "OH", name: "Ohio" },
-        { code: "OK", name: "Oklahoma" },
-        { code: "OR", name: "Oregon" },
-        { code: "PA", name: "Pennsylvania" },
-        { code: "RI", name: "Rhode Island" },
-        { code: "SC", name: "South Carolina" },
-        { code: "SD", name: "South Dakota" },
-        { code: "TN", name: "Tennessee" },
-        { code: "TX", name: "Texas" },
-        { code: "UT", name: "Utah" },
-        { code: "VT", name: "Vermont" },
-        { code: "VA", name: "Virginia" },
-        { code: "WA", name: "Washington" },
-        { code: "WV", name: "West Virginia" },
-        { code: "WI", name: "Wisconsin" },
-        { code: "WY", name: "Wyoming" },
-        { code: "DC", name: "District of Columbia" },
-      ];
-
-      // ---------- LOCATION NORMALIZATION (CLIENT) ----------
-      function normalizeLocation(raw) {
-        const out = {
-          raw: raw || "",
-          city: "",
-          state: "",
-          state_full: "",
-          remote: false,
-          remote_scope: "",
-        };
-        const s = (raw || "").toLowerCase();
-
-        if (
-          s.includes("remote") &&
-          (s.includes("us") || s.includes("usa") || s.includes("united states"))
-        ) {
-          out.remote = true;
-          out.remote_scope = "usa";
-        } else if (s.includes("remote")) {
-          out.remote = true;
-          out.remote_scope = "global";
-        }
-
-        for (const st of US_STATES) {
-          const code = st.code.toLowerCase();
-          const name = st.name.toLowerCase();
-          if (
-            s.includes(", " + code) ||
-            s.endsWith(" " + code) ||
-            s.includes(" " + code + " ") ||
-            s.includes("(" + code + ")")
-          ) {
-            out.state = st.code;
-            out.state_full = st.name;
-            break;
-          }
-          if (s.includes(name)) {
-            out.state = st.code;
-            out.state_full = st.name;
-            break;
-          }
-        }
-
-        if (raw && raw.includes(",")) out.city = raw.split(",")[0].trim();
-        return out;
-      }
-
-      function enrichJobsLocationNorm(jobs) {
-        for (const j of jobs) {
-          if (!j.location_norm)
-            j.location_norm = normalizeLocation(j.location || "");
-        }
-        return jobs;
-      }
-
-      // ---------- SORT HELPERS ----------
-      function getSortIcon(dir) {
-        if (dir === "asc") return "▲";
-        if (dir === "desc") return "▼";
-        return "";
-      }
-
-      function setActiveSortUI(tableName, key, dir) {
-        const ths = document.querySelectorAll(`th[data-table="${tableName}"]`);
-        ths.forEach((th) => th.classList.remove("activeSort"));
-        const active = document.querySelector(
-          `th[data-table="${tableName}"][data-key="${key}"]`
-        );
-        if (active) active.classList.add("activeSort");
-
-        // Clear all icons
-        const icons = document.querySelectorAll(
-          `span[id^="${tableName}Sort_"]`
-        );
-        icons.forEach((s) => (s.textContent = ""));
-
-        const icon = document.getElementById(`${tableName}Sort_${key}`);
-        if (icon) icon.textContent = getSortIcon(dir);
-      }
-
-      function compareValues(a, b, dir) {
-        const isNumA = typeof a === "number";
-        const isNumB = typeof b === "number";
-        if (isNumA && isNumB) return dir === "asc" ? a - b : b - a;
-
-        const sa = (a ?? "").toString().toLowerCase();
-        const sb = (b ?? "").toString().toLowerCase();
-        if (sa < sb) return dir === "asc" ? -1 : 1;
-        if (sa > sb) return dir === "asc" ? 1 : -1;
-        return 0;
-      }
-
-      function sortJobs(jobs) {
-        const { key, dir } = SORT.jobs;
-
-        // Special: "score" might not exist on client; but server provides it. Fallback to 0.
-        const out = [...jobs];
-        out.sort((j1, j2) => compareValues(j1[key] ?? 0, j2[key] ?? 0, dir));
-        return out;
-      }
-
-      function sortCompanies(companies) {
-        const { key, dir } = SORT.companies;
-
-        const out = [...companies];
-        out.sort((c1, c2) => {
-          // Primary compare by selected key
-          const v = compareValues(c1[key] ?? 0, c2[key] ?? 0, dir);
-          if (v !== 0) return v;
-
-          // Secondary default: positions_total desc (if sorting by priority)
-          if (key !== "positions_total") {
-            const v2 = compareValues(
-              c1.positions_total ?? 0,
-              c2.positions_total ?? 0,
-              "desc"
-            );
-            if (v2 !== 0) return v2;
-          }
-
-          // Tertiary: company asc
-          return compareValues(c1.company ?? "", c2.company ?? "", "asc");
-        });
-        return out;
-      }
-
-      function toggleSort(tableName, key) {
-        const current = SORT[tableName];
-        if (current.key === key) {
-          current.dir = current.dir === "asc" ? "desc" : "asc";
-        } else {
-          current.key = key;
-          // defaults
-          current.dir = tableName === "companies" ? "desc" : "asc";
-          if (tableName === "jobs" && key === "updated_at")
-            current.dir = "desc";
-          if (tableName === "jobs" && key === "score") current.dir = "desc";
-        }
-        setActiveSortUI(tableName, current.key, current.dir);
-
-        if (tableName === "jobs") {
-          const filtered = applyFilters(ALL_JOBS);
-          renderJobs(sortJobs(filtered));
-        } else {
-          renderCompanies(sortCompanies(LAST_COMPANIES));
-        }
-      }
-
-      // ---------- FILTER HELPERS ----------
-      function matchStatesInJob(location_norm) {
-        if (!location_norm) return false;
-        const jobState = (location_norm.state || "").toLowerCase();
-        const jobStateFull = (location_norm.state_full || "").toLowerCase();
-        return selectedStates.some((sel) => {
-          const s = sel.toLowerCase();
-          return s === jobState || s === jobStateFull;
-        });
-      }
-
-      function isRemoteUSA(location_norm) {
-        if (!location_norm) return false;
-        return (
-          location_norm.remote === true && location_norm.remote_scope === "usa"
-        );
-      }
-
-      function applyFilters(jobs) {
-        const role = document.getElementById("roleFilter").value;
-        const loc = document.getElementById("locationFilter").value;
-        const companyFilter = document
-          .getElementById("companyFilter")
-          .value.trim();
-        const cityFilter = document.getElementById("cityFilter").value.trim();
-        const search = (document.getElementById("searchFilter")?.value || "")
-          .trim()
-          .toLowerCase();
-
-        let filtered = jobs;
-
-        // Role (client quick)
-        filtered = filtered.filter((job) => {
-          if (role === "all") return true;
-          const t = (job.title || "").toLowerCase();
-          if (role === "product") return t.includes("product");
-          if (role === "program") return t.includes("program");
-          if (role === "project") return t.includes("project");
-          return true;
-        });
-        debugCounts.afterRole = filtered.length;
-
-        // Location (US / non-US / all)
-        filtered = filtered.filter((job) => {
-          if (loc === "all") return true;
-          const l = (job.location || "").toLowerCase();
-          const isUS =
-            l.includes("united states") ||
-            l.includes(" usa") ||
-            l.includes(" us") ||
-            l.includes(", us") ||
-            l.includes("remote - us") ||
-            l.includes("remote (us)");
-          if (loc === "us") return isUS;
-          if (loc === "nonus") return !isUS;
-          return true;
-        });
-        debugCounts.afterLocation = filtered.length;
-
-        // Company contains
-        filtered = filtered.filter((job) => {
-          if (!companyFilter) return true;
-          return (job.company || "")
-            .toLowerCase()
-            .includes(companyFilter.toLowerCase());
-        });
-        debugCounts.afterCompany = filtered.length;
-
-        // Search
-        if (search) {
-          filtered = filtered.filter((job) => {
-            const h = `${job.title || ""} ${job.location || ""} ${
-              job.company || ""
-            }`.toLowerCase();
-            return h.includes(search);
-          });
-        }
-        debugCounts.afterSearch = filtered.length;
-
-        // City (comma-separated list)
-        if (cityFilter) {
-          const cities = cityFilter
-            .toLowerCase()
-            .split(",")
-            .map((c) => c.trim())
-            .filter(Boolean);
-          filtered = filtered.filter((job) => {
-            const ln = job.location_norm;
-            const city = (ln?.city || "").toLowerCase();
-            return cities.includes(city);
-          });
-        }
-        debugCounts.afterCity = filtered.length;
-
-        // State + Remote USA combined
-        if (remoteUsaOnly && selectedStates.length > 0) {
-          filtered = filtered.filter(
-            (job) =>
-              matchStatesInJob(job.location_norm) ||
-              isRemoteUSA(job.location_norm)
-          );
-        } else if (remoteUsaOnly) {
-          filtered = filtered.filter((job) => isRemoteUSA(job.location_norm));
-        } else if (selectedStates.length > 0) {
-          filtered = filtered.filter((job) =>
-            matchStatesInJob(job.location_norm)
-          );
-        }
-        debugCounts.afterState = filtered.length;
-
-        return filtered;
-      }
-
-      function updateStatus() {
-        const statusSpan = document.getElementById("jobsCount");
-        const baseText = LAST_LOADED_AT
-          ? `Loaded: ${ALL_JOBS.length} jobs at ${LAST_LOADED_AT}`
-          : "Not loaded yet";
-        const filterText = LAST_LOADED_AT
-          ? `Filtered: ${debugCounts.afterState} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, state+remote/${debugCounts.afterState})`
-          : "";
-        statusSpan.textContent = filterText
-          ? `${baseText} | ${filterText}`
-          : baseText;
-      }
-
-      function renderJobs(jobs) {
-        const tbody = document.querySelector("#jobsTable tbody");
-        tbody.innerHTML = "";
-        for (const job of jobs) {
-          const row = document.createElement("tr");
-          const url = job.job_url || job.url || "#";
-          row.innerHTML = `
-            <td>${escapeHtml(job.company || "")}</td>
-            <td><a href="${escapeAttr(
-              url
-            )}" target="_blank" rel="noopener">${escapeHtml(
-            job.title || ""
-          )}</a></td>
-            <td>${escapeHtml(job.location || "")}</td>
-            <td>${escapeHtml(job.updated_at || "")}</td>
-            <td>${escapeHtml(job.ats || "")}</td>
-          `;
-          tbody.appendChild(row);
-        }
-        updateStatus();
-      }
-
-      function renderCompanies(companies) {
-        const tbody = document.querySelector("#companiesTable tbody");
-        tbody.innerHTML = "";
-
-        for (const c of companies || []) {
-          const tr = document.createElement("tr");
-
-          const priority = c.positions_priority ?? 0;
-          const total = c.positions_total ?? 0;
-
-          const atsUrl = c.jobs_list_url || c.board_url || c.url || "";
-          const openAts = atsUrl
-            ? `<a href="${escapeAttr(
-                atsUrl
-              )}" target="_blank" rel="noopener">Open ATS</a>`
-            : `<span class="muted">—</span>`;
-
-          tr.innerHTML = `
-            <td>${escapeHtml(c.company || "")}</td>
-            <td class="right">${escapeHtml(String(priority))}</td>
-            <td class="right">${escapeHtml(String(total))}</td>
-            <td>${escapeHtml(c.ats || "")}</td>
-            <td>${openAts}</td>
-            <td>
-              <button type="button" data-company="${escapeAttr(
-                c.company || ""
-              )}">Show jobs (${escapeHtml(String(priority))})</button>
-            </td>
-          `;
-
-          tr.querySelector("button")?.addEventListener("click", () => {
-            activateTab("jobs");
-            document.getElementById("companyFilter").value = c.company || "";
-
-            // keep geo mode as-is; reload jobs to be consistent with server-side geo filtering
-            // If jobs already loaded, re-filter instantly; otherwise user can click Load jobs
-            if (ALL_JOBS.length > 0) {
-              const filtered = applyFilters(ALL_JOBS);
-              renderJobs(sortJobs(filtered));
-            }
-          });
-
-          tbody.appendChild(tr);
-        }
-      }
+      const STATUS_OPTIONS = ["New", "Applied", "Answered", "Rejected"];
 
       function escapeHtml(s) {
         return (s || "").replace(
@@ -976,7 +333,6 @@
         return (s || "").replace(/"/g, "&quot;");
       }
 
-      // ---------- LOADING ----------
       function setLoading(isLoading, text) {
         const btn = document.getElementById("loadBtn");
         const dot = document.getElementById("loadDot");
@@ -989,6 +345,100 @@
         if (isLoading) dot.classList.add("bad");
         if (!isLoading && text === "Loaded") dot.classList.add("ok");
         if (!isLoading && text === "Error") dot.classList.add("bad");
+      }
+
+      function formatUpdatedTwoLines(iso) {
+        // show: YYYY-MM-DD and HH (no minutes) as requested
+        if (!iso) return { date: "", hour: "" };
+        try {
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return { date: iso.slice(0, 10), hour: "" };
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          const hh = String(d.getHours()).padStart(2, "0");
+          return { date: `${yyyy}-${mm}-${dd}`, hour: `${hh}` };
+        } catch (e) {
+          return { date: iso.slice(0, 10), hour: "" };
+        }
+      }
+
+      async function postJobStatus(job, status) {
+        const jobUrl = job.job_url || job.url || "";
+        if (!jobUrl) return;
+
+        const payload = {
+          job_url: jobUrl,
+          status,
+          company: job.company || "",
+          title: job.title || "",
+        };
+
+        const res = await fetch("/job_status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }
+
+      function renderJobs(jobs) {
+        const tbody = document.querySelector("#jobsTable tbody");
+        tbody.innerHTML = "";
+
+        for (const job of jobs) {
+          const url = job.job_url || job.url || "#";
+          const status = job.application_status || "New";
+          const upd = formatUpdatedTwoLines(job.updated_at || "");
+          const updatedTitle = job.updated_at || "";
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${escapeHtml(job.company || "")}</td>
+            <td><a href="${escapeAttr(
+              url
+            )}" target="_blank" rel="noopener">${escapeHtml(
+            job.title || ""
+          )}</a></td>
+            <td>${escapeHtml(job.location || "")}</td>
+            <td class="updatedCell" title="${escapeAttr(updatedTitle)}">
+              <div>${escapeHtml(upd.date)}</div>
+              <div class="t">${escapeHtml(upd.hour)}</div>
+            </td>
+            <td>${escapeHtml(job.ats || "")}</td>
+            <td>
+              <select class="statusSel">
+                ${STATUS_OPTIONS.map(
+                  (opt) =>
+                    `<option value="${opt}" ${
+                      opt === status ? "selected" : ""
+                    }>${opt}</option>`
+                ).join("")}
+              </select>
+            </td>
+          `;
+
+          const sel = tr.querySelector("select");
+          sel.addEventListener("change", async (e) => {
+            const newStatus = e.target.value;
+            try {
+              await postJobStatus(job, newStatus);
+              job.application_status = newStatus; // update in-memory
+            } catch (err) {
+              console.error(err);
+              alert("Failed to update status. Check server logs.");
+              e.target.value = job.application_status || "New";
+            }
+          });
+
+          tbody.appendChild(tr);
+        }
+
+        const statusSpan = document.getElementById("jobsCount");
+        const baseText = LAST_LOADED_AT
+          ? `Loaded: ${ALL_JOBS.length} jobs at ${LAST_LOADED_AT}`
+          : "Not loaded yet";
+        statusSpan.textContent = baseText;
       }
 
       async function loadJobsOnce() {
@@ -1007,16 +457,12 @@
           )}`;
           const res = await fetch(url);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
           const data = await res.json();
-          ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
+
+          ALL_JOBS = data.jobs || [];
           LAST_LOADED_AT = new Date().toLocaleString();
 
-          // default sort UI
-          setActiveSortUI("jobs", SORT.jobs.key, SORT.jobs.dir);
-
-          const filtered = applyFilters(ALL_JOBS);
-          renderJobs(sortJobs(filtered));
+          renderJobs(ALL_JOBS);
           setLoading(false, "Loaded");
         } catch (e) {
           console.error(e);
@@ -1030,117 +476,7 @@
         }
       }
 
-      // ---------- COMPANIES VIEW ----------
-      function setCompaniesLoading(isLoading, text) {
-        const btn = document.getElementById("loadCompaniesBtn");
-        const dot = document.getElementById("companiesDot");
-        const label = document.getElementById("companiesText");
-
-        btn.disabled = isLoading;
-        label.textContent = text;
-
-        dot.classList.remove("ok", "bad");
-        if (isLoading) dot.classList.add("bad");
-        if (!isLoading && text === "Loaded") dot.classList.add("ok");
-        if (!isLoading && text === "Error") dot.classList.add("bad");
-      }
-
-      async function loadCompanies() {
-        const profile = document.getElementById("profileFilter").value;
-        const geoMode = document.getElementById("geoMode").value;
-
-        setCompaniesLoading(true, "Loading…");
-        try {
-          const url = `/companies?profile=${encodeURIComponent(
-            profile
-          )}&include_counts=true&geo_mode=${encodeURIComponent(geoMode)}`;
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-          const data = await res.json();
-          LAST_COMPANIES = data.companies || [];
-
-          setActiveSortUI("companies", SORT.companies.key, SORT.companies.dir);
-          renderCompanies(sortCompanies(LAST_COMPANIES));
-
-          setCompaniesLoading(false, "Loaded");
-        } catch (e) {
-          console.error(e);
-          renderCompanies([]);
-          setCompaniesLoading(false, "Error");
-          alert(
-            "Failed to load companies. Check terminal logs (uvicorn) and /companies endpoint."
-          );
-        }
-      }
-
-      // ---------- MULTI-SELECT UI ----------
-      function syncStateButton() {
-        const text = document.getElementById("stateBtnText");
-        const cnt = document.getElementById("stateBtnCount");
-        cnt.textContent = String(selectedStates.length);
-        if (selectedStates.length === 0) {
-          text.textContent = "Select states…";
-        } else if (selectedStates.length <= 3) {
-          text.textContent = selectedStates.join(", ");
-        } else {
-          text.textContent =
-            selectedStates.slice(0, 3).join(", ") +
-            ` +${selectedStates.length - 3}`;
-        }
-      }
-
-      function renderStateList(filterText = "") {
-        const list = document.getElementById("stateList");
-        list.innerHTML = "";
-
-        const q = (filterText || "").trim().toLowerCase();
-        const items = US_STATES.filter((st) => {
-          if (!q) return true;
-          return (
-            st.code.toLowerCase().includes(q) ||
-            st.name.toLowerCase().includes(q)
-          );
-        });
-
-        for (const st of items) {
-          const div = document.createElement("div");
-          div.className = "msItem";
-          const checked = selectedStates.includes(st.code);
-          div.innerHTML = `
-            <input type="checkbox" ${checked ? "checked" : ""} />
-            <div><div style="color: var(--text); font-size:13px;">${
-              st.code
-            } — ${st.name}</div></div>
-          `;
-          div.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            const key = st.code;
-            if (selectedStates.includes(key))
-              selectedStates = selectedStates.filter((x) => x !== key);
-            else selectedStates.push(key);
-
-            syncStateButton();
-            renderStateList(document.getElementById("stateSearch").value);
-
-            if (ALL_JOBS.length > 0) {
-              const filtered = applyFilters(ALL_JOBS);
-              renderJobs(sortJobs(filtered));
-            }
-          });
-          list.appendChild(div);
-        }
-      }
-
-      function openStateMenu() {
-        document.getElementById("stateMultiSelect").classList.add("open");
-        renderStateList(document.getElementById("stateSearch").value);
-      }
-      function closeStateMenu() {
-        document.getElementById("stateMultiSelect").classList.remove("open");
-      }
-
-      // ---------- TABS ----------
+      // Tabs
       function activateTab(which) {
         const jobsBtn = document.getElementById("tabJobs");
         const compBtn = document.getElementById("tabCompanies");
@@ -1160,117 +496,15 @@
         }
       }
 
-      // ---------- EVENTS ----------
       document
         .getElementById("loadBtn")
         .addEventListener("click", loadJobsOnce);
-      document
-        .getElementById("loadCompaniesBtn")
-        .addEventListener("click", loadCompanies);
       document
         .getElementById("tabJobs")
         .addEventListener("click", () => activateTab("jobs"));
       document
         .getElementById("tabCompanies")
         .addEventListener("click", () => activateTab("companies"));
-
-      // Sorting clicks
-      document.querySelectorAll("th.sortable").forEach((th) => {
-        th.addEventListener("click", () => {
-          const tableName = th.getAttribute("data-table");
-          const key = th.getAttribute("data-key");
-          if (!tableName || !key) return;
-          toggleSort(tableName, key);
-        });
-      });
-
-      // Filter inputs -> apply instantly
-      const filterIds = [
-        "roleFilter",
-        "locationFilter",
-        "companyFilter",
-        "searchFilter",
-        "cityFilter",
-        "profileFilter",
-        "atsFilter",
-        "geoMode",
-      ];
-      for (const id of filterIds) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-
-        el.addEventListener("change", () => {
-          if (
-            id === "profileFilter" ||
-            id === "atsFilter" ||
-            id === "geoMode"
-          ) {
-            // Dataset changes after Load jobs; but we still refilter current data
-            if (ALL_JOBS.length > 0) {
-              const filtered = applyFilters(ALL_JOBS);
-              renderJobs(sortJobs(filtered));
-            } else {
-              updateStatus();
-            }
-            return;
-          }
-          if (ALL_JOBS.length > 0) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(sortJobs(filtered));
-          }
-        });
-
-        el.addEventListener("input", () => {
-          if (ALL_JOBS.length > 0) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(sortJobs(filtered));
-          }
-        });
-      }
-
-      document
-        .getElementById("remoteUsaOnly")
-        .addEventListener("change", (e) => {
-          remoteUsaOnly = !!e.target.checked;
-          if (ALL_JOBS.length > 0) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(sortJobs(filtered));
-          }
-        });
-
-      // Multi-select open/close
-      document.getElementById("stateBtn").addEventListener("click", () => {
-        const ms = document.getElementById("stateMultiSelect");
-        if (ms.classList.contains("open")) closeStateMenu();
-        else openStateMenu();
-      });
-      document
-        .getElementById("stateClose")
-        .addEventListener("click", closeStateMenu);
-      document.getElementById("stateClear").addEventListener("click", () => {
-        selectedStates = [];
-        syncStateButton();
-        renderStateList(document.getElementById("stateSearch").value);
-        if (ALL_JOBS.length > 0) {
-          const filtered = applyFilters(ALL_JOBS);
-          renderJobs(sortJobs(filtered));
-        }
-      });
-      document
-        .getElementById("stateSearch")
-        .addEventListener("input", (e) => renderStateList(e.target.value));
-
-      document.addEventListener("click", (e) => {
-        const ms = document.getElementById("stateMultiSelect");
-        if (!ms.contains(e.target)) closeStateMenu();
-      });
-
-      // Init
-      syncStateButton();
-      renderStateList("");
-      updateStatus();
-      setActiveSortUI("jobs", SORT.jobs.key, SORT.jobs.dir);
-      setActiveSortUI("companies", SORT.companies.key, SORT.companies.dir);
     </script>
   </body>
 </html>
