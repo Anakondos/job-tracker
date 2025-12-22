@@ -16,3 +16,7 @@ venv/
 
 # OS junk
 .DS_Store
+
+# Runtime / local state (Job Tracker)
+job_status.json
+job_hide.json

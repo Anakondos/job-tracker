@@ -1,635 +1,1201 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Job Tracker</title>
-  <style>
-    :root {
-      --bg: #0b0f17;
-      --panel: #111827;
-      --panel2: #0f172a;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --border: rgba(255,255,255,0.10);
-      --accent: #60a5fa;
-      --danger: #ef4444;
-      --ok: #22c55e;
-    }
-    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: var(--text); }
-    header { padding: 18px 18px 10px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent); }
-    h1 { margin:0; font-size: 18px; letter-spacing: 0.2px; }
-    .sub { margin-top: 6px; color: var(--muted); font-size: 12px; }
-    .wrap { padding: 14px 18px 24px; }
-    .controls { display:flex; flex-wrap: wrap; gap: 10px 12px; align-items: end; }
-    label { display:flex; flex-direction: column; gap:6px; font-size: 12px; color: var(--muted); }
-    select, input, button {
-      background: var(--panel);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 10px;
-      font-size: 13px;
-      outline: none;
-    }
-    input { min-width: 210px; }
-    select { min-width: 160px; }
-    button { cursor:pointer; }
-    button.primary { background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.35); }
-    button.primary:hover { background: rgba(96,165,250,0.22); }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    .row { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
-    .pill { display:inline-flex; gap:8px; align-items:center; border:1px solid var(--border); background: rgba(255,255,255,0.02); padding: 8px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); }
-    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted); display:inline-block; }
-    .dot.ok { background: var(--ok); }
-    .dot.bad { background: var(--danger); }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Job Tracker</title>
+    <style>
+      :root {
+        --bg: #0b0f17;
+        --panel: #111827;
+        --panel2: #0f172a;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --border: rgba(255, 255, 255, 0.1);
+        --accent: #60a5fa;
+        --danger: #ef4444;
+        --ok: #22c55e;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Arial;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        padding: 18px 18px 10px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.03),
+          transparent
+        );
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+      .sub {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .wrap {
+        padding: 14px 18px 24px;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 12px;
+        align-items: end;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      select,
+      input,
+      button {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 10px;
+        font-size: 13px;
+        outline: none;
+      }
+      input {
+        min-width: 210px;
+      }
+      select {
+        min-width: 160px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button.primary {
+        background: rgba(96, 165, 250, 0.15);
+        border-color: rgba(96, 165, 250, 0.35);
+      }
+      button.primary:hover {
+        background: rgba(96, 165, 250, 0.22);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .pill {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--muted);
+        display: inline-block;
+      }
+      .dot.ok {
+        background: var(--ok);
+      }
+      .dot.bad {
+        background: var(--danger);
+      }
 
-    /* Table */
-    .tableWrap { margin-top: 14px; border:1px solid var(--border); border-radius: 14px; overflow:hidden; background: var(--panel2); }
-    table { width:100%; border-collapse: collapse; }
-    thead { background: rgba(255,255,255,0.04); }
-    th, td { padding: 10px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
-    th { text-align:left; font-size: 12px; color: var(--muted); font-weight: 600; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+      /* Table */
+      .tableWrap {
+        margin-top: 14px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--panel2);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      thead {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      th,
+      td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        vertical-align: top;
+      }
+      th {
+        text-align: left;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
 
-    .muted { color: var(--muted); font-size: 12px; }
-    .right { text-align:right; }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .right {
+        text-align: right;
+      }
 
-    /* Multi-select dropdown */
-    .ms { position: relative; min-width: 240px; }
-    .msBtn {
-      width: 100%;
-      text-align: left;
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .msBtn .count { color: var(--muted); font-size: 12px; }
-    .msMenu {
-      position:absolute;
-      top: calc(100% + 8px);
-      left:0;
-      width: 100%;
-      max-height: 320px;
-      overflow:auto;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px;
-      display:none;
-      z-index: 50;
-      box-shadow: 0 18px 50px rgba(0,0,0,0.45);
-    }
-    .ms.open .msMenu { display:block; }
-    .msSearch { width: calc(100% - 22px); margin: 6px 0 8px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
-    .msItem { display:flex; gap:10px; align-items:center; padding: 8px 8px; border-radius: 10px; cursor:pointer; }
-    .msItem:hover { background: rgba(255,255,255,0.04); }
-    .msFooter { display:flex; gap:8px; margin-top: 8px; }
-    .msFooter button { flex: 1; padding: 9px 10px; border-radius: 10px; }
-    .ghost { opacity: .45; }
-    .checkboxRow { display:flex; gap:10px; align-items:center; padding: 10px 10px; border-radius: 12px; border:1px solid var(--border); background: rgba(255,255,255,0.02); }
-    .checkboxRow input { min-width: auto; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Job Tracker</h1>
-    <div class="sub">
-      <span id="jobsCount">Not loaded yet</span>
-    </div>
-  </header>
+      /* Sortable headers */
+      th.sortable {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+      th.sortable:hover {
+        color: var(--text);
+      }
+      .sortIcon {
+        display: inline-block;
+        margin-left: 6px;
+        opacity: 0.7;
+        font-size: 11px;
+      }
 
-  <div class="wrap">
-    <div class="controls">
-      <label>
-        Profile
-        <select id="profileFilter">
-          <option value="all">All companies</option>
-          <option value="bigtech">BigTech</option>
-          <option value="fintech">Fintech</option>
-          <option value="core_pm">Core PM</option>
-          <option value="core_product">Core Product</option>
-        </select>
-      </label>
+      /* Multi-select dropdown */
+      .ms {
+        position: relative;
+        min-width: 240px;
+      }
+      .msBtn {
+        width: 100%;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .msBtn .count {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .msMenu {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        width: 100%;
+        max-height: 320px;
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 8px;
+        display: none;
+        z-index: 50;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      }
+      .ms.open .msMenu {
+        display: block;
+      }
+      .msSearch {
+        width: calc(100% - 22px);
+        margin: 6px 0 8px;
+        padding: 9px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .msItem {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 8px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .msItem:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .msFooter {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .msFooter button {
+        flex: 1;
+        padding: 9px 10px;
+        border-radius: 10px;
+      }
+      .ghost {
+        opacity: 0.45;
+      }
+      .checkboxRow {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 10px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .checkboxRow input {
+        min-width: auto;
+      }
 
-      <label>
-        ATS
-        <select id="atsFilter">
-          <option value="all">All</option>
-          <option value="greenhouse">Greenhouse</option>
-          <option value="lever">Lever</option>
-          <option value="smartrecruiters">SmartRecruiters</option>
-        </select>
-      </label>
+      /* Status select inside table */
+      .statusSelect {
+        min-width: 120px;
+        padding: 7px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Job Tracker</h1>
+      <div class="sub">
+        <span id="jobsCount">Not loaded yet</span>
+      </div>
+    </header>
 
-      <label>
-        Role
-        <select id="roleFilter">
-          <option value="all">All</option>
-          <option value="product">Product</option>
-          <option value="program">Program</option>
-          <option value="project">Project</option>
-        </select>
-      </label>
+    <div class="wrap">
+      <div class="controls">
+        <label>
+          Profile
+          <select id="profileFilter">
+            <option value="all">All companies</option>
+            <option value="bigtech">BigTech</option>
+            <option value="fintech">Fintech</option>
+            <option value="core_pm">Core PM</option>
+            <option value="core_product">Core Product</option>
+          </select>
+        </label>
 
-      <label>
-        Location
-        <select id="locationFilter">
-          <option value="all">All</option>
-          <option value="us">US</option>
-          <option value="nonus">Non-US</option>
-        </select>
-      </label>
+        <label>
+          ATS
+          <select id="atsFilter">
+            <option value="all">All</option>
+            <option value="greenhouse">Greenhouse</option>
+            <option value="lever">Lever</option>
+            <option value="smartrecruiters">SmartRecruiters</option>
+          </select>
+        </label>
 
-      <label>
-        Company contains
-        <input id="companyFilter" placeholder="e.g., fidelity" />
-      </label>
+        <label>
+          Role
+          <select id="roleFilter">
+            <option value="all">All</option>
+            <option value="product">Product</option>
+            <option value="program">Program</option>
+            <option value="project">Project</option>
+          </select>
+        </label>
 
-      <label>
-        Search (title/location/company)
-        <input id="searchFilter" placeholder="e.g., TPM, product owner, Raleigh" />
-      </label>
+        <label>
+          Status
+          <select id="statusFilter">
+            <option value="all">All</option>
+            <option value="New">New</option>
+            <option value="Applied">Applied</option>
+            <option value="Answered">Answered</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </label>
 
-      <!-- Multi-state dropdown -->
-      <div class="ms" id="stateMultiSelect">
-        <label>States (multi)</label>
-        <button class="msBtn" id="stateBtn" type="button">
-          <span id="stateBtnText">Select states…</span>
-          <span class="count" id="stateBtnCount">0</span>
-        </button>
-        <div class="msMenu" id="stateMenu">
-          <input class="msSearch" id="stateSearch" placeholder="Search state… (NC, Texas, etc.)" />
-          <div id="stateList"></div>
-          <div class="msFooter">
-            <button type="button" id="stateClear" class="ghost">Clear</button>
-            <button type="button" id="stateClose">Done</button>
+        <div class="checkboxRow" style="min-width: 280px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="color: var(--muted); font-size: 12px">Locations</div>
+            <div
+              style="
+                display: flex;
+                gap: 14px;
+                align-items: center;
+                flex-wrap: wrap;
+              "
+            >
+              <label
+                style="
+                  flex-direction: row;
+                  align-items: center;
+                  gap: 8px;
+                  margin: 0;
+                  color: var(--text);
+                  font-size: 13px;
+                "
+              >
+                <input type="checkbox" id="includeUS" checked disabled />
+                US (always on)
+              </label>
+              <label
+                style="
+                  flex-direction: row;
+                  align-items: center;
+                  gap: 8px;
+                  margin: 0;
+                  color: var(--text);
+                  font-size: 13px;
+                "
+              >
+                <input type="checkbox" id="includeNonUS" />
+                Include Non-US
+              </label>
+              <label
+                style="
+                  flex-direction: row;
+                  align-items: center;
+                  gap: 8px;
+                  margin: 0;
+                  color: var(--text);
+                  font-size: 13px;
+                "
+              >
+                <input type="checkbox" id="includeRemoteUSA" checked />
+                Include Remote (USA)
+              </label>
+            </div>
           </div>
         </div>
-      </div>
 
-      <label>
-        Cities (comma separated)
-        <input id="cityFilter" placeholder="e.g., Raleigh, Charlotte" />
-      </label>
-
-      <div class="checkboxRow">
-        <input type="checkbox" id="remoteUsaOnly" />
-        <label for="remoteUsaOnly" style="gap:0; margin:0; color: var(--text); font-size: 13px;">
-          Include Remote (USA)
-          <div class="muted">When states selected: state OR Remote(USA)</div>
+        <label>
+          Company contains
+          <input id="companyFilter" placeholder="e.g., fidelity" />
         </label>
+
+        <label>
+          Search (title/location/company)
+          <input
+            id="searchFilter"
+            placeholder="e.g., TPM, product owner, Raleigh"
+          />
+        </label>
+
+        <!-- Multi-state dropdown -->
+        <div class="ms" id="stateMultiSelect">
+          <label>States (multi)</label>
+          <button class="msBtn" id="stateBtn" type="button">
+            <span id="stateBtnText">Select states…</span>
+            <span class="count" id="stateBtnCount">0</span>
+          </button>
+          <div class="msMenu" id="stateMenu">
+            <input
+              class="msSearch"
+              id="stateSearch"
+              placeholder="Search state… (NC, Texas, etc.)"
+            />
+            <div id="stateList"></div>
+            <div class="msFooter">
+              <button type="button" id="stateClear" class="ghost">Clear</button>
+              <button type="button" id="stateClose">Done</button>
+            </div>
+          </div>
+        </div>
+
+        <label>
+          Cities (comma separated)
+          <input id="cityFilter" placeholder="e.g., Raleigh, Charlotte" />
+        </label>
+
+        <button id="loadBtn" class="primary" type="button">Load jobs</button>
+        <span class="pill" id="loadPill"
+          ><span class="dot" id="loadDot"></span
+          ><span id="loadText">Idle</span></span
+        >
       </div>
 
-      <button id="loadBtn" class="primary" type="button">Load jobs</button>
-      <span class="pill" id="loadPill"><span class="dot" id="loadDot"></span><span id="loadText">Idle</span></span>
+      <div class="tableWrap">
+        <table id="jobsTable">
+          <thead>
+            <tr>
+              <th
+                class="sortable"
+                style="width: 150px"
+                onclick="sortTable('company')"
+              >
+                Company <span class="sortIcon" id="sortIcon-company">⬍</span>
+              </th>
+              <th class="sortable" onclick="sortTable('title')">
+                Title <span class="sortIcon" id="sortIcon-title">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 280px"
+                onclick="sortTable('location')"
+              >
+                Location <span class="sortIcon" id="sortIcon-location">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 170px"
+                onclick="sortTable('updated')"
+              >
+                Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 120px"
+                onclick="sortTable('ats')"
+              >
+                ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
+              </th>
+              <th
+                class="sortable"
+                style="width: 140px"
+                onclick="sortTable('status')"
+              >
+                Status <span class="sortIcon" id="sortIcon-status">⬍</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="muted" style="margin-top: 10px">
+        Tip: Load jobs once, then all filters apply instantly on the client.
+      </div>
     </div>
 
-    <div class="tableWrap">
-      <table id="jobsTable">
-        <thead>
-          <tr>
-            <th style="width: 150px;">Company</th>
-            <th>Title</th>
-            <th style="width: 280px;">Location</th>
-            <th style="width: 170px;">Updated</th>
-            <th style="width: 120px;">ATS</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- rows -->
-        </tbody>
-      </table>
-    </div>
+    <script>
+      // ---------- GLOBAL STATE ----------
+      let ALL_JOBS = [];
+      let LAST_LOADED_AT = null;
 
-    <div class="muted" style="margin-top:10px;">
-      Tip: Load jobs once, then all filters apply instantly on the client.
-    </div>
-  </div>
+      // Defaults: US on, Non-US off, Remote(USA) on, NC + neighbor states preselected
+      let selectedStates = ["NC", "VA", "SC", "GA", "TN"]; // user can add/remove
+      let includeNonUS = false;
+      let includeRemoteUSA = true;
 
-<script>
-  // ---------- GLOBAL STATE ----------
-  let ALL_JOBS = [];
-  let LAST_LOADED_AT = null;
+      // Job status cache: job_key -> status
+      let STATUS_MAP = {};
 
-  let selectedStates = [];      // array of strings like "NC" or "Texas"
-  let remoteUsaOnly = false;
+      const debugCounts = {
+        afterRole: 0,
+        afterLocation: 0,
+        afterCompany: 0,
+        afterSearch: 0,
+        afterState: 0,
+        afterCity: 0,
+        afterStatus: 0,
+      };
 
-  const debugCounts = {
-    afterRole: 0,
-    afterLocation: 0,
-    afterCompany: 0,
-    afterSearch: 0,
-    afterState: 0,
-    afterCity: 0,
-  };
+      // ---------- SORT STATE ----------
+      let CURRENT_SORT = { column: null, asc: true };
 
-  // ---------- STATE LIST (US + DC) ----------
-  // You can add territories if needed.
-  const US_STATES = [
-    { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" }, { code: "AZ", name: "Arizona" },
-    { code: "AR", name: "Arkansas" }, { code: "CA", name: "California" }, { code: "CO", name: "Colorado" },
-    { code: "CT", name: "Connecticut" }, { code: "DE", name: "Delaware" }, { code: "FL", name: "Florida" },
-    { code: "GA", name: "Georgia" }, { code: "HI", name: "Hawaii" }, { code: "ID", name: "Idaho" },
-    { code: "IL", name: "Illinois" }, { code: "IN", name: "Indiana" }, { code: "IA", name: "Iowa" },
-    { code: "KS", name: "Kansas" }, { code: "KY", name: "Kentucky" }, { code: "LA", name: "Louisiana" },
-    { code: "ME", name: "Maine" }, { code: "MD", name: "Maryland" }, { code: "MA", name: "Massachusetts" },
-    { code: "MI", name: "Michigan" }, { code: "MN", name: "Minnesota" }, { code: "MS", name: "Mississippi" },
-    { code: "MO", name: "Missouri" }, { code: "MT", name: "Montana" }, { code: "NE", name: "Nebraska" },
-    { code: "NV", name: "Nevada" }, { code: "NH", name: "New Hampshire" }, { code: "NJ", name: "New Jersey" },
-    { code: "NM", name: "New Mexico" }, { code: "NY", name: "New York" }, { code: "NC", name: "North Carolina" },
-    { code: "ND", name: "North Dakota" }, { code: "OH", name: "Ohio" }, { code: "OK", name: "Oklahoma" },
-    { code: "OR", name: "Oregon" }, { code: "PA", name: "Pennsylvania" }, { code: "RI", name: "Rhode Island" },
-    { code: "SC", name: "South Carolina" }, { code: "SD", name: "South Dakota" }, { code: "TN", name: "Tennessee" },
-    { code: "TX", name: "Texas" }, { code: "UT", name: "Utah" }, { code: "VT", name: "Vermont" },
-    { code: "VA", name: "Virginia" }, { code: "WA", name: "Washington" }, { code: "WV", name: "West Virginia" },
-    { code: "WI", name: "Wisconsin" }, { code: "WY", name: "Wyoming" },
-    { code: "DC", name: "District of Columbia" },
-  ];
-
-  // ---------- LOCATION NORMALIZATION ----------
-  function normalizeLocation(raw) {
-    const out = {
-      raw: raw || "",
-      city: "",
-      state: "",
-      state_full: "",
-      remote: false,
-      remote_scope: ""
-    };
-
-    const s = (raw || "").toLowerCase();
-
-    // Remote detection (USA)
-    if (s.includes("remote") && (s.includes("us") || s.includes("usa") || s.includes("united states"))) {
-      out.remote = true;
-      out.remote_scope = "usa";
-    } else if (s.includes("remote")) {
-      out.remote = true;
-      out.remote_scope = "global";
-    }
-
-    // Try to extract state by code or full name from the raw location string.
-    // We do a "best effort" match.
-    for (const st of US_STATES) {
-      const code = st.code.toLowerCase();
-      const name = st.name.toLowerCase();
-
-      // Match patterns: ", nc" or " nc" or "(nc)" etc.
-      if (s.includes(", " + code) || s.endsWith(" " + code) || s.includes(" " + code + " ") || s.includes("(" + code + ")")) {
-        out.state = st.code;
-        out.state_full = st.name;
-        break;
+      function setSortIcon(col, icon) {
+        const el = document.getElementById(`sortIcon-${col}`);
+        if (el) el.textContent = icon;
       }
-      if (s.includes(name)) {
-        out.state = st.code;
-        out.state_full = st.name;
-        break;
+
+      function resetAllSortIcons() {
+        ["company", "title", "location", "updated", "ats", "status"].forEach(
+          (c) => setSortIcon(c, "⬍")
+        );
       }
-    }
 
-    // City: naive approach: take first token before comma
-    if (raw && raw.includes(",")) {
-      out.city = raw.split(",")[0].trim();
-    } else {
-      // sometimes location is like "Raleigh, NC" already handled
-      out.city = "";
-    }
+      function updateSortIcons() {
+        resetAllSortIcons();
+        if (!CURRENT_SORT.column) return;
+        setSortIcon(CURRENT_SORT.column, CURRENT_SORT.asc ? "▲" : "▼");
+      }
 
-    return out;
-  }
+      // keepDirection=true when re-applying sort after re-render
+      function sortTable(column, keepDirection = false) {
+        const tbody = document.querySelector("#jobsTable tbody");
+        const rows = Array.from(tbody.querySelectorAll("tr"));
 
-  // attach location_norm to jobs once loaded
-  function enrichJobsLocationNorm(jobs) {
-    for (const j of jobs) {
-      j.location_norm = normalizeLocation(j.location || "");
-    }
-    return jobs;
-  }
+        if (!keepDirection) {
+          if (CURRENT_SORT.column === column) {
+            CURRENT_SORT.asc = !CURRENT_SORT.asc;
+          } else {
+            CURRENT_SORT.column = column;
+            CURRENT_SORT.asc = true;
+          }
+        } else {
+          CURRENT_SORT.column = column;
+        }
 
-  // ---------- FILTER HELPERS ----------
-  function matchStatesInJob(location_norm) {
-    if (!location_norm) return false;
-    const jobState = (location_norm.state || '').toLowerCase();
-    const jobStateFull = (location_norm.state_full || '').toLowerCase();
+        const asc = !!CURRENT_SORT.asc;
 
-    return selectedStates.some(selState => {
-      selState = selState.toLowerCase();
-      return selState === jobState || selState === jobStateFull;
-    });
-  }
+        rows.sort((a, b) => {
+          const av = a.dataset[column] || "";
+          const bv = b.dataset[column] || "";
 
-  function isRemoteUSA(location_norm) {
-    if (!location_norm) return false;
-    return location_norm.remote === true && location_norm.remote_scope === 'usa';
-  }
+          if (column === "updated") {
+            const ad = Date.parse(av) || 0;
+            const bd = Date.parse(bv) || 0;
+            return asc ? ad - bd : bd - ad;
+          }
 
-  function applyFilters(jobs) {
-    const role = document.getElementById('roleFilter').value;
-    const loc = document.getElementById('locationFilter').value;
-    const companyFilter = document.getElementById('companyFilter').value.trim();
-    const cityFilter = document.getElementById('cityFilter').value.trim();
-    const search = (document.getElementById('searchFilter')?.value || '').trim().toLowerCase();
+          // stable, case-insensitive
+          const cmp = av.localeCompare(bv, undefined, { sensitivity: "base" });
+          return asc ? cmp : -cmp;
+        });
 
-    let filtered = jobs;
+        // re-append in order
+        for (const r of rows) tbody.appendChild(r);
 
-    // Role
-    filtered = filtered.filter(job => {
-      if (role === 'all') return true;
-      if (!job.title) return false;
-      const t = job.title.toLowerCase();
-      if (role === "product") return t.includes("product");
-      if (role === "program") return t.includes("program");
-      if (role === "project") return t.includes("project");
-      return true;
-    });
-    debugCounts.afterRole = filtered.length;
+        updateSortIcons();
+      }
 
-    // Location (US / non-US / all) — quick heuristic based on raw string
-    filtered = filtered.filter(job => {
-      if (loc === 'all') return true;
-      const l = (job.location || "").toLowerCase();
-      const isUS = l.includes("united states") || l.includes(" usa") || l.includes(" us") || l.includes(", us") || l.includes("remote - us") || l.includes("remote (us)");
-      if (loc === 'us') return isUS;
-      if (loc === 'nonus') return !isUS;
-      return true;
-    });
-    debugCounts.afterLocation = filtered.length;
+      function applyCurrentSortIfAny() {
+        if (CURRENT_SORT.column) {
+          sortTable(CURRENT_SORT.column, true);
+        } else {
+          updateSortIcons();
+        }
+      }
 
-    // Company
-    filtered = filtered.filter(job => {
-      if (!companyFilter) return true;
-      return (job.company || "").toLowerCase().includes(companyFilter.toLowerCase());
-    });
-    debugCounts.afterCompany = filtered.length;
+      // ---------- STATE LIST (US + DC) ----------
+      const US_STATES = [
+        { code: "AL", name: "Alabama" },
+        { code: "AK", name: "Alaska" },
+        { code: "AZ", name: "Arizona" },
+        { code: "AR", name: "Arkansas" },
+        { code: "CA", name: "California" },
+        { code: "CO", name: "Colorado" },
+        { code: "CT", name: "Connecticut" },
+        { code: "DE", name: "Delaware" },
+        { code: "FL", name: "Florida" },
+        { code: "GA", name: "Georgia" },
+        { code: "HI", name: "Hawaii" },
+        { code: "ID", name: "Idaho" },
+        { code: "IL", name: "Illinois" },
+        { code: "IN", name: "Indiana" },
+        { code: "IA", name: "Iowa" },
+        { code: "KS", name: "Kansas" },
+        { code: "KY", name: "Kentucky" },
+        { code: "LA", name: "Louisiana" },
+        { code: "ME", name: "Maine" },
+        { code: "MD", name: "Maryland" },
+        { code: "MA", name: "Massachusetts" },
+        { code: "MI", name: "Michigan" },
+        { code: "MN", name: "Minnesota" },
+        { code: "MS", name: "Mississippi" },
+        { code: "MO", name: "Missouri" },
+        { code: "MT", name: "Montana" },
+        { code: "NE", name: "Nebraska" },
+        { code: "NV", name: "Nevada" },
+        { code: "NH", name: "New Hampshire" },
+        { code: "NJ", name: "New Jersey" },
+        { code: "NM", name: "New Mexico" },
+        { code: "NY", name: "New York" },
+        { code: "NC", name: "North Carolina" },
+        { code: "ND", name: "North Dakota" },
+        { code: "OH", name: "Ohio" },
+        { code: "OK", name: "Oklahoma" },
+        { code: "OR", name: "Oregon" },
+        { code: "PA", name: "Pennsylvania" },
+        { code: "RI", name: "Rhode Island" },
+        { code: "SC", name: "South Carolina" },
+        { code: "SD", name: "South Dakota" },
+        { code: "TN", name: "Tennessee" },
+        { code: "TX", name: "Texas" },
+        { code: "UT", name: "Utah" },
+        { code: "VT", name: "Vermont" },
+        { code: "VA", name: "Virginia" },
+        { code: "WA", name: "Washington" },
+        { code: "WV", name: "West Virginia" },
+        { code: "WI", name: "Wisconsin" },
+        { code: "WY", name: "Wyoming" },
+        { code: "DC", name: "District of Columbia" },
+      ];
 
-    // Search
-    if (search) {
-      filtered = filtered.filter(job => {
-        const h = `${job.title || ''} ${job.location || ''} ${job.company || ''}`.toLowerCase();
-        return h.includes(search);
-      });
-    }
-    debugCounts.afterSearch = filtered.length;
+      // ---------- LOCATION NORMALIZATION ----------
+      function normalizeLocation(raw) {
+        const out = {
+          raw: raw || "",
+          city: "",
+          state: "",
+          state_full: "",
+          remote: false,
+          remote_scope: "",
+        };
 
-    // City (comma-separated)
-    if (cityFilter) {
-      const cities = cityFilter.toLowerCase().split(',').map(c => c.trim()).filter(Boolean);
-      filtered = filtered.filter(job => {
-        const ln = job.location_norm;
-        if (!ln) return false;
-        const city = (ln.city || "").toLowerCase();
-        return cities.includes(city);
-      });
-    }
-    debugCounts.afterCity = filtered.length;
+        const s = (raw || "").toLowerCase();
 
-    // State + Remote USA combined logic
-    if (remoteUsaOnly && selectedStates.length > 0) {
-      filtered = filtered.filter(job => {
-        const ln = job.location_norm;
-        return matchStatesInJob(ln) || isRemoteUSA(ln);
-      });
-    } else if (remoteUsaOnly) {
-      filtered = filtered.filter(job => isRemoteUSA(job.location_norm));
-    } else if (selectedStates.length > 0) {
-      filtered = filtered.filter(job => matchStatesInJob(job.location_norm));
-    }
+        // Remote detection (USA)
+        if (
+          s.includes("remote") &&
+          (s.includes("us") || s.includes("usa") || s.includes("united states"))
+        ) {
+          out.remote = true;
+          out.remote_scope = "usa";
+        } else if (s.includes("remote")) {
+          out.remote = true;
+          out.remote_scope = "global";
+        }
 
-    debugCounts.afterState = filtered.length;
-    debugCounts.afterCity = filtered.length;
+        // Try to extract state by code or full name from the raw location string.
+        for (const st of US_STATES) {
+          const code = st.code.toLowerCase();
+          const name = st.name.toLowerCase();
 
-    return filtered;
-  }
+          if (
+            s.includes(", " + code) ||
+            s.endsWith(" " + code) ||
+            s.includes(" " + code + " ") ||
+            s.includes("(" + code + ")")
+          ) {
+            out.state = st.code;
+            out.state_full = st.name;
+            break;
+          }
+          if (s.includes(name)) {
+            out.state = st.code;
+            out.state_full = st.name;
+            break;
+          }
+        }
 
-  function updateStatus() {
-    const statusSpan = document.getElementById('jobsCount');
-    const baseText = LAST_LOADED_AT ? `Loaded: ${ALL_JOBS.length} jobs at ${LAST_LOADED_AT}` : 'Not loaded yet';
-    const filterText = LAST_LOADED_AT
-      ? `Filtered: ${debugCounts.afterCity} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, state+remote/${debugCounts.afterState})`
-      : '';
-    statusSpan.textContent = filterText ? `${baseText} | ${filterText}` : baseText;
-  }
+        // City: naive approach: take first token before comma
+        if (raw && raw.includes(",")) {
+          out.city = raw.split(",")[0].trim();
+        } else {
+          out.city = "";
+        }
 
-  function renderJobs(jobs) {
-    const tbody = document.querySelector('#jobsTable tbody');
-    tbody.innerHTML = '';
+        return out;
+      }
 
-    for (const job of jobs) {
-      const row = document.createElement('tr');
-      const url = job.job_url || job.url || '#';
-      row.innerHTML = `
-        <td>${escapeHtml(job.company || '')}</td>
-        <td><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || '')}</a></td>
-        <td>${escapeHtml(job.location || '')}</td>
-        <td>${escapeHtml(job.updated_at || '')}</td>
-        <td>${escapeHtml(job.ats || '')}</td>
+      function enrichJobsLocationNorm(jobs) {
+        for (const j of jobs) {
+          j.location_norm = normalizeLocation(j.location || "");
+          // status fallback
+          if (!j.application_status) j.application_status = "New";
+        }
+        return jobs;
+      }
+
+      // ---------- FILTER HELPERS ----------
+      function matchStatesInJob(location_norm) {
+        if (!location_norm) return false;
+        const jobState = (location_norm.state || "").toLowerCase();
+        const jobStateFull = (location_norm.state_full || "").toLowerCase();
+
+        return selectedStates.some((selState) => {
+          selState = selState.toLowerCase();
+          return selState === jobState || selState === jobStateFull;
+        });
+      }
+
+      function isRemoteUSA(location_norm) {
+        if (!location_norm) return false;
+        return (
+          location_norm.remote === true && location_norm.remote_scope === "usa"
+        );
+      }
+
+      function isUSHeuristic(job) {
+        const l = (job.location || "").toLowerCase();
+        // very rough heuristic (kept intentionally simple for prototype)
+        return (
+          l.includes("united states") ||
+          l.includes(" usa") ||
+          l.includes(" us") ||
+          l.includes(", us") ||
+          l.includes("remote - us") ||
+          l.includes("remote (us)")
+        );
+      }
+
+      function applyFilters(jobs) {
+        const role = document.getElementById("roleFilter").value;
+        const status = document.getElementById("statusFilter").value;
+        const nonus = includeNonUS;
+
+        const companyFilter = document
+          .getElementById("companyFilter")
+          .value.trim();
+
+        const cityFilter = document.getElementById("cityFilter").value.trim();
+
+        const search = (document.getElementById("searchFilter")?.value || "")
+          .trim()
+          .toLowerCase();
+
+        let filtered = jobs;
+
+        // Role
+        filtered = filtered.filter((job) => {
+          if (role === "all") return true;
+          if (!job.title) return false;
+          const t = job.title.toLowerCase();
+          if (role === "product") return t.includes("product");
+          if (role === "program") return t.includes("program");
+          if (role === "project") return t.includes("project");
+          return true;
+        });
+        debugCounts.afterRole = filtered.length;
+
+        // Location (US always on, Non-US optional)
+        filtered = filtered.filter((job) => {
+          const isUS = isUSHeuristic(job);
+          if (isUS) return true;
+          return nonus;
+        });
+        debugCounts.afterLocation = filtered.length;
+
+        // Company
+        filtered = filtered.filter((job) => {
+          if (!companyFilter) return true;
+          return (job.company || "")
+            .toLowerCase()
+            .includes(companyFilter.toLowerCase());
+        });
+        debugCounts.afterCompany = filtered.length;
+
+        // Search
+        if (search) {
+          filtered = filtered.filter((job) => {
+            const h = `${job.title || ""} ${job.location || ""} ${
+              job.company || ""
+            }`.toLowerCase();
+            return h.includes(search);
+          });
+        }
+        debugCounts.afterSearch = filtered.length;
+
+        // City (comma-separated)
+        if (cityFilter) {
+          const cities = cityFilter
+            .toLowerCase()
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean);
+          filtered = filtered.filter((job) => {
+            const ln = job.location_norm;
+            if (!ln) return false;
+            const city = (ln.city || "").toLowerCase();
+            return cities.includes(city);
+          });
+        }
+        debugCounts.afterCity = filtered.length;
+
+        // States + Remote(USA) independent toggles
+        const hasStateFilter = selectedStates.length > 0;
+        const hasRemoteFilter = !!includeRemoteUSA;
+        if (hasStateFilter || hasRemoteFilter) {
+          filtered = filtered.filter((job) => {
+            const ln = job.location_norm;
+            const okState = hasStateFilter ? matchStatesInJob(ln) : false;
+            const okRemote = hasRemoteFilter ? isRemoteUSA(ln) : false;
+            return okState || okRemote || (!hasStateFilter && !hasRemoteFilter);
+          });
+        }
+        debugCounts.afterState = filtered.length;
+
+        // Status filter (last stage)
+        filtered = filtered.filter((job) => {
+          if (status === "all") return true;
+          const st = job.application_status || "New";
+          return st === status;
+        });
+        debugCounts.afterStatus = filtered.length;
+
+        return filtered;
+      }
+
+      function computeGeoSummary(jobs) {
+        let nc = 0;
+        let neighbor = 0;
+        let remote = 0;
+
+        for (const j of jobs) {
+          const ln = j.location_norm || {};
+          const st = (ln.state || "").toUpperCase();
+          if (isRemoteUSA(ln)) {
+            remote += 1;
+            continue;
+          }
+          if (st === "NC") {
+            nc += 1;
+            continue;
+          }
+          if (["VA", "SC", "GA", "TN"].includes(st)) {
+            neighbor += 1;
+            continue;
+          }
+        }
+        return { nc, neighbor, remote };
+      }
+
+      function updateStatus(latestFilteredJobs = null) {
+        const statusSpan = document.getElementById("jobsCount");
+        const baseText = LAST_LOADED_AT
+          ? `Loaded: ${ALL_JOBS.length} jobs at ${LAST_LOADED_AT}`
+          : "Not loaded yet";
+
+        const filteredCount = latestFilteredJobs
+          ? latestFilteredJobs.length
+          : debugCounts.afterStatus;
+
+        const filterText = LAST_LOADED_AT
+          ? `Filtered: ${filteredCount} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
+          : "";
+
+        let geoText = "";
+        if (LAST_LOADED_AT && Array.isArray(latestFilteredJobs)) {
+          const g = computeGeoSummary(latestFilteredJobs);
+          geoText = `Geo: NC=${g.nc} | Neighbor=${g.neighbor} | Remote=${g.remote}`;
+        }
+
+        const parts = [baseText];
+        if (filterText) parts.push(filterText);
+        if (geoText) parts.push(geoText);
+        statusSpan.textContent = parts.join(" | ");
+      }
+
+      async function persistStatus(profile, job_key, status) {
+        try {
+          const res = await fetch("/job_status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile, job_key, status }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return true;
+        } catch (e) {
+          console.error(e);
+          alert("Failed to save status. Check server logs.");
+          return false;
+        }
+      }
+
+      function renderJobs(jobs) {
+        const tbody = document.querySelector("#jobsTable tbody");
+        tbody.innerHTML = "";
+
+        const profile = document.getElementById("profileFilter").value;
+
+        for (const job of jobs) {
+          const row = document.createElement("tr");
+          const url = job.job_url || job.url || "#";
+          const jobKey = job.job_key || url || "";
+
+          const st = job.application_status || "New";
+
+          // dataset for sorting (case-insensitive)
+          row.dataset.company = (job.company || "").trim();
+          row.dataset.title = (job.title || "").trim();
+          row.dataset.location = (job.location || "").trim();
+          row.dataset.updated = (job.updated_at || "").trim();
+          row.dataset.ats = (job.ats || "").trim();
+          row.dataset.status = (st || "New").trim();
+
+          row.innerHTML = `
+        <td>${escapeHtml(job.company || "")}</td>
+        <td><a href="${escapeAttr(
+          url
+        )}" target="_blank" rel="noopener">${escapeHtml(
+            job.title || ""
+          )}</a></td>
+        <td>${escapeHtml(job.location || "")}</td>
+        <td>${escapeHtml(job.updated_at || "")}</td>
+        <td>${escapeHtml(job.ats || "")}</td>
+        <td>
+          <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
+            ${["New", "Applied", "Answered", "Rejected"]
+              .map(
+                (x) =>
+                  `<option value="${x}" ${
+                    x === st ? "selected" : ""
+                  }>${x}</option>`
+              )
+              .join("")}
+          </select>
+        </td>
       `;
-      tbody.appendChild(row);
-    }
+          tbody.appendChild(row);
 
-    updateStatus();
-  }
+          const sel = row.querySelector("select.statusSelect");
+          sel.addEventListener("change", async (e) => {
+            const newStatus = e.target.value;
+            const key = e.target.getAttribute("data-jobkey") || "";
 
-  function escapeHtml(s) {
-    return (s || "").replace(/[&<>"']/g, c => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[c]));
-  }
-  function escapeAttr(s) {
-    return (s || "").replace(/"/g, '&quot;');
-  }
+            // optimistic update
+            job.application_status = newStatus;
+            row.dataset.status = newStatus;
 
-  // ---------- LOADING ----------
-  async function loadJobsOnce() {
-    const profile = document.getElementById('profileFilter').value;
-    const ats = document.getElementById('atsFilter').value;
+            const ok = await persistStatus(profile, key, newStatus);
+            if (!ok) {
+              // revert
+              e.target.value = st;
+              job.application_status = st;
+              row.dataset.status = st;
+            } else {
+              // if status filter active, re-render
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            }
+          });
+        }
 
-    setLoading(true, "Loading…");
-    try {
-      const url = `/jobs?profile=${encodeURIComponent(profile)}&ats_filter=${encodeURIComponent(ats)}&role_filter=all&location_filter=all`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        updateStatus(jobs);
+        applyCurrentSortIfAny();
+      }
 
-      const data = await res.json();
-      ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
-      LAST_LOADED_AT = new Date().toLocaleString();
+      function escapeHtml(s) {
+        return (s || "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[c])
+        );
+      }
+      function escapeAttr(s) {
+        return (s || "").replace(/"/g, "&quot;");
+      }
 
-      // Apply filters immediately
-      const filtered = applyFilters(ALL_JOBS);
-      renderJobs(filtered);
+      // ---------- LOADING ----------
+      async function loadJobsOnce() {
+        const profile = document.getElementById("profileFilter").value;
+        const ats = document.getElementById("atsFilter").value;
 
-      setLoading(false, "Loaded");
-    } catch (e) {
-      console.error(e);
-      ALL_JOBS = [];
-      LAST_LOADED_AT = null;
-      renderJobs([]);
-      setLoading(false, "Error");
-      alert("Failed to load jobs. Check terminal logs (uvicorn) and /jobs endpoint.");
-    }
-  }
+        setLoading(true, "Loading…");
+        try {
+          // server uses profile & ats_filter only; UI applies the rest locally
+          const url = `/jobs?profile=${encodeURIComponent(
+            profile
+          )}&ats_filter=${encodeURIComponent(
+            ats
+          )}&role_filter=all&location_filter=all`;
 
-  function setLoading(isLoading, text) {
-    const btn = document.getElementById("loadBtn");
-    const dot = document.getElementById("loadDot");
-    const label = document.getElementById("loadText");
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    btn.disabled = isLoading;
-    label.textContent = text;
+          const data = await res.json();
+          ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
+          LAST_LOADED_AT = new Date().toLocaleString();
 
-    dot.classList.remove("ok","bad");
-    if (isLoading) dot.classList.add("bad");
-    if (!isLoading && text === "Loaded") dot.classList.add("ok");
-    if (!isLoading && text === "Error") dot.classList.add("bad");
-  }
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(filtered);
 
-  // ---------- MULTI-SELECT UI ----------
-  function syncStateButton() {
-    const text = document.getElementById("stateBtnText");
-    const cnt = document.getElementById("stateBtnCount");
-    cnt.textContent = String(selectedStates.length);
-    if (selectedStates.length === 0) {
-      text.textContent = "Select states…";
-    } else if (selectedStates.length <= 3) {
-      text.textContent = selectedStates.join(", ");
-    } else {
-      text.textContent = selectedStates.slice(0, 3).join(", ") + ` +${selectedStates.length - 3}`;
-    }
-  }
+          setLoading(false, "Loaded");
+        } catch (e) {
+          console.error(e);
+          ALL_JOBS = [];
+          LAST_LOADED_AT = null;
+          renderJobs([]);
+          setLoading(false, "Error");
+          alert(
+            "Failed to load jobs. Check terminal logs (uvicorn) and /jobs endpoint."
+          );
+        }
+      }
 
-  function renderStateList(filterText = "") {
-    const list = document.getElementById("stateList");
-    list.innerHTML = "";
+      function setLoading(isLoading, text) {
+        const btn = document.getElementById("loadBtn");
+        const dot = document.getElementById("loadDot");
+        const label = document.getElementById("loadText");
 
-    const q = (filterText || "").trim().toLowerCase();
+        btn.disabled = isLoading;
+        label.textContent = text;
 
-    const items = US_STATES.filter(st => {
-      if (!q) return true;
-      return st.code.toLowerCase().includes(q) || st.name.toLowerCase().includes(q);
-    });
+        dot.classList.remove("ok", "bad");
+        if (isLoading) dot.classList.add("bad");
+        if (!isLoading && text === "Loaded") dot.classList.add("ok");
+        if (!isLoading && text === "Error") dot.classList.add("bad");
+      }
 
-    for (const st of items) {
-      const div = document.createElement("div");
-      div.className = "msItem";
-      const checked = selectedStates.includes(st.code) || selectedStates.includes(st.name);
-      div.innerHTML = `
+      // ---------- MULTI-SELECT UI ----------
+      function syncStateButton() {
+        const text = document.getElementById("stateBtnText");
+        const cnt = document.getElementById("stateBtnCount");
+        cnt.textContent = String(selectedStates.length);
+        if (selectedStates.length === 0) {
+          text.textContent = "Select states…";
+        } else if (selectedStates.length <= 3) {
+          text.textContent = selectedStates.join(", ");
+        } else {
+          text.textContent =
+            selectedStates.slice(0, 3).join(", ") +
+            ` +${selectedStates.length - 3}`;
+        }
+      }
+
+      function renderStateList(filterText = "") {
+        const list = document.getElementById("stateList");
+        list.innerHTML = "";
+
+        const q = (filterText || "").trim().toLowerCase();
+
+        const items = US_STATES.filter((st) => {
+          if (!q) return true;
+          return (
+            st.code.toLowerCase().includes(q) ||
+            st.name.toLowerCase().includes(q)
+          );
+        });
+
+        for (const st of items) {
+          const div = document.createElement("div");
+          div.className = "msItem";
+          const checked = selectedStates.includes(st.code);
+          div.innerHTML = `
         <input type="checkbox" ${checked ? "checked" : ""} />
         <div>
-          <div style="color: var(--text); font-size:13px;">${st.code} — ${st.name}</div>
+          <div style="color: var(--text); font-size:13px;">${st.code} — ${
+            st.name
+          }</div>
         </div>
       `;
-      div.addEventListener("click", (ev) => {
-        // allow clicking row toggles
-        ev.preventDefault();
+          div.addEventListener("click", (ev) => {
+            ev.preventDefault();
 
-        // We store states as CODE only to avoid confusion (recommended)
-        const key = st.code;
+            const key = st.code;
 
-        if (selectedStates.includes(key)) {
-          selectedStates = selectedStates.filter(x => x !== key);
-        } else {
-          selectedStates.push(key);
+            if (selectedStates.includes(key)) {
+              selectedStates = selectedStates.filter((x) => x !== key);
+            } else {
+              selectedStates.push(key);
+            }
+
+            syncStateButton();
+            renderStateList(document.getElementById("stateSearch").value);
+
+            if (ALL_JOBS.length > 0) {
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            }
+          });
+          list.appendChild(div);
         }
+      }
 
+      function openStateMenu() {
+        document.getElementById("stateMultiSelect").classList.add("open");
+        renderStateList(document.getElementById("stateSearch").value);
+      }
+      function closeStateMenu() {
+        document.getElementById("stateMultiSelect").classList.remove("open");
+      }
+
+      // ---------- EVENTS ----------
+      document
+        .getElementById("loadBtn")
+        .addEventListener("click", loadJobsOnce);
+
+      const filterIds = [
+        "roleFilter",
+        "statusFilter",
+        "companyFilter",
+        "searchFilter",
+        "cityFilter",
+        "profileFilter",
+        "atsFilter",
+      ];
+      for (const id of filterIds) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.addEventListener("change", () => {
+          if (id === "profileFilter" || id === "atsFilter") {
+            if (ALL_JOBS.length > 0) {
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            } else {
+              updateStatus();
+            }
+            return;
+          }
+          if (ALL_JOBS.length > 0) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+        });
+        el.addEventListener("input", () => {
+          if (ALL_JOBS.length > 0) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+        });
+      }
+
+      document
+        .getElementById("includeNonUS")
+        .addEventListener("change", (e) => {
+          includeNonUS = !!e.target.checked;
+          if (ALL_JOBS.length > 0) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+        });
+
+      document
+        .getElementById("includeRemoteUSA")
+        .addEventListener("change", (e) => {
+          includeRemoteUSA = !!e.target.checked;
+          if (ALL_JOBS.length > 0) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+        });
+
+      // Multi-select open/close
+      document.getElementById("stateBtn").addEventListener("click", () => {
+        const ms = document.getElementById("stateMultiSelect");
+        if (ms.classList.contains("open")) closeStateMenu();
+        else openStateMenu();
+      });
+      document
+        .getElementById("stateClose")
+        .addEventListener("click", closeStateMenu);
+      document.getElementById("stateClear").addEventListener("click", () => {
+        selectedStates = [];
         syncStateButton();
         renderStateList(document.getElementById("stateSearch").value);
-
-        // Re-apply filters instantly
         if (ALL_JOBS.length > 0) {
           const filtered = applyFilters(ALL_JOBS);
           renderJobs(filtered);
         }
       });
-      list.appendChild(div);
-    }
-  }
+      document.getElementById("stateSearch").addEventListener("input", (e) => {
+        renderStateList(e.target.value);
+      });
 
-  function openStateMenu() {
-    document.getElementById("stateMultiSelect").classList.add("open");
-    renderStateList(document.getElementById("stateSearch").value);
-  }
-  function closeStateMenu() {
-    document.getElementById("stateMultiSelect").classList.remove("open");
-  }
-
-  // ---------- EVENTS ----------
-  document.getElementById("loadBtn").addEventListener("click", loadJobsOnce);
-
-  // Filter inputs -> apply instantly
-  const filterIds = ["roleFilter","locationFilter","companyFilter","searchFilter","cityFilter","profileFilter","atsFilter"];
-  for (const id of filterIds) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    el.addEventListener("change", () => {
-      // NOTE: profile/ats changes do not auto-reload; you press Load jobs.
-      if (id === "profileFilter" || id === "atsFilter") {
-        // just update UI label; actual data changes after Load
-        if (ALL_JOBS.length > 0) {
-          // re-filter current dataset
-          const filtered = applyFilters(ALL_JOBS);
-          renderJobs(filtered);
-        } else {
-          updateStatus();
+      document.addEventListener("click", (e) => {
+        const ms = document.getElementById("stateMultiSelect");
+        if (!ms.contains(e.target)) {
+          closeStateMenu();
         }
-        return;
-      }
-      if (ALL_JOBS.length > 0) {
-        const filtered = applyFilters(ALL_JOBS);
-        renderJobs(filtered);
-      }
-    });
-    el.addEventListener("input", () => {
-      if (ALL_JOBS.length > 0) {
-        const filtered = applyFilters(ALL_JOBS);
-        renderJobs(filtered);
-      }
-    });
-  }
+      });
 
-  document.getElementById("remoteUsaOnly").addEventListener("change", (e) => {
-    remoteUsaOnly = !!e.target.checked;
-    if (ALL_JOBS.length > 0) {
-      const filtered = applyFilters(ALL_JOBS);
-      renderJobs(filtered);
-    }
-  });
+      // Init defaults
+      document.getElementById("includeNonUS").checked = includeNonUS;
+      document.getElementById("includeRemoteUSA").checked = includeRemoteUSA;
 
-  // Multi-select open/close
-  document.getElementById("stateBtn").addEventListener("click", () => {
-    const ms = document.getElementById("stateMultiSelect");
-    if (ms.classList.contains("open")) closeStateMenu();
-    else openStateMenu();
-  });
-  document.getElementById("stateClose").addEventListener("click", closeStateMenu);
-  document.getElementById("stateClear").addEventListener("click", () => {
-    selectedStates = [];
-    syncStateButton();
-    renderStateList(document.getElementById("stateSearch").value);
-    if (ALL_JOBS.length > 0) {
-      const filtered = applyFilters(ALL_JOBS);
-      renderJobs(filtered);
-    }
-  });
-  document.getElementById("stateSearch").addEventListener("input", (e) => {
-    renderStateList(e.target.value);
-  });
-
-  // Close state menu when clicking outside
-  document.addEventListener("click", (e) => {
-    const ms = document.getElementById("stateMultiSelect");
-    if (!ms.contains(e.target)) {
-      closeStateMenu();
-    }
-  });
-
-  // Init
-  syncStateButton();
-  renderStateList("");
-  updateStatus();
-</script>
-</body>
+      syncStateButton();
+      renderStateList("");
+      updateStatus();
+      updateSortIcons();
+    </script>
+  </body>
 </html>
