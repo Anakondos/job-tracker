@@ -24,11 +24,14 @@ def fetch_lever(company: str, base_url: str):
         jobs.append(
             {
                 "company": company,
+                "ats": "lever",
+                "ats_job_id": job.get("id", ""),
                 "title": job.get("text"),
                 "location": location,
                 "department": dept,
                 "url": job.get("hostedUrl"),
-                "updated_at": job.get("createdAt"),
+                "first_published": job.get("createdAt"),
+                "updated_at": job.get("createdAt"),  # Lever uses createdAt
             }
         )
 

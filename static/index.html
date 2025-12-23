@@ -283,14 +283,8 @@
     <div class="wrap">
       <div class="controls">
         <label>
-          Profile
-          <select id="profileFilter">
-            <option value="all">All companies</option>
-            <option value="bigtech">BigTech</option>
-            <option value="fintech">Fintech</option>
-            <option value="core_pm">Core PM</option>
-            <option value="core_product">Core Product</option>
-          </select>
+          Industry (tags)
+          <input id="industryFilter" placeholder="e.g., fintech, saas, security" />
         </label>
 
         <label>
@@ -435,6 +429,13 @@
               >
                 Company <span class="sortIcon" id="sortIcon-company">⬍</span>
               </th>
+              <th
+                class="sortable"
+                style="width: 140px"
+                onclick="sortTable('industry')"
+              >
+                Industry <span class="sortIcon" id="sortIcon-industry">⬍</span>
+              </th>
               <th class="sortable" onclick="sortTable('title')">
                 Title <span class="sortIcon" id="sortIcon-title">⬍</span>
               </th>
@@ -493,7 +494,7 @@
       let STATUS_MAP = {};
 
       const debugCounts = {
-        afterProfile: 0,
+        afterIndustry: 0,
         afterRole: 0,
         afterLocation: 0,
         afterCompany: 0,
@@ -501,26 +502,6 @@
         afterState: 0,
         afterCity: 0,
         afterStatus: 0,
-      };
-
-      // ---------- PROFILE TAG MAPPINGS ----------
-      const PROFILE_TAG_MAPPINGS = {
-        fintech: [
-          "fintech",
-          "payments",
-          "banking",
-          "crypto",
-          "trading",
-          "cards",
-          "exchange",
-          "bank",
-        ],
-        bigtech: ["bigtech", "faang", "tech", "cloud"],
-        banking: ["bank", "banking", "finserv"],
-        saas: ["saas", "enterprise"],
-        security: ["security", "infosec", "identity"],
-        core_pm: ["pm", "product"],
-        core_product: ["product"],
       };
 
       // ---------- SORT STATE ----------
@@ -532,7 +513,7 @@
       }
 
       function resetAllSortIcons() {
-        ["company", "title", "location", "updated", "ats", "status"].forEach(
+        ["company", "industry", "title", "location", "updated", "ats", "status"].forEach(
           (c) => setSortIcon(c, "⬍")
         );
       }
@@ -745,7 +726,7 @@
 
       // ---------- MAIN FILTER FUNCTION ----------
       function applyFilters(jobs) {
-        const profile = document.getElementById("profileFilter").value;
+        const industryFilter = (document.getElementById("industryFilter")?.value || "").trim().toLowerCase();
         const role = document.getElementById("roleFilter").value;
         const status = document.getElementById("statusFilter").value;
         const ats = document.getElementById("atsFilter").value;
@@ -763,17 +744,14 @@
 
         let filtered = jobs;
 
-        // ===== NEW: Profile filter by company tags =====
-        if (profile !== "all") {
-          const searchTags = PROFILE_TAG_MAPPINGS[profile] || [profile];
+        // ===== Industry filter by tags =====
+        if (industryFilter) {
           filtered = filtered.filter((job) => {
-            const jobTags = job.company_data?.tags || [];
-            return jobTags.some((tag) =>
-              searchTags.includes(tag.toLowerCase())
-            );
+            const jobTags = (job.company_data?.tags || []).map(t => t.toLowerCase());
+            return jobTags.some(tag => tag.includes(industryFilter));
           });
         }
-        debugCounts.afterProfile = filtered.length;
+        debugCounts.afterIndustry = filtered.length;
 
         // ===== ATS filter =====
         if (ats !== "all") {
@@ -897,7 +875,7 @@
           : debugCounts.afterStatus;
 
         const filterText = LAST_LOADED_AT
-          ? `Filtered: ${filteredCount} (profile/${debugCounts.afterProfile}, role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
+          ? `Filtered: ${filteredCount} (industry/${debugCounts.afterIndustry}, role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
           : "";
 
         let geoText = "";
@@ -932,17 +910,20 @@
         const tbody = document.querySelector("#jobsTable tbody");
         tbody.innerHTML = "";
 
-        const profile = document.getElementById("profileFilter").value;
-
         for (const job of jobs) {
           const row = document.createElement("tr");
           const url = job.job_url || job.url || "#";
           const jobKey = job.job_key || url || "";
 
           const st = job.application_status || "New";
+          
+          // Get tags for industry column
+          const tags = job.company_data?.tags || [];
+          const tagsStr = tags.join(", ");
 
           // dataset for sorting (case-insensitive)
           row.dataset.company = (job.company || "").trim();
+          row.dataset.industry = tagsStr;
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
           row.dataset.updated = (job.updated_at || "").trim();
@@ -951,6 +932,7 @@
 
           row.innerHTML = `
         <td>${escapeHtml(job.company || "")}</td>
+        <td class="muted" style="font-size: 11px;">${escapeHtml(tagsStr)}</td>
         <td><a href="${escapeAttr(
           url
         )}" target="_blank" rel="noopener">${escapeHtml(
@@ -983,7 +965,7 @@
             job.application_status = newStatus;
             row.dataset.status = newStatus;
 
-            const ok = await persistStatus(profile, key, newStatus);
+            const ok = await persistStatus("all", key, newStatus);
             if (!ok) {
               // revert
               e.target.value = st;
@@ -1148,7 +1130,7 @@
         "companyFilter",
         "searchFilter",
         "cityFilter",
-        "profileFilter",
+        "industryFilter",
         "atsFilter",
       ];
       for (const id of filterIds) {

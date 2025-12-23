@@ -67,13 +67,46 @@ def load_profile(profile_name: str):
     if profile_name == "all":
         return [to_parser_format(c) for c in all_companies]
     
-    # Иначе фильтруем по тегам
+    # Industry profiles с приоритетной проверкой
+    # Порядок важен: от специфичного к общему
     tag_mappings = {
-        "fintech": ["fintech", "payments", "banking", "crypto", "trading", "cards"],
-        "banking": ["bank", "banking", "finserv"],
-        "saas": ["saas", "enterprise"],
-        "security": ["security", "infosec", "identity"],
+        # Security — identity, compliance, cybersecurity (проверяем первым)
+        "security": [
+            "security", "identity", "compliance"
+        ],
+        # DevTools & Infrastructure — cloud, DevOps, APIs, observability
+        "devtools_infra": [
+            "devtools", "devops", "cloud", "infra", "api", "ci", 
+            "hosting", "cdn", "edge", "storage", "platform", "database", 
+            "incident", "feature-flags", "developer-tools", "observability"
+        ],
+        # AI & Data — ML, analytics, data platforms
+        "ai_data": [
+            "ai", "data", "analytics", "lakehouse", "research"
+        ],
+        # FinTech — payments, banking, lending, trading, crypto
+        "fintech": [
+            "fintech", "payments", "banking", "neobank", "investment", 
+            "card", "cards", "crypto", "exchange", "trading", "finance", 
+            "loans", "roboadvisor", "bnpl", "bank", "payroll"
+        ],
+        # Enterprise SaaS — CRM, HR, productivity, B2B platforms (самый общий)
+        "enterprise_saas": [
+            "saas", "crm", "hr", "productivity", "collaboration", 
+            "sales", "marketing", "support", "automation", "internal-tools", 
+            "pm-tools", "nocode", "lowcode", "field-service"
+        ],
+        # Other — everything else
+        "other": [
+            "consumer", "video", "hardware", "ecommerce", "edtech", 
+            "social", "community", "marketplace", "travel", "streaming",
+            "retail", "design", "language", "communications", "networking",
+            "bigtech"
+        ],
     }
+    
+    # Порядок проверки (от специфичного к общему)
+    priority_order = ["security", "devtools_infra", "ai_data", "fintech", "enterprise_saas", "other"]
     
     search_tags = tag_mappings.get(profile_name, [profile_name])
     

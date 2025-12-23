@@ -24,10 +24,13 @@ def fetch_greenhouse(company: str, base_url: str):
         jobs.append(
             {
                 "company": company,
+                "ats": "greenhouse",
+                "ats_job_id": str(job.get("id", "")),
                 "title": job.get("title"),
                 "location": location,
                 "department": dept,
                 "url": job.get("absolute_url"),
+                "first_published": job.get("first_published"),
                 "updated_at": job.get("updated_at"),
             }
         )

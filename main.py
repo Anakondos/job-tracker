@@ -1,3 +1,5 @@
+# I have access to - main.py
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -14,10 +16,17 @@ from pydantic import BaseModel
 from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
 from parsers.smartrecruiters import fetch_smartrecruiters  # если нет – можно временно закомментить
-from storage import load_profile
-from utils.normalize import normalize_location, classify_role, STATE_MAP
+from company_storage import load_profile
+from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info
-from utils.role_classifier_rules import classify_job_rule_based
+from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
+from storage.pipeline_storage import (
+    load_new_jobs, load_pipeline_jobs, load_archive_jobs,
+    get_all_job_ids, add_new_job, update_job_status as pipeline_update_status,
+    mark_missing_jobs, get_pipeline_stats, get_job_by_id,
+    STATUS_NEW, STATUS_APPLIED, STATUS_INTERVIEW, STATUS_OFFER,
+    STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED,
+)
 
 
 # -----------------------------
@@ -205,17 +214,24 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
         for j in jobs:
             j["company"] = company
             j["industry"] = cfg.get("industry", "")
-            j["ats"] = ats
+            if not j.get("ats"):
+                j["ats"] = ats
+
+            # Генерируем уникальный ID (используя ats_job_id из парсера)
+            j["id"] = generate_job_id(j)
 
             # нормализация локации
             loc_norm = normalize_location(j.get("location"))
             j["location_norm"] = loc_norm
 
-            # классификация роли
+            # классификация роли (улучшенная, с roles.json)
             role = classify_role(j.get("title"), j.get("description") or j.get("jd") or "")
             j["role_family"] = role.get("role_family")
+            j["role_id"] = role.get("role_id")
             j["role_confidence"] = role.get("confidence")
             j["role_reason"] = role.get("reason")
+            j["role_excluded"] = role.get("excluded", False)
+            j["role_exclude_reason"] = role.get("exclude_reason")
 
             # company data (for scoring/prioritization)
             j["company_data"] = {
@@ -609,3 +625,76 @@ def cache_clear_all_endpoint():
     """Clear all caches"""
     clear_cache()
     return {"ok": True, "message": "All caches cleared"}
+
+
+# ============= PIPELINE ENDPOINTS =============
+
+@app.get("/pipeline/stats")
+def pipeline_stats_endpoint():
+    """Get pipeline statistics"""
+    return get_pipeline_stats()
+
+
+@app.get("/pipeline/new")
+def pipeline_new_endpoint():
+    """Get new (inbox) jobs"""
+    jobs = load_new_jobs()
+    return {"count": len(jobs), "jobs": jobs}
+
+
+@app.get("/pipeline/active")
+def pipeline_active_endpoint():
+    """Get active pipeline jobs (Applied, Interview, Closed)"""
+    jobs = load_pipeline_jobs()
+    return {"count": len(jobs), "jobs": jobs}
+
+
+@app.get("/pipeline/archive")
+def pipeline_archive_endpoint():
+    """Get archived jobs (Rejected, Offer, Withdrawn)"""
+    jobs = load_archive_jobs()
+    return {"count": len(jobs), "jobs": jobs}
+
+
+class PipelineStatusUpdate(BaseModel):
+    job_id: str
+    status: str
+    notes: str = ""
+
+
+@app.post("/pipeline/status")
+def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
+    """
+    Update job status in pipeline.
+    Valid statuses: New, Applied, Interview, Offer, Rejected, Withdrawn, Closed
+    """
+    valid_statuses = [STATUS_NEW, STATUS_APPLIED, STATUS_INTERVIEW, 
+                      STATUS_OFFER, STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED]
+    
+    if payload.status not in valid_statuses:
+        return {"ok": False, "error": f"Invalid status. Valid: {valid_statuses}"}
+    
+    job = pipeline_update_status(payload.job_id, payload.status, payload.notes)
+    
+    if job:
+        return {"ok": True, "job": job}
+    else:
+        return {"ok": False, "error": "Job not found"}
+
+
+@app.get("/pipeline/job/{job_id}")
+def pipeline_get_job_endpoint(job_id: str):
+    """Get job by ID from any storage"""
+    job = get_job_by_id(job_id)
+    if job:
+        return {"ok": True, "job": job}
+    else:
+        return {"ok": False, "error": "Job not found"}
+
+
+@app.get("/pipeline/attention")
+def pipeline_attention_endpoint():
+    """Get jobs that need attention (Closed, etc.)"""
+    pipeline = load_pipeline_jobs()
+    attention = [j for j in pipeline if j.get("needs_attention")]
+    return {"count": len(attention), "jobs": attention}

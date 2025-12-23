@@ -46,10 +46,13 @@ def fetch_smartrecruiters(company: str, api_url: str, base_url: str | None = Non
             jobs.append(
                 {
                     "company": company,
+                    "ats": "smartrecruiters",
+                    "ats_job_id": p.get("id") or p.get("uuid") or "",
                     "title": title,
                     "location": loc_str,
                     "department": p.get("department") or "",
                     "url": job_url,
+                    "first_published": p.get("releasedDate") or p.get("createdOn"),
                     "updated_at": updated_at,
                 }
             )
