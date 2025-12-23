@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 import json
 from collections import Counter
 from pathlib import Path
 from typing import Any
+
+# Environment: PROD or DEV
+ENV = os.getenv("JOB_TRACKER_ENV", "PROD")
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -265,6 +269,12 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/env")
+def get_env():
+    """Return current environment (PROD/DEV)"""
+    return {"env": ENV}
 
 
 class StatusUpdate(BaseModel):

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Job Tracker</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <style>
       :root {
         --bg: #0b0f17;
@@ -95,6 +96,28 @@
         margin: 0;
         font-size: 18px;
         letter-spacing: 0.2px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .env-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .env-badge.dev {
+        background: #f59e0b;
+        color: #000;
+      }
+      .env-badge.prod {
+        background: #22c55e;
+        color: #000;
+      }
+      /* DEV environment header highlight */
+      body.env-dev header {
+        border-bottom: 2px solid #f59e0b;
       }
       .sub {
         margin-top: 6px;
@@ -609,7 +632,7 @@
   <body>
     <header>
       <div class="header-left">
-        <h1>Job Tracker</h1>
+        <h1>Job Tracker <span id="envBadge" class="env-badge"></span></h1>
         <div class="status-bar" id="statusBar">
           <div class="status-pipeline" id="statusPipeline">
             <span class="pipe-item">Not loaded</span>
@@ -2062,7 +2085,26 @@
         syncStateButton();
       }
       
+      // Load environment info
+      async function loadEnv() {
+        try {
+          const res = await fetch("/env");
+          const data = await res.json();
+          const env = data.env || "PROD";
+          const badge = document.getElementById("envBadge");
+          badge.textContent = env;
+          badge.classList.add(env.toLowerCase());
+          if (env === "DEV") {
+            document.body.classList.add("env-dev");
+            document.title = "[DEV] Job Tracker";
+          }
+        } catch (e) {
+          console.error("Failed to load env:", e);
+        }
+      }
+      
       // Load data on page load
+      loadEnv();
       loadCompanies();
       loadJobsFromCache();  // Load jobs for header stats
 
