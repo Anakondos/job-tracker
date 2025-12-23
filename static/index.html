@@ -493,6 +493,7 @@
       let STATUS_MAP = {};
 
       const debugCounts = {
+        afterProfile: 0,
         afterRole: 0,
         afterLocation: 0,
         afterCompany: 0,
@@ -500,6 +501,26 @@
         afterState: 0,
         afterCity: 0,
         afterStatus: 0,
+      };
+
+      // ---------- PROFILE TAG MAPPINGS ----------
+      const PROFILE_TAG_MAPPINGS = {
+        fintech: [
+          "fintech",
+          "payments",
+          "banking",
+          "crypto",
+          "trading",
+          "cards",
+          "exchange",
+          "bank",
+        ],
+        bigtech: ["bigtech", "faang", "tech", "cloud"],
+        banking: ["bank", "banking", "finserv"],
+        saas: ["saas", "enterprise"],
+        security: ["security", "infosec", "identity"],
+        core_pm: ["pm", "product"],
+        core_product: ["product"],
       };
 
       // ---------- SORT STATE ----------
@@ -722,9 +743,12 @@
         );
       }
 
+      // ---------- MAIN FILTER FUNCTION ----------
       function applyFilters(jobs) {
+        const profile = document.getElementById("profileFilter").value;
         const role = document.getElementById("roleFilter").value;
         const status = document.getElementById("statusFilter").value;
+        const ats = document.getElementById("atsFilter").value;
         const nonus = includeNonUS;
 
         const companyFilter = document
@@ -738,6 +762,25 @@
           .toLowerCase();
 
         let filtered = jobs;
+
+        // ===== NEW: Profile filter by company tags =====
+        if (profile !== "all") {
+          const searchTags = PROFILE_TAG_MAPPINGS[profile] || [profile];
+          filtered = filtered.filter((job) => {
+            const jobTags = job.company_data?.tags || [];
+            return jobTags.some((tag) =>
+              searchTags.includes(tag.toLowerCase())
+            );
+          });
+        }
+        debugCounts.afterProfile = filtered.length;
+
+        // ===== ATS filter =====
+        if (ats !== "all") {
+          filtered = filtered.filter((job) => {
+            return (job.ats || "").toLowerCase() === ats.toLowerCase();
+          });
+        }
 
         // Role
         filtered = filtered.filter((job) => {
@@ -854,7 +897,7 @@
           : debugCounts.afterStatus;
 
         const filterText = LAST_LOADED_AT
-          ? `Filtered: ${filteredCount} (role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
+          ? `Filtered: ${filteredCount} (profile/${debugCounts.afterProfile}, role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
           : "";
 
         let geoText = "";
@@ -977,17 +1020,12 @@
 
       // ---------- LOADING ----------
       async function loadJobsOnce() {
-        const profile = document.getElementById("profileFilter").value;
         const ats = document.getElementById("atsFilter").value;
 
         setLoading(true, "Loading…");
         try {
-          // server uses profile & ats_filter only; UI applies the rest locally
-          const url = `/jobs?profile=${encodeURIComponent(
-            profile
-          )}&ats_filter=${encodeURIComponent(
-            ats
-          )}&role_filter=all&location_filter=all`;
+          // Always load ALL jobs, filter locally by profile/ats
+          const url = `/jobs?profile=all&ats_filter=all&role_filter=all&location_filter=all`;
 
           const res = await fetch(url);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1117,18 +1155,12 @@
         const el = document.getElementById(id);
         if (!el) continue;
         el.addEventListener("change", () => {
-          if (id === "profileFilter" || id === "atsFilter") {
-            if (ALL_JOBS.length > 0) {
-              const filtered = applyFilters(ALL_JOBS);
-              renderJobs(filtered);
-            } else {
-              updateStatus();
-            }
-            return;
-          }
+          // All filters now apply locally (no server reload)
           if (ALL_JOBS.length > 0) {
             const filtered = applyFilters(ALL_JOBS);
             renderJobs(filtered);
+          } else {
+            updateStatus();
           }
         });
         el.addEventListener("input", () => {

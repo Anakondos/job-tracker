@@ -1,0 +1,22 @@
+{
+  "cache": {
+    "enabled": true,
+    "ttl_hours": 6,
+    "directory": "cache"
+  },
+  "ai": {
+    "enabled": false,
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "fallback_to_rules": true,
+    "use_for_ambiguous_only": true
+  },
+  "job_matching": {
+    "min_confidence_threshold": 60,
+    "save_jobs_with_status": true,
+    "skip_obvious_mismatches": true
+  },
+  "api_keys": {
+    "anthropic_api_key_env": "ANTHROPIC_API_KEY"
+  }
+}

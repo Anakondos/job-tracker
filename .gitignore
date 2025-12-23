@@ -20,3 +20,4 @@ venv/
 # Runtime / local state (Job Tracker)
 job_status.json
 job_hide.json
+cache/

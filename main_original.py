@@ -16,8 +16,6 @@ from parsers.lever import fetch_lever
 from parsers.smartrecruiters import fetch_smartrecruiters  # если нет – можно временно закомментить
 from storage import load_profile
 from utils.normalize import normalize_location, classify_role, STATE_MAP
-from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info
-from utils.role_classifier_rules import classify_job_rule_based
 
 
 # -----------------------------
@@ -287,28 +285,17 @@ async def get_jobs(
     """
     Основной эндпоинт: собирает вакансии по профилю и фильтрам.
     """
-    # NEW: Check cache first
-    cache_key = profile
-    cached = load_cache(cache_key)
-    
-    if cached:
-        print(f"✅ Using cached data ({cached['jobs_count']} jobs)")
-        all_jobs = cached["jobs"]
-    else:
-        # Parse from companies
-        companies_cfg = load_profile(profile)
-        all_jobs: list[dict] = []
-        
-        for cfg in companies_cfg:
-            ats = cfg.get("ats", "")
-            if ats_filter != "all" and ats_filter != ats:
-                continue
-            jobs = _fetch_for_company(profile, cfg)
-            all_jobs.extend(jobs)
-        
-        # NEW: Save to cache after parsing all companies
-        save_cache(cache_key, all_jobs)
-    
+    companies_cfg = load_profile(profile)
+    all_jobs: list[dict] = []
+
+    for cfg in companies_cfg:
+        ats = cfg.get("ats", "")
+        if ats_filter != "all" and ats_filter != ats:
+            continue
+
+        jobs = _fetch_for_company(profile, cfg)
+        all_jobs.extend(jobs)
+
     # Load status map once
     status_map = _load_job_status_map(profile)
 
@@ -586,26 +573,3 @@ async def location_stats(profile: str = Query("all")):
         "jobs_with_states_count": jobs_with_states_count,
         "top_20_states": top_20_states,
     }
-
-
-# ============= NEW CACHE ENDPOINTS =============
-
-@app.get("/cache/info")
-def cache_info_endpoint(cache_key: str = Query("all")):
-    """Get cache information"""
-    info = get_cache_info(cache_key)
-    return info
-
-
-@app.post("/cache/refresh")
-def cache_refresh_endpoint(cache_key: str = Query("all")):
-    """Force refresh cache"""
-    clear_cache(cache_key)
-    return {"ok": True, "message": f"Cache cleared for '{cache_key}'. Next /jobs request will refresh."}
-
-
-@app.delete("/cache/clear")
-def cache_clear_all_endpoint():
-    """Clear all caches"""
-    clear_cache()
-    return {"ok": True, "message": "All caches cleared"}

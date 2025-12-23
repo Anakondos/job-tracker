@@ -1,0 +1,274 @@
+{
+  "target_roles": [
+    {
+      "id": "product_manager",
+      "name": "Product Manager",
+      "aliases": ["Product Manager", "PM", "Senior Product Manager", "Lead Product Manager", "Staff Product Manager", "Principal Product Manager"],
+      "keywords_title": [
+        "product manager",
+        "pm",
+        "product lead",
+        "lead product",
+        "senior pm",
+        "staff pm",
+        "principal pm"
+      ],
+      "keywords_description": [
+        "product roadmap",
+        "product strategy",
+        "product vision",
+        "product backlog",
+        "user stories",
+        "stakeholder management",
+        "product lifecycle",
+        "go-to-market",
+        "product requirements"
+      ],
+      "priority": 10,
+      "category": "primary"
+    },
+    {
+      "id": "technical_program_manager",
+      "name": "Technical Program Manager",
+      "aliases": ["Technical Program Manager", "TPM", "Senior TPM", "Lead TPM"],
+      "keywords_title": [
+        "technical program manager",
+        "tpm",
+        "technical program",
+        "senior tpm",
+        "lead tpm"
+      ],
+      "keywords_description": [
+        "cross-functional teams",
+        "technical roadmap",
+        "program delivery",
+        "technical execution",
+        "engineering teams",
+        "system architecture",
+        "technical dependencies"
+      ],
+      "priority": 9,
+      "category": "primary"
+    },
+    {
+      "id": "program_manager",
+      "name": "Program Manager",
+      "aliases": ["Program Manager", "Senior Program Manager", "Lead Program Manager"],
+      "keywords_title": [
+        "program manager",
+        "program lead",
+        "senior program",
+        "lead program"
+      ],
+      "keywords_description": [
+        "program management",
+        "portfolio management",
+        "program delivery",
+        "cross-functional coordination",
+        "program strategy",
+        "initiative management"
+      ],
+      "priority": 8,
+      "category": "primary"
+    },
+    {
+      "id": "product_owner",
+      "name": "Product Owner",
+      "aliases": ["Product Owner", "PO", "Senior Product Owner"],
+      "keywords_title": [
+        "product owner",
+        "po",
+        "senior po",
+        "lead po"
+      ],
+      "keywords_description": [
+        "product backlog",
+        "user stories",
+        "sprint planning",
+        "agile",
+        "scrum",
+        "acceptance criteria",
+        "backlog refinement",
+        "backlog grooming"
+      ],
+      "priority": 9,
+      "category": "primary"
+    },
+    {
+      "id": "project_manager",
+      "name": "Project Manager (IT)",
+      "aliases": ["Project Manager", "Senior Project Manager", "IT Project Manager"],
+      "keywords_title": [
+        "project manager",
+        "it project manager",
+        "technical project manager",
+        "senior project manager"
+      ],
+      "keywords_description": [
+        "project planning",
+        "project delivery",
+        "stakeholder management",
+        "project timeline",
+        "risk management",
+        "project scope",
+        "waterfall",
+        "agile project"
+      ],
+      "exclude_keywords": [
+        "construction",
+        "civil",
+        "manufacturing",
+        "facilities"
+      ],
+      "priority": 7,
+      "category": "primary"
+    },
+    {
+      "id": "scrum_master",
+      "name": "Scrum Master",
+      "aliases": ["Scrum Master", "Senior Scrum Master", "Agile Coach"],
+      "keywords_title": [
+        "scrum master",
+        "senior scrum",
+        "agile coach"
+      ],
+      "keywords_description": [
+        "scrum",
+        "agile",
+        "sprint planning",
+        "retrospective",
+        "daily standup",
+        "scrum ceremonies",
+        "agile practices"
+      ],
+      "priority": 6,
+      "category": "primary"
+    },
+    {
+      "id": "director_product",
+      "name": "Director of Product",
+      "aliases": ["Director of Product", "Director, Product Management", "Head of Product"],
+      "keywords_title": [
+        "director of product",
+        "director product",
+        "head of product",
+        "vp product",
+        "vice president product"
+      ],
+      "keywords_description": [
+        "product strategy",
+        "product organization",
+        "product leadership",
+        "team leadership"
+      ],
+      "priority": 8,
+      "category": "adjacent",
+      "level": "director"
+    },
+    {
+      "id": "director_program",
+      "name": "Director of Program Management",
+      "aliases": ["Director of Program Management", "Director, Programs"],
+      "keywords_title": [
+        "director of program",
+        "director program",
+        "head of program"
+      ],
+      "priority": 7,
+      "category": "adjacent",
+      "level": "director"
+    },
+    {
+      "id": "product_analyst",
+      "name": "Senior Product Analyst",
+      "aliases": ["Senior Product Analyst", "Lead Product Analyst", "Principal Product Analyst"],
+      "keywords_title": [
+        "senior product analyst",
+        "lead product analyst",
+        "principal product analyst",
+        "staff product analyst"
+      ],
+      "keywords_description": [
+        "product analytics",
+        "data analysis",
+        "product metrics",
+        "a/b testing",
+        "product insights"
+      ],
+      "priority": 5,
+      "category": "adjacent",
+      "level": "senior"
+    },
+    {
+      "id": "product_operations",
+      "name": "Product Operations Manager",
+      "aliases": ["Product Operations Manager", "Product Ops Manager"],
+      "keywords_title": [
+        "product operations",
+        "product ops",
+        "productops"
+      ],
+      "priority": 6,
+      "category": "adjacent"
+    },
+    {
+      "id": "strategy_operations",
+      "name": "Strategy & Operations",
+      "aliases": ["Strategy & Operations Manager", "Strategic Operations"],
+      "keywords_title": [
+        "strategy & operations",
+        "strategy and operations",
+        "strategic operations"
+      ],
+      "keywords_description": [
+        "strategic initiatives",
+        "operational excellence",
+        "business operations"
+      ],
+      "priority": 5,
+      "category": "adjacent"
+    }
+  ],
+  "skip_roles": {
+    "engineering": [
+      "software engineer",
+      "developer",
+      "backend engineer",
+      "frontend engineer",
+      "full stack",
+      "devops engineer",
+      "sre",
+      "data engineer",
+      "ml engineer",
+      "machine learning engineer"
+    ],
+    "design": [
+      "designer",
+      "ux designer",
+      "ui designer",
+      "product designer",
+      "graphic designer",
+      "visual designer"
+    ],
+    "qa": [
+      "qa engineer",
+      "quality assurance",
+      "test engineer",
+      "sdet"
+    ],
+    "sales_marketing": [
+      "account executive",
+      "sales representative",
+      "marketing manager",
+      "growth marketer",
+      "demand generation"
+    ],
+    "non_it": [
+      "construction manager",
+      "facility manager",
+      "warehouse manager",
+      "retail manager",
+      "store manager"
+    ]
+  }
+}

@@ -4,189 +4,1244 @@
     "name": "Brex",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/brex",
-    "tags": ["fintech", "card", "us"],
+    "api_url": null,
+    "tags": [
+      "fintech",
+      "card",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
     "id": "datadog",
     "name": "Datadog",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/datadog",
-    "tags": ["observability", "saas", "us"],
+    "api_url": null,
+    "tags": [
+      "observability",
+      "saas",
+      "us"
+    ],
+    "industry": "IT",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
     "id": "okta",
     "name": "Okta",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/okta",
-    "tags": ["security", "identity", "us"],
+    "api_url": null,
+    "tags": [
+      "security",
+      "identity",
+      "us"
+    ],
+    "industry": "IT",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
     "id": "twilio",
     "name": "Twilio",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/twilio",
-    "tags": ["communications", "api", "global"],
+    "api_url": null,
+    "tags": [
+      "communications",
+      "api",
+      "global"
+    ],
+    "industry": "IT",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "global"
   },
   {
     "id": "stripe",
     "name": "Stripe",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/stripe",
-    "tags": ["payments", "fintech", "global"],
+    "api_url": null,
+    "tags": [
+      "payments",
+      "fintech",
+      "global"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "global"
   },
   {
     "id": "coinbase",
     "name": "Coinbase",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/coinbase",
-    "tags": ["crypto", "exchange", "us"],
+    "api_url": null,
+    "tags": [
+      "crypto",
+      "exchange",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
     "id": "robinhood",
     "name": "Robinhood",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/robinhood",
-    "tags": ["trading", "retail", "us"],
+    "api_url": null,
+    "tags": [
+      "trading",
+      "retail",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
     "id": "marqeta",
     "name": "Marqeta",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/marqeta",
-    "tags": ["cards", "payments"],
+    "api_url": null,
+    "tags": [
+      "cards",
+      "payments"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
     "id": "nerdwallet",
     "name": "NerdWallet",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/nerdwallet",
-    "tags": ["consumer", "finance"],
+    "api_url": null,
+    "tags": [
+      "consumer",
+      "finance"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
     "id": "cloudflare",
     "name": "Cloudflare",
     "ats": "greenhouse",
     "board_url": "https://boards.greenhouse.io/cloudflare",
-    "tags": ["infra", "security"],
+    "api_url": null,
+    "tags": [
+      "infra",
+      "security"
+    ],
+    "industry": "IT",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "global"
   },
   {
-    "id": "bankofamerica",
-    "name": "Bank of America",
+    "id": "figma",
+    "name": "Figma",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/figma",
+    "api_url": null,
+    "tags": [
+      "design",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "notion",
+    "name": "Notion",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/notion",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "dropbox",
+    "name": "Dropbox",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/dropbox",
+    "api_url": null,
+    "tags": [
+      "storage",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "reddit",
+    "name": "Reddit",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/reddit",
+    "api_url": null,
+    "tags": [
+      "social",
+      "community"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "duolingo",
+    "name": "Duolingo",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/duolingo",
+    "api_url": null,
+    "tags": [
+      "edtech",
+      "language"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "airbnb",
+    "name": "Airbnb",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/airbnb",
+    "api_url": null,
+    "tags": [
+      "marketplace",
+      "travel"
+    ],
+    "industry": "Tech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "chime",
+    "name": "Chime",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/chime",
+    "api_url": null,
+    "tags": [
+      "neobank"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "webflow",
+    "name": "Webflow",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/webflow",
+    "api_url": null,
+    "tags": [
+      "nocode",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "loom",
+    "name": "Loom",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/loom",
+    "api_url": null,
+    "tags": [
+      "video",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "zoom",
+    "name": "Zoom",
     "ats": "workday",
-    "board_url": "https://careers.bankofamerica.com",
-    "tags": ["bank", "finserv", "pm"],
+    "board_url": "https://zoom.wd5.myworkdayjobs.com/en-US/Zoom",
+    "api_url": "https://zoom.wd5.myworkdayjobs.com/wday/cxs/zoom/Zoom/jobs",
+    "tags": [
+      "video",
+      "saas",
+      "bigtech"
+    ],
+    "industry": "Tech",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "global"
   },
   {
-    "id": "wellsfargo",
-    "name": "Wells Fargo",
+    "id": "nvidia",
+    "name": "Nvidia",
     "ats": "workday",
-    "board_url": "https://www.wellsfargo.com/about/careers/",
-    "tags": ["bank", "finserv", "program", "pm"],
+    "board_url": "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite",
+    "api_url": "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs",
+    "tags": [
+      "hardware",
+      "ai",
+      "bigtech"
+    ],
+    "industry": "Tech",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "global"
   },
   {
-    "id": "truist",
-    "name": "Truist",
+    "id": "cisco",
+    "name": "Cisco",
     "ats": "workday",
-    "board_url": "https://www.truist.com/careers",
-    "tags": ["bank", "finserv", "transformation", "pm"],
+    "board_url": "https://cisco.wd1.myworkdayjobs.com/en-US/Cisco_Careers",
+    "api_url": "https://cisco.wd1.myworkdayjobs.com/wday/cxs/cisco/Cisco_Careers/jobs",
+    "tags": [
+      "networking",
+      "bigtech"
+    ],
+    "industry": "IT",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "global"
   },
   {
-    "id": "allyfinancial",
-    "name": "Ally Financial",
+    "id": "salesforce",
+    "name": "Salesforce",
     "ats": "workday",
-    "board_url": "https://careers.ally.com",
-    "tags": ["fintech", "finserv", "pm", "digital"],
+    "board_url": "https://salesforce.wd1.myworkdayjobs.com/en-US/External_Career_Site",
+    "api_url": "https://salesforce.wd1.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/jobs",
+    "tags": [
+      "crm",
+      "saas",
+      "bigtech"
+    ],
+    "industry": "IT",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "global"
   },
   {
-    "id": "vanguard",
-    "name": "Vanguard",
-    "ats": "workday",
-    "board_url": "https://careers.vanguard.com",
-    "tags": ["finserv", "pm", "platform"],
+    "id": "atlassian",
+    "name": "Atlassian",
+    "ats": "smartrecruiters",
+    "board_url": "https://careers.smartrecruiters.com/Atlassian",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/atlassian/postings",
+    "tags": [
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "global"
   },
   {
-    "id": "lowestech",
-    "name": "Lowe’s Tech",
-    "ats": "workday",
-    "board_url": "https://lowes.com/careers",
-    "tags": ["tech", "retail", "pm", "product"],
+    "id": "bosch",
+    "name": "Bosch",
+    "ats": "smartrecruiters",
+    "board_url": "https://jobs.smartrecruiters.com/BoschGroup",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/boschgroup/postings",
+    "tags": [
+      "hardware",
+      "global"
+    ],
+    "industry": "Other",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "global"
   },
   {
-    "id": "tiaa",
-    "name": "TIAA",
-    "ats": "workday",
-    "board_url": "https://tiaa.org/careers",
-    "tags": ["finserv", "pm", "program"],
+    "id": "ramp",
+    "name": "Ramp",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/ramp",
+    "api_url": null,
+    "tags": [
+      "fintech",
+      "card",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "us"
   },
   {
-    "id": "aig",
-    "name": "AIG",
-    "ats": "workday",
-    "board_url": "https://aig.com/careers",
-    "tags": ["insurance", "pm", "program"],
+    "id": "plaid",
+    "name": "Plaid",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/plaid",
+    "api_url": null,
+    "tags": [
+      "fintech",
+      "api",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": "NC"
+    "hq_state": null,
+    "region": "us"
   },
   {
-    "id": "axa",
-    "name": "AXA",
-    "ats": "workday",
-    "board_url": "https://axa.com/careers",
-    "tags": ["insurance", "pm", "enterprise"],
+    "id": "affirm",
+    "name": "Affirm",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/affirm",
+    "api_url": null,
+    "tags": [
+      "bnpl",
+      "consumer",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
-    "id": "equitable",
-    "name": "Equitable",
-    "ats": "workday",
-    "board_url": "https://equitable.com/careers",
-    "tags": ["finserv", "pm", "delivery"],
+    "id": "sofi",
+    "name": "SoFi",
+    "ats": "smartrecruiters",
+    "board_url": "https://careers.smartrecruiters.com/SoFi",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/sofi/postings",
+    "tags": [
+      "loans",
+      "bank",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
   },
   {
-    "id": "toshiba_global_commerce_solutions",
-    "name": "Toshiba Global Commerce Solutions",
-    "ats": "external",
-    "board_url": "https://www.toshibabenefits.com/external-careers",
-    "tags": ["technology", "commerce"],
+    "id": "betterment",
+    "name": "Betterment",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/betterment",
+    "api_url": null,
+    "tags": [
+      "investment",
+      "roboadvisor",
+      "us"
+    ],
+    "industry": "Fintech",
     "priority": 0,
-    "hq_state": null
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "wealthfront",
+    "name": "Wealthfront",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/wealthfront",
+    "api_url": null,
+    "tags": [
+      "investment",
+      "roboadvisor",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "upgrade",
+    "name": "Upgrade",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/upgrade",
+    "api_url": null,
+    "tags": [
+      "loans",
+      "cards",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "varo_bank",
+    "name": "Varo Bank",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/varomoney",
+    "api_url": null,
+    "tags": [
+      "neobank",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "current",
+    "name": "Current",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/current",
+    "api_url": null,
+    "tags": [
+      "neobank",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "mercury",
+    "name": "Mercury",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/mercury",
+    "api_url": null,
+    "tags": [
+      "banking",
+      "startup",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "ramp_network",
+    "name": "Ramp Network",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/rampnetwork",
+    "api_url": null,
+    "tags": [
+      "crypto",
+      "payments",
+      "global"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "miro",
+    "name": "Miro",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/miro",
+    "api_url": null,
+    "tags": [
+      "collaboration",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "asana",
+    "name": "Asana",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/asana",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "snowflake",
+    "name": "Snowflake",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/snowflake",
+    "api_url": null,
+    "tags": [
+      "data",
+      "saas",
+      "us"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "mongodb",
+    "name": "MongoDB",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/mongodb",
+    "api_url": null,
+    "tags": [
+      "database",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "confluent",
+    "name": "Confluent",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/confluent",
+    "api_url": null,
+    "tags": [
+      "data",
+      "streaming",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "gitlab",
+    "name": "GitLab",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/gitlab",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "hashicorp",
+    "name": "HashiCorp",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/hashicorp",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "cloud"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "elastic",
+    "name": "Elastic",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/elastic",
+    "api_url": null,
+    "tags": [
+      "search",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "snyk",
+    "name": "Snyk",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/snyk",
+    "api_url": null,
+    "tags": [
+      "security",
+      "devtools"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "zapier",
+    "name": "Zapier",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/zapier",
+    "api_url": null,
+    "tags": [
+      "automation",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "launchdarkly",
+    "name": "LaunchDarkly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/launchdarkly",
+    "api_url": null,
+    "tags": [
+      "feature-flags",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "calendly",
+    "name": "Calendly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/calendly",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "zoominfo",
+    "name": "ZoomInfo",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/zoominfo",
+    "api_url": null,
+    "tags": [
+      "sales",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "servicetitan",
+    "name": "ServiceTitan",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/servicetitan",
+    "api_url": null,
+    "tags": [
+      "field-service",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "gusto",
+    "name": "Gusto",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/gusto",
+    "api_url": null,
+    "tags": [
+      "payroll",
+      "hr",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "rippling",
+    "name": "Rippling",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/rippling",
+    "api_url": null,
+    "tags": [
+      "hr",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "drift",
+    "name": "Drift",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/drift",
+    "api_url": null,
+    "tags": [
+      "marketing",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "hubspot",
+    "name": "HubSpot",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/hubspot",
+    "api_url": null,
+    "tags": [
+      "crm",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "shopify",
+    "name": "Shopify",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/shopify",
+    "api_url": null,
+    "tags": [
+      "ecommerce",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "canada"
+  },
+  {
+    "id": "wealthsimple",
+    "name": "Wealthsimple",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/wealthsimple",
+    "api_url": null,
+    "tags": [
+      "investment",
+      "canada"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "canada"
+  },
+  {
+    "id": "intercom",
+    "name": "Intercom",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/intercom",
+    "api_url": null,
+    "tags": [
+      "saas",
+      "support",
+      "product",
+      "global"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "vercel",
+    "name": "Vercel",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/vercel",
+    "api_url": null,
+    "tags": [
+      "saas",
+      "frontend",
+      "developer-tools"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "netlify",
+    "name": "Netlify",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/netlify",
+    "api_url": null,
+    "tags": [
+      "saas",
+      "frontend",
+      "hosting"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "algolia",
+    "name": "Algolia",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/algolia",
+    "api_url": null,
+    "tags": [
+      "search",
+      "saas",
+      "api"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "circleci",
+    "name": "CircleCI",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/circleci",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "ci",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "digitalocean",
+    "name": "DigitalOcean",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/digitalocean",
+    "api_url": null,
+    "tags": [
+      "cloud",
+      "infra",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "fastly",
+    "name": "Fastly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/fastly",
+    "api_url": null,
+    "tags": [
+      "cdn",
+      "edge",
+      "infra"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "pagerduty",
+    "name": "PagerDuty",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/pagerduty",
+    "api_url": null,
+    "tags": [
+      "incident",
+      "saas",
+      "devops"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "sentry",
+    "name": "Sentry",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/sentry",
+    "api_url": null,
+    "tags": [
+      "observability",
+      "errors",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "postman",
+    "name": "Postman",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/postman",
+    "api_url": null,
+    "tags": [
+      "api",
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/openai",
+    "api_url": null,
+    "tags": [
+      "ai",
+      "research",
+      "platform"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "databricks",
+    "name": "Databricks",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/databricks",
+    "api_url": null,
+    "tags": [
+      "data",
+      "lakehouse",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "snowplow",
+    "name": "Snowplow",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/snowplow",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "data",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "retool",
+    "name": "Retool",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/retool",
+    "api_url": null,
+    "tags": [
+      "internal-tools",
+      "lowcode",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "linear",
+    "name": "Linear",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/linear",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "pm-tools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "vanta",
+    "name": "Vanta",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/vanta",
+    "api_url": null,
+    "tags": [
+      "security",
+      "compliance",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "abnormal_security",
+    "name": "Abnormal Security",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/abnormalsecurity",
+    "api_url": null,
+    "tags": [
+      "security",
+      "email",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "tailscale",
+    "name": "Tailscale",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/tailscale",
+    "api_url": null,
+    "tags": [
+      "networking",
+      "security",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "honeycomb",
+    "name": "Honeycomb",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/honeycomb",
+    "api_url": null,
+    "tags": [
+      "observability",
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "sourcegraph",
+    "name": "Sourcegraph",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/sourcegraph",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "code-search",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "cockroach_labs",
+    "name": "Cockroach Labs",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/cockroachlabs",
+    "api_url": null,
+    "tags": [
+      "database",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "segment",
+    "name": "Segment",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/segment",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "data",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "heap",
+    "name": "Heap",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/heap",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "product",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "amplitude",
+    "name": "Amplitude",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/amplitude",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "product",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
   }
 ]
-

@@ -1,0 +1,85 @@
+{
+  "industries": [
+    {
+      "id": "fintech",
+      "name": "Fintech & Banking",
+      "aliases": ["fintech", "banking", "financial services", "financial technology"],
+      "priority": 10,
+      "tags": ["fintech", "banking", "payments", "trading", "investment", "neobank", "cards"],
+      "show_by_default": true
+    },
+    {
+      "id": "bigtech",
+      "name": "Big Tech (FAANG+)",
+      "aliases": ["big tech", "faang", "maang", "mega tech"],
+      "priority": 10,
+      "tags": ["bigtech", "faang", "enterprise", "tech giant"],
+      "companies": ["Google", "Meta", "Amazon", "Apple", "Microsoft", "Salesforce", "Oracle", "IBM"],
+      "show_by_default": true
+    },
+    {
+      "id": "enterprise_saas",
+      "name": "Enterprise SaaS",
+      "aliases": ["saas", "b2b saas", "enterprise software", "business software"],
+      "priority": 9,
+      "tags": ["saas", "b2b", "enterprise", "cloud software"],
+      "show_by_default": true
+    },
+    {
+      "id": "cloud_infrastructure",
+      "name": "Cloud & Infrastructure",
+      "aliases": ["cloud", "infrastructure", "platform", "devops"],
+      "priority": 8,
+      "tags": ["cloud", "infra", "devtools", "platform", "infrastructure"],
+      "show_by_default": true
+    },
+    {
+      "id": "security",
+      "name": "Cybersecurity",
+      "aliases": ["security", "cybersecurity", "infosec"],
+      "priority": 7,
+      "tags": ["security", "cybersecurity", "infosec", "compliance"],
+      "show_by_default": true
+    },
+    {
+      "id": "data_analytics",
+      "name": "Data & Analytics",
+      "aliases": ["data", "analytics", "ai", "machine learning"],
+      "priority": 7,
+      "tags": ["data", "analytics", "ai", "ml", "business intelligence"],
+      "show_by_default": true
+    },
+    {
+      "id": "ecommerce",
+      "name": "E-commerce",
+      "aliases": ["ecommerce", "e-commerce", "marketplace", "retail tech"],
+      "priority": 6,
+      "tags": ["ecommerce", "marketplace", "retail", "shopping"],
+      "show_by_default": true
+    },
+    {
+      "id": "healthcare",
+      "name": "Healthcare & Pharma",
+      "aliases": ["healthcare", "health tech", "pharma", "medical"],
+      "priority": 3,
+      "tags": ["healthcare", "pharma", "medtech", "health", "medical"],
+      "show_by_default": false
+    },
+    {
+      "id": "travel_hospitality",
+      "name": "Travel & Hospitality",
+      "aliases": ["travel", "hospitality", "tourism"],
+      "priority": 2,
+      "tags": ["travel", "hospitality", "tourism", "hotel"],
+      "show_by_default": false
+    },
+    {
+      "id": "other",
+      "name": "Other Industries",
+      "aliases": ["other", "miscellaneous"],
+      "priority": 1,
+      "tags": [],
+      "show_by_default": false
+    }
+  ]
+}
