@@ -433,6 +433,32 @@
         min-width: auto;
       }
 
+      /* Status row colors */
+      tr[data-status="Applied"] {
+        background: rgba(96, 165, 250, 0.1);
+      }
+      tr[data-status="Interview"] {
+        background: rgba(34, 197, 94, 0.15);
+      }
+      tr[data-status="Offer"] {
+        background: rgba(34, 197, 94, 0.25);
+      }
+      tr[data-status="Rejected"] {
+        background: rgba(239, 68, 68, 0.1);
+      }
+      tr[data-status="Withdrawn"] {
+        background: rgba(156, 163, 175, 0.1);
+      }
+      tr[data-status="Closed"] {
+        background: rgba(156, 163, 175, 0.1);
+        opacity: 0.7;
+      }
+      
+      .status-icon {
+        margin-right: 4px;
+        font-size: 10px;
+      }
+
       /* Status select inside table */
       .statusSelect {
         min-width: 120px;
@@ -1414,10 +1440,18 @@
           <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
             ${["New", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
               .map(
-                (x) =>
-                  `<option value="${x}" ${
-                    x === st ? "selected" : ""
-                  }>${x}</option>`
+                (x) => {
+                  const icons = {
+                    "New": "⚪",
+                    "Applied": "📤",
+                    "Interview": "🎯",
+                    "Offer": "🎉",
+                    "Rejected": "❌",
+                    "Withdrawn": "🔙",
+                    "Closed": "🔒"
+                  };
+                  return `<option value="${x}" ${x === st ? "selected" : ""}>${icons[x] || ""} ${x}</option>`;
+                }
               )
               .join("")}
           </select>
