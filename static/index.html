@@ -1502,39 +1502,40 @@
       }
 
       // Fast load from Pipeline (no ATS parsing)
-      async function loadJobsFromPipeline() {
+      // Load jobs from cache (fast) or ATS if no cache
+      async function loadJobsFromCache() {
         // Don't load if jobs already loaded
-        if (ALL_JOBS.length > 0) {
-          console.log("loadJobsFromPipeline skipped - jobs already loaded");
+        if (ALL_JOBS_RAW.length > 0) {
+          console.log("loadJobsFromCache skipped - jobs already loaded");
           const filtered = applyFilters(ALL_JOBS);
           renderJobs(filtered);
           return;
         }
         
-        console.log("loadJobsFromPipeline started");
+        console.log("loadJobsFromCache started");
         setLoading(true, "Loading…");
         try {
-          const res = await fetch("/pipeline/all");
+          // Load from /jobs which uses cache (no refresh param = use cache)
+          const res = await fetch("/jobs?profile=all");
           console.log("fetch done, status:", res.status);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
           const data = await res.json();
-          console.log("got jobs:", data.jobs?.length);
+          console.log("got jobs from cache:", data.jobs?.length);
           
-          // Only set if ALL_JOBS still empty (refresh might have finished)
-          if (ALL_JOBS.length === 0) {
-            ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
-            LAST_LOADED_AT = new Date().toLocaleString();
-          }
+          // Store all jobs
+          ALL_JOBS_RAW = enrichJobsLocationNorm(data.jobs || []);
+          ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
+          LAST_LOADED_AT = new Date().toLocaleString();
 
           const filtered = applyFilters(ALL_JOBS);
           console.log("filtered jobs:", filtered.length);
           renderJobs(filtered);
 
           setLoading(false, "Loaded");
-          console.log("loadJobsFromPipeline done");
+          console.log("loadJobsFromCache done");
         } catch (e) {
-          console.error("loadJobsFromPipeline error:", e);
+          console.error("loadJobsFromCache error:", e);
           setLoading(false, "Error");
         }
       }
@@ -1747,14 +1748,13 @@
               updateStatus();
             }
           } else if (tab === "jobs") {
-            if (ALL_JOBS.length > 0) {
+            if (ALL_JOBS_RAW.length > 0) {
               // Jobs already loaded - just filter and render
               const filtered = applyFilters(ALL_JOBS);
               renderJobs(filtered);
             } else {
-              // No jobs loaded yet - load from Pipeline (fast)
-              // backgroundRefresh will update later if running
-              loadJobsFromPipeline();
+              // No jobs loaded yet - load from cache
+              loadJobsFromCache();
             }
           }
         });
@@ -1889,12 +1889,12 @@
         document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
         document.getElementById("tab-jobs").classList.add("active");
         
-        // If jobs already loaded, filter. Otherwise load from Pipeline.
-        if (ALL_JOBS.length > 0) {
+        // If jobs already loaded, filter. Otherwise load from cache.
+        if (ALL_JOBS_RAW.length > 0) {
           const filtered = applyFilters(ALL_JOBS);
           renderJobs(filtered);
         } else {
-          loadJobsFromPipeline();
+          loadJobsFromCache();
         }
       }
       
