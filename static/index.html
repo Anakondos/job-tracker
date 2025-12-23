@@ -947,6 +947,7 @@
       let ALL_JOBS = [];      // Jobs after role filter
       let LAST_LOADED_AT = null;
       let isRefreshing = false;
+      let CACHED_STATS = null;  // Pre-computed funnel stats from backend
 
       // My Roles filter settings
       const MY_ROLES = ['product', 'tpm_program', 'project'];
@@ -1545,9 +1546,6 @@
           );
         }
       }
-      
-      // Cached funnel stats from backend
-      let CACHED_STATS = null;
 
       // Fast load: stats + pipeline jobs only
       async function loadJobsFromCache() {
