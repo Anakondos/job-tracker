@@ -1162,8 +1162,15 @@
           if (!j.location_norm) {
             j.location_norm = normalizeLocation(j.location || "");
           }
-          // status fallback
-          if (!j.application_status) j.application_status = "New";
+          // status fallback - Pipeline uses 'status', legacy uses 'application_status'
+          if (!j.status && !j.application_status) {
+            j.status = "New";
+            j.application_status = "New";
+          } else if (j.status && !j.application_status) {
+            j.application_status = j.status;
+          } else if (!j.status && j.application_status) {
+            j.status = j.application_status;
+          }
         }
         return jobs;
       }
@@ -1397,15 +1404,16 @@
         }
       }
 
-      async function persistStatus(profile, job_key, status) {
+      async function persistStatus(jobId, status) {
         try {
-          const res = await fetch("/job_status", {
+          const res = await fetch("/pipeline/status", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profile, job_key, status }),
+            body: JSON.stringify({ job_id: jobId, status: status }),
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return true;
+          const data = await res.json();
+          return data.ok;
         } catch (e) {
           console.error(e);
           alert("Failed to save status. Check server logs.");
@@ -1474,18 +1482,21 @@
           const sel = row.querySelector("select.statusSelect");
           sel.addEventListener("change", async (e) => {
             const newStatus = e.target.value;
-            const key = e.target.getAttribute("data-jobkey") || "";
+            const jobId = job.id;  // Use job.id for Pipeline
+            const oldStatus = st;
 
             // optimistic update
             job.application_status = newStatus;
+            job.status = newStatus;  // Pipeline uses 'status' field
             row.dataset.status = newStatus;
 
-            const ok = await persistStatus("all", key, newStatus);
+            const ok = await persistStatus(jobId, newStatus);
             if (!ok) {
               // revert
-              e.target.value = st;
-              job.application_status = st;
-              row.dataset.status = st;
+              e.target.value = oldStatus;
+              job.application_status = oldStatus;
+              job.status = oldStatus;
+              row.dataset.status = oldStatus;
             } else {
               // if status filter active, re-render
               const filtered = applyFilters(ALL_JOBS);
