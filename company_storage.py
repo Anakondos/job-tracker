@@ -63,6 +63,9 @@ def load_profile(profile_name: str):
             "region": c.get("region")
         }
     
+    # Filter out disabled companies
+    all_companies = [c for c in all_companies if c.get("enabled", True) != False]
+    
     # Если "all" - возвращаем все компании
     if profile_name == "all":
         return [to_parser_format(c) for c in all_companies]
