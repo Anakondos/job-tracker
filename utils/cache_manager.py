@@ -10,8 +10,17 @@ CACHE_DIR = Path(__file__).parent.parent / "cache"
 CACHE_DIR.mkdir(exist_ok=True)
 TTL_HOURS = 6
 
+# Stats file path
+STATS_FILE = CACHE_DIR / "stats.json"
+
+# My Roles / My Location constants (same as in main.py)
+MY_ROLES = ["product", "tpm_program", "project"]
+MY_LOCATION_STATES = {"NC", "VA", "SC", "GA", "TN"}
+
+
 def get_cache_path(cache_key: str) -> Path:
     return CACHE_DIR / f"jobs_{cache_key}.json"
+
 
 def is_cache_valid(cache_data: Dict) -> bool:
     if not cache_data:
@@ -28,6 +37,7 @@ def is_cache_valid(cache_data: Dict) -> bool:
         return age < timedelta(hours=TTL_HOURS)
     except:
         return False
+
 
 def load_cache(cache_key: str = "all") -> Optional[Dict]:
     cache_path = get_cache_path(cache_key)
@@ -47,7 +57,9 @@ def load_cache(cache_key: str = "all") -> Optional[Dict]:
     except:
         return None
 
+
 def save_cache(cache_key: str, jobs: List[Dict]) -> bool:
+    """Save jobs to cache and compute stats."""
     cache_data = {
         "last_updated": datetime.now(timezone.utc).isoformat(),
         "ttl_hours": TTL_HOURS,
@@ -62,10 +74,96 @@ def save_cache(cache_key: str, jobs: List[Dict]) -> bool:
         with cache_path.open("w", encoding="utf-8") as f:
             json.dump(cache_data, f, ensure_ascii=False, indent=2)
         print(f"✅ Cached {len(jobs)} jobs for '{cache_key}'")
+        
+        # Also compute and save stats
+        if cache_key == "all":
+            compute_and_save_stats(jobs)
+        
         return True
     except Exception as e:
         print(f"❌ Cache save error: {e}")
         return False
+
+
+def compute_and_save_stats(jobs: List[Dict]) -> Dict:
+    """Compute funnel stats from all jobs and save to stats.json."""
+    total = len(jobs)
+    
+    # Role filter (My Roles)
+    role_jobs = [j for j in jobs if j.get("role_family") in MY_ROLES and not j.get("role_excluded")]
+    role_count = len(role_jobs)
+    
+    # US filter
+    us_jobs = [j for j in role_jobs if _is_us_job(j)]
+    us_count = len(us_jobs)
+    
+    # My Area filter (My Location states + Remote USA)
+    my_area_jobs = [j for j in us_jobs if _is_my_area_job(j)]
+    my_area_count = len(my_area_jobs)
+    
+    stats = {
+        "total": total,
+        "role": role_count,
+        "us": us_count,
+        "my_area": my_area_count,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    try:
+        with STATS_FILE.open("w", encoding="utf-8") as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+        print(f"✅ Stats saved: Total={total}, Role={role_count}, US={us_count}, MyArea={my_area_count}")
+    except Exception as e:
+        print(f"❌ Stats save error: {e}")
+    
+    return stats
+
+
+def _is_us_job(job: Dict) -> bool:
+    """Check if job is in US."""
+    loc_norm = job.get("location_norm", {}) or {}
+    state = loc_norm.get("state", "")
+    remote_scope = (loc_norm.get("remote_scope") or "").lower()
+    
+    # Has US state
+    if state and len(state) == 2:
+        return True
+    
+    # Remote USA
+    if loc_norm.get("remote") and remote_scope in ["usa", "us"]:
+        return True
+    
+    return False
+
+
+def _is_my_area_job(job: Dict) -> bool:
+    """Check if job is in My Location (5 states + Remote USA)."""
+    loc_norm = job.get("location_norm", {}) or {}
+    state = (loc_norm.get("state") or "").upper()
+    remote_scope = (loc_norm.get("remote_scope") or "").lower()
+    
+    # In My Location states
+    if state in MY_LOCATION_STATES:
+        return True
+    
+    # Remote USA
+    if loc_norm.get("remote") and remote_scope in ["usa", "us"]:
+        return True
+    
+    return False
+
+
+def load_stats() -> Optional[Dict]:
+    """Load cached stats."""
+    if not STATS_FILE.exists():
+        return None
+    
+    try:
+        with STATS_FILE.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return None
+
 
 def clear_cache(cache_key: str = None) -> bool:
     try:
@@ -76,9 +174,13 @@ def clear_cache(cache_key: str = None) -> bool:
         else:
             for cache_file in CACHE_DIR.glob("jobs_*.json"):
                 cache_file.unlink()
+            # Also clear stats
+            if STATS_FILE.exists():
+                STATS_FILE.unlink()
         return True
     except:
         return False
+
 
 def get_cache_info(cache_key: str = "all") -> Dict:
     cache_data = load_cache(cache_key)

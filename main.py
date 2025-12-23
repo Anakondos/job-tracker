@@ -24,7 +24,7 @@ from parsers.smartrecruiters import fetch_smartrecruiters
 from parsers.ashby import fetch_ashby_jobs
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
-from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info
+from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info, load_stats
 from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
 from storage.pipeline_storage import (
     load_new_jobs, load_pipeline_jobs, load_archive_jobs,
@@ -860,6 +860,23 @@ def cache_clear_all_endpoint():
     """Clear all caches"""
     clear_cache()
     return {"ok": True, "message": "All caches cleared"}
+
+
+@app.get("/stats")
+def get_funnel_stats():
+    """Get funnel stats (Total -> Role -> US -> My Area) from cache."""
+    stats = load_stats()
+    if stats:
+        return stats
+    else:
+        return {
+            "total": 0,
+            "role": 0,
+            "us": 0,
+            "my_area": 0,
+            "updated_at": None,
+            "message": "Stats not computed yet. Run /jobs?refresh=true first."
+        }
 
 
 # ============= PIPELINE ENDPOINTS =============

@@ -1353,27 +1353,15 @@
         const statusPipeline = document.getElementById("statusPipeline");
         const statusGeo = document.getElementById("statusGeo");
 
-        // Pipeline visualization - universal for both tabs
-        if (LAST_LOADED_AT || ALL_JOBS_RAW.length > 0) {
-          const totalRaw = ALL_JOBS_RAW.length;
+        // Pipeline visualization - use cached stats if available
+        if (CACHED_STATS || LAST_LOADED_AT || ALL_JOBS_RAW.length > 0) {
+          // Use cached stats from backend for Total/Role/US/MyArea
+          const totalRaw = CACHED_STATS?.total || ALL_JOBS_RAW.length;
+          const roleCount = CACHED_STATS?.role || filterRelevantRoles(ALL_JOBS_RAW).length;
+          const usCount = CACHED_STATS?.us || 0;
+          const myAreaCount = CACHED_STATS?.my_area || 0;
           
-          // Calculate Role count (Product, TPM, Program)
-          const roleCount = filterRelevantRoles(ALL_JOBS_RAW).length;
-          
-          // Calculate US count from role-filtered jobs
-          const roleJobs = filterRelevantRoles(ALL_JOBS_RAW);
-          const usCount = roleJobs.filter(j => isUSHeuristic(j)).length;
-          
-          // Calculate My Area count (5 states + Remote USA)
-          const myAreaCount = roleJobs.filter(j => {
-            const ln = j.location_norm || {};
-            const state = ln.state || '';
-            const remote = ln.remote || false;
-            const remoteScope = ln.remote_scope || '';
-            return MY_LOCATION_STATES.includes(state) || (remote && remoteScope === 'usa');
-          }).length;
-          
-          // Get shown count from filtered jobs
+          // Get shown count from filtered jobs (live count)
           const shownCount = latestFilteredJobs ? latestFilteredJobs.length : ALL_JOBS.length;
           
           const steps = [
@@ -1557,9 +1545,11 @@
           );
         }
       }
+      
+      // Cached funnel stats from backend
+      let CACHED_STATS = null;
 
-      // Fast load from Pipeline (no ATS parsing)
-      // Load jobs from cache (fast) or ATS if no cache
+      // Fast load: stats + pipeline jobs only
       async function loadJobsFromCache() {
         // Don't load if jobs already loaded
         if (ALL_JOBS_RAW.length > 0) {
@@ -1572,15 +1562,22 @@
         console.log("loadJobsFromCache started");
         setLoading(true, "Loading…");
         try {
-          // Load from /jobs which uses cache (no refresh param = use cache)
-          const res = await fetch("/jobs?profile=all");
+          // 1. Load funnel stats (tiny ~100 bytes)
+          const statsRes = await fetch("/stats");
+          if (statsRes.ok) {
+            CACHED_STATS = await statsRes.json();
+            console.log("Stats loaded:", CACHED_STATS);
+          }
+          
+          // 2. Load Pipeline jobs only (not full cache)
+          const res = await fetch("/pipeline/all");
           console.log("fetch done, status:", res.status);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
           const data = await res.json();
-          console.log("got jobs from cache:", data.jobs?.length);
+          console.log("got pipeline jobs:", data.count);
           
-          // Store all jobs
+          // Store pipeline jobs
           ALL_JOBS_RAW = enrichJobsLocationNorm(data.jobs || []);
           ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
           LAST_LOADED_AT = new Date().toLocaleString();
@@ -1974,11 +1971,23 @@
         setLoading(true, "Refreshing ATS...");
         
         try {
-          // Fetch fresh jobs from ATS
+          // Fetch fresh jobs from ATS (this updates cache + stats)
           const res = await fetch("/jobs?profile=all&refresh=true");
           const data = await res.json();
-          // Store all jobs - role filtering done via My Roles toggle
-          ALL_JOBS_RAW = enrichJobsLocationNorm(data.jobs || []);
+          
+          // Reload stats (now updated by backend)
+          const statsRes = await fetch("/stats");
+          if (statsRes.ok) {
+            CACHED_STATS = await statsRes.json();
+            console.log("Stats refreshed:", CACHED_STATS);
+          }
+          
+          // Reload pipeline jobs
+          const pipelineRes = await fetch("/pipeline/all");
+          const pipelineData = await pipelineRes.json();
+          
+          // Store pipeline jobs
+          ALL_JOBS_RAW = enrichJobsLocationNorm(pipelineData.jobs || []);
           ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
           
           // Re-render if on Jobs tab
@@ -1986,6 +1995,9 @@
           if (jobsTabActive) {
             const filtered = applyFilters(ALL_JOBS);
             renderJobs(filtered);
+            updateStatus(filtered);  // Update header with new stats
+          } else {
+            updateStatus(null);  // Update header even if not on Jobs tab
           }
           
           // Reload companies stats
