@@ -31,6 +31,65 @@
           rgba(255, 255, 255, 0.03),
           transparent
         );
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .my-location-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.15s;
+        user-select: none;
+      }
+      .my-location-toggle:hover {
+        background: var(--hover);
+        border-color: var(--accent);
+      }
+      .my-location-toggle input {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+      .my-location-toggle input:checked + span {
+        color: var(--accent);
+      }
+      .refresh-btn {
+        background: var(--card);
+        border: 1px solid var(--border);
+        color: var(--fg);
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        white-space: nowrap;
+        transition: all 0.15s;
+      }
+      .refresh-btn:hover:not(:disabled) {
+        background: var(--hover);
+        border-color: var(--accent);
+      }
+      .refresh-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
       }
       h1 {
         margin: 0;
@@ -42,6 +101,93 @@
         color: var(--muted);
         font-size: 12px;
       }
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        padding: 0 18px;
+        background: var(--panel);
+      }
+      .tab-btn {
+        padding: 12px 20px;
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 14px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: all 0.15s;
+      }
+      .tab-btn:hover {
+        color: var(--text);
+      }
+      .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      
+      /* Companies table */
+      .companies-summary {
+        display: flex;
+        gap: 20px;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+      }
+      .summary-item {
+        text-align: center;
+      }
+      .summary-value {
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .summary-label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .company-row {
+        cursor: pointer;
+      }
+      .company-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .ats-badge {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        background: rgba(255,255,255,0.08);
+      }
+      .status-ok {
+        color: #22c55e;
+      }
+      .status-error {
+        color: #ef4444;
+      }
+      .status-unknown {
+        color: var(--muted);
+      }
+      .jobs-badge {
+        background: var(--accent);
+        color: #000;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .jobs-badge.zero {
+        background: var(--border);
+        color: var(--muted);
+      }
+
       .wrap {
         padding: 14px 18px 24px;
       }
@@ -186,7 +332,7 @@
       /* Multi-select dropdown */
       .ms {
         position: relative;
-        min-width: 240px;
+        min-width: 180px;
       }
       .msBtn {
         width: 100%;
@@ -202,50 +348,74 @@
       }
       .msMenu {
         position: absolute;
-        top: calc(100% + 8px);
+        top: calc(100% + 4px);
         left: 0;
-        width: 100%;
-        max-height: 320px;
-        overflow: auto;
-        background: var(--panel);
+        min-width: 200px;
+        max-height: 280px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: #1e2128;
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 8px;
+        border-radius: 8px;
+        padding: 6px;
         display: none;
-        z-index: 50;
-        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+        z-index: 100;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
       }
       .ms.open .msMenu {
         display: block;
       }
       .msSearch {
-        width: calc(100% - 22px);
-        margin: 6px 0 8px;
-        padding: 9px 10px;
-        border-radius: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 6px;
+        padding: 6px 10px;
+        border-radius: 4px;
         border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(255, 255, 255, 0.05);
+        font-size: 13px;
       }
       .msItem {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         align-items: center;
-        padding: 8px 8px;
-        border-radius: 10px;
+        padding: 6px 8px;
+        border-radius: 4px;
         cursor: pointer;
       }
       .msItem:hover {
-        background: rgba(255, 255, 255, 0.04);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .msItem input[type="checkbox"] {
+        width: 14px;
+        height: 14px;
+        min-width: 14px;
+        margin: 0;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+      .msItem label {
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--text);
+        white-space: nowrap;
+      }
+      .msItem input[type="checkbox"]:checked + label {
+        color: var(--accent);
+        font-weight: 500;
       }
       .msFooter {
         display: flex;
-        gap: 8px;
-        margin-top: 8px;
+        gap: 6px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid var(--border);
       }
       .msFooter button {
         flex: 1;
-        padding: 9px 10px;
-        border-radius: 10px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
       }
       .ghost {
         opacity: 0.45;
@@ -270,16 +440,222 @@
         border-radius: 10px;
         font-size: 12px;
       }
+
+      /* ========== STATUS BAR ========== */
+      .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        flex-wrap: wrap;
+        padding: 8px 0;
+      }
+
+      .status-main {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+
+      .status-count {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--accent);
+        line-height: 1;
+      }
+
+      .status-count.zero {
+        color: var(--muted);
+      }
+
+      .status-label {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .status-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pipe-item {
+        padding: 2px 8px;
+        background: var(--card);
+        border-radius: 4px;
+      }
+
+      .pipe-item.active {
+        background: var(--accent);
+        color: var(--bg);
+      }
+
+      .pipe-arrow {
+        color: var(--muted);
+        opacity: 0.5;
+      }
+
+      .status-geo {
+        display: flex;
+        gap: 8px;
+      }
+
+      .geo-badge {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .geo-badge.nc {
+        background: #10b98120;
+        color: #10b981;
+      }
+
+      .geo-badge.neighbor {
+        background: #3b82f620;
+        color: #3b82f6;
+      }
+
+      .geo-badge.remote {
+        background: #8b5cf620;
+        color: #8b5cf6;
+      }
+
+      .geo-badge .geo-count {
+        font-weight: 700;
+      }
+
+      /* Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        width: 400px;
+        max-width: 90vw;
+      }
+      .modal h3 {
+        margin: 0 0 16px 0;
+        font-size: 18px;
+      }
+      .modal label {
+        display: block;
+        margin-bottom: 12px;
+      }
+      .modal input, .modal select {
+        width: 100%;
+        padding: 8px 12px;
+        margin-top: 4px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+        justify-content: flex-end;
+      }
     </style>
   </head>
   <body>
     <header>
-      <h1>Job Tracker</h1>
-      <div class="sub">
-        <span id="jobsCount">Not loaded yet</span>
+      <div class="header-left">
+        <h1>Job Tracker</h1>
+        <div class="status-bar" id="statusBar">
+          <div class="status-main">
+            <span class="status-count" id="statusCount">—</span>
+            <span class="status-label">jobs shown</span>
+          </div>
+          <div class="status-pipeline" id="statusPipeline">
+            <span class="pipe-item">Not loaded</span>
+          </div>
+          <div class="status-geo" id="statusGeo"></div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <label class="my-location-toggle">
+          <input type="checkbox" id="myLocationToggle" checked>
+          <span>📍 My Location</span>
+        </label>
+        <button class="refresh-btn" id="refreshBtn">🔄 Refresh from ATS</button>
       </div>
     </header>
 
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="companies">Companies</button>
+      <button class="tab-btn" data-tab="jobs">All Jobs</button>
+    </div>
+
+    <!-- Companies Tab -->
+    <div class="tab-content active" id="tab-companies">
+      <div class="wrap">
+        <div class="companies-summary" id="companiesSummary">
+          <div class="summary-item">
+            <div class="summary-value" id="summaryCompanies">—</div>
+            <div class="summary-label">Companies</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value" id="summaryJobs">—</div>
+            <div class="summary-label">Positions</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value" id="summaryNew">—</div>
+            <div class="summary-label">New</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value" id="summaryApplied">—</div>
+            <div class="summary-label">Applied</div>
+          </div>
+          <button id="addCompanyBtn" class="ghost" style="margin-left: 8px;">+ Add Company</button>
+        </div>
+        
+        <div class="tableWrap">
+          <table id="companiesTable">
+            <thead>
+              <tr>
+                <th class="sortable" style="width: 180px" onclick="sortCompanies('company')">Company <span class="sortIcon" id="sortIcon-c-company">⬍</span></th>
+                <th class="sortable" style="width: 120px" onclick="sortCompanies('industry')">Industry <span class="sortIcon" id="sortIcon-c-industry">⬍</span></th>
+                <th class="sortable" style="width: 100px" onclick="sortCompanies('ats')">ATS <span class="sortIcon" id="sortIcon-c-ats">⬍</span></th>
+                <th class="sortable" style="width: 80px" onclick="sortCompanies('jobs_count')">Jobs <span class="sortIcon" id="sortIcon-c-jobs_count">⬍</span></th>
+                <th class="sortable" style="width: 60px" onclick="sortCompanies('new_count')">New <span class="sortIcon" id="sortIcon-c-new_count">⬍</span></th>
+                <th class="sortable" style="width: 70px" onclick="sortCompanies('applied_count')">Applied <span class="sortIcon" id="sortIcon-c-applied_count">⬍</span></th>
+                <th class="sortable" style="width: 100px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
+              </tr>
+            </thead>
+            <tbody id="companiesBody">
+              <tr><td colspan="7" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jobs Tab -->
+    <div class="tab-content" id="tab-jobs">
     <div class="wrap">
       <div class="controls">
         <label>
@@ -294,6 +670,7 @@
             <option value="greenhouse">Greenhouse</option>
             <option value="lever">Lever</option>
             <option value="smartrecruiters">SmartRecruiters</option>
+            <option value="ashby">Ashby</option>
           </select>
         </label>
 
@@ -302,8 +679,9 @@
           <select id="roleFilter">
             <option value="all">All</option>
             <option value="product">Product</option>
-            <option value="program">Program</option>
+            <option value="tpm_program">Program/TPM</option>
             <option value="project">Project</option>
+            <option value="other">Other (not relevant)</option>
           </select>
         </label>
 
@@ -313,8 +691,11 @@
             <option value="all">All</option>
             <option value="New">New</option>
             <option value="Applied">Applied</option>
-            <option value="Answered">Answered</option>
+            <option value="Interview">Interview</option>
+            <option value="Offer">Offer</option>
             <option value="Rejected">Rejected</option>
+            <option value="Withdrawn">Withdrawn</option>
+            <option value="Closed">Closed</option>
           </select>
         </label>
 
@@ -339,8 +720,8 @@
                   font-size: 13px;
                 "
               >
-                <input type="checkbox" id="includeUS" checked disabled />
-                US (always on)
+                <input type="checkbox" id="includeUS" checked />
+                US
               </label>
               <label
                 style="
@@ -353,7 +734,7 @@
                 "
               >
                 <input type="checkbox" id="includeNonUS" />
-                Include Non-US
+                Non-US
               </label>
               <label
                 style="
@@ -366,7 +747,7 @@
                 "
               >
                 <input type="checkbox" id="includeRemoteUSA" checked />
-                Include Remote (USA)
+                Remote (USA)
               </label>
             </div>
           </div>
@@ -396,7 +777,7 @@
             <input
               class="msSearch"
               id="stateSearch"
-              placeholder="Search state… (NC, Texas, etc.)"
+              placeholder="Search..."
             />
             <div id="stateList"></div>
             <div class="msFooter">
@@ -411,7 +792,6 @@
           <input id="cityFilter" placeholder="e.g., Raleigh, Charlotte" />
         </label>
 
-        <button id="loadBtn" class="primary" type="button">Load jobs</button>
         <span class="pill" id="loadPill"
           ><span class="dot" id="loadDot"></span
           ><span id="loadText">Idle</span></span
@@ -476,7 +856,39 @@
       </div>
 
       <div class="muted" style="margin-top: 10px">
-        Tip: Load jobs once, then all filters apply instantly on the client.
+        Tip: Use "Refresh from ATS" to update jobs. Filters apply instantly on the client.
+      </div>
+    </div>
+    </div> <!-- end tab-jobs -->
+
+    <!-- Add Company Modal -->
+    <div class="modal-overlay" id="addCompanyModal">
+      <div class="modal">
+        <h3>Add Company</h3>
+        <label>
+          Company Name
+          <input type="text" id="newCompanyName" placeholder="e.g., Stripe" />
+        </label>
+        <label>
+          ATS
+          <select id="newCompanyAts">
+            <option value="greenhouse">Greenhouse</option>
+            <option value="lever">Lever</option>
+            <option value="smartrecruiters">SmartRecruiters</option>
+          </select>
+        </label>
+        <label>
+          Board URL
+          <input type="text" id="newCompanyUrl" placeholder="https://boards.greenhouse.io/company" />
+        </label>
+        <label>
+          Industry
+          <input type="text" id="newCompanyIndustry" placeholder="e.g., Fintech, SaaS" />
+        </label>
+        <div class="modal-actions">
+          <button class="ghost" id="cancelAddCompany">Cancel</button>
+          <button class="primary" id="confirmAddCompany">Add</button>
+        </div>
       </div>
     </div>
 
@@ -484,10 +896,16 @@
       // ---------- GLOBAL STATE ----------
       let ALL_JOBS = [];
       let LAST_LOADED_AT = null;
+      let isRefreshing = false;
 
+      // My Location filter settings
+      const MY_LOCATION_STATES = ["NC", "VA", "SC", "GA", "TN"];
+      let myLocationEnabled = true;
+      
       // Defaults: US on, Non-US off, Remote(USA) on, NC + neighbor states preselected
-      let selectedStates = ["NC", "VA", "SC", "GA", "TN"]; // user can add/remove
+      let selectedStates = [...MY_LOCATION_STATES]; // user can add/remove
       let includeNonUS = false;
+      let includeUS = true;
       let includeRemoteUSA = true;
 
       // Job status cache: job_key -> status
@@ -685,7 +1103,10 @@
 
       function enrichJobsLocationNorm(jobs) {
         for (const j of jobs) {
-          j.location_norm = normalizeLocation(j.location || "");
+          // Only normalize if not already present from backend
+          if (!j.location_norm || !j.location_norm.state) {
+            j.location_norm = normalizeLocation(j.location || "");
+          }
           // status fallback
           if (!j.application_status) j.application_status = "New";
         }
@@ -760,22 +1181,19 @@
           });
         }
 
-        // Role
+        // Role filter (uses role_family from backend classification)
         filtered = filtered.filter((job) => {
           if (role === "all") return true;
-          if (!job.title) return false;
-          const t = job.title.toLowerCase();
-          if (role === "product") return t.includes("product");
-          if (role === "program") return t.includes("program");
-          if (role === "project") return t.includes("project");
-          return true;
+          const family = job.role_family || "other";
+          return family === role;
         });
         debugCounts.afterRole = filtered.length;
 
-        // Location (US always on, Non-US optional)
+        // Location filter (US and Non-US toggles) - always apply
+        const us = includeUS;
         filtered = filtered.filter((job) => {
           const isUS = isUSHeuristic(job);
-          if (isUS) return true;
+          if (isUS) return us;
           return nonus;
         });
         debugCounts.afterLocation = filtered.length;
@@ -822,6 +1240,13 @@
         if (hasStateFilter || hasRemoteFilter) {
           filtered = filtered.filter((job) => {
             const ln = job.location_norm;
+            const isUS = isUSHeuristic(job);
+            
+            // If Non-US job and Include Non-US is on, skip state filter
+            if (!isUS && nonus) {
+              return true;
+            }
+            
             const okState = hasStateFilter ? matchStatesInJob(ln) : false;
             const okRemote = hasRemoteFilter ? isRemoteUSA(ln) : false;
             return okState || okRemote || (!hasStateFilter && !hasRemoteFilter);
@@ -865,29 +1290,50 @@
       }
 
       function updateStatus(latestFilteredJobs = null) {
-        const statusSpan = document.getElementById("jobsCount");
-        const baseText = LAST_LOADED_AT
-          ? `Loaded: ${ALL_JOBS.length} jobs at ${LAST_LOADED_AT}`
-          : "Not loaded yet";
+        const statusCount = document.getElementById("statusCount");
+        const statusPipeline = document.getElementById("statusPipeline");
+        const statusGeo = document.getElementById("statusGeo");
 
         const filteredCount = latestFilteredJobs
           ? latestFilteredJobs.length
           : debugCounts.afterStatus;
 
-        const filterText = LAST_LOADED_AT
-          ? `Filtered: ${filteredCount} (industry/${debugCounts.afterIndustry}, role/${debugCounts.afterRole}, loc/${debugCounts.afterLocation}, company/${debugCounts.afterCompany}, search/${debugCounts.afterSearch}, states+remote/${debugCounts.afterState})`
-          : "";
+        // Main count
+        statusCount.textContent = LAST_LOADED_AT ? filteredCount : "\u2014";
+        statusCount.classList.toggle("zero", filteredCount === 0);
 
-        let geoText = "";
-        if (LAST_LOADED_AT && Array.isArray(latestFilteredJobs)) {
-          const g = computeGeoSummary(latestFilteredJobs);
-          geoText = `Geo: NC=${g.nc} | Neighbor=${g.neighbor} | Remote=${g.remote}`;
+        // Pipeline visualization
+        if (LAST_LOADED_AT) {
+          const total = ALL_JOBS.length;
+          const steps = [
+            { label: "Total", count: total },
+            { label: "Role", count: debugCounts.afterRole },
+            { label: "Location", count: debugCounts.afterLocation },
+            { label: "Geo", count: debugCounts.afterState },
+          ];
+
+          let pipelineHtml = '';
+          steps.forEach((step, i) => {
+            if (i > 0) pipelineHtml += '<span class="pipe-arrow">→</span>';
+            const isActive = step.count > 0 && step.count < steps[Math.max(0, i-1)]?.count;
+            pipelineHtml += `<span class="pipe-item${isActive ? ' active' : ''}">${step.label}: ${step.count}</span>`;
+          });
+          statusPipeline.innerHTML = pipelineHtml;
+        } else {
+          statusPipeline.innerHTML = '<span class="pipe-item">Not loaded</span>';
         }
 
-        const parts = [baseText];
-        if (filterText) parts.push(filterText);
-        if (geoText) parts.push(geoText);
-        statusSpan.textContent = parts.join(" | ");
+        // Geo badges
+        if (LAST_LOADED_AT && Array.isArray(latestFilteredJobs)) {
+          const g = computeGeoSummary(latestFilteredJobs);
+          statusGeo.innerHTML = `
+            <span class="geo-badge nc"><span class="geo-count">${g.nc}</span> NC</span>
+            <span class="geo-badge neighbor"><span class="geo-count">${g.neighbor}</span> Neighbor</span>
+            <span class="geo-badge remote"><span class="geo-count">${g.remote}</span> Remote</span>
+          `;
+        } else {
+          statusGeo.innerHTML = '';
+        }
       }
 
       async function persistStatus(profile, job_key, status) {
@@ -943,7 +1389,7 @@
         <td>${escapeHtml(job.ats || "")}</td>
         <td>
           <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
-            ${["New", "Applied", "Answered", "Rejected"]
+            ${["New", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
               .map(
                 (x) =>
                   `<option value="${x}" ${
@@ -1032,17 +1478,53 @@
         }
       }
 
+      // Fast load from Pipeline (no ATS parsing)
+      async function loadJobsFromPipeline() {
+        // Don't load if jobs already loaded
+        if (ALL_JOBS.length > 0) {
+          console.log("loadJobsFromPipeline skipped - jobs already loaded");
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(filtered);
+          return;
+        }
+        
+        console.log("loadJobsFromPipeline started");
+        setLoading(true, "Loading…");
+        try {
+          const res = await fetch("/pipeline/all");
+          console.log("fetch done, status:", res.status);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const data = await res.json();
+          console.log("got jobs:", data.jobs?.length);
+          
+          // Only set if ALL_JOBS still empty (refresh might have finished)
+          if (ALL_JOBS.length === 0) {
+            ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
+            LAST_LOADED_AT = new Date().toLocaleString();
+          }
+
+          const filtered = applyFilters(ALL_JOBS);
+          console.log("filtered jobs:", filtered.length);
+          renderJobs(filtered);
+
+          setLoading(false, "Loaded");
+          console.log("loadJobsFromPipeline done");
+        } catch (e) {
+          console.error("loadJobsFromPipeline error:", e);
+          setLoading(false, "Error");
+        }
+      }
+
       function setLoading(isLoading, text) {
-        const btn = document.getElementById("loadBtn");
         const dot = document.getElementById("loadDot");
         const label = document.getElementById("loadText");
 
-        btn.disabled = isLoading;
         label.textContent = text;
 
         dot.classList.remove("ok", "bad");
         if (isLoading) dot.classList.add("bad");
-        if (!isLoading && text === "Loaded") dot.classList.add("ok");
+        if (!isLoading && (text === "Loaded" || text === "Updated")) dot.classList.add("ok");
         if (!isLoading && text === "Error") dot.classList.add("bad");
       }
 
@@ -1080,13 +1562,10 @@
           const div = document.createElement("div");
           div.className = "msItem";
           const checked = selectedStates.includes(st.code);
+          const checkId = `state-${st.code}`;
           div.innerHTML = `
-        <input type="checkbox" ${checked ? "checked" : ""} />
-        <div>
-          <div style="color: var(--text); font-size:13px;">${st.code} — ${
-            st.name
-          }</div>
-        </div>
+        <input type="checkbox" id="${checkId}" ${checked ? "checked" : ""} />
+        <label for="${checkId}">${st.code} — ${st.name}</label>
       `;
           div.addEventListener("click", (ev) => {
             ev.preventDefault();
@@ -1120,9 +1599,6 @@
       }
 
       // ---------- EVENTS ----------
-      document
-        .getElementById("loadBtn")
-        .addEventListener("click", loadJobsOnce);
 
       const filterIds = [
         "roleFilter",
@@ -1152,6 +1628,16 @@
           }
         });
       }
+
+      document
+        .getElementById("includeUS")
+        .addEventListener("change", (e) => {
+          includeUS = !!e.target.checked;
+          if (ALL_JOBS.length > 0) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+        });
 
       document
         .getElementById("includeNonUS")
@@ -1203,6 +1689,7 @@
       });
 
       // Init defaults
+      document.getElementById("includeUS").checked = includeUS;
       document.getElementById("includeNonUS").checked = includeNonUS;
       document.getElementById("includeRemoteUSA").checked = includeRemoteUSA;
 
@@ -1210,6 +1697,369 @@
       renderStateList("");
       updateStatus();
       updateSortIcons();
+
+      // ========== TABS & COMPANIES ==========
+      
+      let COMPANIES_DATA = [];
+      let companiesSortCol = "jobs_count";
+      let companiesSortDir = "desc";
+      
+      // Tab switching
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const tab = btn.dataset.tab;
+          
+          // Update buttons
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          
+          // Update content
+          document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+          document.getElementById(`tab-${tab}`).classList.add("active");
+          
+          // Update status bar based on tab
+          if (tab === "companies") {
+            updateStatusBarForCompanies();
+          } else if (tab === "jobs") {
+            document.querySelector(".status-label").textContent = "jobs shown";
+            
+            if (ALL_JOBS.length > 0) {
+              // Jobs already loaded - just filter and render
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            } else {
+              // No jobs loaded yet - load from Pipeline (fast)
+              // backgroundRefresh will update later if running
+              loadJobsFromPipeline();
+            }
+          }
+        });
+      });
+      
+      function updateStatusBarForCompanies() {
+        const total = COMPANIES_DATA.reduce((sum, c) => sum + (c.jobs_count || 0), 0);
+        const newCount = COMPANIES_DATA.reduce((sum, c) => sum + (c.new_count || 0), 0);
+        const applied = COMPANIES_DATA.reduce((sum, c) => sum + (c.applied_count || 0), 0);
+        
+        document.getElementById("statusCount").textContent = COMPANIES_DATA.length;
+        document.getElementById("statusCount").classList.toggle("zero", COMPANIES_DATA.length === 0);
+        document.querySelector(".status-label").textContent = "companies";
+        
+        document.getElementById("statusPipeline").innerHTML = `
+          <span class="pipe-item">Total: ${total}</span>
+          <span class="pipe-arrow">→</span>
+          <span class="pipe-item">New: ${newCount}</span>
+          <span class="pipe-arrow">→</span>
+          <span class="pipe-item">Applied: ${applied}</span>
+        `;
+        
+        document.getElementById("statusGeo").innerHTML = "";
+      }
+      
+      // Load companies
+      async function loadCompanies() {
+        try {
+          const res = await fetch(`/companies?profile=all&my_location=${myLocationEnabled}`);
+          const data = await res.json();
+          COMPANIES_DATA = data.companies || [];
+          
+          // Update summary
+          document.getElementById("summaryCompanies").textContent = data.count || 0;
+          document.getElementById("summaryJobs").textContent = data.summary?.total_jobs || 0;
+          document.getElementById("summaryNew").textContent = data.summary?.total_new || 0;
+          document.getElementById("summaryApplied").textContent = data.summary?.total_applied || 0;
+          
+          renderCompanies(COMPANIES_DATA);
+          updateCompanySortIcons();
+          updateStatusBarForCompanies();
+        } catch (err) {
+          console.error("Failed to load companies:", err);
+          document.getElementById("companiesBody").innerHTML = 
+            `<tr><td colspan="7" style="text-align:center; padding: 40px; color: #ef4444;">Failed to load companies</td></tr>`;
+        }
+      }
+      
+      function sortCompanies(col) {
+        if (companiesSortCol === col) {
+          companiesSortDir = companiesSortDir === "asc" ? "desc" : "asc";
+        } else {
+          companiesSortCol = col;
+          // Default: desc for numbers, asc for text
+          companiesSortDir = ["jobs_count", "new_count", "applied_count", "last_ok"].includes(col) ? "desc" : "asc";
+        }
+        
+        const sorted = [...COMPANIES_DATA].sort((a, b) => {
+          let va = a[col] ?? "";
+          let vb = b[col] ?? "";
+          
+          // Status column (boolean: false=error first, then true=ok, then null=unknown)
+          if (col === "last_ok") {
+            const order = { false: 2, true: 1, null: 0 };
+            const oa = order[String(va)] ?? 0;
+            const ob = order[String(vb)] ?? 0;
+            return companiesSortDir === "asc" ? oa - ob : ob - oa;
+          }
+          
+          // Numeric columns
+          if (typeof va === "number" && typeof vb === "number") {
+            return companiesSortDir === "asc" ? va - vb : vb - va;
+          }
+          
+          // String columns
+          va = String(va).toLowerCase();
+          vb = String(vb).toLowerCase();
+          if (va < vb) return companiesSortDir === "asc" ? -1 : 1;
+          if (va > vb) return companiesSortDir === "asc" ? 1 : -1;
+          return 0;
+        });
+        
+        updateCompanySortIcons();
+        renderCompanies(sorted);
+      }
+      
+      function updateCompanySortIcons() {
+        const cols = ["company", "industry", "ats", "jobs_count", "new_count", "applied_count", "last_ok"];
+        cols.forEach(c => {
+          const icon = document.getElementById(`sortIcon-c-${c}`);
+          if (icon) {
+            if (c === companiesSortCol) {
+              icon.textContent = companiesSortDir === "asc" ? "▲" : "▼";
+            } else {
+              icon.textContent = "⬍";
+            }
+          }
+        });
+      }
+      
+      function renderCompanies(companies) {
+        const tbody = document.getElementById("companiesBody");
+        
+        if (!companies.length) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color: var(--muted);">No companies found</td></tr>`;
+          return;
+        }
+        
+        tbody.innerHTML = companies.map(c => {
+          const statusIcon = c.last_ok === true ? '✅' : 
+                            c.last_ok === false ? '❌' : '—';
+          const statusClass = c.last_ok === true ? 'status-ok' : 
+                              c.last_ok === false ? 'status-error' : 'status-unknown';
+          const errorTip = c.last_error ? ` title="${c.last_error}"` : '';
+          
+          const jobsBadgeClass = c.jobs_count > 0 ? 'jobs-badge' : 'jobs-badge zero';
+          
+          return `
+            <tr class="company-row" data-company="${c.company}">
+              <td><strong>${c.company}</strong></td>
+              <td style="color: var(--muted); font-size: 12px;">${c.industry || c.tags?.join(', ') || ''}</td>
+              <td><span class="ats-badge">${c.ats}</span></td>
+              <td><span class="${jobsBadgeClass}">${c.jobs_count}</span></td>
+              <td>${c.new_count || 0}</td>
+              <td>${c.applied_count || 0}</td>
+              <td class="${statusClass}"${errorTip}>${statusIcon}</td>
+            </tr>
+          `;
+        }).join('');
+        
+        // Add click handlers
+        tbody.querySelectorAll(".company-row").forEach(row => {
+          row.addEventListener("click", () => {
+            const company = row.dataset.company;
+            showJobsForCompany(company);
+          });
+        });
+      }
+      
+      function showJobsForCompany(company) {
+        // Set company filter
+        document.getElementById("companyFilter").value = company;
+        
+        // Switch to Jobs tab
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelector('[data-tab="jobs"]').classList.add("active");
+        
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        document.getElementById("tab-jobs").classList.add("active");
+        
+        // If jobs already loaded, filter. Otherwise load from Pipeline.
+        if (ALL_JOBS.length > 0) {
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(filtered);
+        } else {
+          loadJobsFromPipeline();
+        }
+      }
+      
+      // Filter jobs to only relevant roles (Product, TPM, Program, Project)
+      function filterRelevantRoles(jobs) {
+        const relevantRoles = ['product', 'tpm_program', 'project'];
+        return jobs.filter(j => relevantRoles.includes(j.role_family));
+      }
+      
+      async function backgroundRefresh() {
+        if (isRefreshing) return; // Prevent double refresh
+        isRefreshing = true;
+        
+        const btn = document.getElementById("refreshBtn");
+        btn.disabled = true;
+        btn.textContent = "⏳ Updating...";
+        
+        // Also update Load jobs indicator
+        setLoading(true, "Refreshing ATS...");
+        
+        try {
+          // Fetch fresh jobs from ATS and save to ALL_JOBS
+          const res = await fetch("/jobs?profile=all&refresh=true");
+          const data = await res.json();
+          // Filter to only relevant roles before storing
+          ALL_JOBS = enrichJobsLocationNorm(filterRelevantRoles(data.jobs || []));
+          
+          // Re-render if on Jobs tab
+          const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
+          if (jobsTabActive) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+          
+          // Reload companies stats
+          await loadCompanies();
+          btn.textContent = "✅ Updated";
+          setLoading(false, "Updated");
+          setTimeout(() => {
+            btn.textContent = "🔄 Refresh from ATS";
+            setLoading(false, "Loaded");
+          }, 2000);
+        } catch (err) {
+          console.error("Background refresh failed:", err);
+          btn.textContent = "⚠️ Refresh failed";
+          setLoading(false, "Error");
+          setTimeout(() => {
+            btn.textContent = "🔄 Refresh from ATS";
+          }, 3000);
+        } finally {
+          btn.disabled = false;
+          isRefreshing = false;
+        }
+      }
+      
+      // Refresh button - parses fresh from ATS
+      document.getElementById("refreshBtn").addEventListener("click", backgroundRefresh);
+      
+      // My Location toggle
+      document.getElementById("myLocationToggle").addEventListener("change", (e) => {
+        myLocationEnabled = e.target.checked;
+        console.log("My Location toggled:", myLocationEnabled);
+        applyMyLocationFilter();
+        
+        // Re-render current tab
+        const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
+        console.log("Jobs tab active:", jobsTabActive);
+        
+        if (jobsTabActive) {
+          // Just re-filter existing jobs, don't reload
+          if (ALL_JOBS.length > 0) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+        } else {
+          // On Companies tab - reload with new my_location param
+          console.log("Reloading companies with my_location=", myLocationEnabled);
+          loadCompanies();
+        }
+      });
+      
+      function applyMyLocationFilter() {
+        if (myLocationEnabled) {
+          // Apply My Location settings
+          selectedStates = [...MY_LOCATION_STATES];
+          includeUS = true;
+          includeNonUS = false;
+          includeRemoteUSA = true;
+        } else {
+          // Show everything
+          selectedStates = [];
+          includeUS = true;
+          includeNonUS = true;
+          includeRemoteUSA = true;
+        }
+        
+        // Update UI checkboxes
+        document.getElementById("includeUS").checked = includeUS;
+        document.getElementById("includeNonUS").checked = includeNonUS;
+        document.getElementById("includeRemoteUSA").checked = includeRemoteUSA;
+        
+        // Update states UI
+        syncStateButton();
+      }
+      
+      // Load companies on page load (manual refresh via button)
+      loadCompanies();
+
+      // Add Company Modal
+      const modal = document.getElementById("addCompanyModal");
+      
+      document.getElementById("addCompanyBtn").addEventListener("click", () => {
+        modal.classList.add("open");
+        document.getElementById("newCompanyName").focus();
+      });
+      
+      document.getElementById("cancelAddCompany").addEventListener("click", () => {
+        modal.classList.remove("open");
+        clearAddCompanyForm();
+      });
+      
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+          modal.classList.remove("open");
+          clearAddCompanyForm();
+        }
+      });
+      
+      function clearAddCompanyForm() {
+        document.getElementById("newCompanyName").value = "";
+        document.getElementById("newCompanyUrl").value = "";
+        document.getElementById("newCompanyIndustry").value = "";
+        document.getElementById("newCompanyAts").value = "greenhouse";
+      }
+      
+      document.getElementById("confirmAddCompany").addEventListener("click", async () => {
+        const name = document.getElementById("newCompanyName").value.trim();
+        const ats = document.getElementById("newCompanyAts").value;
+        const board_url = document.getElementById("newCompanyUrl").value.trim();
+        const industry = document.getElementById("newCompanyIndustry").value.trim();
+        
+        if (!name || !board_url) {
+          alert("Please fill in Company Name and Board URL");
+          return;
+        }
+        
+        const btn = document.getElementById("confirmAddCompany");
+        btn.disabled = true;
+        btn.textContent = "Adding...";
+        
+        try {
+          const res = await fetch("/companies", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, ats, board_url, industry, tags: [] })
+          });
+          const data = await res.json();
+          
+          if (data.status === "ok") {
+            modal.classList.remove("open");
+            clearAddCompanyForm();
+            await loadCompanies();
+          } else {
+            alert(data.error || "Failed to add company");
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Failed to add company");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Add";
+        }
+      });
     </script>
   </body>
 </html>

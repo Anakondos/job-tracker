@@ -174,8 +174,8 @@
   {
     "id": "notion",
     "name": "Notion",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/notion",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/notion",
     "api_url": null,
     "tags": [
       "productivity",
@@ -386,8 +386,8 @@
   {
     "id": "ramp",
     "name": "Ramp",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/ramp",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/ramp",
     "api_url": null,
     "tags": [
       "fintech",
@@ -1088,8 +1088,8 @@
   {
     "id": "linear",
     "name": "Linear",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/linear",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/linear",
     "api_url": null,
     "tags": [
       "productivity",

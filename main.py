@@ -15,7 +15,8 @@ from pydantic import BaseModel
 
 from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
-from parsers.smartrecruiters import fetch_smartrecruiters  # если нет – можно временно закомментить
+from parsers.smartrecruiters import fetch_smartrecruiters
+from parsers.ashby import fetch_ashby_jobs
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info
@@ -23,7 +24,7 @@ from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
 from storage.pipeline_storage import (
     load_new_jobs, load_pipeline_jobs, load_archive_jobs,
     get_all_job_ids, add_new_job, update_job_status as pipeline_update_status,
-    mark_missing_jobs, get_pipeline_stats, get_job_by_id,
+    update_last_seen, mark_missing_jobs, get_pipeline_stats, get_job_by_id,
     STATUS_NEW, STATUS_APPLIED, STATUS_INTERVIEW, STATUS_OFFER,
     STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED,
 )
@@ -34,7 +35,7 @@ from storage.pipeline_storage import (
 # -----------------------------
 JOB_STATUS_FILE = Path("job_status.json")
 
-VALID_APPLICATION_STATUSES = ["New", "Applied", "Answered", "Rejected"]
+VALID_APPLICATION_STATUSES = ["New", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
 
 
 def _safe_read_json(path: Path) -> dict:
@@ -204,6 +205,8 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
             jobs = fetch_lever(company, url)
         elif ats == "smartrecruiters":
             jobs = fetch_smartrecruiters(company, url)
+        elif ats == "ashby":
+            jobs = fetch_ashby_jobs(url)
         else:
             jobs = []
 
@@ -299,13 +302,14 @@ async def get_jobs(
     state: str = Query("", description="(deprecated) Filter by state substring"),
     city: str = Query("", description="Filter by city substring"),
     geo_mode: str = Query("all", description="all / nc_priority / local_only / neighbor_only / remote_usa"),
+    refresh: bool = Query(False, description="Force refresh from ATS, ignore cache"),
 ):
     """
     Основной эндпоинт: собирает вакансии по профилю и фильтрам.
     """
-    # NEW: Check cache first
+    # NEW: Check cache first (unless refresh=True)
     cache_key = profile
-    cached = load_cache(cache_key)
+    cached = None if refresh else load_cache(cache_key)
     
     if cached:
         print(f"✅ Using cached data ({cached['jobs_count']} jobs)")
@@ -512,38 +516,239 @@ async def get_jobs(
 
     filtered.sort(key=lambda j: (j.get("score", 0), str(j.get("updated_at") or "")), reverse=True)
 
+    # ========== PIPELINE SYNC ==========
+    # Sync relevant jobs with pipeline storage
+    try:
+        known_ids = get_all_job_ids()
+        active_ids = set()
+        
+        for job in filtered:
+            job_id = job.get("id")
+            if not job_id:
+                continue
+            
+            active_ids.add(job_id)
+            
+            # Only sync jobs with relevant roles
+            role_family = job.get("role_family", "other")
+            if role_family not in ["product", "tpm_program", "project"]:
+                continue
+            
+            # Skip if role was excluded
+            if job.get("role_excluded"):
+                continue
+            
+            if job_id in known_ids:
+                # Already known - update last_seen
+                update_last_seen(job_id, is_active=True)
+            else:
+                # New job - add to inbox
+                add_new_job(job)
+        
+        # Mark missing jobs as potentially closed
+        mark_missing_jobs(active_ids, days_threshold=3)
+        
+    except Exception as e:
+        print(f"Pipeline sync error: {e}")
+    # ========== END PIPELINE SYNC ==========
+
     return {"count": len(filtered), "jobs": filtered}
 
 
 @app.get("/companies")
 def get_companies(
     profile: str = Query("all", description="Имя профиля из profiles/*.json"),
+    my_location: bool = Query(True, description="Filter by My Location (US + Remote USA + NC,VA,SC,GA,TN)"),
 ):
     """
-    Возвращает список ВСЕХ компаний профиля + статус последней попытки fetch'а.
+    Возвращает список ВСЕХ компаний профиля + статус последней попытки fetch'а + статистика jobs.
     """
     companies_cfg = load_profile(profile)
+    
+    # My Location filter states
+    MY_LOCATION_STATES = ["NC", "VA", "SC", "GA", "TN"]
+    
+    # Load all jobs from pipeline for counting
+    all_pipeline_jobs = load_new_jobs() + load_pipeline_jobs()
+    
+    # Filter jobs by geo if my_location is enabled
+    def job_matches_my_location(job):
+        if not my_location:
+            return True
+        
+        loc_norm = job.get("location_norm", {})
+        state = loc_norm.get("state", "")
+        remote = loc_norm.get("remote", False)
+        remote_scope = loc_norm.get("remote_scope", "")
+        
+        # Check if Remote USA
+        if remote and remote_scope == "usa":
+            return True
+        
+        # Check if in My Location states
+        if state in MY_LOCATION_STATES:
+            return True
+        
+        return False
+    
+    filtered_jobs = [j for j in all_pipeline_jobs if job_matches_my_location(j)]
+    
+    # Build company stats: company_name -> {jobs_count, applied_count, new_count, status_counts}
+    company_stats = {}
+    for job in filtered_jobs:
+        company_name = job.get("company", "")
+        if company_name not in company_stats:
+            company_stats[company_name] = {
+                "jobs_count": 0,
+                "new_count": 0,
+                "applied_count": 0,
+                "interview_count": 0,
+            }
+        
+        stats = company_stats[company_name]
+        stats["jobs_count"] += 1
+        
+        status = job.get("status", "New")
+        if status == STATUS_NEW:
+            stats["new_count"] += 1
+        elif status == STATUS_APPLIED:
+            stats["applied_count"] += 1
+        elif status == STATUS_INTERVIEW:
+            stats["interview_count"] += 1
+    
     items: list[dict] = []
 
     for cfg in companies_cfg:
-        company_name = cfg.get("company", "")
+        company_name = cfg.get("company", "") or cfg.get("name", "")
         key = f"{profile}:{company_name}"
         st = company_fetch_status.get(key, {})
+        
+        # Get stats for this company
+        stats = company_stats.get(company_name, {
+            "jobs_count": 0,
+            "new_count": 0, 
+            "applied_count": 0,
+            "interview_count": 0,
+        })
 
         items.append(
             {
                 "company": company_name,
+                "id": cfg.get("id", ""),
                 "industry": cfg.get("industry", ""),
+                "tags": cfg.get("tags", []),
                 "ats": cfg.get("ats", ""),
-                "url": cfg.get("url", ""),
+                "url": cfg.get("url", "") or cfg.get("board_url", ""),
                 "last_ok": st.get("ok", None),
                 "last_error": st.get("error", ""),
                 "last_checked": st.get("checked_at", ""),
+                # Stats from pipeline
+                "jobs_count": stats["jobs_count"],
+                "new_count": stats["new_count"],
+                "applied_count": stats["applied_count"],
+                "interview_count": stats["interview_count"],
             }
         )
 
-    return {"count": len(items), "companies": items}
+    # Sort by jobs_count desc, then by name
+    items.sort(key=lambda x: (-x["jobs_count"], x["company"].lower()))
+    
+    # Summary stats
+    total_jobs = sum(c["jobs_count"] for c in items)
+    total_new = sum(c["new_count"] for c in items)
+    total_applied = sum(c["applied_count"] for c in items)
+    total_interview = sum(c["interview_count"] for c in items)
 
+    return {
+        "count": len(items), 
+        "companies": items,
+        "summary": {
+            "total_jobs": total_jobs,
+            "total_new": total_new,
+            "total_applied": total_applied,
+            "total_interview": total_interview,
+        }
+    }
+
+
+class CompanyCreate(BaseModel):
+    name: str
+    ats: str  # greenhouse, lever, smartrecruiters
+    board_url: str
+    industry: str = ""
+    tags: list[str] = []
+
+
+@app.post("/companies")
+def add_company(company: CompanyCreate):
+    """
+    Add a new company to companies.json.
+    """
+    companies_path = Path("data/companies.json")
+    
+    # Load existing
+    if companies_path.exists():
+        with open(companies_path, "r") as f:
+            companies = json.load(f)
+    else:
+        companies = []
+    
+    # Generate id from name
+    company_id = company.name.lower().replace(" ", "_").replace("-", "_")
+    
+    # Check if already exists
+    for c in companies:
+        if c.get("id") == company_id or c.get("name", "").lower() == company.name.lower():
+            return {"error": f"Company '{company.name}' already exists", "status": "exists"}
+    
+    # Create new company entry
+    new_company = {
+        "id": company_id,
+        "name": company.name,
+        "ats": company.ats,
+        "board_url": company.board_url,
+        "api_url": None,
+        "tags": company.tags,
+        "industry": company.industry,
+        "priority": 0,
+        "hq_state": None,
+        "region": "us"
+    }
+    
+    companies.append(new_company)
+    
+    # Save
+    with open(companies_path, "w") as f:
+        json.dump(companies, f, indent=2)
+    
+    return {"status": "ok", "company": new_company}
+
+
+@app.delete("/companies/{company_id}")
+def remove_company(company_id: str):
+    """
+    Remove a company from companies.json.
+    """
+    companies_path = Path("data/companies.json")
+    
+    if not companies_path.exists():
+        return {"error": "No companies file", "status": "error"}
+    
+    with open(companies_path, "r") as f:
+        companies = json.load(f)
+    
+    # Find and remove
+    original_len = len(companies)
+    companies = [c for c in companies if c.get("id") != company_id]
+    
+    if len(companies) == original_len:
+        return {"error": f"Company '{company_id}' not found", "status": "not_found"}
+    
+    # Save
+    with open(companies_path, "w") as f:
+        json.dump(companies, f, indent=2)
+    
+    return {"status": "ok", "removed": company_id}
 
 @app.get("/profiles/{name}")
 async def get_profile_companies(name: str):
@@ -633,6 +838,24 @@ def cache_clear_all_endpoint():
 def pipeline_stats_endpoint():
     """Get pipeline statistics"""
     return get_pipeline_stats()
+
+
+@app.get("/pipeline/all")
+def pipeline_all_endpoint():
+    """Get ALL jobs from pipeline (new + active + archive)"""
+    new_jobs = load_new_jobs()
+    active_jobs = load_pipeline_jobs()
+    archive_jobs = load_archive_jobs()
+    all_jobs = new_jobs + active_jobs + archive_jobs
+    return {
+        "count": len(all_jobs), 
+        "jobs": all_jobs,
+        "breakdown": {
+            "new": len(new_jobs),
+            "active": len(active_jobs),
+            "archive": len(archive_jobs)
+        }
+    }
 
 
 @app.get("/pipeline/new")
