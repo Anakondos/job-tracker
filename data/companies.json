@@ -139,7 +139,9 @@
     "industry": "Fintech",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "cloudflare",
@@ -249,8 +251,8 @@
   {
     "id": "chime",
     "name": "Chime",
-    "ats": "lever",
-    "board_url": "https://jobs.lever.co/chime",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/chime",
     "api_url": null,
     "tags": [
       "neobank"
@@ -263,8 +265,8 @@
   {
     "id": "webflow",
     "name": "Webflow",
-    "ats": "lever",
-    "board_url": "https://jobs.lever.co/webflow",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/webflow",
     "api_url": null,
     "tags": [
       "nocode",
@@ -288,7 +290,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "zoom",
@@ -358,7 +362,7 @@
     "name": "Atlassian",
     "ats": "smartrecruiters",
     "board_url": "https://careers.smartrecruiters.com/Atlassian",
-    "api_url": "https://api.smartrecruiters.com/v1/companies/atlassian/postings",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/Atlassian/postings",
     "tags": [
       "devtools",
       "saas"
@@ -373,7 +377,7 @@
     "name": "Bosch",
     "ats": "smartrecruiters",
     "board_url": "https://jobs.smartrecruiters.com/BoschGroup",
-    "api_url": "https://api.smartrecruiters.com/v1/companies/boschgroup/postings",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/BoschGroup/postings",
     "tags": [
       "hardware",
       "global"
@@ -413,7 +417,9 @@
     "industry": "Fintech",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "affirm",
@@ -436,7 +442,7 @@
     "name": "SoFi",
     "ats": "smartrecruiters",
     "board_url": "https://careers.smartrecruiters.com/SoFi",
-    "api_url": "https://api.smartrecruiters.com/v1/companies/sofi/postings",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/SoFi/postings",
     "tags": [
       "loans",
       "bank",
@@ -477,7 +483,9 @@
     "industry": "Fintech",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "upgrade",
@@ -508,7 +516,9 @@
     "industry": "Fintech",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "current",
@@ -523,7 +533,9 @@
     "industry": "Fintech",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "mercury",
@@ -570,7 +582,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "global"
+    "region": "global",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "asana",
@@ -767,7 +781,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "gusto",
@@ -798,7 +814,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "drift",
@@ -813,7 +831,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "hubspot",
@@ -828,7 +848,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "shopify",
@@ -843,7 +865,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "canada"
+    "region": "canada",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "wealthsimple",
@@ -858,7 +882,9 @@
     "industry": "Fintech",
     "priority": 0,
     "hq_state": null,
-    "region": "canada"
+    "region": "canada",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "intercom",
@@ -955,7 +981,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "fastly",
@@ -1067,7 +1095,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "global"
+    "region": "global",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "retool",
@@ -1179,7 +1209,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "global"
+    "region": "global",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "cockroach_labs",
@@ -1210,7 +1242,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "heap",
@@ -1226,7 +1260,9 @@
     "industry": "IT",
     "priority": 0,
     "hq_state": null,
-    "region": "us"
+    "region": "us",
+    "status": "ats_404",
+    "enabled": false
   },
   {
     "id": "amplitude",

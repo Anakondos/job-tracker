@@ -1109,7 +1109,7 @@
       function enrichJobsLocationNorm(jobs) {
         for (const j of jobs) {
           // Only normalize if not already present from backend
-          if (!j.location_norm || !j.location_norm.state) {
+          if (!j.location_norm) {
             j.location_norm = normalizeLocation(j.location || "");
           }
           // status fallback
@@ -1531,6 +1531,7 @@
           const filtered = applyFilters(ALL_JOBS);
           console.log("filtered jobs:", filtered.length);
           renderJobs(filtered);
+          updateStatus(filtered);  // Update header stats
 
           setLoading(false, "Loaded");
           console.log("loadJobsFromCache done");
@@ -2027,8 +2028,9 @@
         syncStateButton();
       }
       
-      // Load companies on page load (manual refresh via button)
+      // Load data on page load
       loadCompanies();
+      loadJobsFromCache();  // Load jobs for header stats
 
       // Add Company Modal
       const modal = document.getElementById("addCompanyModal");

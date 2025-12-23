@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -153,6 +154,9 @@ app = FastAPI(
     description="Simple job aggregator for Product / PM roles from ATS",
     version="0.3.0",
 )
+
+# Gzip compression for large responses (like 8MB jobs cache)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,
@@ -320,6 +324,9 @@ async def get_jobs(
         all_jobs: list[dict] = []
         
         for cfg in companies_cfg:
+            # Skip disabled companies
+            if cfg.get("enabled") == False:
+                continue
             ats = cfg.get("ats", "")
             if ats_filter != "all" and ats_filter != ats:
                 continue
@@ -650,6 +657,8 @@ def get_companies(
                 "tags": cfg.get("tags", []),
                 "ats": cfg.get("ats", ""),
                 "url": cfg.get("url", "") or cfg.get("board_url", ""),
+                "enabled": cfg.get("enabled", True),
+                "status": cfg.get("status", "ok"),
                 "last_ok": st.get("ok", None),
                 "last_error": st.get("error", ""),
                 "last_checked": st.get("checked_at", ""),
