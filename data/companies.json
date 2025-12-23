@@ -234,8 +234,8 @@
   {
     "id": "airbnb",
     "name": "Airbnb",
-    "ats": "lever",
-    "board_url": "https://jobs.lever.co/airbnb",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/airbnb",
     "api_url": null,
     "tags": [
       "marketplace",
@@ -590,8 +590,8 @@
   {
     "id": "snowflake",
     "name": "Snowflake",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/snowflake",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/snowflake",
     "api_url": null,
     "tags": [
       "data",
@@ -621,8 +621,8 @@
   {
     "id": "confluent",
     "name": "Confluent",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/confluent",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/confluent",
     "api_url": null,
     "tags": [
       "data",
@@ -697,8 +697,8 @@
   {
     "id": "zapier",
     "name": "Zapier",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/zapier",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/zapier",
     "api_url": null,
     "tags": [
       "automation",
@@ -992,8 +992,8 @@
   {
     "id": "sentry",
     "name": "Sentry",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/sentry",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/sentry",
     "api_url": null,
     "tags": [
       "observability",
@@ -1024,8 +1024,8 @@
   {
     "id": "openai",
     "name": "OpenAI",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/openai",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/openai",
     "api_url": null,
     "tags": [
       "ai",
@@ -1104,8 +1104,8 @@
   {
     "id": "vanta",
     "name": "Vanta",
-    "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/vanta",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/vanta",
     "api_url": null,
     "tags": [
       "security",

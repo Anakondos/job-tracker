@@ -558,18 +558,29 @@ async def get_jobs(
 @app.get("/companies")
 def get_companies(
     profile: str = Query("all", description="Имя профиля из profiles/*.json"),
-    my_location: bool = Query(True, description="Filter by My Location (US + Remote USA + NC,VA,SC,GA,TN)"),
+    my_roles: bool = Query(False, description="Filter by My Roles (Product, TPM, Program)"),
+    my_location: bool = Query(False, description="Filter by My Location (US + Remote USA + NC,VA,SC,GA,TN)"),
 ):
     """
     Возвращает список ВСЕХ компаний профиля + статус последней попытки fetch'а + статистика jobs.
     """
     companies_cfg = load_profile(profile)
     
+    # My Roles filter
+    MY_ROLES = ["product", "tpm_program", "project"]
+    
     # My Location filter states
     MY_LOCATION_STATES = ["NC", "VA", "SC", "GA", "TN"]
     
     # Load all jobs from pipeline for counting
     all_pipeline_jobs = load_new_jobs() + load_pipeline_jobs()
+    
+    # Filter jobs by role if my_roles is enabled
+    def job_matches_my_roles(job):
+        if not my_roles:
+            return True
+        role_family = job.get("role_family", "other")
+        return role_family in MY_ROLES
     
     # Filter jobs by geo if my_location is enabled
     def job_matches_my_location(job):
@@ -591,7 +602,7 @@ def get_companies(
         
         return False
     
-    filtered_jobs = [j for j in all_pipeline_jobs if job_matches_my_location(j)]
+    filtered_jobs = [j for j in all_pipeline_jobs if job_matches_my_roles(j) and job_matches_my_location(j)]
     
     # Build company stats: company_name -> {jobs_count, applied_count, new_count, status_counts}
     company_stats = {}

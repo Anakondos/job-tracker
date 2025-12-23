@@ -585,10 +585,6 @@
       <div class="header-left">
         <h1>Job Tracker</h1>
         <div class="status-bar" id="statusBar">
-          <div class="status-main">
-            <span class="status-count" id="statusCount">—</span>
-            <span class="status-label">jobs shown</span>
-          </div>
           <div class="status-pipeline" id="statusPipeline">
             <span class="pipe-item">Not loaded</span>
           </div>
@@ -597,7 +593,11 @@
       </div>
       <div class="header-actions">
         <label class="my-location-toggle">
-          <input type="checkbox" id="myLocationToggle" checked>
+          <input type="checkbox" id="myRolesToggle">
+          <span>💼 My Roles</span>
+        </label>
+        <label class="my-location-toggle">
+          <input type="checkbox" id="myLocationToggle">
           <span>📍 My Location</span>
         </label>
         <button class="refresh-btn" id="refreshBtn">🔄 Refresh from ATS</button>
@@ -894,17 +894,22 @@
 
     <script>
       // ---------- GLOBAL STATE ----------
-      let ALL_JOBS = [];
+      let ALL_JOBS_RAW = [];  // All jobs before role filter
+      let ALL_JOBS = [];      // Jobs after role filter
       let LAST_LOADED_AT = null;
       let isRefreshing = false;
 
+      // My Roles filter settings
+      const MY_ROLES = ['product', 'tpm_program', 'project'];
+      let myRolesEnabled = false;
+      
       // My Location filter settings
       const MY_LOCATION_STATES = ["NC", "VA", "SC", "GA", "TN"];
-      let myLocationEnabled = true;
+      let myLocationEnabled = false;
       
-      // Defaults: US on, Non-US off, Remote(USA) on, NC + neighbor states preselected
-      let selectedStates = [...MY_LOCATION_STATES]; // user can add/remove
-      let includeNonUS = false;
+      // Defaults: all locations visible when toggles are off
+      let selectedStates = [];
+      let includeNonUS = true;
       let includeUS = true;
       let includeRemoteUSA = true;
 
@@ -1133,8 +1138,14 @@
       }
 
       function isUSHeuristic(job) {
+        // Use normalized location if available
+        const ln = job.location_norm || {};
+        if (ln.state) {
+          return true; // Has US state code
+        }
+        
+        // Fallback to text heuristic
         const l = (job.location || "").toLowerCase();
-        // very rough heuristic (kept intentionally simple for prototype)
         return (
           l.includes("united states") ||
           l.includes(" usa") ||
@@ -1290,26 +1301,38 @@
       }
 
       function updateStatus(latestFilteredJobs = null) {
-        const statusCount = document.getElementById("statusCount");
         const statusPipeline = document.getElementById("statusPipeline");
         const statusGeo = document.getElementById("statusGeo");
 
-        const filteredCount = latestFilteredJobs
-          ? latestFilteredJobs.length
-          : debugCounts.afterStatus;
-
-        // Main count
-        statusCount.textContent = LAST_LOADED_AT ? filteredCount : "\u2014";
-        statusCount.classList.toggle("zero", filteredCount === 0);
-
-        // Pipeline visualization
-        if (LAST_LOADED_AT) {
-          const total = ALL_JOBS.length;
+        // Pipeline visualization - universal for both tabs
+        if (LAST_LOADED_AT || ALL_JOBS_RAW.length > 0) {
+          const totalRaw = ALL_JOBS_RAW.length;
+          
+          // Calculate Role count (Product, TPM, Program)
+          const roleCount = filterRelevantRoles(ALL_JOBS_RAW).length;
+          
+          // Calculate US count from role-filtered jobs
+          const roleJobs = filterRelevantRoles(ALL_JOBS_RAW);
+          const usCount = roleJobs.filter(j => isUSHeuristic(j)).length;
+          
+          // Calculate My Area count (5 states + Remote USA)
+          const myAreaCount = roleJobs.filter(j => {
+            const ln = j.location_norm || {};
+            const state = ln.state || '';
+            const remote = ln.remote || false;
+            const remoteScope = ln.remote_scope || '';
+            return MY_LOCATION_STATES.includes(state) || (remote && remoteScope === 'usa');
+          }).length;
+          
+          // Get shown count from filtered jobs
+          const shownCount = latestFilteredJobs ? latestFilteredJobs.length : ALL_JOBS.length;
+          
           const steps = [
-            { label: "Total", count: total },
-            { label: "Role", count: debugCounts.afterRole },
-            { label: "Location", count: debugCounts.afterLocation },
-            { label: "Geo", count: debugCounts.afterState },
+            { label: "Total", count: totalRaw },
+            { label: "Role", count: roleCount },
+            { label: "US", count: usCount },
+            { label: "My Area", count: myAreaCount },
+            { label: "Shown", count: shownCount },
           ];
 
           let pipelineHtml = '';
@@ -1719,10 +1742,11 @@
           
           // Update status bar based on tab
           if (tab === "companies") {
-            updateStatusBarForCompanies();
+            // Header stays the same - universal funnel
+            if (ALL_JOBS.length > 0) {
+              updateStatus();
+            }
           } else if (tab === "jobs") {
-            document.querySelector(".status-label").textContent = "jobs shown";
-            
             if (ALL_JOBS.length > 0) {
               // Jobs already loaded - just filter and render
               const filtered = applyFilters(ALL_JOBS);
@@ -1736,30 +1760,10 @@
         });
       });
       
-      function updateStatusBarForCompanies() {
-        const total = COMPANIES_DATA.reduce((sum, c) => sum + (c.jobs_count || 0), 0);
-        const newCount = COMPANIES_DATA.reduce((sum, c) => sum + (c.new_count || 0), 0);
-        const applied = COMPANIES_DATA.reduce((sum, c) => sum + (c.applied_count || 0), 0);
-        
-        document.getElementById("statusCount").textContent = COMPANIES_DATA.length;
-        document.getElementById("statusCount").classList.toggle("zero", COMPANIES_DATA.length === 0);
-        document.querySelector(".status-label").textContent = "companies";
-        
-        document.getElementById("statusPipeline").innerHTML = `
-          <span class="pipe-item">Total: ${total}</span>
-          <span class="pipe-arrow">→</span>
-          <span class="pipe-item">New: ${newCount}</span>
-          <span class="pipe-arrow">→</span>
-          <span class="pipe-item">Applied: ${applied}</span>
-        `;
-        
-        document.getElementById("statusGeo").innerHTML = "";
-      }
-      
       // Load companies
       async function loadCompanies() {
         try {
-          const res = await fetch(`/companies?profile=all&my_location=${myLocationEnabled}`);
+          const res = await fetch(`/companies?profile=all&my_roles=${myRolesEnabled}&my_location=${myLocationEnabled}`);
           const data = await res.json();
           COMPANIES_DATA = data.companies || [];
           
@@ -1771,7 +1775,11 @@
           
           renderCompanies(COMPANIES_DATA);
           updateCompanySortIcons();
-          updateStatusBarForCompanies();
+          
+          // Update header status if we have jobs loaded
+          if (ALL_JOBS.length > 0) {
+            updateStatus();
+          }
         } catch (err) {
           console.error("Failed to load companies:", err);
           document.getElementById("companiesBody").innerHTML = 
@@ -1908,11 +1916,12 @@
         setLoading(true, "Refreshing ATS...");
         
         try {
-          // Fetch fresh jobs from ATS and save to ALL_JOBS
+          // Fetch fresh jobs from ATS
           const res = await fetch("/jobs?profile=all&refresh=true");
           const data = await res.json();
-          // Filter to only relevant roles before storing
-          ALL_JOBS = enrichJobsLocationNorm(filterRelevantRoles(data.jobs || []));
+          // Store all jobs - role filtering done via My Roles toggle
+          ALL_JOBS_RAW = enrichJobsLocationNorm(data.jobs || []);
+          ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
           
           // Re-render if on Jobs tab
           const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
@@ -1944,6 +1953,32 @@
       
       // Refresh button - parses fresh from ATS
       document.getElementById("refreshBtn").addEventListener("click", backgroundRefresh);
+      
+      // My Roles toggle
+      document.getElementById("myRolesToggle").addEventListener("change", (e) => {
+        myRolesEnabled = e.target.checked;
+        console.log("My Roles toggled:", myRolesEnabled);
+        
+        // Update ALL_JOBS based on toggle
+        if (ALL_JOBS_RAW.length > 0) {
+          ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
+        }
+        
+        // Re-render current tab
+        const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
+        if (jobsTabActive) {
+          if (ALL_JOBS.length > 0) {
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          }
+        } else {
+          // On Companies tab - reload with new filter
+          loadCompanies();
+        }
+        
+        // Update status bar
+        updateStatus();
+      });
       
       // My Location toggle
       document.getElementById("myLocationToggle").addEventListener("change", (e) => {
