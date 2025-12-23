@@ -1162,14 +1162,17 @@
           if (!j.location_norm) {
             j.location_norm = normalizeLocation(j.location || "");
           }
-          // status fallback - Pipeline uses 'status', legacy uses 'application_status'
-          if (!j.status && !j.application_status) {
+          // status fallback - Pipeline uses 'status', prefer it over 'application_status'
+          if (j.status) {
+            // Pipeline job - use status field
+            j.application_status = j.status;
+          } else if (j.application_status) {
+            // Legacy job - use application_status
+            j.status = j.application_status;
+          } else {
+            // No status - default to New
             j.status = "New";
             j.application_status = "New";
-          } else if (j.status && !j.application_status) {
-            j.application_status = j.status;
-          } else if (!j.status && j.application_status) {
-            j.status = j.application_status;
           }
         }
         return jobs;
