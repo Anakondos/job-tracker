@@ -21,3 +21,12 @@ venv/
 job_status.json
 job_hide.json
 cache/
+
+# Data files (Pipeline, jobs, etc.)
+data/jobs_*.json
+data/companies_backup.json
+
+# Symlinks (for worktree setup)
+data
+cache
+.venv
