@@ -94,16 +94,24 @@ def classify_role(title: Optional[str], description: Optional[str] = None) -> di
     Returns:
         {
             "role_family": "product" | "tpm_program" | "project" | "other",
+            "role_category": "primary" | "adjacent" | "unknown" | "excluded",
             "role_id": "product_manager" | None,
             "confidence": 0-100,
             "reason": str,
             "excluded": bool,
             "exclude_reason": str | None
         }
+    
+    Role categories:
+        - primary: Core roles (PM, TPM, Program Manager, Project Manager, Product Owner, Scrum Master)
+        - adjacent: Related roles (Director, Analyst, Ops, Strategy)
+        - unknown: No match found - needs manual review
+        - excluded: Matched skip_roles (Engineers, Sales, etc.)
     """
     if not title:
         return {
             "role_family": "other",
+            "role_category": "unknown",
             "role_id": None,
             "confidence": 0,
             "reason": "No title provided",
@@ -124,6 +132,7 @@ def classify_role(title: Optional[str], description: Optional[str] = None) -> di
             if keyword_in_text(keyword, title_lower):
                 return {
                     "role_family": "other",
+                    "role_category": "excluded",
                     "role_id": None,
                     "confidence": 95,
                     "reason": f"Skip role: {category} (matched '{keyword}')",
@@ -136,6 +145,7 @@ def classify_role(title: Optional[str], description: Optional[str] = None) -> di
     
     for role in sorted_roles:
         role_id = role.get("id", "")
+        role_config_category = role.get("category", "primary")  # from roles.json
         keywords_title = role.get("keywords_title", [])
         keywords_desc = role.get("keywords_description", [])
         exclude_keywords = role.get("exclude_keywords", [])
@@ -163,6 +173,7 @@ def classify_role(title: Optional[str], description: Optional[str] = None) -> di
             # Title matches but excluded by keyword
             return {
                 "role_family": "other",
+                "role_category": "excluded",
                 "role_id": role_id,
                 "confidence": 90,
                 "reason": f"Matched '{title_match}' but excluded by '{exclude_match}'",
@@ -174,9 +185,12 @@ def classify_role(title: Optional[str], description: Optional[str] = None) -> di
         if title_match:
             # Determine role_family from role_id
             role_family = _get_role_family(role_id)
+            # Use category from roles.json config
+            role_category = role_config_category if role_config_category in ["primary", "adjacent"] else "primary"
             
             return {
                 "role_family": role_family,
+                "role_category": role_category,
                 "role_id": role_id,
                 "confidence": 95,
                 "reason": f"Matched title keyword: '{title_match}'",
@@ -189,9 +203,11 @@ def classify_role(title: Optional[str], description: Optional[str] = None) -> di
             desc_match_count = sum(1 for kw in keywords_desc if keyword_in_text(kw, desc_lower))
             if desc_match_count >= 2:  # Need at least 2 description keywords
                 role_family = _get_role_family(role_id)
+                role_category = role_config_category if role_config_category in ["primary", "adjacent"] else "primary"
                 
                 return {
                     "role_family": role_family,
+                    "role_category": role_category,
                     "role_id": role_id,
                     "confidence": 70,
                     "reason": f"Matched {desc_match_count} description keywords for {role_id}",
@@ -202,6 +218,7 @@ def classify_role(title: Optional[str], description: Optional[str] = None) -> di
     # Step 3: No match found
     return {
         "role_family": "other",
+        "role_category": "unknown",
         "role_id": None,
         "confidence": 50,
         "reason": "No matching role keywords found",

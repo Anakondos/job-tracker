@@ -238,6 +238,7 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
             # классификация роли (улучшенная, с roles.json)
             role = classify_role(j.get("title"), j.get("description") or j.get("jd") or "")
             j["role_family"] = role.get("role_family")
+            j["role_category"] = role.get("role_category")  # primary/adjacent/unknown/excluded
             j["role_id"] = role.get("role_id")
             j["role_confidence"] = role.get("confidence")
             j["role_reason"] = role.get("reason")
