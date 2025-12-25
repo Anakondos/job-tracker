@@ -2226,6 +2226,9 @@
         btn.addEventListener("click", () => {
           const tab = btn.dataset.tab;
           
+          // Save to localStorage
+          localStorage.setItem('activeTab', tab);
+          
           // Update buttons
           document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
@@ -2345,10 +2348,12 @@
         
         tbody.innerHTML = companies.map(c => {
           const statusIcon = c.last_ok === true ? '✅' : 
-                            c.last_ok === false ? '❌' : '—';
+                            c.last_ok === false ? '❌' : '⏳';
           const statusClass = c.last_ok === true ? 'status-ok' : 
                               c.last_ok === false ? 'status-error' : 'status-unknown';
-          const errorTip = c.last_error ? ` title="${c.last_error}"` : '';
+          const statusTitle = c.last_ok === true ? 'OK' :
+                              c.last_ok === false ? c.last_error : 'Not checked yet - click Refresh';
+          const errorTip = ` title="${statusTitle}"`;
           
           const jobsBadgeClass = c.jobs_count > 0 ? 'jobs-badge' : 'jobs-badge zero';
           
@@ -2558,6 +2563,19 @@
       
       // Load data on page load
       loadEnv();
+      
+      // Restore active tab from localStorage
+      const savedTab = localStorage.getItem('activeTab');
+      if (savedTab) {
+        const tabBtn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
+        if (tabBtn) {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          tabBtn.classList.add("active");
+          document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+          document.getElementById(`tab-${savedTab}`).classList.add("active");
+        }
+      }
+      
       loadCompanies();
       loadJobsFromCache();  // Load jobs for header stats
 
