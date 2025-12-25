@@ -2451,8 +2451,14 @@
         refreshSummary.style.display = "none";
         closeBtn.style.display = "none";
         
-        let stats = { ok: 0, error: 0, totalJobs: 0 };
+        let stats = { ok: 0, error: 0, totalJobs: 0, total: 0 };
         let errors = [];
+        let completed = false;
+        
+        const hideProgressBar = () => {
+          modal.style.display = "none";
+          document.body.style.paddingTop = "0";
+        };
         
         try {
           const eventSource = new EventSource("/refresh/stream?profile=all");
@@ -2461,6 +2467,7 @@
             const data = JSON.parse(event.data);
             
             if (data.type === "start") {
+              stats.total = data.total;
               progressText.textContent = `0 / ${data.total} companies`;
             } 
             else if (data.type === "loading") {
@@ -2477,42 +2484,69 @@
               errors.push(data.company);
             }
             else if (data.type === "complete") {
+              completed = true;
               eventSource.close();
               
               progressFill.style.width = "100%";
-              progressText.textContent = `✅ Done! ${data.total_jobs} jobs`;
+              progressFill.style.background = "#22c55e";
+              progressText.textContent = `✅ Done! ${stats.ok} companies, ${data.total_jobs} jobs`;
               
-              refreshSummary.innerHTML = `<span style="color: #22c55e;">${stats.ok} ok</span>${stats.error > 0 ? ` <span style="color: #ef4444;">${stats.error} errors</span>` : ''}`;
-              refreshSummary.style.display = "block";
-              closeBtn.style.display = "inline-block";
+              if (stats.error > 0) {
+                refreshSummary.innerHTML = `<span style="color: #ef4444;">${stats.error} errors: ${errors.slice(0,3).join(", ")}${errors.length > 3 ? "..." : ""}</span>`;
+                refreshSummary.style.display = "block";
+              }
               
               await reloadAfterRefresh();
               
               btn.textContent = "✅ Done";
-              setTimeout(() => btn.textContent = "🔄 Refresh from ATS", 2000);
+              btn.disabled = false;
+              isRefreshing = false;
+              
+              // Auto-hide after 3 seconds
+              setTimeout(() => {
+                hideProgressBar();
+                btn.textContent = "🔄 Refresh from ATS";
+              }, 3000);
             }
           };
           
           eventSource.onerror = async (err) => {
-            console.error("SSE error:", err);
             eventSource.close();
             
-            if (stats.ok > 0) {
-              progressText.textContent = `⚠️ Partial: ${stats.totalJobs} jobs`;
+            // If we processed all companies, treat as success
+            if (stats.ok > 0 && stats.ok >= stats.total - 1) {
+              progressFill.style.width = "100%";
+              progressFill.style.background = "#22c55e";
+              progressText.textContent = `✅ Done! ${stats.ok} companies, ${stats.totalJobs} jobs`;
+              
               await reloadAfterRefresh();
+              
+              btn.textContent = "✅ Done";
+              setTimeout(() => {
+                hideProgressBar();
+                btn.textContent = "🔄 Refresh from ATS";
+              }, 3000);
+            } else if (stats.ok > 0) {
+              // Partial success
+              progressText.textContent = `⚠️ Partial: ${stats.ok}/${stats.total} companies, ${stats.totalJobs} jobs`;
+              closeBtn.style.display = "inline-block";
+              await reloadAfterRefresh();
+              btn.textContent = "🔄 Refresh from ATS";
             } else {
-              progressText.textContent = "Connection error";
+              progressText.textContent = "❌ Connection error";
+              closeBtn.style.display = "inline-block";
+              btn.textContent = "🔄 Refresh from ATS";
             }
-            closeBtn.style.display = "inline-block";
-            btn.textContent = "🔄 Refresh from ATS";
+            
+            btn.disabled = false;
+            isRefreshing = false;
           };
           
         } catch (err) {
           console.error("Refresh failed:", err);
-          progressText.textContent = "Error: " + err.message;
+          progressText.textContent = "❌ Error: " + err.message;
           closeBtn.style.display = "inline-block";
           btn.textContent = "🔄 Refresh from ATS";
-        } finally {
           btn.disabled = false;
           isRefreshing = false;
         }
