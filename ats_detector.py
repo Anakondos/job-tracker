@@ -73,9 +73,10 @@ def detect_ats(careers_url: str) -> dict | None:
                     if match:
                         board_id = match.group(1).lower()
                         board_url = build_board_url(ats_name, board_id)
+                        api_url = build_api_url(ats_name, board_id)
                         
-                        # Верифицируем что URL работает
-                        if verify_ats_url(board_url):
+                        # Verify using API URL
+                        if verify_ats_url(api_url):
                             return {
                                 "ats": ats_name,
                                 "board_id": board_id,
@@ -91,13 +92,25 @@ def detect_ats(careers_url: str) -> dict | None:
 
 
 def build_board_url(ats: str, board_id: str) -> str:
-    """Строит API URL для ATS"""
+    """Builds the board URL for storing in companies.json (used by parsers)"""
+    urls = {
+        "greenhouse": f"https://boards.greenhouse.io/{board_id}",
+        "lever": f"https://jobs.lever.co/{board_id}",
+        "smartrecruiters": f"https://jobs.smartrecruiters.com/{board_id}",
+        "ashby": f"https://jobs.ashbyhq.com/{board_id}",
+        "workday": "",
+    }
+    return urls.get(ats, "")
+
+
+def build_api_url(ats: str, board_id: str) -> str:
+    """Builds the API URL for verification"""
     urls = {
         "greenhouse": f"https://boards-api.greenhouse.io/v1/boards/{board_id}/jobs",
         "lever": f"https://api.lever.co/v0/postings/{board_id}?mode=json",
         "smartrecruiters": f"https://api.smartrecruiters.com/v1/companies/{board_id}/postings",
         "ashby": f"https://api.ashbyhq.com/posting-api/job-board/{board_id}",
-        "workday": "",  # Workday URLs are complex, need special handling
+        "workday": "",
     }
     return urls.get(ats, "")
 
@@ -170,18 +183,19 @@ def try_repair_company(company: dict) -> dict | None:
     slug = company_name.lower().replace(" ", "").replace("-", "").replace(".", "")
     
     direct_urls = [
-        ("greenhouse", f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"),
-        ("lever", f"https://api.lever.co/v0/postings/{slug}?mode=json"),
-        ("ashby", f"https://api.ashbyhq.com/posting-api/job-board/{slug}"),
+        ("greenhouse", slug),
+        ("lever", slug),
+        ("ashby", slug),
     ]
     
-    for ats, url in direct_urls:
-        if verify_ats_url(url):
+    for ats, board_id in direct_urls:
+        api_url = build_api_url(ats, board_id)
+        if verify_ats_url(api_url):
             print(f"  ✅ Found via direct probe: {ats}")
             return {
                 "ats": ats,
-                "board_id": slug,
-                "board_url": url,
+                "board_id": board_id,
+                "board_url": build_board_url(ats, board_id),
                 "verified": True
             }
     
