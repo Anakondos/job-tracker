@@ -489,6 +489,19 @@
         border-radius: 10px;
         font-size: 12px;
       }
+      
+      .addToPipelineBtn {
+        background: #2a5a3a;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .addToPipelineBtn:hover {
+        background: #3a7a4a;
+      }
 
       /* ========== STATUS BAR ========== */
       .status-bar {
@@ -905,6 +918,7 @@
               >
                 Status <span class="sortIcon" id="sortIcon-status">⬍</span>
               </th>
+              <th style="width: 80px">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1470,6 +1484,11 @@
           row.dataset.ats = (job.ats || "").trim();
           row.dataset.status = (st || "New").trim();
 
+          // Determine role category for showing Add to Pipeline button
+          const roleCategory = job.role_category || (job.role_excluded ? 'excluded' : (job.role_id ? 'primary' : 'unknown'));
+          const showAddButton = ['unknown', 'excluded'].includes(roleCategory);
+          const inPipeline = job.in_pipeline || job.status; // Job is already in pipeline if has status
+          
           row.innerHTML = `
         <td>${escapeHtml(job.company || "")}</td>
         <td class="muted" style="font-size: 11px;">${escapeHtml(tagsStr)}</td>
@@ -1501,6 +1520,11 @@
               .join("")}
           </select>
         </td>
+        <td>
+          ${showAddButton && !inPipeline 
+            ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
+            : ''}
+        </td>
       `;
           tbody.appendChild(row);
 
@@ -1528,6 +1552,36 @@
               renderJobs(filtered);
             }
           });
+          
+          // Add to Pipeline button handler
+          const addBtn = row.querySelector(".addToPipelineBtn");
+          if (addBtn) {
+            addBtn.addEventListener("click", async (e) => {
+              const jobId = e.target.dataset.jobid;
+              if (!jobId) return;
+              
+              try {
+                const res = await fetch("/pipeline/add", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ job: job })
+                });
+                
+                if (res.ok) {
+                  // Mark as added
+                  job.in_pipeline = true;
+                  job.status = "New";
+                  e.target.remove(); // Remove button
+                  alert(`Added "${job.title}" to Pipeline`);
+                } else {
+                  alert("Failed to add to pipeline");
+                }
+              } catch (err) {
+                console.error("Add to pipeline error:", err);
+                alert("Error adding to pipeline");
+              }
+            });
+          }
         }
 
         updateStatus(jobs);

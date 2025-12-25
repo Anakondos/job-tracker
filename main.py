@@ -927,6 +927,35 @@ def pipeline_archive_endpoint():
     return {"count": len(jobs), "jobs": jobs}
 
 
+class PipelineAddJob(BaseModel):
+    job: dict
+
+
+@app.post("/pipeline/add")
+def pipeline_add_job_endpoint(payload: PipelineAddJob):
+    """
+    Manually add a job to pipeline (for Unknown/Excluded jobs).
+    """
+    job = payload.job
+    job_id = job.get("id")
+    
+    if not job_id:
+        return {"ok": False, "error": "Job must have an id"}
+    
+    # Check if already in pipeline
+    existing = get_job_by_id(job_id)
+    if existing:
+        return {"ok": False, "error": "Job already in pipeline"}
+    
+    # Add to pipeline
+    added_job = add_new_job(job)
+    
+    if added_job:
+        return {"ok": True, "job": added_job}
+    else:
+        return {"ok": False, "error": "Failed to add job"}
+
+
 class PipelineStatusUpdate(BaseModel):
     job_id: str
     status: str
