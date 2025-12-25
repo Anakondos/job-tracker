@@ -22,6 +22,7 @@ from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
 from parsers.smartrecruiters import fetch_smartrecruiters
 from parsers.ashby import fetch_ashby_jobs
+from ats_detector import try_repair_company, verify_ats_url
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info, load_stats
@@ -261,9 +262,51 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
         return jobs
 
     except Exception as e:  # noqa: BLE001
-        # фиксируем ошибку, но не валим весь /jobs
-        _mark_company_status(profile, cfg, ok=False, error=str(e))
-        print(f"Error for {company}: {e}")
+        error_str = str(e)
+        print(f"Error for {company}: {error_str}")
+        
+        # Try auto-repair for 404 errors
+        if "404" in error_str:
+            print(f"  🔧 Attempting auto-repair for {company}...")
+            repair_result = try_repair_company({
+                "name": company,
+                "ats": ats,
+                "board_url": url,
+            })
+            
+            if repair_result and repair_result.get("verified"):
+                new_ats = repair_result["ats"]
+                new_url = repair_result["board_url"]
+                print(f"  ✅ Found new URL: {new_ats} → {new_url}")
+                
+                # Update companies.json
+                try:
+                    companies_path = Path("data/companies.json")
+                    with open(companies_path, "r") as f:
+                        companies = json.load(f)
+                    
+                    for c in companies:
+                        if c.get("name", "").lower() == company.lower():
+                            c["ats"] = new_ats
+                            c["board_url"] = new_url
+                            print(f"  ✅ Updated companies.json for {company}")
+                            break
+                    
+                    with open(companies_path, "w") as f:
+                        json.dump(companies, f, indent=2, ensure_ascii=False)
+                    
+                    # Retry fetch with new URL
+                    cfg["ats"] = new_ats
+                    cfg["url"] = new_url
+                    return _fetch_for_company(profile, cfg)  # Recursive retry
+                    
+                except Exception as update_err:
+                    print(f"  ❌ Failed to update companies.json: {update_err}")
+            else:
+                print(f"  ❌ Auto-repair failed for {company}")
+        
+        # Mark as failed
+        _mark_company_status(profile, cfg, ok=False, error=error_str)
         return []
 
 
