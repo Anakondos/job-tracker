@@ -195,6 +195,9 @@
       .status-error {
         color: #ef4444;
       }
+      .status-disabled {
+        color: #f59e0b;
+      }
       .status-unknown {
         color: var(--muted);
       }
@@ -2348,11 +2351,14 @@
         
         tbody.innerHTML = companies.map(c => {
           const statusIcon = c.last_ok === true ? '✅' : 
-                            c.last_ok === false ? '❌' : '⏳';
+                            c.last_ok === false ? '❌' : 
+                            c.last_ok === 'disabled' ? '⏸️' : '⏳';
           const statusClass = c.last_ok === true ? 'status-ok' : 
-                              c.last_ok === false ? 'status-error' : 'status-unknown';
+                              c.last_ok === false ? 'status-error' : 
+                              c.last_ok === 'disabled' ? 'status-disabled' : 'status-unknown';
           const statusTitle = c.last_ok === true ? 'OK' :
-                              c.last_ok === false ? c.last_error : 'Not checked yet - click Refresh';
+                              c.last_ok === false ? c.last_error : 
+                              c.last_ok === 'disabled' ? `Disabled: ${c.last_error}` : 'Not checked yet - click Refresh';
           const errorTip = ` title="${statusTitle}"`;
           
           const jobsBadgeClass = c.jobs_count > 0 ? 'jobs-badge' : 'jobs-badge zero';

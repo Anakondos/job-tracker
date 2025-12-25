@@ -716,13 +716,13 @@ def get_companies(
     items: list[dict] = []
 
     for cfg in companies_cfg:
-        # Skip disabled companies
-        if cfg.get("enabled") == False:
-            continue
-            
         company_name = cfg.get("company", "") or cfg.get("name", "")
         key = f"{profile}:{company_name}"
         st = company_fetch_status.get(key, {})
+        
+        # For disabled companies, override status
+        is_disabled = cfg.get("enabled") == False
+        company_status = cfg.get("status", "active")
         
         # Get stats for this company
         stats = company_stats.get(company_name, {
@@ -741,9 +741,9 @@ def get_companies(
                 "ats": cfg.get("ats", ""),
                 "url": cfg.get("url", "") or cfg.get("board_url", ""),
                 "enabled": cfg.get("enabled", True),
-                "status": cfg.get("status", "ok"),
-                "last_ok": st.get("ok", None),
-                "last_error": st.get("error", ""),
+                "status": company_status,
+                "last_ok": "disabled" if is_disabled else st.get("ok", None),
+                "last_error": cfg.get("status", "") if is_disabled else st.get("error", ""),
                 "last_checked": st.get("checked_at", ""),
                 # Stats from pipeline
                 "jobs_count": stats["jobs_count"],
