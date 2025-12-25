@@ -716,6 +716,10 @@ def get_companies(
     items: list[dict] = []
 
     for cfg in companies_cfg:
+        # Skip disabled companies
+        if cfg.get("enabled") == False:
+            continue
+            
         company_name = cfg.get("company", "") or cfg.get("name", "")
         key = f"{profile}:{company_name}"
         st = company_fetch_status.get(key, {})
