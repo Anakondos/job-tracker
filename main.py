@@ -124,7 +124,28 @@ def compute_job_key(job: dict) -> str:
 
 
 # Кэш статуса по компаниям: "profile:company" -> {ok, error, checked_at, ats, url}
-company_fetch_status: dict[str, dict] = {}
+COMPANY_STATUS_FILE = Path("data/company_status.json")
+
+def load_company_status() -> dict:
+    """Load company fetch status from file"""
+    if COMPANY_STATUS_FILE.exists():
+        try:
+            with open(COMPANY_STATUS_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_company_status(status: dict):
+    """Save company fetch status to file"""
+    try:
+        with open(COMPANY_STATUS_FILE, "w") as f:
+            json.dump(status, f, indent=2)
+    except Exception as e:
+        print(f"Failed to save company status: {e}")
+
+# Load on startup
+company_fetch_status: dict[str, dict] = load_company_status()
 
 # Geo scoring/bucketing configuration
 TARGET_STATE = "NC"
@@ -196,6 +217,8 @@ def _mark_company_status(profile: str, cfg: dict, ok: bool, error: str | None = 
         "ats": cfg.get("ats", ""),
         "url": cfg.get("url", ""),
     }
+    # Save to file for persistence
+    save_company_status(company_fetch_status)
 
 
 def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
