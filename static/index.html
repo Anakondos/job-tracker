@@ -1023,21 +1023,19 @@
       </div>
     </div>
 
-    <!-- Refresh Progress Modal -->
-    <div id="refreshModal" class="modal" style="display: none;">
-      <div class="modal-content" style="max-width: 500px;">
-        <h3 style="margin-bottom: 16px;">🔄 Refreshing from ATS</h3>
-        <div id="refreshProgressBar" style="height: 8px; background: var(--border); border-radius: 4px; margin-bottom: 12px; overflow: hidden;">
-          <div id="refreshProgressFill" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.2s;"></div>
+    <!-- Refresh Progress Bar (fixed at top) -->
+    <div id="refreshModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 12px 20px;">
+      <div style="max-width: 1200px; margin: 0 auto;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <span style="font-weight: 500;">🔄 Refreshing</span>
+          <div style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+            <div id="refreshProgressFill" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.2s;"></div>
+          </div>
+          <span id="refreshProgressText" style="font-size: 13px; color: var(--muted); min-width: 200px;">Starting...</span>
+          <button id="closeRefreshModal" class="ghost" style="display: none; padding: 4px 12px;">✕</button>
         </div>
-        <div id="refreshProgressText" style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">Starting...</div>
-        <div id="refreshLog" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; background: var(--bg-secondary); padding: 12px; border-radius: 6px;">
-        </div>
-        <div id="refreshSummary" style="display: none; margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 6px;">
-        </div>
-        <div style="margin-top: 16px; text-align: right;">
-          <button id="closeRefreshModal" class="primary" style="display: none;">Close</button>
-        </div>
+        <div id="refreshSummary" style="display: none; margin-top: 8px; font-size: 13px;"></div>
+        <div id="refreshLog" style="display: none;"></div>
       </div>
     </div>
 
@@ -2440,7 +2438,7 @@
         btn.disabled = true;
         btn.textContent = "⏳ Updating...";
         
-        // Show modal
+        // Show compact progress bar in header
         const modal = document.getElementById("refreshModal");
         const progressFill = document.getElementById("refreshProgressFill");
         const progressText = document.getElementById("refreshProgressText");
@@ -2455,7 +2453,11 @@
         refreshSummary.style.display = "none";
         closeBtn.style.display = "none";
         
+        // Switch to Companies tab to show progress
+        switchToCompaniesTab();
+        
         let stats = { ok: 0, error: 0, totalJobs: 0 };
+        let errors = [];
         
         try {
           const eventSource = new EventSource("/refresh/stream?profile=all");
@@ -2465,60 +2467,77 @@
             
             if (data.type === "start") {
               progressText.textContent = `Loading 0 / ${data.total} companies...`;
+              // Mark all companies as "loading"
+              updateAllCompaniesStatus("⏳", "loading");
             } 
             else if (data.type === "loading") {
               const percent = Math.round((data.index / data.total) * 100);
               progressFill.style.width = percent + "%";
-              progressText.textContent = `Loading ${data.index + 1} / ${data.total}: ${data.company}...`;
+              progressText.textContent = `${data.index + 1} / ${data.total}: ${data.company}...`;
+              // Update this company's status in table
+              updateCompanyRowStatus(data.company, "⏳", "loading...");
             }
             else if (data.type === "ok") {
               stats.ok++;
               stats.totalJobs += data.jobs;
-              const logLine = document.createElement("div");
-              logLine.innerHTML = `<span style="color: #22c55e;">✅</span> ${data.company}: <strong>${data.jobs}</strong> jobs`;
-              refreshLog.appendChild(logLine);
-              refreshLog.scrollTop = refreshLog.scrollHeight;
+              // Update company row with success
+              updateCompanyRowStatus(data.company, "✅", `${data.jobs} jobs`);
+              updateCompanyRowTotal(data.company, data.jobs);
             }
             else if (data.type === "error") {
               stats.error++;
-              const logLine = document.createElement("div");
-              logLine.innerHTML = `<span style="color: #ef4444;">❌</span> ${data.company}: ${data.error}`;
-              refreshLog.appendChild(logLine);
-              refreshLog.scrollTop = refreshLog.scrollHeight;
+              errors.push({ company: data.company, error: data.error });
+              // Update company row with error
+              updateCompanyRowStatus(data.company, "❌", data.error);
             }
             else if (data.type === "complete") {
               eventSource.close();
               
               progressFill.style.width = "100%";
-              progressText.textContent = `Complete! ${data.total_jobs} total jobs from ${data.companies} companies`;
+              progressText.textContent = `✅ Complete! ${data.total_jobs} jobs from ${stats.ok} companies`;
               
-              // Show summary
-              refreshSummary.innerHTML = `
-                <div style="display: flex; gap: 24px;">
+              // Show summary with errors if any
+              let summaryHtml = `
+                <div style="display: flex; gap: 24px; justify-content: center;">
                   <div><strong style="color: #22c55e;">${stats.ok}</strong> successful</div>
-                  <div><strong style="color: #ef4444;">${stats.error}</strong> errors</div>
+                  ${stats.error > 0 ? `<div><strong style="color: #ef4444;">${stats.error}</strong> errors</div>` : ''}
                   <div><strong>${data.total_jobs}</strong> total jobs</div>
                 </div>
               `;
+              
+              if (errors.length > 0) {
+                summaryHtml += `<div style="margin-top: 12px; font-size: 12px; color: var(--muted);">Errors: ${errors.map(e => e.company).join(", ")}</div>`;
+              }
+              
+              refreshSummary.innerHTML = summaryHtml;
               refreshSummary.style.display = "block";
               closeBtn.style.display = "inline-block";
+              refreshLog.style.display = "none";
               
-              // Reload data in background
+              // Reload data
               await reloadAfterRefresh();
               
-              btn.textContent = "✅ Updated";
+              btn.textContent = "✅ Done";
               setTimeout(() => {
                 btn.textContent = "🔄 Refresh from ATS";
               }, 2000);
             }
           };
           
-          eventSource.onerror = (err) => {
+          eventSource.onerror = async (err) => {
             console.error("SSE error:", err);
             eventSource.close();
-            progressText.textContent = "Connection error. Please try again.";
+            
+            // If we got some data, consider it partial success
+            if (stats.ok > 0) {
+              progressText.textContent = `⚠️ Partial: ${stats.totalJobs} jobs from ${stats.ok} companies`;
+              await reloadAfterRefresh();
+            } else {
+              progressText.textContent = "Connection error. Please try again.";
+            }
             closeBtn.style.display = "inline-block";
-            btn.textContent = "⚠️ Refresh failed";
+            refreshLog.style.display = "none";
+            btn.textContent = stats.ok > 0 ? "⚠️ Partial" : "⚠️ Failed";
             setTimeout(() => {
               btn.textContent = "🔄 Refresh from ATS";
             }, 3000);
@@ -2528,11 +2547,52 @@
           console.error("Refresh failed:", err);
           progressText.textContent = "Error: " + err.message;
           closeBtn.style.display = "inline-block";
-          btn.textContent = "⚠️ Refresh failed";
+          btn.textContent = "⚠️ Failed";
         } finally {
           btn.disabled = false;
           isRefreshing = false;
         }
+      }
+      
+      // Update status cell for a specific company row
+      function updateCompanyRowStatus(companyName, icon, tooltip) {
+        const row = document.querySelector(`.company-row[data-company="${companyName}"]`);
+        if (row) {
+          const statusCell = row.querySelector('td:last-child');
+          if (statusCell) {
+            statusCell.innerHTML = `<span title="${tooltip}">${icon}</span>`;
+          }
+        }
+      }
+      
+      // Update total jobs cell for a specific company row
+      function updateCompanyRowTotal(companyName, total) {
+        const row = document.querySelector(`.company-row[data-company="${companyName}"]`);
+        if (row) {
+          const totalCell = row.querySelector('td:nth-child(4)');
+          if (totalCell) {
+            const badgeClass = total > 0 ? 'jobs-badge' : 'jobs-badge zero';
+            totalCell.innerHTML = `<span class="${badgeClass}">${total}</span>`;
+          }
+        }
+      }
+      
+      // Mark all companies with a status
+      function updateAllCompaniesStatus(icon, tooltip) {
+        document.querySelectorAll('.company-row').forEach(row => {
+          const statusCell = row.querySelector('td:last-child');
+          if (statusCell) {
+            statusCell.innerHTML = `<span title="${tooltip}">${icon}</span>`;
+          }
+        });
+      }
+      
+      // Switch to Companies tab
+      function switchToCompaniesTab() {
+        document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-btn-companies').classList.add('active');
+        document.getElementById('tab-companies').classList.add('active');
       }
       
       // Helper to reload data after streaming refresh
