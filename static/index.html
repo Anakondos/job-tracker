@@ -2454,8 +2454,9 @@
         refreshSummary.style.display = "none";
         closeBtn.style.display = "none";
         
-        // Switch to Companies tab to show progress
+        // Switch to Companies tab and load companies first
         switchToCompaniesTab();
+        await loadCompanies();  // Ensure table is populated before we start updating rows
         
         let stats = { ok: 0, error: 0, totalJobs: 0 };
         let errors = [];
