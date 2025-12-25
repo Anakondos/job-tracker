@@ -661,6 +661,16 @@ def get_companies(
     # Load all jobs from pipeline for counting
     all_pipeline_jobs = load_new_jobs() + load_pipeline_jobs()
     
+    # Load cache to get total jobs per company
+    cache_data = load_cache(f"jobs_{profile}")
+    cache_jobs = cache_data.get("jobs", []) if cache_data else []
+    
+    # Build total_jobs per company from cache
+    total_jobs_by_company = {}
+    for job in cache_jobs:
+        company_name = job.get("company", "")
+        total_jobs_by_company[company_name] = total_jobs_by_company.get(company_name, 0) + 1
+    
     # Filter jobs by role if my_roles is enabled
     def job_matches_my_roles(job):
         if not my_roles:
@@ -745,7 +755,9 @@ def get_companies(
                 "last_ok": "disabled" if is_disabled else st.get("ok", None),
                 "last_error": cfg.get("status", "") if is_disabled else st.get("error", ""),
                 "last_checked": st.get("checked_at", ""),
-                # Stats from pipeline
+                # Total jobs from cache (all jobs from ATS)
+                "total_jobs": total_jobs_by_company.get(company_name, 0),
+                # Stats from pipeline (filtered PM/TPM jobs)
                 "jobs_count": stats["jobs_count"],
                 "new_count": stats["new_count"],
                 "applied_count": stats["applied_count"],
@@ -753,8 +765,8 @@ def get_companies(
             }
         )
 
-    # Sort by jobs_count desc, then by name
-    items.sort(key=lambda x: (-x["jobs_count"], x["company"].lower()))
+    # Sort by total_jobs desc, then by name
+    items.sort(key=lambda x: (-x["total_jobs"], x["company"].lower()))
     
     # Summary stats
     total_jobs = sum(c["jobs_count"] for c in items)

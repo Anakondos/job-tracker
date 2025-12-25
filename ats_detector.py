@@ -127,6 +127,43 @@ def verify_ats_url(board_url: str) -> bool:
         return False
 
 
+def verify_and_count_jobs(ats: str, board_url: str) -> dict:
+    """
+    Verify ATS URL works AND count jobs returned.
+    Returns: {"ok": bool, "jobs_count": int, "error": str}
+    """
+    api_url = build_api_url(ats, board_url.split('/')[-1]) if board_url else ""
+    
+    if not api_url:
+        return {"ok": False, "jobs_count": 0, "error": "No API URL"}
+    
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; JobTracker/1.0)"}
+        resp = requests.get(api_url, headers=headers, timeout=15)
+        
+        if resp.status_code != 200:
+            return {"ok": False, "jobs_count": 0, "error": f"HTTP {resp.status_code}"}
+        
+        data = resp.json()
+        
+        # Count jobs based on ATS format
+        if ats == "greenhouse":
+            jobs_count = len(data.get("jobs", []))
+        elif ats == "lever":
+            jobs_count = len(data) if isinstance(data, list) else 0
+        elif ats == "ashby":
+            jobs_count = len(data.get("jobs", []))
+        elif ats == "smartrecruiters":
+            jobs_count = len(data.get("content", []))
+        else:
+            jobs_count = 0
+        
+        return {"ok": True, "jobs_count": jobs_count, "error": None}
+        
+    except Exception as e:
+        return {"ok": False, "jobs_count": 0, "error": str(e)}
+
+
 def guess_careers_urls(company_name: str, website: str = None) -> list:
     """Генерирует возможные careers URL для компании"""
     urls = []
@@ -327,6 +364,44 @@ if __name__ == "__main__":
             print(f"\nRepaired: {len(result['repaired'])}")
             print(f"Failed: {len(result['failed'])}")
             
+        elif sys.argv[1] == "verify":
+            # Verify all companies and show job counts
+            import json
+            with open("data/companies.json") as f:
+                companies = json.load(f)
+            
+            print("\nVerifying all companies...\n")
+            results = {"working": [], "empty": [], "broken": [], "disabled": []}
+            
+            for c in companies:
+                name = c.get("name", "")
+                ats = c.get("ats", "")
+                url = c.get("board_url", "")
+                enabled = c.get("enabled", True)
+                
+                if not enabled:
+                    results["disabled"].append(name)
+                    continue
+                
+                check = verify_and_count_jobs(ats, url)
+                
+                if check["ok"]:
+                    if check["jobs_count"] > 0:
+                        results["working"].append((name, check["jobs_count"]))
+                        print(f"✅ {name:25} {check['jobs_count']:4} jobs")
+                    else:
+                        results["empty"].append(name)
+                        print(f"⚠️  {name:25}    0 jobs (ATS works but no jobs)")
+                else:
+                    results["broken"].append((name, check["error"]))
+                    print(f"❌ {name:25} ERROR: {check['error'][:40]}")
+            
+            print(f"\n" + "="*50)
+            print(f"✅ Working: {len(results['working'])} companies")
+            print(f"⚠️  Empty:   {len(results['empty'])} companies (no jobs right now)")
+            print(f"❌ Broken:  {len(results['broken'])} companies")
+            print(f"⏸️  Disabled: {len(results['disabled'])} companies")
+            
         elif sys.argv[1] == "test":
             # Test detection on a few URLs
             test_urls = [
@@ -350,8 +425,14 @@ if __name__ == "__main__":
                 company_name = " ".join(sys.argv[2:])
                 result = try_repair_company({"name": company_name})
                 print(f"\nResult: {result}")
+                
+                # Also verify job count
+                if result and result.get("verified"):
+                    check = verify_and_count_jobs(result["ats"], result["board_url"])
+                    print(f"Jobs: {check['jobs_count']}")
     else:
         print("Usage:")
         print("  python ats_detector.py test     - test detection on sample URLs")
         print("  python ats_detector.py repair   - repair all broken companies")
+        print("  python ats_detector.py verify   - verify all companies and show job counts")
         print("  python ats_detector.py check <company name> - check specific company")

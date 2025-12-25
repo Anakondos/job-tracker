@@ -706,14 +706,15 @@
                 <th class="sortable" style="width: 180px" onclick="sortCompanies('company')">Company <span class="sortIcon" id="sortIcon-c-company">⬍</span></th>
                 <th class="sortable" style="width: 120px" onclick="sortCompanies('industry')">Industry <span class="sortIcon" id="sortIcon-c-industry">⬍</span></th>
                 <th class="sortable" style="width: 100px" onclick="sortCompanies('ats')">ATS <span class="sortIcon" id="sortIcon-c-ats">⬍</span></th>
-                <th class="sortable" style="width: 80px" onclick="sortCompanies('jobs_count')">Jobs <span class="sortIcon" id="sortIcon-c-jobs_count">⬍</span></th>
+                <th class="sortable" style="width: 80px" onclick="sortCompanies('total_jobs')" title="Total jobs from ATS">Total <span class="sortIcon" id="sortIcon-c-total_jobs">⬍</span></th>
+                <th class="sortable" style="width: 80px" onclick="sortCompanies('jobs_count')" title="PM/TPM jobs in pipeline">Jobs <span class="sortIcon" id="sortIcon-c-jobs_count">⬍</span></th>
                 <th class="sortable" style="width: 60px" onclick="sortCompanies('new_count')">New <span class="sortIcon" id="sortIcon-c-new_count">⬍</span></th>
                 <th class="sortable" style="width: 70px" onclick="sortCompanies('applied_count')">Applied <span class="sortIcon" id="sortIcon-c-applied_count">⬍</span></th>
                 <th class="sortable" style="width: 100px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
               </tr>
             </thead>
             <tbody id="companiesBody">
-              <tr><td colspan="7" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
+              <tr><td colspan="8" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2295,7 +2296,7 @@
         } else {
           companiesSortCol = col;
           // Default: desc for numbers, asc for text
-          companiesSortDir = ["jobs_count", "new_count", "applied_count", "last_ok"].includes(col) ? "desc" : "asc";
+          companiesSortDir = ["total_jobs", "jobs_count", "new_count", "applied_count", "last_ok"].includes(col) ? "desc" : "asc";
         }
         
         const sorted = [...COMPANIES_DATA].sort((a, b) => {
@@ -2328,7 +2329,7 @@
       }
       
       function updateCompanySortIcons() {
-        const cols = ["company", "industry", "ats", "jobs_count", "new_count", "applied_count", "last_ok"];
+        const cols = ["company", "industry", "ats", "total_jobs", "jobs_count", "new_count", "applied_count", "last_ok"];
         cols.forEach(c => {
           const icon = document.getElementById(`sortIcon-c-${c}`);
           if (icon) {
@@ -2362,12 +2363,14 @@
           const errorTip = ` title="${statusTitle}"`;
           
           const jobsBadgeClass = c.jobs_count > 0 ? 'jobs-badge' : 'jobs-badge zero';
+          const totalBadgeClass = c.total_jobs > 0 ? 'jobs-badge' : 'jobs-badge zero';
           
           return `
             <tr class="company-row" data-company="${c.company}">
               <td><strong>${c.company}</strong></td>
               <td style="color: var(--muted); font-size: 12px;">${c.industry || c.tags?.join(', ') || ''}</td>
               <td><span class="ats-badge">${c.ats}</span></td>
+              <td><span class="${totalBadgeClass}">${c.total_jobs || 0}</span></td>
               <td><span class="${jobsBadgeClass}">${c.jobs_count}</span></td>
               <td>${c.new_count || 0}</td>
               <td>${c.applied_count || 0}</td>
