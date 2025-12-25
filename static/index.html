@@ -1024,14 +1024,14 @@
     </div>
 
     <!-- Refresh Progress Bar (fixed at top) -->
-    <div id="refreshModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 12px 20px;">
+    <div id="refreshModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 8px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
       <div style="max-width: 1200px; margin: 0 auto;">
         <div style="display: flex; align-items: center; gap: 16px;">
           <span style="font-weight: 500;">🔄 Refreshing</span>
           <div style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
             <div id="refreshProgressFill" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.2s;"></div>
           </div>
-          <span id="refreshProgressText" style="font-size: 13px; color: var(--muted); min-width: 200px;">Starting...</span>
+          <span id="refreshProgressText" style="font-size: 13px; color: var(--muted); min-width: 250px;">Starting...</span>
           <button id="closeRefreshModal" class="ghost" style="display: none; padding: 4px 12px;">✕</button>
         </div>
         <div id="refreshSummary" style="display: none; margin-top: 8px; font-size: 13px;"></div>
@@ -2446,7 +2446,8 @@
         const refreshSummary = document.getElementById("refreshSummary");
         const closeBtn = document.getElementById("closeRefreshModal");
         
-        modal.style.display = "flex";
+        modal.style.display = "block";
+        document.body.style.paddingTop = "50px";
         progressFill.style.width = "0%";
         progressText.textContent = "Connecting...";
         refreshLog.innerHTML = "";
@@ -2627,6 +2628,7 @@
       // Close refresh modal
       document.getElementById("closeRefreshModal").addEventListener("click", () => {
         document.getElementById("refreshModal").style.display = "none";
+        document.body.style.paddingTop = "0";
       });
       
       // Refresh button - parses fresh from ATS
