@@ -221,10 +221,11 @@ def _mark_company_status(profile: str, cfg: dict, ok: bool, error: str | None = 
     save_company_status(company_fetch_status)
 
 
-def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
+def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[dict]:
     """
     Унифицированный вызов парсеров + запись статуса компании.
     Также добавляет нормализованную локацию, классификацию роли, geo bucket/score, company_data.
+    _retry: internal flag to prevent infinite recursion
     """
     company = cfg.get("company", "")
     ats = cfg.get("ats", "")
@@ -288,8 +289,8 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
         error_str = str(e)
         print(f"Error for {company}: {error_str}")
         
-        # Try auto-repair for 404 errors
-        if "404" in error_str:
+        # Try auto-repair for 404 errors (only on first attempt, not retry)
+        if "404" in error_str and not _retry:
             print(f"  🔧 Attempting auto-repair for {company}...")
             repair_result = try_repair_company({
                 "name": company,
@@ -318,10 +319,11 @@ def _fetch_for_company(profile: str, cfg: dict) -> list[dict]:
                     with open(companies_path, "w") as f:
                         json.dump(companies, f, indent=2, ensure_ascii=False)
                     
-                    # Retry fetch with new URL
-                    cfg["ats"] = new_ats
-                    cfg["url"] = new_url
-                    return _fetch_for_company(profile, cfg)  # Recursive retry
+                    # Retry fetch with new URL (with _retry=True to prevent loop)
+                    new_cfg = cfg.copy()
+                    new_cfg["ats"] = new_ats
+                    new_cfg["url"] = new_url
+                    return _fetch_for_company(profile, new_cfg, _retry=True)
                     
                 except Exception as update_err:
                     print(f"  ❌ Failed to update companies.json: {update_err}")
