@@ -2431,32 +2431,25 @@
       }
       
       async function backgroundRefresh() {
-        if (isRefreshing) return; // Prevent double refresh
+        if (isRefreshing) return;
         isRefreshing = true;
         
         const btn = document.getElementById("refreshBtn");
         btn.disabled = true;
         btn.textContent = "⏳ Updating...";
         
-        // Show compact progress bar in header
         const modal = document.getElementById("refreshModal");
         const progressFill = document.getElementById("refreshProgressFill");
         const progressText = document.getElementById("refreshProgressText");
-        const refreshLog = document.getElementById("refreshLog");
         const refreshSummary = document.getElementById("refreshSummary");
         const closeBtn = document.getElementById("closeRefreshModal");
         
         modal.style.display = "block";
         document.body.style.paddingTop = "50px";
         progressFill.style.width = "0%";
-        progressText.textContent = "Connecting...";
-        refreshLog.innerHTML = "";
+        progressText.textContent = "Starting...";
         refreshSummary.style.display = "none";
         closeBtn.style.display = "none";
-        
-        // Switch to Companies tab and load companies first
-        switchToCompaniesTab();
-        await loadCompanies();  // Ensure table is populated before we start updating rows
         
         let stats = { ok: 0, error: 0, totalJobs: 0 };
         let errors = [];
@@ -2468,61 +2461,35 @@
             const data = JSON.parse(event.data);
             
             if (data.type === "start") {
-              progressText.textContent = `Loading 0 / ${data.total} companies...`;
-              // Mark all companies as "loading"
-              updateAllCompaniesStatus("⏳", "loading");
+              progressText.textContent = `0 / ${data.total} companies`;
             } 
             else if (data.type === "loading") {
-              const percent = Math.round((data.index / data.total) * 100);
+              const percent = Math.round(((data.index + 1) / data.total) * 100);
               progressFill.style.width = percent + "%";
-              progressText.textContent = `${data.index + 1} / ${data.total}: ${data.company}...`;
-              // Update this company's status in table
-              updateCompanyRowStatus(data.company, "⏳", "loading...");
+              progressText.textContent = `${data.index + 1} / ${data.total}: ${data.company}`;
             }
             else if (data.type === "ok") {
               stats.ok++;
               stats.totalJobs += data.jobs;
-              // Update company row with success
-              updateCompanyRowStatus(data.company, "✅", `${data.jobs} jobs`);
-              updateCompanyRowTotal(data.company, data.jobs);
             }
             else if (data.type === "error") {
               stats.error++;
-              errors.push({ company: data.company, error: data.error });
-              // Update company row with error
-              updateCompanyRowStatus(data.company, "❌", data.error);
+              errors.push(data.company);
             }
             else if (data.type === "complete") {
               eventSource.close();
               
               progressFill.style.width = "100%";
-              progressText.textContent = `✅ Complete! ${data.total_jobs} jobs from ${stats.ok} companies`;
+              progressText.textContent = `✅ Done! ${data.total_jobs} jobs`;
               
-              // Show summary with errors if any
-              let summaryHtml = `
-                <div style="display: flex; gap: 24px; justify-content: center;">
-                  <div><strong style="color: #22c55e;">${stats.ok}</strong> successful</div>
-                  ${stats.error > 0 ? `<div><strong style="color: #ef4444;">${stats.error}</strong> errors</div>` : ''}
-                  <div><strong>${data.total_jobs}</strong> total jobs</div>
-                </div>
-              `;
-              
-              if (errors.length > 0) {
-                summaryHtml += `<div style="margin-top: 12px; font-size: 12px; color: var(--muted);">Errors: ${errors.map(e => e.company).join(", ")}</div>`;
-              }
-              
-              refreshSummary.innerHTML = summaryHtml;
+              refreshSummary.innerHTML = `<span style="color: #22c55e;">${stats.ok} ok</span>${stats.error > 0 ? ` <span style="color: #ef4444;">${stats.error} errors</span>` : ''}`;
               refreshSummary.style.display = "block";
               closeBtn.style.display = "inline-block";
-              refreshLog.style.display = "none";
               
-              // Reload data
               await reloadAfterRefresh();
               
               btn.textContent = "✅ Done";
-              setTimeout(() => {
-                btn.textContent = "🔄 Refresh from ATS";
-              }, 2000);
+              setTimeout(() => btn.textContent = "🔄 Refresh from ATS", 2000);
             }
           };
           
@@ -2530,26 +2497,21 @@
             console.error("SSE error:", err);
             eventSource.close();
             
-            // If we got some data, consider it partial success
             if (stats.ok > 0) {
-              progressText.textContent = `⚠️ Partial: ${stats.totalJobs} jobs from ${stats.ok} companies`;
+              progressText.textContent = `⚠️ Partial: ${stats.totalJobs} jobs`;
               await reloadAfterRefresh();
             } else {
-              progressText.textContent = "Connection error. Please try again.";
+              progressText.textContent = "Connection error";
             }
             closeBtn.style.display = "inline-block";
-            refreshLog.style.display = "none";
-            btn.textContent = stats.ok > 0 ? "⚠️ Partial" : "⚠️ Failed";
-            setTimeout(() => {
-              btn.textContent = "🔄 Refresh from ATS";
-            }, 3000);
+            btn.textContent = "🔄 Refresh from ATS";
           };
           
         } catch (err) {
           console.error("Refresh failed:", err);
           progressText.textContent = "Error: " + err.message;
           closeBtn.style.display = "inline-block";
-          btn.textContent = "⚠️ Failed";
+          btn.textContent = "🔄 Refresh from ATS";
         } finally {
           btn.disabled = false;
           isRefreshing = false;
