@@ -60,7 +60,9 @@ def load_profile(profile_name: str):
             "tags": c.get("tags", []),
             "priority": c.get("priority", 0),
             "hq_state": c.get("hq_state"),
-            "region": c.get("region")
+            "region": c.get("region"),
+            "enabled": c.get("enabled", True),
+            "status": c.get("status", "active"),
         }
     
     # Если "all" - возвращаем все компании
