@@ -670,6 +670,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="companies">Companies</button>
       <button class="tab-btn" data-tab="jobs">All Jobs</button>
+      <button class="tab-btn" data-tab="review">Review</button>
     </div>
 
     <!-- Companies Tab -->
@@ -767,6 +768,15 @@
             <option value="Rejected">Rejected</option>
             <option value="Withdrawn">Withdrawn</option>
             <option value="Closed">Closed</option>
+          </select>
+        </label>
+        
+        <label>
+          Source
+          <select id="sourceFilter">
+            <option value="all">All Sources</option>
+            <option value="auto">Auto (matched)</option>
+            <option value="manual">Manual (from Review)</option>
           </select>
         </label>
 
@@ -932,6 +942,51 @@
       </div>
     </div>
     </div> <!-- end tab-jobs -->
+
+    <!-- Review Tab (Unknown + Excluded jobs) -->
+    <div class="tab-content" id="tab-review">
+      <div class="filter-row" style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+        <label>
+          Category
+          <select id="reviewCategoryFilter">
+            <option value="unknown" selected>Unknown (needs review)</option>
+            <option value="excluded">Excluded (Engineers, Sales...)</option>
+            <option value="all">All Non-Relevant</option>
+          </select>
+        </label>
+        
+        <label>
+          Search
+          <input type="text" id="reviewSearchFilter" placeholder="title, company..." style="width: 200px;">
+        </label>
+        
+        <button id="addSelectedBtn" class="ghost" style="background: #2a5a3a; color: white;" disabled>
+          ➕ Add Selected (0)
+        </button>
+        
+        <span id="reviewStatus" class="muted"></span>
+      </div>
+      
+      <table id="reviewTable">
+        <thead>
+          <tr>
+            <th style="width: 40px;"><input type="checkbox" id="reviewSelectAll" title="Select all"></th>
+            <th class="sortable" style="width: 150px" data-sort="company">Company <span class="sortIcon">⬍</span></th>
+            <th class="sortable" data-sort="title">Title <span class="sortIcon">⬍</span></th>
+            <th class="sortable" style="width: 200px" data-sort="location">Location <span class="sortIcon">⬍</span></th>
+            <th style="width: 150px">Role Reason</th>
+            <th style="width: 90px">Pipeline</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Review jobs will be loaded here -->
+        </tbody>
+      </table>
+      
+      <div class="muted" style="margin-top: 10px">
+        Tip: Select jobs and click "Add Selected" to add them to your Pipeline.
+      </div>
+    </div> <!-- end tab-review -->
 
     <!-- Add Company Modal -->
     <div class="modal-overlay" id="addCompanyModal">
@@ -1244,6 +1299,7 @@
         const industryFilter = (document.getElementById("industryFilter")?.value || "").trim().toLowerCase();
         const role = document.getElementById("roleFilter").value;
         const status = document.getElementById("statusFilter").value;
+        const source = document.getElementById("sourceFilter").value;
         const ats = document.getElementById("atsFilter").value;
         const nonus = includeNonUS;
 
@@ -1356,13 +1412,20 @@
         }
         debugCounts.afterState = filtered.length;
 
-        // Status filter (last stage)
+        // Status filter
         filtered = filtered.filter((job) => {
           if (status === "all") return true;
-          const st = job.application_status || "New";
+          const st = job.application_status || job.status || "New";
           return st === status;
         });
         debugCounts.afterStatus = filtered.length;
+        
+        // Source filter (auto vs manual)
+        filtered = filtered.filter((job) => {
+          if (source === "all") return true;
+          const jobSource = job.source || "auto";
+          return jobSource === source;
+        });
 
         return filtered;
       }
@@ -1605,6 +1668,172 @@
         return (s || "").replace(/"/g, "&quot;");
       }
 
+      // ---------- REVIEW TAB FUNCTIONS ----------
+      let reviewPage = 1;
+      let reviewTotalPages = 1;
+      let reviewTotal = 0;
+      const REVIEW_PAGE_SIZE = 100;
+      let reviewSort = { col: null, dir: 'asc' };
+      let reviewSelectedJobs = new Map(); // jobId -> job object
+      let currentReviewJobs = []; // Current page jobs for reference
+      
+      async function loadReviewJobs(page = 1) {
+        const statusEl = document.getElementById("reviewStatus");
+        statusEl.textContent = "Loading...";
+        
+        const category = document.getElementById("reviewCategoryFilter").value;
+        const search = document.getElementById("reviewSearchFilter").value || "";
+        
+        try {
+          const url = `/jobs/review?category=${encodeURIComponent(category)}&search=${encodeURIComponent(search)}&page=${page}&limit=${REVIEW_PAGE_SIZE}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          
+          const data = await res.json();
+          
+          if (data.error) {
+            statusEl.textContent = data.error;
+            return;
+          }
+          
+          reviewPage = data.page;
+          reviewTotalPages = data.total_pages;
+          reviewTotal = data.total;
+          currentReviewJobs = data.jobs;
+          
+          // Apply client-side sort if active
+          if (reviewSort.col) {
+            sortReviewJobsLocally();
+          } else {
+            renderReviewJobs(currentReviewJobs);
+          }
+          updateReviewPagination(data);
+          
+        } catch (err) {
+          console.error("Failed to load review jobs:", err);
+          statusEl.textContent = "Error loading jobs";
+        }
+      }
+      
+      function sortReviewJobsLocally() {
+        const col = reviewSort.col;
+        const dir = reviewSort.dir;
+        
+        const sorted = [...currentReviewJobs].sort((a, b) => {
+          let valA = (a[col] || '').toLowerCase();
+          let valB = (b[col] || '').toLowerCase();
+          
+          if (valA < valB) return dir === 'asc' ? -1 : 1;
+          if (valA > valB) return dir === 'asc' ? 1 : -1;
+          return 0;
+        });
+        
+        renderReviewJobs(sorted);
+      }
+      
+      function renderReviewJobs(jobs) {
+        const tbody = document.querySelector("#reviewTable tbody");
+        tbody.innerHTML = "";
+        
+        // Update select all checkbox
+        document.getElementById("reviewSelectAll").checked = false;
+        
+        for (const job of jobs) {
+          const row = document.createElement("tr");
+          const url = job.job_url || job.url || "#";
+          const reason = job.role_reason || job.role_exclude_reason || "No match";
+          const isSelected = reviewSelectedJobs.has(job.id);
+          const inPipeline = job.in_pipeline;
+          
+          // Grey out row if already in pipeline
+          if (inPipeline) {
+            row.style.opacity = "0.5";
+          }
+          
+          row.innerHTML = `
+            <td><input type="checkbox" class="reviewJobCheck" data-jobid="${escapeAttr(job.id || '')}" ${isSelected ? 'checked' : ''} ${inPipeline ? 'disabled' : ''}></td>
+            <td>${escapeHtml(job.company || "")}</td>
+            <td><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || "")}</a></td>
+            <td>${escapeHtml(job.location || "")}</td>
+            <td class="muted" style="font-size: 11px;">${escapeHtml(reason)}</td>
+            <td>${inPipeline ? '<span style="color: #4a9;">✅ Added</span>' : ''}</td>
+          `;
+          tbody.appendChild(row);
+          
+          // Checkbox handler (only for non-pipeline jobs)
+          if (!inPipeline) {
+            const checkbox = row.querySelector(".reviewJobCheck");
+            checkbox.addEventListener("change", (e) => {
+              if (e.target.checked) {
+                reviewSelectedJobs.set(job.id, job);
+              } else {
+                reviewSelectedJobs.delete(job.id);
+              }
+              updateAddSelectedButton();
+            });
+          }
+        }
+      }
+      
+      function updateAddSelectedButton() {
+        const btn = document.getElementById("addSelectedBtn");
+        const count = reviewSelectedJobs.size;
+        btn.textContent = `➕ Add Selected (${count})`;
+        btn.disabled = count === 0;
+      }
+      
+      function updateReviewPagination(data) {
+        const statusEl = document.getElementById("reviewStatus");
+        const start = (data.page - 1) * data.limit + 1;
+        const end = Math.min(data.page * data.limit, data.total);
+        
+        statusEl.innerHTML = `
+          Showing ${start}-${end} of ${data.total} jobs
+          &nbsp;&nbsp;
+          <button class="ghost" ${!data.has_prev ? 'disabled' : ''} onclick="loadReviewJobs(${data.page - 1})">◀ Prev</button>
+          &nbsp; Page ${data.page} of ${data.total_pages} &nbsp;
+          <button class="ghost" ${!data.has_next ? 'disabled' : ''} onclick="loadReviewJobs(${data.page + 1})">Next ▶</button>
+        `;
+      }
+      
+      async function addSelectedToPipeline() {
+        if (reviewSelectedJobs.size === 0) return;
+        
+        const btn = document.getElementById("addSelectedBtn");
+        btn.disabled = true;
+        btn.textContent = "Adding...";
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const [jobId, job] of reviewSelectedJobs) {
+          try {
+            const res = await fetch("/pipeline/add", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ job: job })
+            });
+            
+            if (res.ok) {
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (err) {
+            errorCount++;
+          }
+        }
+        
+        // Clear selection and refresh
+        reviewSelectedJobs.clear();
+        updateAddSelectedButton();
+        
+        alert(`Added ${successCount} jobs to Pipeline` + (errorCount > 0 ? `, ${errorCount} errors` : ''));
+        
+        // Reload current page
+        loadReviewJobs(reviewPage);
+      }
+
       // ---------- LOADING ----------
       async function loadJobsOnce() {
         const ats = document.getElementById("atsFilter").value;
@@ -1770,6 +1999,7 @@
       const filterIds = [
         "roleFilter",
         "statusFilter",
+        "sourceFilter",
         "companyFilter",
         "searchFilter",
         "cityFilter",
@@ -1871,6 +2101,67 @@
       let companiesSortCol = "jobs_count";
       let companiesSortDir = "desc";
       
+      // ---------- REVIEW TAB EVENT LISTENERS ----------
+      document.getElementById("reviewCategoryFilter").addEventListener("change", () => {
+        reviewSelectedJobs.clear();
+        updateAddSelectedButton();
+        loadReviewJobs(1); // Reset to page 1 on filter change
+      });
+      
+      // Debounce search input
+      let reviewSearchTimeout;
+      document.getElementById("reviewSearchFilter").addEventListener("input", () => {
+        clearTimeout(reviewSearchTimeout);
+        reviewSearchTimeout = setTimeout(() => {
+          reviewSelectedJobs.clear();
+          updateAddSelectedButton();
+          loadReviewJobs(1); // Reset to page 1 on search
+        }, 300); // Wait 300ms after typing stops
+      });
+      
+      // Select All checkbox
+      document.getElementById("reviewSelectAll").addEventListener("change", (e) => {
+        const checkboxes = document.querySelectorAll(".reviewJobCheck");
+        checkboxes.forEach(cb => {
+          cb.checked = e.target.checked;
+          const jobId = cb.dataset.jobid;
+          const job = currentReviewJobs.find(j => j.id === jobId);
+          if (e.target.checked && job) {
+            reviewSelectedJobs.set(jobId, job);
+          } else {
+            reviewSelectedJobs.delete(jobId);
+          }
+        });
+        updateAddSelectedButton();
+      });
+      
+      // Add Selected button
+      document.getElementById("addSelectedBtn").addEventListener("click", addSelectedToPipeline);
+      
+      // Column sorting for Review table
+      document.querySelectorAll("#reviewTable th.sortable").forEach(th => {
+        th.addEventListener("click", () => {
+          const col = th.dataset.sort;
+          
+          // Toggle direction or set new column
+          if (reviewSort.col === col) {
+            reviewSort.dir = reviewSort.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            reviewSort.col = col;
+            reviewSort.dir = 'asc';
+          }
+          
+          // Update sort icons
+          document.querySelectorAll("#reviewTable th.sortable .sortIcon").forEach(icon => {
+            icon.textContent = '⬍';
+          });
+          th.querySelector(".sortIcon").textContent = reviewSort.dir === 'asc' ? '⬆' : '⬇';
+          
+          // Sort locally
+          sortReviewJobsLocally();
+        });
+      });
+      
       // Tab switching
       document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -1899,6 +2190,9 @@
               // No jobs loaded yet - load from cache
               loadJobsFromCache();
             }
+          } else if (tab === "review") {
+            // Review tab - auto-load first page
+            loadReviewJobs(1);
           }
         });
       });

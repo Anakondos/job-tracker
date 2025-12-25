@@ -888,6 +888,72 @@ def pipeline_stats_endpoint():
     return get_pipeline_stats()
 
 
+@app.get("/jobs/review")
+def get_review_jobs(
+    category: str = Query("unknown", description="unknown / excluded / all"),
+    search: str = Query("", description="Search in title, company, location"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(100, ge=10, le=500, description="Jobs per page"),
+):
+    """
+    Get Unknown + Excluded jobs with server-side pagination.
+    Much faster than loading all 7500 jobs.
+    """
+    # Load from cache
+    cache_key = "all"
+    cached = load_cache(cache_key)
+    
+    if not cached:
+        return {"error": "Cache not loaded. Run /jobs?refresh=true first.", "jobs": [], "total": 0}
+    
+    all_jobs = cached.get("jobs", [])
+    
+    # Filter by role_category (unknown or excluded)
+    def get_category(job):
+        if job.get("role_category"):
+            return job["role_category"]
+        if job.get("role_excluded"):
+            return "excluded"
+        if job.get("role_id"):
+            return "primary"
+        return "unknown"
+    
+    if category == "all":
+        filtered = [j for j in all_jobs if get_category(j) in ["unknown", "excluded"]]
+    else:
+        filtered = [j for j in all_jobs if get_category(j) == category]
+    
+    # Filter by search
+    if search:
+        search_lower = search.lower()
+        filtered = [
+            j for j in filtered
+            if search_lower in (j.get("title", "") + " " + j.get("company", "") + " " + j.get("location", "")).lower()
+        ]
+    
+    # Pagination
+    total = len(filtered)
+    total_pages = (total + limit - 1) // limit  # ceiling division
+    start = (page - 1) * limit
+    end = start + limit
+    page_jobs = filtered[start:end]
+    
+    # Check which jobs are already in pipeline
+    pipeline_ids = get_all_job_ids()
+    for job in page_jobs:
+        job["in_pipeline"] = job.get("id") in pipeline_ids
+    
+    return {
+        "jobs": page_jobs,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1,
+    }
+
+
 @app.get("/pipeline/all")
 def pipeline_all_endpoint():
     """Get ALL jobs from pipeline (new + active + archive)"""
@@ -936,7 +1002,7 @@ def pipeline_add_job_endpoint(payload: PipelineAddJob):
     """
     Manually add a job to pipeline (for Unknown/Excluded jobs).
     """
-    job = payload.job
+    job = payload.job.copy()  # Don't modify original
     job_id = job.get("id")
     
     if not job_id:
@@ -946,6 +1012,9 @@ def pipeline_add_job_endpoint(payload: PipelineAddJob):
     existing = get_job_by_id(job_id)
     if existing:
         return {"ok": False, "error": "Job already in pipeline"}
+    
+    # Mark as manually added
+    job["source"] = "manual"
     
     # Add to pipeline
     added_job = add_new_job(job)
