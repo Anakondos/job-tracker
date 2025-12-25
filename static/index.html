@@ -726,11 +726,20 @@
         <label>
           Role
           <select id="roleFilter">
-            <option value="all">All</option>
-            <option value="product">Product</option>
-            <option value="tpm_program">Program/TPM</option>
-            <option value="project">Project</option>
-            <option value="other">Other (not relevant)</option>
+            <optgroup label="Primary Roles">
+              <option value="primary" selected>All Primary (PM, TPM, Program)</option>
+              <option value="product_manager">Product Manager (301)</option>
+              <option value="program_manager">Program Manager (79)</option>
+              <option value="technical_program_manager">TPM (57)</option>
+              <option value="project_manager">Project Manager (16)</option>
+              <option value="product_owner">Product Owner (5)</option>
+            </optgroup>
+            <optgroup label="Other Categories">
+              <option value="adjacent">Adjacent (Director, Ops)</option>
+              <option value="unknown">Unknown (review)</option>
+              <option value="excluded">Excluded (Engineers, Sales)</option>
+            </optgroup>
+            <option value="all">── All Roles ──</option>
           </select>
         </label>
 
@@ -1252,11 +1261,19 @@
           });
         }
 
-        // Role filter (uses role_family from backend classification)
+        // Role filter (uses role_category or specific role_id)
         filtered = filtered.filter((job) => {
           if (role === "all") return true;
-          const family = job.role_family || "other";
-          return family === role;
+          
+          // Category filters
+          if (["primary", "adjacent", "unknown", "excluded"].includes(role)) {
+            const category = job.role_category || "unknown";
+            return category === role;
+          }
+          
+          // Specific role_id filters (product_manager, program_manager, etc.)
+          const roleId = job.role_id || "";
+          return roleId === role;
         });
         debugCounts.afterRole = filtered.length;
 
@@ -1970,10 +1987,10 @@
         }
       }
       
-      // Filter jobs to only relevant roles (Product, TPM, Program, Project)
+      // Filter jobs to only relevant role categories (primary + adjacent)
       function filterRelevantRoles(jobs) {
-        const relevantRoles = ['product', 'tpm_program', 'project'];
-        return jobs.filter(j => relevantRoles.includes(j.role_family));
+        const relevantCategories = ['primary', 'adjacent'];
+        return jobs.filter(j => relevantCategories.includes(j.role_category));
       }
       
       async function backgroundRefresh() {
