@@ -13,6 +13,7 @@ from typing import Any
 ENV = os.getenv("JOB_TRACKER_ENV", "PROD")
 
 from fastapi import FastAPI, Query
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -945,6 +946,69 @@ def cache_clear_all_endpoint():
     """Clear all caches"""
     clear_cache()
     return {"ok": True, "message": "All caches cleared"}
+
+
+@app.get("/refresh/stream")
+async def refresh_stream(profile: str = Query("all")):
+    """
+    Streaming refresh endpoint - sends progress updates as Server-Sent Events.
+    Each event contains: company name, status (loading/ok/error), jobs count, progress.
+    """
+    import asyncio
+    
+    async def generate():
+        companies_cfg = load_profile(profile)
+        # Filter enabled companies
+        companies_cfg = [c for c in companies_cfg if c.get("enabled", True) != False]
+        total = len(companies_cfg)
+        all_jobs = []
+        
+        # Send start event
+        yield f"data: {json.dumps({'type': 'start', 'total': total})}\n\n"
+        
+        for idx, cfg in enumerate(companies_cfg):
+            company_name = cfg.get("company", "") or cfg.get("name", "")
+            ats = cfg.get("ats", "")
+            
+            # Send loading event
+            yield f"data: {json.dumps({'type': 'loading', 'company': company_name, 'index': idx, 'total': total})}\n\n"
+            
+            try:
+                # Fetch jobs (this is sync, but we yield control)
+                jobs = _fetch_for_company(profile, cfg)
+                all_jobs.extend(jobs)
+                
+                # Send success event
+                yield f"data: {json.dumps({'type': 'ok', 'company': company_name, 'jobs': len(jobs), 'index': idx, 'total': total})}\n\n"
+                
+            except Exception as e:
+                # Send error event
+                yield f"data: {json.dumps({'type': 'error', 'company': company_name, 'error': str(e)[:100], 'index': idx, 'total': total})}\n\n"
+            
+            # Small delay to allow UI to update
+            await asyncio.sleep(0.01)
+        
+        # Save to cache
+        save_cache(profile, all_jobs)
+        
+        # Save stats
+        from utils.cache_manager import save_stats
+        role_jobs = [j for j in all_jobs if j.get("role_family") in ["product", "tpm_program", "project"]]
+        us_jobs = [j for j in role_jobs if j.get("location_norm", {}).get("state") or j.get("location_norm", {}).get("remote")]
+        my_area_jobs = [j for j in us_jobs if j.get("geo_bucket") in ["local", "nc_other", "neighbor", "remote_usa"]]
+        save_stats(len(all_jobs), len(role_jobs), len(us_jobs), len(my_area_jobs))
+        
+        # Send complete event
+        yield f"data: {json.dumps({'type': 'complete', 'total_jobs': len(all_jobs), 'companies': total})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 
 @app.get("/stats")

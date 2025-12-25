@@ -1023,6 +1023,24 @@
       </div>
     </div>
 
+    <!-- Refresh Progress Modal -->
+    <div id="refreshModal" class="modal" style="display: none;">
+      <div class="modal-content" style="max-width: 500px;">
+        <h3 style="margin-bottom: 16px;">🔄 Refreshing from ATS</h3>
+        <div id="refreshProgressBar" style="height: 8px; background: var(--border); border-radius: 4px; margin-bottom: 12px; overflow: hidden;">
+          <div id="refreshProgressFill" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.2s;"></div>
+        </div>
+        <div id="refreshProgressText" style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">Starting...</div>
+        <div id="refreshLog" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; background: var(--bg-secondary); padding: 12px; border-radius: 6px;">
+        </div>
+        <div id="refreshSummary" style="display: none; margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 6px;">
+        </div>
+        <div style="margin-top: 16px; text-align: right;">
+          <button id="closeRefreshModal" class="primary" style="display: none;">Close</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       // ---------- GLOBAL STATE ----------
       let ALL_JOBS_RAW = [];  // All jobs before role filter
@@ -2422,59 +2440,134 @@
         btn.disabled = true;
         btn.textContent = "⏳ Updating...";
         
-        // Also update Load jobs indicator
-        setLoading(true, "Refreshing ATS...");
+        // Show modal
+        const modal = document.getElementById("refreshModal");
+        const progressFill = document.getElementById("refreshProgressFill");
+        const progressText = document.getElementById("refreshProgressText");
+        const refreshLog = document.getElementById("refreshLog");
+        const refreshSummary = document.getElementById("refreshSummary");
+        const closeBtn = document.getElementById("closeRefreshModal");
+        
+        modal.style.display = "flex";
+        progressFill.style.width = "0%";
+        progressText.textContent = "Connecting...";
+        refreshLog.innerHTML = "";
+        refreshSummary.style.display = "none";
+        closeBtn.style.display = "none";
+        
+        let stats = { ok: 0, error: 0, totalJobs: 0 };
         
         try {
-          // Fetch fresh jobs from ATS (this updates cache + stats)
-          const res = await fetch("/jobs?profile=all&refresh=true");
-          const data = await res.json();
+          const eventSource = new EventSource("/refresh/stream?profile=all");
           
-          // Reload stats (now updated by backend)
-          const statsRes = await fetch("/stats");
-          if (statsRes.ok) {
-            CACHED_STATS = await statsRes.json();
-            console.log("Stats refreshed:", CACHED_STATS);
-          }
+          eventSource.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === "start") {
+              progressText.textContent = `Loading 0 / ${data.total} companies...`;
+            } 
+            else if (data.type === "loading") {
+              const percent = Math.round((data.index / data.total) * 100);
+              progressFill.style.width = percent + "%";
+              progressText.textContent = `Loading ${data.index + 1} / ${data.total}: ${data.company}...`;
+            }
+            else if (data.type === "ok") {
+              stats.ok++;
+              stats.totalJobs += data.jobs;
+              const logLine = document.createElement("div");
+              logLine.innerHTML = `<span style="color: #22c55e;">✅</span> ${data.company}: <strong>${data.jobs}</strong> jobs`;
+              refreshLog.appendChild(logLine);
+              refreshLog.scrollTop = refreshLog.scrollHeight;
+            }
+            else if (data.type === "error") {
+              stats.error++;
+              const logLine = document.createElement("div");
+              logLine.innerHTML = `<span style="color: #ef4444;">❌</span> ${data.company}: ${data.error}`;
+              refreshLog.appendChild(logLine);
+              refreshLog.scrollTop = refreshLog.scrollHeight;
+            }
+            else if (data.type === "complete") {
+              eventSource.close();
+              
+              progressFill.style.width = "100%";
+              progressText.textContent = `Complete! ${data.total_jobs} total jobs from ${data.companies} companies`;
+              
+              // Show summary
+              refreshSummary.innerHTML = `
+                <div style="display: flex; gap: 24px;">
+                  <div><strong style="color: #22c55e;">${stats.ok}</strong> successful</div>
+                  <div><strong style="color: #ef4444;">${stats.error}</strong> errors</div>
+                  <div><strong>${data.total_jobs}</strong> total jobs</div>
+                </div>
+              `;
+              refreshSummary.style.display = "block";
+              closeBtn.style.display = "inline-block";
+              
+              // Reload data in background
+              await reloadAfterRefresh();
+              
+              btn.textContent = "✅ Updated";
+              setTimeout(() => {
+                btn.textContent = "🔄 Refresh from ATS";
+              }, 2000);
+            }
+          };
           
-          // Reload pipeline jobs
-          const pipelineRes = await fetch("/pipeline/all");
-          const pipelineData = await pipelineRes.json();
+          eventSource.onerror = (err) => {
+            console.error("SSE error:", err);
+            eventSource.close();
+            progressText.textContent = "Connection error. Please try again.";
+            closeBtn.style.display = "inline-block";
+            btn.textContent = "⚠️ Refresh failed";
+            setTimeout(() => {
+              btn.textContent = "🔄 Refresh from ATS";
+            }, 3000);
+          };
           
-          // Store pipeline jobs
-          ALL_JOBS_RAW = enrichJobsLocationNorm(pipelineData.jobs || []);
-          ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
-          
-          // Re-render if on Jobs tab
-          const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
-          if (jobsTabActive) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
-            updateStatus(filtered);  // Update header with new stats
-          } else {
-            updateStatus(null);  // Update header even if not on Jobs tab
-          }
-          
-          // Reload companies stats
-          await loadCompanies();
-          btn.textContent = "✅ Updated";
-          setLoading(false, "Updated");
-          setTimeout(() => {
-            btn.textContent = "🔄 Refresh from ATS";
-            setLoading(false, "Loaded");
-          }, 2000);
         } catch (err) {
-          console.error("Background refresh failed:", err);
+          console.error("Refresh failed:", err);
+          progressText.textContent = "Error: " + err.message;
+          closeBtn.style.display = "inline-block";
           btn.textContent = "⚠️ Refresh failed";
-          setLoading(false, "Error");
-          setTimeout(() => {
-            btn.textContent = "🔄 Refresh from ATS";
-          }, 3000);
         } finally {
           btn.disabled = false;
           isRefreshing = false;
         }
       }
+      
+      // Helper to reload data after streaming refresh
+      async function reloadAfterRefresh() {
+        // Reload stats
+        const statsRes = await fetch("/stats");
+        if (statsRes.ok) {
+          CACHED_STATS = await statsRes.json();
+        }
+        
+        // Reload pipeline jobs
+        const pipelineRes = await fetch("/pipeline/all");
+        const pipelineData = await pipelineRes.json();
+        ALL_JOBS_RAW = enrichJobsLocationNorm(pipelineData.jobs || []);
+        ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
+        
+        // Re-render if on Jobs tab
+        const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
+        if (jobsTabActive) {
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(filtered);
+          updateStatus(filtered);
+        } else {
+          updateStatus(null);
+        }
+        
+        // Reload companies stats
+        await loadCompanies();
+        setLoading(false, "Loaded");
+      }
+      
+      // Close refresh modal
+      document.getElementById("closeRefreshModal").addEventListener("click", () => {
+        document.getElementById("refreshModal").style.display = "none";
+      });
       
       // Refresh button - parses fresh from ATS
       document.getElementById("refreshBtn").addEventListener("click", backgroundRefresh);
