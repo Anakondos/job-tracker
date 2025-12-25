@@ -23,6 +23,7 @@ from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
 from parsers.smartrecruiters import fetch_smartrecruiters
 from parsers.ashby import fetch_ashby_jobs
+from parsers.workday import fetch_workday
 from ats_detector import try_repair_company, verify_ats_url
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
@@ -241,6 +242,8 @@ def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[di
             jobs = fetch_smartrecruiters(company, url)
         elif ats == "ashby":
             jobs = fetch_ashby_jobs(url)
+        elif ats == "workday":
+            jobs = fetch_workday(company, url)
         else:
             jobs = []
 
