@@ -668,13 +668,13 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab-btn active" data-tab="companies">Companies</button>
-      <button class="tab-btn" data-tab="jobs">All Jobs</button>
+      <button class="tab-btn" data-tab="companies">Companies</button>
+      <button class="tab-btn active" data-tab="jobs">Pipeline</button>
       <button class="tab-btn" data-tab="review">Review</button>
     </div>
 
     <!-- Companies Tab -->
-    <div class="tab-content active" id="tab-companies">
+    <div class="tab-content" id="tab-companies">
       <div class="wrap">
         <div class="companies-summary" id="companiesSummary">
           <div class="summary-item">
@@ -718,7 +718,7 @@
     </div>
 
     <!-- Jobs Tab -->
-    <div class="tab-content" id="tab-jobs">
+    <div class="tab-content active" id="tab-jobs">
     <div class="wrap">
       <div class="controls">
         <label>
@@ -1314,6 +1314,35 @@
           .toLowerCase();
 
         let filtered = jobs;
+        
+        // ===== Source filter FIRST (manual jobs have minimal filtering) =====
+        if (source === "manual") {
+          // For manual jobs: only filter by source, search, company, status
+          filtered = filtered.filter(job => job.source === "manual");
+          
+          // Apply only basic filters
+          if (companyFilter) {
+            filtered = filtered.filter(job => 
+              (job.company || "").toLowerCase().includes(companyFilter.toLowerCase())
+            );
+          }
+          if (search) {
+            filtered = filtered.filter(job => {
+              const haystack = `${job.title || ''} ${job.company || ''} ${job.location || ''}`.toLowerCase();
+              return haystack.includes(search);
+            });
+          }
+          if (status !== "all") {
+            filtered = filtered.filter(job => (job.status || job.application_status || "New") === status);
+          }
+          
+          return filtered;
+        }
+        
+        // For auto/all sources - apply all filters
+        if (source === "auto") {
+          filtered = filtered.filter(job => (job.source || "auto") === "auto");
+        }
 
         // ===== Industry filter by tags =====
         if (industryFilter) {
@@ -1419,13 +1448,6 @@
           return st === status;
         });
         debugCounts.afterStatus = filtered.length;
-        
-        // Source filter (auto vs manual)
-        filtered = filtered.filter((job) => {
-          if (source === "all") return true;
-          const jobSource = job.source || "auto";
-          return jobSource === source;
-        });
 
         return filtered;
       }
@@ -1551,6 +1573,7 @@
           const roleCategory = job.role_category || (job.role_excluded ? 'excluded' : (job.role_id ? 'primary' : 'unknown'));
           const showAddButton = ['unknown', 'excluded'].includes(roleCategory);
           const inPipeline = job.in_pipeline || job.status; // Job is already in pipeline if has status
+          const isManual = job.source === 'manual';
           
           row.innerHTML = `
         <td>${escapeHtml(job.company || "")}</td>
@@ -1586,6 +1609,9 @@
         <td>
           ${showAddButton && !inPipeline 
             ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
+            : ''}
+          ${isManual
+            ? `<button class="removeFromPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Remove from Pipeline" style="background: #5a2a2a; color: white; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px;">✖</button>`
             : ''}
         </td>
       `;
@@ -1642,6 +1668,39 @@
               } catch (err) {
                 console.error("Add to pipeline error:", err);
                 alert("Error adding to pipeline");
+              }
+            });
+          }
+          
+          // Remove from Pipeline button handler (for manual jobs)
+          const removeBtn = row.querySelector(".removeFromPipelineBtn");
+          if (removeBtn) {
+            removeBtn.addEventListener("click", async (e) => {
+              const jobId = e.target.dataset.jobid;
+              if (!jobId) return;
+              
+              if (!confirm(`Remove "${job.title}" from Pipeline?`)) return;
+              
+              try {
+                const res = await fetch(`/pipeline/remove/${jobId}`, {
+                  method: "DELETE"
+                });
+                
+                if (res.ok) {
+                  // Remove row from table
+                  row.remove();
+                  // Update ALL_JOBS
+                  const idx = ALL_JOBS.findIndex(j => j.id === jobId);
+                  if (idx >= 0) ALL_JOBS.splice(idx, 1);
+                  // Also from ALL_JOBS_RAW
+                  const idxRaw = ALL_JOBS_RAW.findIndex(j => j.id === jobId);
+                  if (idxRaw >= 0) ALL_JOBS_RAW.splice(idxRaw, 1);
+                } else {
+                  alert("Failed to remove from pipeline");
+                }
+              } catch (err) {
+                console.error("Remove from pipeline error:", err);
+                alert("Error removing from pipeline");
               }
             });
           }

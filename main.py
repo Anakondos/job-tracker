@@ -1025,6 +1025,41 @@ def pipeline_add_job_endpoint(payload: PipelineAddJob):
         return {"ok": False, "error": "Failed to add job"}
 
 
+@app.delete("/pipeline/remove/{job_id}")
+def pipeline_remove_job_endpoint(job_id: str):
+    """
+    Remove a job from pipeline (for manual jobs).
+    Only removes jobs with source='manual'.
+    """
+    job = get_job_by_id(job_id)
+    
+    if not job:
+        return {"ok": False, "error": "Job not found"}
+    
+    # Only allow removing manual jobs
+    if job.get("source") != "manual":
+        return {"ok": False, "error": "Can only remove manually added jobs"}
+    
+    # Remove from jobs_new.json
+    try:
+        jobs_new_path = Path("data/jobs_new.json")
+        with open(jobs_new_path, "r") as f:
+            jobs = json.load(f)
+        
+        original_len = len(jobs)
+        jobs = [j for j in jobs if j.get("id") != job_id]
+        
+        if len(jobs) == original_len:
+            return {"ok": False, "error": "Job not found in storage"}
+        
+        with open(jobs_new_path, "w") as f:
+            json.dump(jobs, f, indent=2)
+        
+        return {"ok": True, "removed": job_id}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 class PipelineStatusUpdate(BaseModel):
     job_id: str
     status: str
