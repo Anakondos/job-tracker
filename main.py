@@ -662,8 +662,8 @@ def get_companies(
     # Load all jobs from pipeline for counting
     all_pipeline_jobs = load_new_jobs() + load_pipeline_jobs()
     
-    # Load cache to get total jobs per company
-    cache_data = load_cache(f"jobs_{profile}")
+    # Load cache to get total jobs per company (all jobs from ATS)
+    cache_data = load_cache(profile)  # Cache key is just 'all', not 'jobs_all'
     cache_jobs = cache_data.get("jobs", []) if cache_data else []
     
     # Build total_jobs per company from cache
