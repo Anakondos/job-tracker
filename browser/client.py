@@ -514,22 +514,24 @@ class BrowserClient:
                 filled += 1
                 print(f"  ✅ Start Year: {work['start_year']}")
         
-        # Current role checkbox
+        # Current role checkbox - click on label
         if work.get("current"):
-            checkbox = self.page.query_selector(f"input#current-role-{index}[type='checkbox']")
-            if checkbox:
-                try:
-                    if not checkbox.is_checked():
-                        checkbox.click()
+            current_label = self.page.query_selector(f"label:has-text('Current role')")
+            if current_label:
+                # Check if not already checked by looking at sibling checkbox
+                checkbox = self.page.query_selector(f"input[type='checkbox'][id*='current-role-{index}']")
+                if checkbox:
+                    try:
+                        is_checked = checkbox.is_checked()
+                        if not is_checked:
+                            current_label.click()
+                            filled += 1
+                            print("  ✅ Current role: checked")
+                    except:
+                        # Fallback: just click the label
+                        current_label.click()
                         filled += 1
                         print("  ✅ Current role: checked")
-                except:
-                    # Try clicking the label instead
-                    label = self.page.query_selector(f"label[for='current-role-{index}']")
-                    if label:
-                        label.click()
-                        filled += 1
-                        print("  ✅ Current role: checked (via label)")
         else:
             # End date (if not current)
             if work.get("end_month"):
@@ -630,6 +632,8 @@ class BrowserClient:
             "resume": False,
             "work_experience": 0,
             "education": 0,
+            "custom_questions": 0,
+            "demographics": 0,
             "total": 0,
             "needs_attention": [],
         }
@@ -654,12 +658,38 @@ class BrowserClient:
         for i in range(len(education)):
             result["education"] += self.fill_greenhouse_education(profile, i)
         
+        # 5. Custom Questions (scroll down first)
+        self.scroll_down(600)
+        time.sleep(0.3)
+        result["custom_questions"] = self.fill_greenhouse_custom_questions(profile)
+        
+        # 6. More custom questions (scroll more to reach all)
+        self.scroll_down(600)
+        time.sleep(0.3)
+        result["custom_questions"] += self.fill_greenhouse_custom_questions(profile)
+        
+        # 7. Demographics (scroll through entire page to find all fields)
+        # Scroll in steps to ensure all fields are visible and fillable
+        self.page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.7)")
+        time.sleep(0.3)
+        result["demographics"] = self.fill_greenhouse_demographics(profile)
+        
+        # One more pass at the very bottom
+        self.scroll_to_bottom()
+        time.sleep(0.3)
+        result["demographics"] += self.fill_greenhouse_demographics(profile)
+        
         result["total"] = (
             result["basic_fields"] + 
             (1 if result["resume"] else 0) + 
             result["work_experience"] + 
-            result["education"]
+            result["education"] +
+            result["custom_questions"] +
+            result["demographics"]
         )
+        
+        # Scroll back to top
+        self.page.evaluate("window.scrollTo(0, 0)")
         
         print(f"\n{'='*50}")
         print(f"📊 Form filling complete:")
@@ -667,10 +697,162 @@ class BrowserClient:
         print(f"   Resume: {'✅' if result['resume'] else '❌'}")
         print(f"   Work experience: {result['work_experience']}")
         print(f"   Education: {result['education']}")
+        print(f"   Custom questions: {result['custom_questions']}")
+        print(f"   Demographics: {result['demographics']}")
         print(f"   TOTAL: {result['total']} fields")
         print(f"{'='*50}")
         
         return result
+    
+    def fill_greenhouse_demographics(self, profile: Optional[ProfileManager] = None) -> int:
+        """
+        Fill Demographics section (Gender, Race, Veteran, Disability).
+        
+        These are usually optional/voluntary with "Decline to self-identify" options.
+        """
+        if profile is None:
+            profile = get_profile_manager()
+        
+        print("\n📋 Filling Demographics (voluntary)...")
+        filled = 0
+        
+        # Map of keywords to search in labels -> values to fill
+        demographics_map = {
+            "gender": profile.get("demographics.gender", "Decline to self-identify"),
+            "hispanic": profile.get("demographics.hispanic_latino", "Decline to self-identify"),
+            "latino": profile.get("demographics.hispanic_latino", "Decline to self-identify"),
+            "race": profile.get("demographics.race_ethnicity", "Decline to self-identify"),
+            "ethnicity": profile.get("demographics.race_ethnicity", "Decline to self-identify"),
+            "veteran": profile.get("demographics.veteran_status", "I am not a protected veteran"),
+            "disability": profile.get("demographics.disability_status", "I don't wish to answer"),
+        }
+        
+        filled_fields = set()  # Track what we've filled to avoid duplicates
+        
+        for label in self.page.query_selector_all("label"):
+            label_text = label.inner_text().lower()
+            
+            for field_key, value in demographics_map.items():
+                if field_key in label_text and field_key not in filled_fields:
+                    label_for = label.get_attribute("for")
+                    if label_for:
+                        el = self.page.query_selector(f"#{label_for}")
+                        if el:
+                            try:
+                                el.scroll_into_view_if_needed()
+                                time.sleep(0.3)
+                                el.click()
+                                time.sleep(0.3)
+                                el.type(value, delay=50)  # Slower typing
+                                time.sleep(0.5)  # Wait for dropdown
+                                self.page.keyboard.press("ArrowDown")
+                                time.sleep(0.2)
+                                self.page.keyboard.press("Enter")
+                                time.sleep(0.3)
+                                filled += 1
+                                filled_fields.add(field_key)
+                                print(f"  ✅ {field_key}: {value[:30]}...")
+                            except Exception as e:
+                                pass
+                    break
+        
+        return filled
+    
+    def fill_greenhouse_custom_questions(self, profile: Optional[ProfileManager] = None) -> int:
+        """
+        Fill common custom questions in Greenhouse forms.
+        """
+        if profile is None:
+            profile = get_profile_manager()
+        
+        print("\n❓ Filling Custom Questions...")
+        filled = 0
+        
+        # LinkedIn URL
+        linkedin = profile.get("links.linkedin")
+        if linkedin:
+            for label in self.page.query_selector_all("label"):
+                if "linkedin" in label.inner_text().lower():
+                    label_for = label.get_attribute("for")
+                    if label_for:
+                        inp = self.page.query_selector(f"#{label_for}")
+                        if inp:
+                            try:
+                                inp.fill(linkedin)
+                                filled += 1
+                                print(f"  ✅ LinkedIn: {linkedin}")
+                            except:
+                                pass
+                    break
+        
+        # Common Yes/No and confirmation questions
+        yes_no_questions = {
+            "18 years": "Yes",
+            "previously been employed": "No",
+            "legally authorized": profile.get("work_authorization.authorized_us", "Yes"),
+            "sponsorship": profile.get("work_authorization.requires_sponsorship", "No"),
+            "government official": "No",
+            "close relative": "No",
+            "AI tools": "Yes",
+            # Coinbase-specific and other confirmations
+            "please confirm": "Confirmed",
+            "confirm receipt": "Confirmed",
+            "privacy notice": "Confirmed",
+            "arbitration": "Confirmed",
+            "data privacy": "Confirmed",
+            "conflict of interest": "No",
+            "referred to this position": "No",
+            "senior leader": "No",
+        }
+        
+        for question_text, answer in yes_no_questions.items():
+            for label in self.page.query_selector_all("label"):
+                label_text = label.inner_text().lower()
+                if question_text.lower() in label_text:
+                    label_for = label.get_attribute("for")
+                    if label_for:
+                        el = self.page.query_selector(f"#{label_for}")
+                        if el:
+                            try:
+                                el.scroll_into_view_if_needed()
+                                time.sleep(0.2)
+                                el.click()
+                                time.sleep(0.3)
+                                el.type(answer, delay=50)  # Slower typing
+                                time.sleep(0.5)  # Wait for dropdown to filter
+                                self.page.keyboard.press("ArrowDown")
+                                time.sleep(0.2)
+                                self.page.keyboard.press("Enter")
+                                time.sleep(0.3)
+                                filled += 1
+                                print(f"  ✅ {question_text[:25]}...: {answer}")
+                            except:
+                                pass
+                    break
+        
+        # How did you hear
+        how_heard = profile.get("common_answers.how_heard", "LinkedIn")
+        for label in self.page.query_selector_all("label"):
+            if "how did you hear" in label.inner_text().lower():
+                label_for = label.get_attribute("for")
+                if label_for:
+                    el = self.page.query_selector(f"#{label_for}")
+                    if el:
+                        try:
+                            el.click()
+                            time.sleep(0.2)
+                            el.type(how_heard, delay=30)
+                            time.sleep(0.2)
+                            self.page.keyboard.press("ArrowDown")
+                            self.page.keyboard.press("Enter")
+                            time.sleep(0.2)
+                            filled += 1
+                            print(f"  ✅ How did you hear: {how_heard}")
+                        except:
+                            pass
+                break
+        
+        return filled
     
     def upload_file(self, selector: str, file_path: str) -> bool:
         """Upload a file to a file input."""
