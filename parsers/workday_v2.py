@@ -5,6 +5,11 @@ Workday Career Site Parser v2
 
 URL pattern: https://{company}.{wd_instance}.myworkdayjobs.com/{board_name}
 API endpoint: https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{board_name}/jobs
+
+Returns: List[RawJob] per schema.py contract
+- title, url (required)
+- ats_job_id, location, updated_at (expected)
+- posted_on, time_type (optional)
 """
 
 import requests

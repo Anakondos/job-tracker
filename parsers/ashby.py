@@ -1,6 +1,8 @@
 """
 Ashby ATS Parser
 API: https://jobs.ashbyhq.com/{company}
+
+Returns: List[RawJob] per schema.py contract
 """
 import requests
 
@@ -8,6 +10,9 @@ def fetch_ashby_jobs(board_url: str) -> list[dict]:
     """
     Fetches jobs from Ashby API.
     board_url example: https://jobs.ashbyhq.com/notion
+    
+    Returns RawJob list with required fields:
+    - title, url, ats_job_id, location, updated_at
     """
     # Extract company slug
     company_slug = board_url.rstrip("/").split("/")[-1]
@@ -22,12 +27,16 @@ def fetch_ashby_jobs(board_url: str) -> list[dict]:
     
     for job in data.get("jobs", []):
         jobs.append({
+            # Required
             "title": job.get("title", ""),
-            "location": job.get("location", ""),
-            "department": job.get("department", ""),
             "url": job.get("jobUrl", ""),
-            "updated_at": job.get("publishedAt", ""),
+            # Expected  
             "ats_job_id": job.get("id", ""),
+            "location": job.get("location", ""),
+            "updated_at": job.get("publishedAt", ""),
+            # Optional
+            "department": job.get("department", ""),
+            "first_published": job.get("publishedAt", ""),
         })
     
     return jobs

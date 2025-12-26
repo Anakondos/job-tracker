@@ -184,3 +184,66 @@ Skip-роли: engineers, designers, QA, sales, non-IT
 - Dark theme
 - Фильтры: штаты, роли, ATS, поиск
 - Статусы заявок с сохранением
+
+---
+
+## Job Data Contract (Schema)
+
+Все парсеры следуют единому контракту данных (`parsers/schema.py`):
+
+### RawJob (от парсера)
+
+| Поле | Тип | Статус | Описание |
+|------|-----|--------|----------|
+| `title` | str | **Required** | Название позиции |
+| `url` | str | **Required** | Ссылка на вакансию |
+| `ats_job_id` | str | Expected | ID в ATS (для дедупликации) |
+| `location` | str | Expected | Сырая строка локации |
+| `updated_at` | str | Expected | ISO datetime обновления |
+| `department` | str | Optional | Отдел/команда |
+| `first_published` | str | Optional | Дата публикации |
+| `description` | str | Optional | Текст описания |
+
+### EnrichedJob (после обработки)
+
+Pipeline (`main.py`) автоматически добавляет:
+
+| Поле | Описание |
+|------|----------|
+| `id` | Уникальный hash (company+ats_job_id+url) |
+| `company` | Название компании |
+| `ats` | Тип ATS |
+| `location_norm` | Нормализованная локация |
+| `geo_bucket` | local/nc/neighbor/remote_usa/other |
+| `geo_score` | 0-100 для ранжирования |
+| `role_family` | product/tpm_program/project/other |
+| `role_category` | primary/adjacent/excluded/unknown |
+| `company_data` | {priority, hq_state, region, tags} |
+
+### Data Flow
+
+```
+┌─────────────┐     RawJob      ┌─────────────┐    EnrichedJob   ┌─────────┐
+│   Parser    │ ───────────────▶│   main.py   │ ─────────────────▶│  Cache  │
+│ (ATS-spec)  │   title, url,   │  _fetch_    │   + id, company, │  .json  │
+│             │   ats_job_id,   │  for_company│   location_norm, │         │
+│             │   location,     │             │   role_family,   │         │
+│             │   updated_at    │             │   geo_bucket...  │         │
+└─────────────┘                 └─────────────┘                  └─────────┘
+                                      │
+                                      ▼
+                               ┌─────────────┐
+                               │  Pipeline   │
+                               │  Storage    │
+                               │ jobs_new.json│
+                               └─────────────┘
+```
+
+### Adding New Parser
+
+1. Создать `parsers/newats.py`
+2. Реализовать `fetch_newats(company, board_url) -> List[RawJob]`
+3. Вернуть dict с required полями: `title`, `url`
+4. Добавить в `main.py` вызов в `_fetch_for_company()`
+5. Добавить ATS в companies.json
+
