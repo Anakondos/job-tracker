@@ -711,10 +711,11 @@
                 <th class="sortable" style="width: 60px" onclick="sortCompanies('new_count')">New <span class="sortIcon" id="sortIcon-c-new_count">⬍</span></th>
                 <th class="sortable" style="width: 70px" onclick="sortCompanies('applied_count')">Applied <span class="sortIcon" id="sortIcon-c-applied_count">⬍</span></th>
                 <th class="sortable" style="width: 100px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
+                <th style="width: 60px">Actions</th>
               </tr>
             </thead>
             <tbody id="companiesBody">
-              <tr><td colspan="8" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
+              <tr><td colspan="9" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2346,7 +2347,7 @@
         } catch (err) {
           console.error("Failed to load companies:", err);
           document.getElementById("companiesBody").innerHTML = 
-            `<tr><td colspan="7" style="text-align:center; padding: 40px; color: #ef4444;">Failed to load companies</td></tr>`;
+            `<tr><td colspan="9" style="text-align:center; padding: 40px; color: #ef4444;">Failed to load companies</td></tr>`;
         }
       }
       
@@ -2406,7 +2407,7 @@
         const tbody = document.getElementById("companiesBody");
         
         if (!companies.length) {
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color: var(--muted);">No companies found</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 40px; color: var(--muted);">No companies found</td></tr>`;
           return;
         }
         
@@ -2426,7 +2427,7 @@
           const totalBadgeClass = c.total_jobs > 0 ? 'jobs-badge' : 'jobs-badge zero';
           
           return `
-            <tr class="company-row" data-company="${c.company}">
+            <tr class="company-row" data-company="${c.company}" data-id="${c.id || ''}">
               <td><strong>${c.company}</strong></td>
               <td style="color: var(--muted); font-size: 12px;">${c.industry || c.tags?.join(', ') || ''}</td>
               <td><span class="ats-badge">${c.ats}</span></td>
@@ -2435,15 +2436,68 @@
               <td>${c.new_count || 0}</td>
               <td>${c.applied_count || 0}</td>
               <td class="${statusClass}"${errorTip}>${statusIcon}</td>
+              <td><button class="refresh-company-btn" data-id="${c.id || ''}" data-company="${c.company}" title="Refresh this company" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">🔄</button></td>
             </tr>
           `;
         }).join('');
         
-        // Add click handlers
+        // Add click handlers for company rows
         tbody.querySelectorAll(".company-row").forEach(row => {
-          row.addEventListener("click", () => {
+          row.addEventListener("click", (e) => {
+            // Don't trigger if clicking on refresh button
+            if (e.target.classList.contains('refresh-company-btn')) return;
             const company = row.dataset.company;
             showJobsForCompany(company);
+          });
+        });
+        
+        // Add click handlers for refresh buttons
+        tbody.querySelectorAll(".refresh-company-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const companyId = btn.dataset.id;
+            const companyName = btn.dataset.company;
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.textContent = '⏳';
+            
+            try {
+              const res = await fetch(`/companies/${encodeURIComponent(companyId)}/refresh`, {
+                method: 'POST'
+              });
+              const data = await res.json();
+              
+              if (data.ok) {
+                btn.textContent = '✅';
+                // Update row status cell
+                const row = btn.closest('tr');
+                const statusCell = row.querySelector('td:nth-child(8)');
+                if (statusCell) {
+                  statusCell.innerHTML = `<span class="status-ok" title="OK">✅</span>`;
+                }
+                // Reload companies to update stats
+                setTimeout(() => {
+                  btn.textContent = '🔄';
+                  btn.disabled = false;
+                  loadCompanies();
+                }, 1000);
+              } else {
+                btn.textContent = '❌';
+                alert(`Error: ${data.error || 'Unknown error'}`);
+                setTimeout(() => {
+                  btn.textContent = '🔄';
+                  btn.disabled = false;
+                }, 2000);
+              }
+            } catch (err) {
+              console.error('Refresh error:', err);
+              btn.textContent = '❌';
+              setTimeout(() => {
+                btn.textContent = '🔄';
+                btn.disabled = false;
+              }, 2000);
+            }
           });
         });
       }
