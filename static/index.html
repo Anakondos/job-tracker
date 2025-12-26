@@ -505,6 +505,24 @@
       .addToPipelineBtn:hover {
         background: #3a7a4a;
       }
+      
+      .applyBtn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-left: 4px;
+      }
+      .applyBtn:hover {
+        background: #2563eb;
+      }
+      .applyBtn:disabled {
+        background: #6b7280;
+        cursor: not-allowed;
+      }
 
       /* ========== STATUS BAR ========== */
       .status-bar {
@@ -1557,6 +1575,9 @@
           </select>
         </td>
         <td>
+          ${(job.ats || '').toLowerCase() === 'greenhouse'
+            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form">📝 Apply</button>`
+            : ''}
           ${showAddButton && !inPipeline 
             ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
             : ''}
@@ -1651,6 +1672,46 @@
               } catch (err) {
                 console.error("Remove from pipeline error:", err);
                 alert("Error removing from pipeline");
+              }
+            });
+          }
+          
+          // Apply button handler (Greenhouse only)
+          const applyBtn = row.querySelector(".applyBtn");
+          if (applyBtn) {
+            applyBtn.addEventListener("click", async (e) => {
+              const jobUrl = e.target.dataset.joburl;
+              const jobTitle = e.target.dataset.jobtitle;
+              if (!jobUrl) return;
+              
+              e.target.disabled = true;
+              e.target.textContent = "⏳ Opening...";
+              
+              try {
+                const res = await fetch("/apply/greenhouse", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ job_url: jobUrl, profile: "anton_tpm" })
+                });
+                
+                if (res.ok) {
+                  const data = await res.json();
+                  e.target.textContent = "📝 Apply";
+                  e.target.disabled = false;
+                  if (data.message) {
+                    alert(data.message);
+                  }
+                } else {
+                  const err = await res.json();
+                  alert("Error: " + (err.detail || "Failed to open form"));
+                  e.target.textContent = "📝 Apply";
+                  e.target.disabled = false;
+                }
+              } catch (err) {
+                console.error("Apply error:", err);
+                alert("Error opening application form");
+                e.target.textContent = "📝 Apply";
+                e.target.disabled = false;
               }
             });
           }

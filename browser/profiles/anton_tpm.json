@@ -1,0 +1,116 @@
+{
+  "personal": {
+    "first_name": "Anton",
+    "last_name": "Kondakov",
+    "email": "anton.kondakov.PM@gmail.com",
+    "phone": "(910) 536-0602",
+    "location": "Raleigh, NC",
+    "country": "United States"
+  },
+  
+  "links": {
+    "linkedin": "https://linkedin.com/in/antonkondakov"
+  },
+  
+  "files": {
+    "resume_path": "/Users/antonkondakov/projects/job-tracker-dev/browser/profiles/Anton_Kondakov_TPM.pdf",
+    "cover_letter_path": null
+  },
+  
+  "work_experience": [
+    {
+      "company": "DXC Technology",
+      "title": "Senior Technical Program Manager / Delivery Manager",
+      "start_month": "June",
+      "start_year": "2025",
+      "end_month": "",
+      "end_year": "",
+      "current": true,
+      "description": "Leading enterprise platform modernization program for global insurance broker. Direct cross-functional program delivery across 5 Agile teams (60+ engineers). Lead AWS cloud migration with microservices architecture achieving 30% improvement in delivery velocity."
+    },
+    {
+      "company": "Luxoft USA (Deutsche Bank)",
+      "title": "Senior Technical Program Manager",
+      "start_month": "February",
+      "start_year": "2020",
+      "end_month": "June",
+      "end_year": "2025",
+      "current": false,
+      "description": "Directed enterprise-scale technology programs for Deutsche Bank's Cash Equities division across 15 countries. Led GCP cloud migration (15 applications, 50+ microservices) achieving $1.2M annual savings. Directed DB-Fidessa merger integration across 8 asset classes."
+    },
+    {
+      "company": "Luxoft Poland (UBS Bank)",
+      "title": "Technical Program Manager",
+      "start_month": "January",
+      "start_year": "2016",
+      "end_month": "January",
+      "end_year": "2020",
+      "current": false,
+      "description": "Managed technology programs for UBS investment banking division. Led infrastructure modernization migrating 13,000+ SharePoint sites. Delivered risk analytics platform reducing computation time by 88%."
+    },
+    {
+      "company": "Luxoft Europe",
+      "title": "Senior Project Manager",
+      "start_month": "October",
+      "start_year": "2013",
+      "end_month": "March",
+      "end_year": "2016",
+      "current": false,
+      "description": "Managed enterprise technology projects for Fortune 500 clients across energy, retail, and pharmaceutical sectors including Lukoil, PepsiCo, Pfizer, and Brookfield."
+    }
+  ],
+  
+  "education": [
+    {
+      "school": "Moscow State University of Instrument Engineering",
+      "degree": "Master's Degree",
+      "discipline": "Computer Science"
+    },
+    {
+      "school": "Presidential Program",
+      "degree": "Master's Degree",
+      "discipline": "Management (MBA)"
+    }
+  ],
+  
+  "certifications": [
+    "SAFe Product Owner / Product Manager (POPM) - Scaled Agile (2025)",
+    "Professional Scrum Master I (PSM I) - Scrum.org (2016)",
+    "Google Cloud Architect (2020)",
+    "Google Cloud Digital Leader (2024)",
+    "Agile Program Manager (2024)"
+  ],
+  
+  "common_answers": {
+    "18_or_older": "Yes",
+    "authorized_to_work": "Yes",
+    "require_sponsorship": "No",
+    "require_visa_sponsorship": "No",
+    "legally_authorized": "Yes",
+    "how_heard": "LinkedIn",
+    "work_remotely": "Yes",
+    "willing_to_relocate": "Yes",
+    "government_official": "No",
+    "ai_tools_comfortable": "Yes",
+    "employed_at_company_before": "No",
+    "non_compete": "No",
+    "background_check": "Yes"
+  },
+  
+  "demographics": {
+    "gender": "Decline",
+    "hispanic_latino": "Decline", 
+    "race_ethnicity": "Decline",
+    "veteran_status": "I am not",
+    "disability_status": "I don't wish"
+  },
+  
+  "summary": "Results-driven Senior Technical Program Manager with 15+ years leading complex technology programs for Fortune 500 companies in financial services, insurance, and enterprise technology. Proven track record delivering large-scale cloud migrations, system integrations, and platform modernizations with cross-functional teams of 50+ engineers across global time zones. Deep expertise in Agile (Scrum, SAFe, Kanban) and Waterfall methodologies with strong technical background in cloud platforms (AWS, GCP, Azure).",
+  
+  "skills": {
+    "cloud": ["AWS", "GCP", "Azure", "Terraform", "Docker", "Kubernetes"],
+    "tools": ["JIRA", "Confluence", "ServiceNow", "MS Project", "Azure DevOps", "Jenkins", "GitHub"],
+    "methodologies": ["Agile", "Scrum", "SAFe", "Kanban", "Waterfall", "ITIL"],
+    "technical": ["CI/CD", "Microservices", "REST APIs", "SQL", "Python", "Java"]
+  }
+}

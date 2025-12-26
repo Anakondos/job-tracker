@@ -1,0 +1,57 @@
+{
+  "personal": {
+    "first_name": "Anton",
+    "last_name": "Kondakov",
+    "email": "YOUR_EMAIL",
+    "phone": "YOUR_PHONE",
+    "location": "Raleigh, NC",
+    "country": "United States"
+  },
+  
+  "links": {
+    "linkedin": "https://linkedin.com/in/YOUR_LINKEDIN"
+  },
+  
+  "files": {
+    "resume_path": "/Users/antonkondakov/projects/job-tracker-dev/browser/profiles/Anton_Kondakov_Resume.pdf",
+    "cover_letter_path": null
+  },
+  
+  "work_experience": [
+    {
+      "company": "YOUR_CURRENT_COMPANY",
+      "title": "YOUR_TITLE",
+      "start_month": "Month",
+      "start_year": "Year",
+      "end_month": "",
+      "end_year": "",
+      "current": true
+    }
+  ],
+  
+  "education": [
+    {
+      "school": "YOUR_UNIVERSITY",
+      "degree": "Master's Degree",
+      "discipline": "YOUR_FIELD"
+    }
+  ],
+  
+  "common_answers": {
+    "18_or_older": "Yes",
+    "authorized_to_work": "Yes",
+    "require_sponsorship": "No",
+    "how_heard": "LinkedIn",
+    "work_remotely": "Yes",
+    "government_official": "No",
+    "ai_tools_comfortable": "Yes"
+  },
+  
+  "demographics": {
+    "gender": "Decline",
+    "hispanic_latino": "Decline", 
+    "race_ethnicity": "Decline",
+    "veteran_status": "I am not",
+    "disability_status": "I don't wish"
+  }
+}

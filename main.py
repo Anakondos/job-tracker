@@ -1503,3 +1503,85 @@ def pipeline_attention_endpoint():
     all_jobs = get_all_jobs()
     attention = [j for j in all_jobs if j.get("needs_attention")]
     return {"count": len(attention), "jobs": attention}
+
+
+# ============= APPLY AUTOMATION ENDPOINTS =============
+
+class ApplyRequest(BaseModel):
+    job_url: str
+    profile: str = "anton_tpm"
+
+
+@app.post("/apply/greenhouse")
+def apply_greenhouse_endpoint(payload: ApplyRequest):
+    """
+    Open Greenhouse job application and auto-fill form.
+    Launches browser, navigates to job URL, fills form with profile data.
+    Browser stays open for user to review and submit.
+    """
+    import subprocess
+    import sys
+    
+    job_url = payload.job_url
+    profile_name = payload.profile
+    
+    # Validate URL
+    if "greenhouse" not in job_url.lower():
+        return {"ok": False, "error": "Only Greenhouse URLs supported"}
+    
+    # Check profile exists
+    profile_path = Path(f"browser/profiles/{profile_name}.json")
+    if not profile_path.exists():
+        return {"ok": False, "error": f"Profile '{profile_name}' not found"}
+    
+    # Launch browser automation in background process
+    script = f'''
+import sys
+sys.path.insert(0, '/Users/antonkondakov/projects/job-tracker-dev')
+from browser import BrowserClient, ProfileManager
+from pathlib import Path
+import time
+
+profile = ProfileManager(Path("browser/profiles/{profile_name}.json"))
+browser = BrowserClient()
+browser.start()
+
+try:
+    browser.open_job_page("{job_url}")
+    time.sleep(2)
+    
+    # Click Apply if visible
+    apply_btn = browser.page.query_selector("text=Apply")
+    if apply_btn:
+        apply_btn.click()
+        time.sleep(2)
+    
+    # Fill form
+    result = browser.fill_greenhouse_complete(profile)
+    print(f"Filled {{result['total']}} fields")
+    
+    # Keep browser open for user
+    print("Browser open - review and submit manually")
+    print("Press Ctrl+C to close")
+    
+    while True:
+        time.sleep(60)
+except KeyboardInterrupt:
+    pass
+finally:
+    browser.close()
+'''
+    
+    # Run in background
+    subprocess.Popen(
+        [sys.executable, "-c", script],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True
+    )
+    
+    return {
+        "ok": True, 
+        "message": f"Opening browser for {job_url}...",
+        "profile": profile_name
+    }
