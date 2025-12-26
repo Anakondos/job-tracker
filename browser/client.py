@@ -36,14 +36,16 @@ from .profile import get_profile_manager, ProfileManager
 class BrowserClient:
     """Browser automation client with Cloudflare bypass and AI fallback."""
     
-    def __init__(self, headless: bool = False):
+    def __init__(self, headless: bool = False, use_chrome_profile: bool = False):
         """
         Initialize browser client.
         
         Args:
             headless: Run in headless mode (default False for Cloudflare bypass)
+            use_chrome_profile: Use real Chrome profile with all cookies/logins
         """
         self.headless = headless
+        self.use_chrome_profile = use_chrome_profile
         self.playwright = None
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
@@ -60,18 +62,57 @@ class BrowserClient:
     def start(self):
         """Start browser instance."""
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(
-            headless=self.headless,
-            args=BROWSER_ARGS,
-        )
-        self.context = self.browser.new_context(
-            viewport={"width": 1400, "height": 900},
-            user_agent=USER_AGENT,
-        )
-        self.page = self.context.new_page()
         
-        # Add anti-detection script
-        self.page.add_init_script(STEALTH_SCRIPT)
+        if self.use_chrome_profile:
+            # Use real Chrome with user profile (has all cookies/logins)
+            # We copy cookies to a temp profile to avoid locking main Chrome
+            import os
+            import shutil
+            import tempfile
+            
+            chrome_path = os.path.expanduser(
+                "~/Library/Application Support/Google/Chrome"
+            )
+            
+            # Create temp dir and copy essential files (cookies, login data)
+            self.temp_profile_dir = tempfile.mkdtemp(prefix="chrome_profile_")
+            print(f"🔐 Creating temp profile from Chrome cookies...")
+            
+            # Copy Default profile
+            src_default = os.path.join(chrome_path, "Default")
+            dst_default = os.path.join(self.temp_profile_dir, "Default")
+            
+            if os.path.exists(src_default):
+                os.makedirs(dst_default, exist_ok=True)
+                # Copy only essential files for login state
+                for filename in ["Cookies", "Login Data", "Web Data", "Preferences"]:
+                    src_file = os.path.join(src_default, filename)
+                    if os.path.exists(src_file):
+                        shutil.copy2(src_file, dst_default)
+                print(f"  ✅ Copied cookies and login data")
+            
+            self.context = self.playwright.chromium.launch_persistent_context(
+                user_data_dir=self.temp_profile_dir,
+                headless=self.headless,
+                viewport={"width": 1400, "height": 900},
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+            self.browser = None  # Not used with persistent context
+        else:
+            # Standard: clean browser
+            self.browser = self.playwright.chromium.launch(
+                headless=self.headless,
+                args=BROWSER_ARGS,
+            )
+            self.context = self.browser.new_context(
+                viewport={"width": 1400, "height": 900},
+                user_agent=USER_AGENT,
+            )
+            self.page = self.context.new_page()
+            
+            # Add anti-detection script
+            self.page.add_init_script(STEALTH_SCRIPT)
         
         print("✅ Browser started")
     
