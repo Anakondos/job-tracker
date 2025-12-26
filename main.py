@@ -25,17 +25,21 @@ from parsers.lever import fetch_lever
 from parsers.smartrecruiters import fetch_smartrecruiters
 from parsers.ashby import fetch_ashby_jobs
 from parsers.workday_v2 import fetch_workday_v2
+from parsers.atlassian import fetch_atlassian
 from ats_detector import try_repair_company, verify_ats_url
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info, load_stats
 from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
-from storage.pipeline_storage import (
-    load_new_jobs, load_pipeline_jobs, load_archive_jobs,
-    get_all_job_ids, add_new_job, update_job_status as pipeline_update_status,
-    update_last_seen, mark_missing_jobs, get_pipeline_stats, get_job_by_id,
+from storage.job_storage import (
+    get_all_jobs, get_jobs_by_status, get_jobs_by_statuses,
+    get_active_jobs, get_archive_jobs, get_all_job_ids,
+    add_job, add_jobs_bulk, update_status as job_update_status,
+    update_last_seen, update_last_seen_bulk, mark_missing_jobs,
+    get_stats as get_job_stats, get_job_by_id, job_exists,
     STATUS_NEW, STATUS_APPLIED, STATUS_INTERVIEW, STATUS_OFFER,
-    STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED,
+    STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED, STATUS_EXCLUDED,
+    ACTIVE_STATUSES, ARCHIVE_STATUSES,
 )
 
 
@@ -45,6 +49,43 @@ from storage.pipeline_storage import (
 JOB_STATUS_FILE = Path("job_status.json")
 
 VALID_APPLICATION_STATUSES = ["New", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
+
+# My Roles families for filtering
+MY_ROLE_FAMILIES = {"product", "tpm_program", "project"}
+
+
+def sync_cache_to_pipeline(jobs: list) -> dict:
+    """
+    Sync parsed jobs from cache to jobs.json (pipeline storage).
+    Only adds jobs that match My Roles and are new.
+    Returns stats: {added: N, updated: N, total: N}
+    """
+    # Filter to My Roles only
+    my_roles_jobs = [
+        j for j in jobs 
+        if j.get("role_family") in MY_ROLE_FAMILIES
+    ]
+    
+    # Get existing job IDs
+    existing_ids = get_all_job_ids()
+    
+    # Separate new vs existing
+    new_jobs = [j for j in my_roles_jobs if j.get("id") not in existing_ids]
+    existing_jobs = [j for j in my_roles_jobs if j.get("id") in existing_ids]
+    
+    # Add new jobs in bulk
+    added = add_jobs_bulk(new_jobs, STATUS_NEW) if new_jobs else 0
+    
+    # Update last_seen for existing jobs
+    existing_job_ids = {j.get("id") for j in existing_jobs}
+    updated = update_last_seen_bulk(existing_job_ids) if existing_job_ids else 0
+    
+    return {
+        "added": added,
+        "updated": updated,
+        "total_my_roles": len(my_roles_jobs),
+        "total_parsed": len(jobs)
+    }
 
 
 def _safe_read_json(path: Path) -> dict:
@@ -254,6 +295,8 @@ def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[di
             jobs = fetch_ashby_jobs(url)
         elif ats == "workday":
             jobs = fetch_workday_v2(company, url)
+        elif ats == "atlassian":
+            jobs = fetch_atlassian(company, url)
         else:
             jobs = []
 
@@ -657,7 +700,7 @@ async def get_jobs(
                 update_last_seen(job_id, is_active=True)
             else:
                 # New job - add to inbox
-                add_new_job(job)
+                add_job(job)
         
         # Mark missing jobs as potentially closed
         mark_missing_jobs(active_ids, days_threshold=3)
@@ -687,7 +730,7 @@ def get_companies(
     MY_LOCATION_STATES = ["NC", "VA", "SC", "GA", "TN"]
     
     # Load all jobs from pipeline for counting
-    all_pipeline_jobs = load_new_jobs() + load_pipeline_jobs()
+    all_pipeline_jobs = get_active_jobs()
     
     # Load cache to get total jobs per company (all jobs from ATS)
     cache_data = load_cache(profile)  # Cache key is just 'all', not 'jobs_all'
@@ -1167,7 +1210,11 @@ async def refresh_stream(profile: str = Query("all")):
         
         # Save intermediate cache (Wave 1 complete)
         save_cache(profile, all_jobs)
-        yield f"data: {json.dumps({'type': 'wave_complete', 'wave': 1, 'jobs': len(all_jobs)})}\n\n"
+        
+        # Sync wave 1 to pipeline
+        sync_result = sync_cache_to_pipeline(all_jobs)
+        yield f"data: {json.dumps({'type': 'wave_complete', 'wave': 1, 'jobs': len(all_jobs), 'pipeline_added': sync_result['added']})}"
+        yield "\n\n"
         
         # === WAVE 2: Slow ATS (parallel) ===
         if wave2:
@@ -1204,8 +1251,14 @@ async def refresh_stream(profile: str = Query("all")):
         my_area_jobs = [j for j in us_jobs if j.get("geo_bucket") in ["local", "nc_other", "neighbor", "remote_usa"]]
         save_stats(len(all_jobs), len(role_jobs), len(us_jobs), len(my_area_jobs))
         
+        # Sync to pipeline (jobs.json)
+        sync_result = sync_cache_to_pipeline(all_jobs)
+        yield f"data: {json.dumps({'type': 'sync', 'added': sync_result['added'], 'updated': sync_result['updated']})}"
+        yield "\n\n"
+        
         # Send complete event
-        yield f"data: {json.dumps({'type': 'complete', 'total_jobs': len(all_jobs), 'companies': total})}\n\n"
+        yield f"data: {json.dumps({'type': 'complete', 'total_jobs': len(all_jobs), 'companies': total, 'pipeline_added': sync_result['added']})}"
+        yield "\n\n"
     
     return StreamingResponse(
         generate(),
@@ -1239,7 +1292,7 @@ def get_funnel_stats():
 @app.get("/pipeline/stats")
 def pipeline_stats_endpoint():
     """Get pipeline statistics"""
-    return get_pipeline_stats()
+    return get_job_stats()
 
 
 @app.get("/jobs/review")
@@ -1310,40 +1363,34 @@ def get_review_jobs(
 
 @app.get("/pipeline/all")
 def pipeline_all_endpoint():
-    """Get ALL jobs from pipeline (new + active + archive)"""
-    new_jobs = load_new_jobs()
-    active_jobs = load_pipeline_jobs()
-    archive_jobs = load_archive_jobs()
-    all_jobs = new_jobs + active_jobs + archive_jobs
+    """Get ALL jobs from storage"""
+    all_jobs = get_all_jobs()
+    stats = get_job_stats()
     return {
         "count": len(all_jobs), 
         "jobs": all_jobs,
-        "breakdown": {
-            "new": len(new_jobs),
-            "active": len(active_jobs),
-            "archive": len(archive_jobs)
-        }
+        "breakdown": stats["status_breakdown"]
     }
 
 
 @app.get("/pipeline/new")
 def pipeline_new_endpoint():
     """Get new (inbox) jobs"""
-    jobs = load_new_jobs()
+    jobs = get_jobs_by_status(STATUS_NEW)
     return {"count": len(jobs), "jobs": jobs}
 
 
 @app.get("/pipeline/active")
 def pipeline_active_endpoint():
-    """Get active pipeline jobs (Applied, Interview, Closed)"""
-    jobs = load_pipeline_jobs()
+    """Get active pipeline jobs (Applied, Interview)"""
+    jobs = get_jobs_by_statuses({STATUS_APPLIED, STATUS_INTERVIEW, STATUS_CLOSED})
     return {"count": len(jobs), "jobs": jobs}
 
 
 @app.get("/pipeline/archive")
 def pipeline_archive_endpoint():
     """Get archived jobs (Rejected, Offer, Withdrawn)"""
-    jobs = load_archive_jobs()
+    jobs = get_archive_jobs()
     return {"count": len(jobs), "jobs": jobs}
 
 
@@ -1371,12 +1418,12 @@ def pipeline_add_job_endpoint(payload: PipelineAddJob):
     job["source"] = "manual"
     
     # Add to pipeline
-    added_job = add_new_job(job)
+    added = add_job(job)
     
-    if added_job:
-        return {"ok": True, "job": added_job}
+    if added:
+        return {"ok": True, "job": job}
     else:
-        return {"ok": False, "error": "Failed to add job"}
+        return {"ok": False, "error": "Job already exists"}
 
 
 @app.delete("/pipeline/remove/{job_id}")
@@ -1432,7 +1479,7 @@ def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
     if payload.status not in valid_statuses:
         return {"ok": False, "error": f"Invalid status. Valid: {valid_statuses}"}
     
-    job = pipeline_update_status(payload.job_id, payload.status, payload.notes)
+    job = job_update_status(payload.job_id, payload.status, payload.notes)
     
     if job:
         return {"ok": True, "job": job}
@@ -1453,6 +1500,6 @@ def pipeline_get_job_endpoint(job_id: str):
 @app.get("/pipeline/attention")
 def pipeline_attention_endpoint():
     """Get jobs that need attention (Closed, etc.)"""
-    pipeline = load_pipeline_jobs()
-    attention = [j for j in pipeline if j.get("needs_attention")]
+    all_jobs = get_all_jobs()
+    attention = [j for j in all_jobs if j.get("needs_attention")]
     return {"count": len(attention), "jobs": attention}

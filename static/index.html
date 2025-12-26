@@ -657,14 +657,6 @@
         </div>
       </div>
       <div class="header-actions">
-        <label class="my-location-toggle">
-          <input type="checkbox" id="myRolesToggle">
-          <span>💼 My Roles</span>
-        </label>
-        <label class="my-location-toggle">
-          <input type="checkbox" id="myLocationToggle">
-          <span>📍 My Location</span>
-        </label>
         <button class="refresh-btn" id="refreshBtn">🔄 Refresh from ATS</button>
       </div>
     </header>
@@ -728,43 +720,6 @@
     <div class="wrap">
       <div class="controls">
         <label>
-          Industry (tags)
-          <input id="industryFilter" placeholder="e.g., fintech, saas, security" />
-        </label>
-
-        <label>
-          ATS
-          <select id="atsFilter">
-            <option value="all">All</option>
-            <option value="greenhouse">Greenhouse</option>
-            <option value="lever">Lever</option>
-            <option value="smartrecruiters">SmartRecruiters</option>
-            <option value="ashby">Ashby</option>
-            <option value="workday">Workday</option>
-          </select>
-        </label>
-
-        <label>
-          Role
-          <select id="roleFilter">
-            <optgroup label="Primary Roles">
-              <option value="primary" selected>All Primary (PM, TPM, Program)</option>
-              <option value="product_manager">Product Manager (301)</option>
-              <option value="program_manager">Program Manager (79)</option>
-              <option value="technical_program_manager">TPM (57)</option>
-              <option value="project_manager">Project Manager (16)</option>
-              <option value="product_owner">Product Owner (5)</option>
-            </optgroup>
-            <optgroup label="Other Categories">
-              <option value="adjacent">Adjacent (Director, Ops)</option>
-              <option value="unknown">Unknown (review)</option>
-              <option value="excluded">Excluded (Engineers, Sales)</option>
-            </optgroup>
-            <option value="all">── All Roles ──</option>
-          </select>
-        </label>
-
-        <label>
           Status
           <select id="statusFilter">
             <option value="all">All</option>
@@ -775,15 +730,6 @@
             <option value="Rejected">Rejected</option>
             <option value="Withdrawn">Withdrawn</option>
             <option value="Closed">Closed</option>
-          </select>
-        </label>
-        
-        <label>
-          Source
-          <select id="sourceFilter">
-            <option value="all">All Sources</option>
-            <option value="auto">Auto (matched)</option>
-            <option value="manual">Manual (from Review)</option>
           </select>
         </label>
 
@@ -841,19 +787,6 @@
           </div>
         </div>
 
-        <label>
-          Company contains
-          <input id="companyFilter" placeholder="e.g., fidelity" />
-        </label>
-
-        <label>
-          Search (title/location/company)
-          <input
-            id="searchFilter"
-            placeholder="e.g., TPM, product owner, Raleigh"
-          />
-        </label>
-
         <!-- Multi-state dropdown -->
         <div class="ms" id="stateMultiSelect">
           <label>States (multi)</label>
@@ -876,8 +809,21 @@
         </div>
 
         <label>
-          Cities (comma separated)
-          <input id="cityFilter" placeholder="e.g., Raleigh, Charlotte" />
+          Industry (tags)
+          <input id="industryFilter" placeholder="e.g., fintech, saas" />
+        </label>
+
+        <label>
+          Company
+          <input id="companyFilter" placeholder="e.g., stripe" />
+        </label>
+
+        <label>
+          Search
+          <input
+            id="searchFilter"
+            placeholder="e.g., TPM, Raleigh"
+          />
         </label>
 
         <span class="pill" id="loadPill"
@@ -1100,7 +1046,7 @@
 
       // My Roles filter settings
       const MY_ROLES = ['product', 'tpm_program', 'project'];
-      let myRolesEnabled = false;
+      let myRolesEnabled = true;
       
       // My Location filter settings
       const MY_LOCATION_STATES = ["NC", "VA", "SC", "GA", "TN"];
@@ -1108,7 +1054,7 @@
       
       // Defaults: all locations visible when toggles are off
       let selectedStates = [];
-      let includeNonUS = true;
+      let includeNonUS = false;
       let includeUS = true;
       let includeRemoteUSA = true;
 
@@ -1368,52 +1314,16 @@
       // ---------- MAIN FILTER FUNCTION ----------
       function applyFilters(jobs) {
         const industryFilter = (document.getElementById("industryFilter")?.value || "").trim().toLowerCase();
-        const role = document.getElementById("roleFilter").value;
-        const status = document.getElementById("statusFilter").value;
-        const source = document.getElementById("sourceFilter").value;
-        const ats = document.getElementById("atsFilter").value;
+        const status = document.getElementById("statusFilter")?.value || "all";
         const nonus = includeNonUS;
 
-        const companyFilter = document
-          .getElementById("companyFilter")
-          .value.trim();
-
-        const cityFilter = document.getElementById("cityFilter").value.trim();
+        const companyFilter = (document.getElementById("companyFilter")?.value || "").trim();
 
         const search = (document.getElementById("searchFilter")?.value || "")
           .trim()
           .toLowerCase();
 
         let filtered = jobs;
-        
-        // ===== Source filter FIRST (manual jobs have minimal filtering) =====
-        if (source === "manual") {
-          // For manual jobs: only filter by source, search, company, status
-          filtered = filtered.filter(job => job.source === "manual");
-          
-          // Apply only basic filters
-          if (companyFilter) {
-            filtered = filtered.filter(job => 
-              (job.company || "").toLowerCase().includes(companyFilter.toLowerCase())
-            );
-          }
-          if (search) {
-            filtered = filtered.filter(job => {
-              const haystack = `${job.title || ''} ${job.company || ''} ${job.location || ''}`.toLowerCase();
-              return haystack.includes(search);
-            });
-          }
-          if (status !== "all") {
-            filtered = filtered.filter(job => (job.status || job.application_status || "New") === status);
-          }
-          
-          return filtered;
-        }
-        
-        // For auto/all sources - apply all filters
-        if (source === "auto") {
-          filtered = filtered.filter(job => (job.source || "auto") === "auto");
-        }
 
         // ===== Industry filter by tags =====
         if (industryFilter) {
@@ -1424,35 +1334,25 @@
         }
         debugCounts.afterIndustry = filtered.length;
 
-        // ===== ATS filter =====
-        if (ats !== "all") {
-          filtered = filtered.filter((job) => {
-            return (job.ats || "").toLowerCase() === ats.toLowerCase();
-          });
-        }
-
-        // Role filter (uses role_category or specific role_id)
-        filtered = filtered.filter((job) => {
-          if (role === "all") return true;
-          
-          // Category filters
-          if (["primary", "adjacent", "unknown", "excluded"].includes(role)) {
-            const category = job.role_category || "unknown";
-            return category === role;
-          }
-          
-          // Specific role_id filters (product_manager, program_manager, etc.)
-          const roleId = job.role_id || "";
-          return roleId === role;
-        });
-        debugCounts.afterRole = filtered.length;
-
-        // Location filter (US and Non-US toggles) - always apply
+        // Location filter (US / Non-US / Remote USA)
+        // Remote USA jobs should pass if Remote checkbox is on, regardless of US/Non-US
         const us = includeUS;
+        const remoteUSA = includeRemoteUSA;
         filtered = filtered.filter((job) => {
+          const ln = job.location_norm;
           const isUS = isUSHeuristic(job);
-          if (isUS) return us;
-          return nonus;
+          const isRemote = ln?.remote && ['usa', 'US', 'USA', 'us'].includes(ln?.remote_scope);
+          
+          // Remote USA passes if Remote checkbox is on
+          if (isRemote && remoteUSA) return true;
+          
+          // US jobs pass if US checkbox is on
+          if (isUS && us) return true;
+          
+          // Non-US jobs pass if Non-US checkbox is on
+          if (!isUS && nonus) return true;
+          
+          return false;
         });
         debugCounts.afterLocation = filtered.length;
 
@@ -1476,26 +1376,9 @@
         }
         debugCounts.afterSearch = filtered.length;
 
-        // City (comma-separated)
-        if (cityFilter) {
-          const cities = cityFilter
-            .toLowerCase()
-            .split(",")
-            .map((c) => c.trim())
-            .filter(Boolean);
-          filtered = filtered.filter((job) => {
-            const ln = job.location_norm;
-            if (!ln) return false;
-            const city = (ln.city || "").toLowerCase();
-            return cities.includes(city);
-          });
-        }
-        debugCounts.afterCity = filtered.length;
-
-        // States + Remote(USA) independent toggles
+        // States filter (only if states selected)
         const hasStateFilter = selectedStates.length > 0;
-        const hasRemoteFilter = !!includeRemoteUSA;
-        if (hasStateFilter || hasRemoteFilter) {
+        if (hasStateFilter) {
           filtered = filtered.filter((job) => {
             const ln = job.location_norm;
             const isUS = isUSHeuristic(job);
@@ -1505,9 +1388,12 @@
               return true;
             }
             
-            const okState = hasStateFilter ? matchStatesInJob(ln) : false;
-            const okRemote = hasRemoteFilter ? isRemoteUSA(ln) : false;
-            return okState || okRemote || (!hasStateFilter && !hasRemoteFilter);
+            // Remote USA jobs pass state filter (they can work from any state)
+            if (ln?.remote && ['usa', 'US', 'USA', 'us'].includes(ln?.remote_scope)) {
+              return true;
+            }
+            
+            return matchStatesInJob(ln);
           });
         }
         debugCounts.afterState = filtered.length;
@@ -1551,32 +1437,22 @@
         const statusPipeline = document.getElementById("statusPipeline");
         const statusGeo = document.getElementById("statusGeo");
 
-        // Pipeline visualization - use cached stats if available
+        // Pipeline visualization - simplified: Total | My Roles | Shown
         if (CACHED_STATS || LAST_LOADED_AT || ALL_JOBS_RAW.length > 0) {
-          // Use cached stats from backend for Total/Role/US/MyArea
+          // Total from cache (all parsed jobs)
           const totalRaw = CACHED_STATS?.total || ALL_JOBS_RAW.length;
-          const roleCount = CACHED_STATS?.role || filterRelevantRoles(ALL_JOBS_RAW).length;
-          const usCount = CACHED_STATS?.us || 0;
-          const myAreaCount = CACHED_STATS?.my_area || 0;
-          
-          // Get shown count from filtered jobs (live count)
+          // My Roles from jobs.json (already filtered by role)
+          const myRolesCount = ALL_JOBS.length;
+          // Shown after location/search filters
           const shownCount = latestFilteredJobs ? latestFilteredJobs.length : ALL_JOBS.length;
           
-          const steps = [
-            { label: "Total", count: totalRaw },
-            { label: "Role", count: roleCount },
-            { label: "US", count: usCount },
-            { label: "My Area", count: myAreaCount },
-            { label: "Shown", count: shownCount },
-          ];
-
-          let pipelineHtml = '';
-          steps.forEach((step, i) => {
-            if (i > 0) pipelineHtml += '<span class="pipe-arrow">→</span>';
-            const isActive = step.count > 0 && step.count < steps[Math.max(0, i-1)]?.count;
-            pipelineHtml += `<span class="pipe-item${isActive ? ' active' : ''}">${step.label}: ${step.count}</span>`;
-          });
-          statusPipeline.innerHTML = pipelineHtml;
+          statusPipeline.innerHTML = `
+            <span class="pipe-item">Total: ${totalRaw}</span>
+            <span class="pipe-arrow">→</span>
+            <span class="pipe-item">My Roles: ${myRolesCount}</span>
+            <span class="pipe-arrow">→</span>
+            <span class="pipe-item active">Shown: ${shownCount}</span>
+          `;
         } else {
           statusPipeline.innerHTML = '<span class="pipe-item">Not loaded</span>';
         }
@@ -1969,8 +1845,6 @@
 
       // ---------- LOADING ----------
       async function loadJobsOnce() {
-        const ats = document.getElementById("atsFilter").value;
-
         setLoading(true, "Loading…");
         try {
           // Always load ALL jobs, filter locally by profile/ats
@@ -2130,14 +2004,10 @@
       // ---------- EVENTS ----------
 
       const filterIds = [
-        "roleFilter",
         "statusFilter",
-        "sourceFilter",
         "companyFilter",
         "searchFilter",
-        "cityFilter",
         "industryFilter",
-        "atsFilter",
       ];
       for (const id of filterIds) {
         const el = document.getElementById(id);
@@ -2812,55 +2682,6 @@
       
       // Refresh button - parses fresh from ATS
       document.getElementById("refreshBtn").addEventListener("click", backgroundRefresh);
-      
-      // My Roles toggle
-      document.getElementById("myRolesToggle").addEventListener("change", (e) => {
-        myRolesEnabled = e.target.checked;
-        console.log("My Roles toggled:", myRolesEnabled);
-        
-        // Update ALL_JOBS based on toggle
-        if (ALL_JOBS_RAW.length > 0) {
-          ALL_JOBS = myRolesEnabled ? filterRelevantRoles(ALL_JOBS_RAW) : ALL_JOBS_RAW;
-        }
-        
-        // Re-render current tab
-        const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
-        if (jobsTabActive) {
-          if (ALL_JOBS.length > 0) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
-          }
-        } else {
-          // On Companies tab - reload with new filter
-          loadCompanies();
-        }
-        
-        // Update status bar
-        updateStatus();
-      });
-      
-      // My Location toggle
-      document.getElementById("myLocationToggle").addEventListener("change", (e) => {
-        myLocationEnabled = e.target.checked;
-        console.log("My Location toggled:", myLocationEnabled);
-        applyMyLocationFilter();
-        
-        // Re-render current tab
-        const jobsTabActive = document.getElementById("tab-jobs").classList.contains("active");
-        console.log("Jobs tab active:", jobsTabActive);
-        
-        if (jobsTabActive) {
-          // Just re-filter existing jobs, don't reload
-          if (ALL_JOBS.length > 0) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
-          }
-        } else {
-          // On Companies tab - reload with new my_location param
-          console.log("Reloading companies with my_location=", myLocationEnabled);
-          loadCompanies();
-        }
-      });
       
       function applyMyLocationFilter() {
         if (myLocationEnabled) {
