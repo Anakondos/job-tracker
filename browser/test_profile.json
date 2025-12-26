@@ -12,7 +12,7 @@
     {
       "company": "Test Company Inc",
       "title": "Senior Product Manager",
-      "start_month": "01",
+      "start_month": "January",
       "start_year": "2020",
       "end_month": "",
       "end_year": "",
@@ -21,10 +21,9 @@
   ],
   "education": [
     {
-      "school": "Test University",
-      "degree": "MBA",
-      "discipline": "Business Administration",
-      "year": "2018"
+      "school": "Duke University",
+      "degree": "Master's Degree",
+      "discipline": "Business Administration"
     }
   ],
   "answers": {

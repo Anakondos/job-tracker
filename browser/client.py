@@ -351,6 +351,31 @@ class BrowserClient:
         
         return filled
     
+    def _fill_greenhouse_dropdown(self, selector: str, value: str) -> bool:
+        """
+        Fill a Greenhouse autocomplete dropdown.
+        
+        Greenhouse uses custom dropdowns that need click -> type -> select.
+        """
+        try:
+            el = self.page.query_selector(selector)
+            if el and el.is_visible():
+                el.click()
+                time.sleep(0.3)
+                # Use type() for better compatibility with autocomplete
+                el.fill("")  # Clear first
+                el.type(value, delay=50)  # Type with delay for autocomplete
+                time.sleep(0.5)  # Wait for autocomplete options
+                # Select first option with ArrowDown + Enter
+                self.page.keyboard.press("ArrowDown")
+                time.sleep(0.2)
+                self.page.keyboard.press("Enter")
+                time.sleep(0.3)
+                return True
+        except Exception as e:
+            pass
+        return False
+    
     def fill_greenhouse_form(self, profile: Optional[ProfileManager] = None) -> Dict[str, Any]:
         """
         Fill a Greenhouse application form.
@@ -436,6 +461,215 @@ class BrowserClient:
                 print(f"  - {q.get('label', q.get('name'))}")
         
         print(f"\n✅ Filled {result['filled']} fields total")
+        return result
+    
+    def fill_greenhouse_work_experience(self, profile: Optional[ProfileManager] = None, index: int = 0) -> int:
+        """
+        Fill Work Experience section in Greenhouse form.
+        
+        Args:
+            profile: ProfileManager instance
+            index: Work experience entry index (0 for first job)
+            
+        Returns:
+            Number of fields filled
+        """
+        if profile is None:
+            profile = get_profile_manager()
+        
+        work_exp = profile.get("work_experience", [])
+        if not work_exp or index >= len(work_exp):
+            print("⚠️ No work experience in profile")
+            return 0
+        
+        work = work_exp[index]
+        filled = 0
+        
+        print(f"\n💼 Filling Work Experience #{index}...")
+        
+        # Company name
+        if work.get("company"):
+            el = self.page.query_selector(f"#company-name-{index}, input[id*='company-name-{index}']")
+            if el and el.is_visible():
+                el.fill(work["company"])
+                filled += 1
+                print(f"  ✅ Company: {work['company']}")
+        
+        # Title
+        if work.get("title"):
+            el = self.page.query_selector(f"#title-{index}, input[id*='title-{index}']")
+            if el and el.is_visible():
+                el.fill(work["title"])
+                filled += 1
+                print(f"  ✅ Title: {work['title']}")
+        
+        # Start date (dropdowns)
+        if work.get("start_month"):
+            if self._fill_greenhouse_dropdown(f"#start-date-month-{index}", work["start_month"]):
+                filled += 1
+                print(f"  ✅ Start Month: {work['start_month']}")
+        
+        if work.get("start_year"):
+            if self._fill_greenhouse_dropdown(f"#start-date-year-{index}", work["start_year"]):
+                filled += 1
+                print(f"  ✅ Start Year: {work['start_year']}")
+        
+        # Current role checkbox
+        if work.get("current"):
+            checkbox = self.page.query_selector(f"input#current-role-{index}[type='checkbox']")
+            if checkbox:
+                try:
+                    if not checkbox.is_checked():
+                        checkbox.click()
+                        filled += 1
+                        print("  ✅ Current role: checked")
+                except:
+                    # Try clicking the label instead
+                    label = self.page.query_selector(f"label[for='current-role-{index}']")
+                    if label:
+                        label.click()
+                        filled += 1
+                        print("  ✅ Current role: checked (via label)")
+        else:
+            # End date (if not current)
+            if work.get("end_month"):
+                if self._fill_greenhouse_dropdown(f"#end-date-month-{index}", work["end_month"]):
+                    filled += 1
+                    print(f"  ✅ End Month: {work['end_month']}")
+            
+            if work.get("end_year"):
+                if self._fill_greenhouse_dropdown(f"#end-date-year-{index}", work["end_year"]):
+                    filled += 1
+                    print(f"  ✅ End Year: {work['end_year']}")
+        
+        return filled
+    
+    def fill_greenhouse_education(self, profile: Optional[ProfileManager] = None, index: int = 0) -> int:
+        """
+        Fill Education section in Greenhouse form.
+        
+        Args:
+            profile: ProfileManager instance  
+            index: Education entry index (0 for first)
+            
+        Returns:
+            Number of fields filled
+        """
+        if profile is None:
+            profile = get_profile_manager()
+        
+        education = profile.get("education", [])
+        if not education or index >= len(education):
+            print("⚠️ No education in profile")
+            return 0
+        
+        edu = education[index]
+        filled = 0
+        
+        print(f"\n🎓 Filling Education #{index}...")
+        
+        # School (dropdown/autocomplete)
+        if edu.get("school"):
+            if self._fill_greenhouse_dropdown(f"#school--{index}", edu["school"]):
+                filled += 1
+                print(f"  ✅ School: {edu['school']}")
+        
+        # Degree (dropdown)
+        if edu.get("degree"):
+            if self._fill_greenhouse_dropdown(f"#degree--{index}", edu["degree"]):
+                filled += 1
+                print(f"  ✅ Degree: {edu['degree']}")
+        
+        # Discipline/Major (dropdown)
+        if edu.get("discipline"):
+            if self._fill_greenhouse_dropdown(f"#discipline--{index}", edu["discipline"]):
+                filled += 1
+                print(f"  ✅ Discipline: {edu['discipline']}")
+        
+        return filled
+    
+    def upload_greenhouse_resume(self, file_path: str) -> bool:
+        """
+        Upload resume to Greenhouse form.
+        
+        Args:
+            file_path: Path to resume file
+            
+        Returns:
+            True if successful
+        """
+        print(f"\n📎 Uploading resume: {file_path}")
+        
+        try:
+            with self.page.expect_file_chooser() as fc_info:
+                # Click first Attach button (Resume)
+                attach_buttons = self.page.query_selector_all("button:has-text('Attach')")
+                if attach_buttons:
+                    attach_buttons[0].click()
+            
+            file_chooser = fc_info.value
+            file_chooser.set_files(file_path)
+            print("  ✅ Resume uploaded")
+            return True
+        except Exception as e:
+            print(f"  ❌ Failed to upload resume: {e}")
+            return False
+    
+    def fill_greenhouse_complete(self, profile: Optional[ProfileManager] = None) -> Dict[str, Any]:
+        """
+        Complete Greenhouse form filling including all sections.
+        
+        Returns:
+            Dict with results
+        """
+        if profile is None:
+            profile = get_profile_manager()
+        
+        result = {
+            "basic_fields": 0,
+            "resume": False,
+            "work_experience": 0,
+            "education": 0,
+            "total": 0,
+            "needs_attention": [],
+        }
+        
+        # 1. Basic fields
+        basic_result = self.fill_greenhouse_form(profile)
+        result["basic_fields"] = basic_result["filled"]
+        result["needs_attention"].extend(basic_result.get("needs_attention", []))
+        
+        # 2. Resume
+        resume_path = profile.get("files.resume_path")
+        if resume_path:
+            result["resume"] = self.upload_greenhouse_resume(resume_path)
+        
+        # 3. Work Experience
+        work_exp = profile.get("work_experience", [])
+        for i in range(len(work_exp)):
+            result["work_experience"] += self.fill_greenhouse_work_experience(profile, i)
+        
+        # 4. Education
+        education = profile.get("education", [])
+        for i in range(len(education)):
+            result["education"] += self.fill_greenhouse_education(profile, i)
+        
+        result["total"] = (
+            result["basic_fields"] + 
+            (1 if result["resume"] else 0) + 
+            result["work_experience"] + 
+            result["education"]
+        )
+        
+        print(f"\n{'='*50}")
+        print(f"📊 Form filling complete:")
+        print(f"   Basic fields: {result['basic_fields']}")
+        print(f"   Resume: {'✅' if result['resume'] else '❌'}")
+        print(f"   Work experience: {result['work_experience']}")
+        print(f"   Education: {result['education']}")
+        print(f"   TOTAL: {result['total']} fields")
+        print(f"{'='*50}")
+        
         return result
     
     def upload_file(self, selector: str, file_path: str) -> bool:
