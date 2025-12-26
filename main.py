@@ -903,7 +903,10 @@ def refresh_single_company(company_id: str, profile: str = Query("all")):
     companies_cfg = load_profile(profile)
     cfg = None
     for c in companies_cfg:
-        if c.get("id") == company_id or c.get("company", "").lower() == company_id.lower():
+        # Match by id, company name, or name field
+        cid = c.get("id", "") or ""
+        cname = c.get("company", "") or c.get("name", "") or ""
+        if cid == company_id or cname.lower() == company_id.lower():
             cfg = c
             break
     
@@ -930,6 +933,66 @@ def refresh_single_company(company_id: str, profile: str = Query("all")):
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+@app.get("/companies/{company_id}/refresh/stream")
+async def refresh_single_company_stream(company_id: str, profile: str = Query("all")):
+    """
+    Streaming refresh for a single company.
+    Sends progress events as jobs are parsed.
+    """
+    import asyncio
+    
+    async def generate():
+        # Find company config
+        companies_cfg = load_profile(profile)
+        cfg = None
+        for c in companies_cfg:
+            cid = c.get("id", "") or ""
+            cname = c.get("company", "") or c.get("name", "") or ""
+            if cid == company_id or cname.lower() == company_id.lower():
+                cfg = c
+                break
+        
+        if not cfg:
+            yield f"data: {json.dumps({'type': 'error', 'error': f'Company {company_id} not found'})}\n\n"
+            return
+        
+        company_name = cfg.get("company", "") or cfg.get("name", "")
+        ats = cfg.get("ats", "")
+        url = cfg.get("url", "") or cfg.get("board_url", "")
+        
+        yield f"data: {json.dumps({'type': 'start', 'company': company_name, 'ats': ats})}\n\n"
+        
+        try:
+            # Send progress event before fetching
+            yield f"data: {json.dumps({'type': 'progress', 'jobs': 0, 'message': 'Fetching...'})}\n\n"
+            
+            # Run sync parser in thread to not block
+            loop = asyncio.get_event_loop()
+            jobs = await loop.run_in_executor(None, lambda: _fetch_for_company(profile, cfg))
+            
+            # Enrich jobs (already done in _fetch_for_company)
+            jobs_count = len(jobs)
+            
+            # Update cache
+            cached = load_cache(profile) or {"jobs": []}
+            other_jobs = [j for j in cached.get("jobs", []) if j.get("company") != company_name]
+            all_jobs = other_jobs + jobs
+            save_cache(profile, all_jobs)
+            
+            yield f"data: {json.dumps({'type': 'done', 'jobs': jobs_count, 'total_cache': len(all_jobs)})}\n\n"
+            
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)[:200]})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 
 @app.get("/profiles/{name}")

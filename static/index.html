@@ -711,11 +711,12 @@
                 <th class="sortable" style="width: 60px" onclick="sortCompanies('new_count')">New <span class="sortIcon" id="sortIcon-c-new_count">⬍</span></th>
                 <th class="sortable" style="width: 70px" onclick="sortCompanies('applied_count')">Applied <span class="sortIcon" id="sortIcon-c-applied_count">⬍</span></th>
                 <th class="sortable" style="width: 100px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
+                <th class="sortable" style="width: 90px" onclick="sortCompanies('last_checked')">Updated <span class="sortIcon" id="sortIcon-c-last_checked">⬍</span></th>
                 <th style="width: 60px">Actions</th>
               </tr>
             </thead>
             <tbody id="companiesBody">
-              <tr><td colspan="9" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
+              <tr><td colspan="10" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1055,16 +1056,24 @@
           const now = new Date();
           const diffMs = now - date;
           const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const diffMins = Math.floor(diffMs / (1000 * 60));
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
           
-          // Format date: "Dec 19"
+          // Format date: "Dec 19, 10:45"
           const month = date.toLocaleDateString('en-US', { month: 'short' });
           const day = date.getDate();
-          const dateStr = `${month} ${day}`;
+          const hours = date.getHours().toString().padStart(2, '0');
+          const mins = date.getMinutes().toString().padStart(2, '0');
+          const dateStr = `${month} ${day}, ${hours}:${mins}`;
           
           // Age indicator
           let ageStr;
-          if (diffDays === 0) {
-            ageStr = "today";
+          if (diffMins < 1) {
+            ageStr = "now";
+          } else if (diffMins < 60) {
+            ageStr = `${diffMins}m`;
+          } else if (diffHours < 24) {
+            ageStr = `${diffHours}h`;
           } else if (diffDays === 1) {
             ageStr = "1d";
           } else if (diffDays <= 7) {
@@ -2347,7 +2356,7 @@
         } catch (err) {
           console.error("Failed to load companies:", err);
           document.getElementById("companiesBody").innerHTML = 
-            `<tr><td colspan="9" style="text-align:center; padding: 40px; color: #ef4444;">Failed to load companies</td></tr>`;
+            `<tr><td colspan="10" style="text-align:center; padding: 40px; color: #ef4444;">Failed to load companies</td></tr>`;
         }
       }
       
@@ -2356,8 +2365,8 @@
           companiesSortDir = companiesSortDir === "asc" ? "desc" : "asc";
         } else {
           companiesSortCol = col;
-          // Default: desc for numbers, asc for text
-          companiesSortDir = ["total_jobs", "jobs_count", "new_count", "applied_count", "last_ok"].includes(col) ? "desc" : "asc";
+          // Default: desc for numbers and dates, asc for text
+          companiesSortDir = ["total_jobs", "jobs_count", "new_count", "applied_count", "last_ok", "last_checked"].includes(col) ? "desc" : "asc";
         }
         
         const sorted = [...COMPANIES_DATA].sort((a, b) => {
@@ -2370,6 +2379,13 @@
             const oa = order[String(va)] ?? 0;
             const ob = order[String(vb)] ?? 0;
             return companiesSortDir === "asc" ? oa - ob : ob - oa;
+          }
+          
+          // Date column
+          if (col === "last_checked") {
+            const da = va ? new Date(va).getTime() : 0;
+            const db = vb ? new Date(vb).getTime() : 0;
+            return companiesSortDir === "asc" ? da - db : db - da;
           }
           
           // Numeric columns
@@ -2390,7 +2406,7 @@
       }
       
       function updateCompanySortIcons() {
-        const cols = ["company", "industry", "ats", "total_jobs", "jobs_count", "new_count", "applied_count", "last_ok"];
+        const cols = ["company", "industry", "ats", "total_jobs", "jobs_count", "new_count", "applied_count", "last_ok", "last_checked"];
         cols.forEach(c => {
           const icon = document.getElementById(`sortIcon-c-${c}`);
           if (icon) {
@@ -2407,7 +2423,7 @@
         const tbody = document.getElementById("companiesBody");
         
         if (!companies.length) {
-          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 40px; color: var(--muted);">No companies found</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 40px; color: var(--muted);">No companies found</td></tr>`;
           return;
         }
         
@@ -2426,6 +2442,9 @@
           const jobsBadgeClass = c.jobs_count > 0 ? 'jobs-badge' : 'jobs-badge zero';
           const totalBadgeClass = c.total_jobs > 0 ? 'jobs-badge' : 'jobs-badge zero';
           
+          // Format last_checked date
+          const updatedStr = c.last_checked ? formatDateWithAge(c.last_checked) : '—';
+          
           return `
             <tr class="company-row" data-company="${c.company}" data-id="${c.id || ''}">
               <td><strong>${c.company}</strong></td>
@@ -2436,7 +2455,8 @@
               <td>${c.new_count || 0}</td>
               <td>${c.applied_count || 0}</td>
               <td class="${statusClass}"${errorTip}>${statusIcon}</td>
-              <td><button class="refresh-company-btn" data-id="${c.id || ''}" data-company="${c.company}" title="Refresh this company" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">🔄</button></td>
+              <td style="font-size: 11px; color: var(--muted);">${updatedStr}</td>
+              <td><button class="refresh-company-btn" data-id="${c.id || c.company}" data-company="${c.company}" data-total="${c.total_jobs || 0}" title="Refresh this company" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">🔄</button></td>
             </tr>
           `;
         }).join('');
@@ -2457,44 +2477,108 @@
             e.stopPropagation();
             const companyId = btn.dataset.id;
             const companyName = btn.dataset.company;
+            const row = btn.closest('tr');
             
             // Disable button and show loading
             btn.disabled = true;
-            btn.textContent = '⏳';
+            btn.style.minWidth = '60px';
+            btn.textContent = '⏳ 0';
             
             try {
-              const res = await fetch(`/companies/${encodeURIComponent(companyId)}/refresh`, {
-                method: 'POST'
-              });
-              const data = await res.json();
+              // Use streaming endpoint for real-time progress
+              const eventSource = new EventSource(`/companies/${encodeURIComponent(companyId)}/refresh/stream`);
+              let lastJobsCount = 0;
               
-              if (data.ok) {
-                btn.textContent = '✅';
-                // Update row status cell
-                const row = btn.closest('tr');
-                const statusCell = row.querySelector('td:nth-child(8)');
-                if (statusCell) {
-                  statusCell.innerHTML = `<span class="status-ok" title="OK">✅</span>`;
+              eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'start') {
+                  btn.textContent = `⏳ 0`;
+                } else if (data.type === 'progress') {
+                  lastJobsCount = data.jobs || 0;
+                  btn.textContent = `⏳ ${lastJobsCount}`;
+                } else if (data.type === 'done') {
+                  eventSource.close();
+                  
+                  // Show final jobs count
+                  btn.textContent = `✅ ${data.jobs}`;
+                  btn.style.color = '#22c55e';
+                  
+                  // Update status cell (8th)
+                  const statusCell = row.querySelector('td:nth-child(8)');
+                  if (statusCell) {
+                    statusCell.innerHTML = `<span class="status-ok" title="OK">✅</span>`;
+                  }
+                  
+                  // Update "Updated" cell (9th) with current time
+                  const updatedCell = row.querySelector('td:nth-child(9)');
+                  if (updatedCell) {
+                    updatedCell.textContent = formatDateWithAge(new Date().toISOString());
+                  }
+                  
+                  // Update Total cell (4th)
+                  const totalCell = row.querySelector('td:nth-child(4)');
+                  if (totalCell) {
+                    const badgeClass = data.jobs > 0 ? 'jobs-badge' : 'jobs-badge zero';
+                    totalCell.innerHTML = `<span class="${badgeClass}">${data.jobs}</span>`;
+                  }
+                  
+                  // Reset button after delay, then reload
+                  setTimeout(() => {
+                    btn.textContent = '🔄';
+                    btn.style.color = '';
+                    btn.style.minWidth = '';
+                    btn.disabled = false;
+                    loadCompanies();  // Reload to update pipeline stats
+                  }, 1500);
+                  
+                } else if (data.type === 'error') {
+                  eventSource.close();
+                  btn.textContent = '❌';
+                  btn.style.color = '#ef4444';
+                  console.error('Refresh error:', data.error);
+                  setTimeout(() => {
+                    btn.textContent = '🔄';
+                    btn.style.color = '';
+                    btn.style.minWidth = '';
+                    btn.disabled = false;
+                  }, 2000);
                 }
-                // Reload companies to update stats
-                setTimeout(() => {
-                  btn.textContent = '🔄';
-                  btn.disabled = false;
-                  loadCompanies();
-                }, 1000);
-              } else {
-                btn.textContent = '❌';
-                alert(`Error: ${data.error || 'Unknown error'}`);
-                setTimeout(() => {
-                  btn.textContent = '🔄';
-                  btn.disabled = false;
-                }, 2000);
-              }
+              };
+              
+              eventSource.onerror = (err) => {
+                eventSource.close();
+                // If we got jobs, treat as success
+                if (lastJobsCount > 0) {
+                  btn.textContent = `✅ ${lastJobsCount}`;
+                  btn.style.color = '#22c55e';
+                  setTimeout(() => {
+                    btn.textContent = '🔄';
+                    btn.style.color = '';
+                    btn.style.minWidth = '';
+                    btn.disabled = false;
+                    loadCompanies();
+                  }, 1500);
+                } else {
+                  btn.textContent = '❌';
+                  btn.style.color = '#ef4444';
+                  setTimeout(() => {
+                    btn.textContent = '🔄';
+                    btn.style.color = '';
+                    btn.style.minWidth = '';
+                    btn.disabled = false;
+                  }, 2000);
+                }
+              };
+              
             } catch (err) {
               console.error('Refresh error:', err);
               btn.textContent = '❌';
+              btn.style.color = '#ef4444';
               setTimeout(() => {
                 btn.textContent = '🔄';
+                btn.style.color = '';
+                btn.style.minWidth = '';
                 btn.disabled = false;
               }, 2000);
             }
