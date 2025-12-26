@@ -1535,12 +1535,18 @@ def apply_greenhouse_endpoint(payload: ApplyRequest):
         return {"ok": False, "error": f"Profile '{profile_name}' not found"}
     
     # Launch browser automation in background process
+    import os
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    
     script = f'''
 import sys
-sys.path.insert(0, '/Users/antonkondakov/projects/job-tracker-dev')
+sys.path.insert(0, '{cwd}')
 from browser import BrowserClient, ProfileManager
 from pathlib import Path
 import time
+import os
+
+os.chdir('{cwd}')
 
 profile = ProfileManager(Path("browser/profiles/{profile_name}.json"))
 browser = BrowserClient()
@@ -1572,12 +1578,14 @@ finally:
     browser.close()
 '''
     
-    # Run in background
+    # Run in background, capture output for debugging
+    log_file = open('/tmp/greenhouse_apply.log', 'w')
     subprocess.Popen(
         [sys.executable, "-c", script],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True
+        stdout=log_file,
+        stderr=log_file,
+        start_new_session=True,
+        cwd=cwd
     )
     
     return {
