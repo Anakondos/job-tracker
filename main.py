@@ -964,14 +964,57 @@ async def refresh_single_company_stream(company_id: str, profile: str = Query("a
         yield f"data: {json.dumps({'type': 'start', 'company': company_name, 'ats': ats})}\n\n"
         
         try:
-            # Send progress event before fetching
-            yield f"data: {json.dumps({'type': 'progress', 'jobs': 0, 'message': 'Fetching...'})}\n\n"
+            if ats == "workday":
+                # Workday: stream progress page by page
+                from parsers.workday_v2 import fetch_workday_v2_streaming
+                
+                raw_jobs = []
+                for event in fetch_workday_v2_streaming(company_name, url):
+                    if event.get("type") == "progress":
+                        yield f"data: {json.dumps({'type': 'progress', 'jobs': event['jobs']})}\n\n"
+                    elif event.get("type") == "done":
+                        raw_jobs = event.get("jobs", [])
+                    elif event.get("type") == "error":
+                        yield f"data: {json.dumps({'type': 'error', 'error': event['error']})}\n\n"
+                        return
+                
+                # Enrich jobs (same as _fetch_for_company)
+                jobs = []
+                for j in raw_jobs:
+                    j["company"] = company_name
+                    j["industry"] = cfg.get("industry", "")
+                    if not j.get("ats"):
+                        j["ats"] = ats
+                    j["id"] = generate_job_id(j)
+                    loc_norm = normalize_location(j.get("location"))
+                    j["location_norm"] = loc_norm
+                    role = classify_role(j.get("title"), j.get("description") or "")
+                    j["role_family"] = role.get("role_family")
+                    j["role_category"] = role.get("role_category")
+                    j["role_id"] = role.get("role_id")
+                    j["role_confidence"] = role.get("confidence")
+                    j["role_reason"] = role.get("reason")
+                    j["role_excluded"] = role.get("excluded", False)
+                    j["role_exclude_reason"] = role.get("exclude_reason")
+                    j["company_data"] = {
+                        "priority": cfg.get("priority", 0),
+                        "hq_state": cfg.get("hq_state"),
+                        "region": cfg.get("region"),
+                        "tags": cfg.get("tags", []),
+                    }
+                    bucket, score = compute_geo_bucket_and_score(loc_norm)
+                    j["geo_bucket"] = bucket
+                    j["geo_score"] = score
+                    jobs.append(j)
+                
+                # Mark company status
+                _mark_company_status(profile, cfg, ok=True)
+            else:
+                # Other ATS: single fetch
+                yield f"data: {json.dumps({'type': 'progress', 'jobs': 0, 'message': 'Fetching...'})}\n\n"
+                loop = asyncio.get_event_loop()
+                jobs = await loop.run_in_executor(None, lambda: _fetch_for_company(profile, cfg))
             
-            # Run sync parser in thread to not block
-            loop = asyncio.get_event_loop()
-            jobs = await loop.run_in_executor(None, lambda: _fetch_for_company(profile, cfg))
-            
-            # Enrich jobs (already done in _fetch_for_company)
             jobs_count = len(jobs)
             
             # Update cache

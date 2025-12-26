@@ -211,6 +211,98 @@ def fetch_workday(company: str, board_url: str, **kwargs) -> list[dict]:
     return fetch_workday_v2(company, board_url, **kwargs)
 
 
+def fetch_workday_v2_streaming(
+    company: str,
+    board_url: str,
+    search_text: str = "",
+    limit: int = 20,
+    max_jobs: Optional[int] = None,
+    applied_facets: Optional[dict] = None
+):
+    """
+    Generator версия - yields progress events.
+    Yields: {"type": "progress", "jobs": count} или {"type": "done", "jobs": list}
+    """
+    try:
+        url_parts = parse_workday_url(board_url)
+    except ValueError as e:
+        logger.error(f"Failed to parse Workday URL for {company}: {e}")
+        yield {"type": "error", "error": str(e)}
+        return
+
+    api_url = url_parts["api_url"]
+    base_url = url_parts["base_url"]
+    hostname = url_parts["hostname"]
+
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Origin": f"https://{hostname}",
+        "Referer": f"https://{hostname}/",
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+    }
+
+    payload = {
+        "appliedFacets": applied_facets or {},
+        "limit": min(limit, 20),
+        "offset": 0,
+        "searchText": search_text,
+    }
+
+    all_jobs = []
+    total_available = None
+
+    while True:
+        try:
+            resp = requests.post(
+                api_url,
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except requests.RequestException as e:
+            logger.error(f"Request failed for {company} at offset {payload['offset']}: {e}")
+            yield {"type": "error", "error": str(e)}
+            return
+        except ValueError as e:
+            logger.error(f"JSON decode failed for {company}: {e}")
+            yield {"type": "error", "error": str(e)}
+            return
+
+        if total_available is None:
+            total_available = data.get("total", 0)
+            logger.info(f"[{company}] Total jobs available: {total_available}")
+
+        postings = data.get("jobPostings", [])
+        if not postings:
+            break
+
+        for item in postings:
+            job = _normalize_job(item, company, base_url)
+            if job:
+                all_jobs.append(job)
+
+        # Yield progress after each page
+        yield {"type": "progress", "jobs": len(all_jobs), "total": total_available}
+
+        if max_jobs and len(all_jobs) >= max_jobs:
+            all_jobs = all_jobs[:max_jobs]
+            break
+
+        payload["offset"] += len(postings)
+        if payload["offset"] >= total_available:
+            break
+
+    logger.info(f"[{company}] Fetched {len(all_jobs)} jobs")
+    yield {"type": "done", "jobs": all_jobs}
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
