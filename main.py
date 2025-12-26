@@ -240,7 +240,9 @@ def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[di
         elif ats == "lever":
             jobs = fetch_lever(company, url)
         elif ats == "smartrecruiters":
-            jobs = fetch_smartrecruiters(company, url)
+            # SmartRecruiters needs api_url, not board_url
+            api_url = cfg.get("api_url") or url
+            jobs = fetch_smartrecruiters(company, api_url)
         elif ats == "ashby":
             jobs = fetch_ashby_jobs(url)
         elif ats == "workday":
