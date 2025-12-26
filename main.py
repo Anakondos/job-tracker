@@ -197,6 +197,13 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+@app.get("/")
+async def root():
+    """Redirect to UI"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/static/index.html")
+
+
 def _is_us_location(location: str | None) -> bool:
     if not location:
         return False
@@ -885,6 +892,45 @@ def remove_company(company_id: str):
         json.dump(companies, f, indent=2)
     
     return {"status": "ok", "removed": company_id}
+
+@app.post("/companies/{company_id}/refresh")
+def refresh_single_company(company_id: str, profile: str = Query("all")):
+    """
+    Refresh jobs for a single company.
+    Parses ATS, updates cache and pipeline.
+    """
+    # Load company config
+    companies_cfg = load_profile(profile)
+    cfg = None
+    for c in companies_cfg:
+        if c.get("id") == company_id or c.get("company", "").lower() == company_id.lower():
+            cfg = c
+            break
+    
+    if not cfg:
+        return {"ok": False, "error": f"Company '{company_id}' not found"}
+    
+    company_name = cfg.get("company", "")
+    
+    # Fetch jobs for this company
+    try:
+        jobs = _fetch_for_company(profile, cfg)
+        
+        # Update cache - load existing, replace this company's jobs, save
+        cached = load_cache(profile) or {"jobs": []}
+        other_jobs = [j for j in cached.get("jobs", []) if j.get("company") != company_name]
+        all_jobs = other_jobs + jobs
+        save_cache(profile, all_jobs)
+        
+        return {
+            "ok": True,
+            "company": company_name,
+            "jobs_count": len(jobs),
+            "total_cache": len(all_jobs)
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 
 @app.get("/profiles/{name}")
 async def get_profile_companies(name: str):
