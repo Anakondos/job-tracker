@@ -30,6 +30,7 @@ from .config import (
     FORM_FIELD_PATTERNS,
     AI_CONFIG,
 )
+from .profile import get_profile_manager, ProfileManager
 
 
 class BrowserClient:
@@ -290,6 +291,152 @@ class BrowserClient:
         
         print(f"✅ Filled {filled}/{len(data)} fields")
         return filled
+    
+    def fill_form_from_profile(self, profile: Optional[ProfileManager] = None) -> int:
+        """
+        Automatically fill form using profile data with smart field matching.
+        
+        Args:
+            profile: ProfileManager instance (uses default if None)
+            
+        Returns:
+            Number of fields filled
+        """
+        if profile is None:
+            profile = get_profile_manager()
+        
+        print("📝 Auto-filling form from profile...")
+        
+        fields = self.get_form_fields()
+        filled = 0
+        skipped = []
+        
+        for field in fields:
+            field_name = field.get("name", "")
+            field_id = field.get("id", "")
+            placeholder = field.get("placeholder", "")
+            label = field.get("label", "")
+            field_type = field.get("type", "text")
+            
+            # Skip file inputs and hidden fields
+            if field_type in ("file", "hidden", "submit", "button"):
+                continue
+            
+            # Try to find matching value from profile
+            value = profile.get_value_for_field(field_name, field_id, placeholder, label)
+            
+            if value:
+                selector = None
+                if field_id:
+                    selector = f"#{field_id}"
+                elif field_name:
+                    selector = f"[name='{field_name}']"
+                
+                if selector:
+                    try:
+                        el = self.page.query_selector(selector)
+                        if el and el.is_visible():
+                            el.fill(str(value))
+                            filled += 1
+                            print(f"  ✅ {field_name or field_id}: {value[:30]}{'...' if len(str(value)) > 30 else ''}")
+                    except Exception as e:
+                        skipped.append(field_name or field_id)
+            else:
+                if field_name and field_name not in ("g-recaptcha-response",):
+                    skipped.append(field_name or field_id)
+        
+        print(f"\n✅ Filled {filled} fields")
+        if skipped:
+            print(f"⚠️ Skipped {len(skipped)} fields (no matching data)")
+        
+        return filled
+    
+    def fill_greenhouse_form(self, profile: Optional[ProfileManager] = None) -> Dict[str, Any]:
+        """
+        Fill a Greenhouse application form.
+        
+        Handles Greenhouse-specific field structure.
+        
+        Returns:
+            Dict with results: {filled: N, skipped: [], needs_attention: []}
+        """
+        if profile is None:
+            profile = get_profile_manager()
+        
+        print("🌿 Filling Greenhouse form...")
+        
+        result = {
+            "filled": 0,
+            "skipped": [],
+            "needs_attention": [],  # Fields that need manual input or AI
+        }
+        
+        # Standard Greenhouse field mappings
+        greenhouse_fields = {
+            "#first_name": profile.get("personal.first_name"),
+            "#last_name": profile.get("personal.last_name"),
+            "#email": profile.get("personal.email"),
+            "#phone": profile.get("personal.phone"),
+            "#candidate-location": profile.get("personal.location"),
+        }
+        
+        # Fill standard fields
+        for selector, value in greenhouse_fields.items():
+            if value:
+                try:
+                    el = self.page.query_selector(selector)
+                    if el and el.is_visible():
+                        el.fill(str(value))
+                        result["filled"] += 1
+                        print(f"  ✅ {selector}: {value}")
+                except Exception as e:
+                    result["skipped"].append(selector)
+        
+        # Handle LinkedIn (often a custom question)
+        linkedin = profile.get("links.linkedin")
+        if linkedin:
+            linkedin_fields = self.page.query_selector_all("input[name*='linkedin'], input[id*='linkedin']")
+            for field in linkedin_fields:
+                try:
+                    if field.is_visible():
+                        field.fill(linkedin)
+                        result["filled"] += 1
+                        print(f"  ✅ LinkedIn: {linkedin}")
+                        break
+                except:
+                    pass
+        
+        # Check for custom questions that need attention
+        custom_questions = self.page.query_selector_all("input[name^='question_'], textarea[name^='question_']")
+        for q in custom_questions:
+            try:
+                name = q.get_attribute("name")
+                # Try to find label
+                label = ""
+                label_el = self.page.query_selector(f"label[for='{q.get_attribute('id')}']")
+                if label_el:
+                    label = label_el.inner_text()
+                
+                # Try to match with common answers
+                if label:
+                    answer = profile.get_common_answer(label)
+                    if answer and q.is_visible():
+                        q.fill(answer)
+                        result["filled"] += 1
+                        print(f"  ✅ Question: {label[:40]}...")
+                    else:
+                        result["needs_attention"].append({"name": name, "label": label})
+            except:
+                pass
+        
+        # Report needs attention
+        if result["needs_attention"]:
+            print(f"\n⚠️ {len(result['needs_attention'])} questions need attention:")
+            for q in result["needs_attention"][:5]:
+                print(f"  - {q.get('label', q.get('name'))}")
+        
+        print(f"\n✅ Filled {result['filled']} fields total")
+        return result
     
     def upload_file(self, selector: str, file_path: str) -> bool:
         """Upload a file to a file input."""

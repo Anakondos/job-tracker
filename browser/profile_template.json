@@ -1,0 +1,148 @@
+{
+  "_comment": "User profile for job application automation",
+  "_version": "1.0",
+  
+  "personal": {
+    "first_name": "",
+    "last_name": "",
+    "full_name": "",
+    "email": "",
+    "phone": "",
+    "country": "United States",
+    "country_code": "+1",
+    "city": "",
+    "state": "",
+    "location": "",
+    "zip_code": "",
+    "address": ""
+  },
+  
+  "links": {
+    "linkedin": "",
+    "github": "",
+    "portfolio": "",
+    "website": "",
+    "twitter": ""
+  },
+  
+  "files": {
+    "resume_path": "",
+    "cover_letter_path": "",
+    "cover_letter_template": ""
+  },
+  
+  "work_authorization": {
+    "authorized_us": "Yes",
+    "requires_sponsorship": "No",
+    "visa_status": "US Citizen"
+  },
+  
+  "demographics": {
+    "gender": "Decline to self-identify",
+    "race_ethnicity": "Decline to self-identify",
+    "veteran_status": "I am not a protected veteran",
+    "disability_status": "I don't wish to answer",
+    "hispanic_latino": "No"
+  },
+  
+  "work_experience": [
+    {
+      "company": "",
+      "title": "",
+      "start_month": "",
+      "start_year": "",
+      "end_month": "",
+      "end_year": "",
+      "current": true,
+      "description": ""
+    }
+  ],
+  
+  "education": [
+    {
+      "school": "",
+      "degree": "",
+      "discipline": "",
+      "graduation_year": "",
+      "gpa": ""
+    }
+  ],
+  
+  "salary": {
+    "expected_salary": "",
+    "current_salary": "",
+    "currency": "USD"
+  },
+  
+  "availability": {
+    "start_date": "Immediately",
+    "notice_period": "2 weeks",
+    "willing_to_relocate": "Yes",
+    "remote_preference": "Remote"
+  },
+  
+  "common_answers": {
+    "why_interested": "I am excited about this opportunity because it aligns with my experience in product management and my passion for building innovative solutions that create value for users.",
+    
+    "why_company": "I admire the company's mission and culture. The focus on innovation and customer-centric approach resonates with my professional values.",
+    
+    "strengths": "Strategic thinking, cross-functional collaboration, data-driven decision making, and ability to translate complex technical concepts into clear product requirements.",
+    
+    "career_goals": "To continue growing as a product leader, driving impactful products that solve real customer problems while mentoring and developing high-performing teams.",
+    
+    "management_style": "I believe in servant leadership - empowering team members, removing blockers, and creating an environment where everyone can do their best work.",
+    
+    "challenge_overcome": "Led a critical product pivot during uncertain market conditions by rallying cross-functional teams, maintaining stakeholder alignment, and delivering on time.",
+    
+    "how_heard": "LinkedIn",
+    
+    "referral": "",
+    
+    "additional_info": ""
+  },
+  
+  "skills": {
+    "technical": ["Product Management", "Agile/Scrum", "JIRA", "SQL", "Data Analysis", "A/B Testing"],
+    "soft": ["Leadership", "Communication", "Strategic Thinking", "Problem Solving"],
+    "tools": ["Figma", "Amplitude", "Mixpanel", "Tableau", "Confluence"],
+    "languages": ["English (Native)"]
+  },
+  
+  "certifications": [],
+  
+  "field_mappings": {
+    "_comment": "Maps common field names/IDs to profile fields",
+    
+    "first_name": ["first_name", "firstname", "fname", "given_name"],
+    "last_name": ["last_name", "lastname", "lname", "surname", "family_name"],
+    "full_name": ["name", "full_name", "fullname", "candidate_name"],
+    "email": ["email", "e-mail", "email_address", "emailaddress"],
+    "phone": ["phone", "telephone", "mobile", "phone_number", "cell"],
+    "linkedin": ["linkedin", "linkedin_url", "linkedin_profile", "linkedinurl"],
+    "github": ["github", "github_url", "github_profile"],
+    "portfolio": ["portfolio", "portfolio_url", "website", "personal_website"],
+    "city": ["city", "location_city"],
+    "state": ["state", "location_state", "province"],
+    "location": ["location", "candidate-location", "address", "city_state"],
+    "zip_code": ["zip", "zipcode", "zip_code", "postal_code"],
+    "country": ["country", "location_country"],
+    
+    "company": ["company", "company_name", "employer", "organization"],
+    "title": ["title", "job_title", "position", "role"],
+    "school": ["school", "university", "institution", "college"],
+    "degree": ["degree", "degree_type", "education_level"],
+    "discipline": ["discipline", "major", "field_of_study", "concentration"],
+    
+    "salary": ["salary", "expected_salary", "salary_expectation", "compensation"],
+    "start_date": ["start_date", "available_date", "availability"],
+    
+    "authorized": ["authorized", "work_authorization", "legally_authorized", "eligible_to_work"],
+    "sponsorship": ["sponsorship", "require_sponsorship", "visa_sponsorship", "immigration_sponsorship"],
+    
+    "gender": ["gender", "sex"],
+    "veteran": ["veteran", "veteran_status", "protected_veteran"],
+    "disability": ["disability", "disability_status"],
+    "ethnicity": ["ethnicity", "race", "race_ethnicity"],
+    "hispanic": ["hispanic", "hispanic_latino", "latino"]
+  }
+}

@@ -12,5 +12,12 @@ Usage:
 
 from .client import BrowserClient
 from .config import SCREENSHOTS_DIR, AI_CONFIG
+from .profile import ProfileManager, get_profile_manager
 
-__all__ = ["BrowserClient", "SCREENSHOTS_DIR", "AI_CONFIG"]
+__all__ = [
+    "BrowserClient", 
+    "SCREENSHOTS_DIR", 
+    "AI_CONFIG",
+    "ProfileManager",
+    "get_profile_manager",
+]

@@ -1,0 +1,43 @@
+{
+  "first_name": "Test",
+  "last_name": "User",
+  "email": "test@example.com",
+  "phone": "+1-555-123-4567",
+  "country": "United States",
+  "location": "Raleigh, NC",
+  "linkedin": "https://linkedin.com/in/testuser",
+  "resume_path": null,
+  "cover_letter_path": null,
+  "work_experience": [
+    {
+      "company": "Test Company",
+      "title": "Senior Product Manager",
+      "start_date": "2020-01",
+      "end_date": null,
+      "current": true
+    }
+  ],
+  "education": [
+    {
+      "school": "Test University",
+      "degree": "MBA",
+      "discipline": "Business Administration",
+      "year": "2018"
+    }
+  ],
+  "answers": {
+    "why_company": "I am passionate about the company's mission...",
+    "salary_expectations": "Competitive with market rate",
+    "work_authorization": "Yes, authorized to work in the US"
+  },
+  "personal": {
+    "first_name": "Test",
+    "last_name": "Applicant",
+    "email": "test.applicant@example.com",
+    "phone": "+1-919-555-0123",
+    "location": "Raleigh, NC"
+  },
+  "links": {
+    "linkedin": "https://linkedin.com/in/testapplicant"
+  }
+}
