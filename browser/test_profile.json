@@ -10,10 +10,12 @@
   "cover_letter_path": null,
   "work_experience": [
     {
-      "company": "Test Company",
+      "company": "Test Company Inc",
       "title": "Senior Product Manager",
-      "start_date": "2020-01",
-      "end_date": null,
+      "start_month": "01",
+      "start_year": "2020",
+      "end_month": "",
+      "end_year": "",
       "current": true
     }
   ],
@@ -39,5 +41,8 @@
   },
   "links": {
     "linkedin": "https://linkedin.com/in/testapplicant"
+  },
+  "files": {
+    "resume_path": "/Users/antonkondakov/projects/job-tracker-dev/browser/test_resume.txt"
   }
 }
