@@ -443,7 +443,6 @@ class BrowserClient:
             "#last_name": profile.get("personal.last_name"),
             "#email": profile.get("personal.email"),
             "#phone": profile.get("personal.phone"),
-            "#candidate-location": profile.get("personal.location"),
         }
         
         # Fill standard fields
@@ -457,6 +456,25 @@ class BrowserClient:
                         print(f"  ✅ {selector}: {value}")
                 except Exception as e:
                     result["skipped"].append(selector)
+        
+        # Location field - might be Google Places autocomplete
+        location = profile.get("personal.location")
+        if location:
+            loc_input = self.page.query_selector("#candidate-location")
+            if loc_input and loc_input.is_visible():
+                try:
+                    loc_input.click()
+                    time.sleep(0.2)
+                    loc_input.type(location, delay=80)  # Slow for autocomplete
+                    time.sleep(1.5)  # Wait for Google Places suggestions
+                    self.page.keyboard.press("ArrowDown")
+                    time.sleep(0.2)
+                    self.page.keyboard.press("Enter")
+                    time.sleep(0.3)
+                    result["filled"] += 1
+                    print(f"  ✅ Location: {location}")
+                except:
+                    result["skipped"].append("location")
         
         # Handle LinkedIn (often a custom question)
         linkedin = profile.get("links.linkedin")
@@ -709,16 +727,10 @@ class BrowserClient:
         time.sleep(0.3)
         result["custom_questions"] += self.fill_greenhouse_custom_questions(profile)
         
-        # 7. Demographics (scroll through entire page to find all fields)
-        # Scroll in steps to ensure all fields are visible and fillable
-        self.page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.7)")
-        time.sleep(0.3)
-        result["demographics"] = self.fill_greenhouse_demographics(profile)
-        
-        # One more pass at the very bottom
+        # 7. Demographics (scroll to bottom where they usually are)
         self.scroll_to_bottom()
-        time.sleep(0.3)
-        result["demographics"] += self.fill_greenhouse_demographics(profile)
+        time.sleep(0.5)
+        result["demographics"] = self.fill_greenhouse_demographics(profile)
         
         result["total"] = (
             result["basic_fields"] + 
@@ -757,45 +769,32 @@ class BrowserClient:
         print("\n📋 Filling Demographics (voluntary)...")
         filled = 0
         
-        # Map of keywords to search in labels -> values to fill
-        demographics_map = {
-            "gender": profile.get("demographics.gender", "Decline to self-identify"),
-            "hispanic": profile.get("demographics.hispanic_latino", "Decline to self-identify"),
-            "latino": profile.get("demographics.hispanic_latino", "Decline to self-identify"),
-            "race": profile.get("demographics.race_ethnicity", "Decline to self-identify"),
-            "ethnicity": profile.get("demographics.race_ethnicity", "Decline to self-identify"),
-            "veteran": profile.get("demographics.veteran_status", "I am not a protected veteran"),
-            "disability": profile.get("demographics.disability_status", "I don't wish to answer"),
+        # Direct ID-based filling for known demographics fields
+        demographics_fields = {
+            "#gender": profile.get("demographics.gender", "Decline"),
+            "#hispanic_ethnicity": profile.get("demographics.hispanic_latino", "Decline"),
+            "#veteran_status": profile.get("demographics.veteran_status", "I am not"),
+            "#disability_status": profile.get("demographics.disability_status", "I don't wish"),
         }
         
-        filled_fields = set()  # Track what we've filled to avoid duplicates
-        
-        for label in self.page.query_selector_all("label"):
-            label_text = label.inner_text().lower()
-            
-            for field_key, value in demographics_map.items():
-                if field_key in label_text and field_key not in filled_fields:
-                    label_for = label.get_attribute("for")
-                    if label_for:
-                        el = self.page.query_selector(f"#{label_for}")
-                        if el:
-                            try:
-                                el.scroll_into_view_if_needed()
-                                time.sleep(0.3)
-                                el.click()
-                                time.sleep(0.3)
-                                el.type(value, delay=50)  # Slower typing
-                                time.sleep(0.5)  # Wait for dropdown
-                                self.page.keyboard.press("ArrowDown")
-                                time.sleep(0.2)
-                                self.page.keyboard.press("Enter")
-                                time.sleep(0.3)
-                                filled += 1
-                                filled_fields.add(field_key)
-                                print(f"  ✅ {field_key}: {value[:30]}...")
-                            except Exception as e:
-                                pass
-                    break
+        for selector, value in demographics_fields.items():
+            el = self.page.query_selector(selector)
+            if el:
+                try:
+                    el.scroll_into_view_if_needed()
+                    time.sleep(0.3)
+                    el.click()
+                    time.sleep(0.3)
+                    el.type(value, delay=80)
+                    time.sleep(0.8)  # Wait for dropdown
+                    self.page.keyboard.press("ArrowDown")
+                    time.sleep(0.2)
+                    self.page.keyboard.press("Enter")
+                    time.sleep(0.3)
+                    filled += 1
+                    print(f"  ✅ {selector}: {value}")
+                except Exception as e:
+                    print(f"  ⚠️ {selector} failed: {e}")
         
         return filled
     
@@ -844,6 +843,10 @@ class BrowserClient:
             "conflict of interest": "No",
             "referred to this position": "No",
             "senior leader": "No",
+            # Stripe-specific
+            "work remotely": "Yes",
+            "whatsapp": "No",
+            "opt-in": "No",
         }
         
         for question_text, answer in yes_no_questions.items():
@@ -892,6 +895,40 @@ class BrowserClient:
                         except:
                             pass
                 break
+        
+        # Text input questions (Stripe-style: employer, title, school, degree)
+        work_exp = profile.get("work_experience", [])
+        education = profile.get("education", [])
+        
+        text_questions = {
+            "current or previous employer": work_exp[0].get("company", "") if work_exp else "",
+            "current or previous job title": work_exp[0].get("title", "") if work_exp else "",
+            "most recent school": education[0].get("school", "") if education else "",
+            "most recent degree": education[0].get("degree", "") if education else "",
+            "current employer": work_exp[0].get("company", "") if work_exp else "",
+        }
+        
+        for question_text, value in text_questions.items():
+            if not value:
+                continue
+            for label in self.page.query_selector_all("label"):
+                label_text = label.inner_text().lower()
+                if question_text in label_text:
+                    label_for = label.get_attribute("for")
+                    if label_for:
+                        inp = self.page.query_selector(f"#{label_for}")
+                        if inp:
+                            try:
+                                # Check if it's a text input (not dropdown)
+                                tag = inp.evaluate("el => el.tagName")
+                                inp_type = inp.get_attribute("type") or ""
+                                if tag == "INPUT" and inp_type in ["", "text"]:
+                                    inp.fill(value)
+                                    filled += 1
+                                    print(f"  ✅ {question_text[:25]}...: {value}")
+                            except:
+                                pass
+                    break
         
         return filled
     
