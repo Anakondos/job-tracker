@@ -738,6 +738,7 @@
             <option value="lever">Lever</option>
             <option value="smartrecruiters">SmartRecruiters</option>
             <option value="ashby">Ashby</option>
+            <option value="workday">Workday</option>
           </select>
         </label>
 
@@ -1006,6 +1007,8 @@
             <option value="greenhouse">Greenhouse</option>
             <option value="lever">Lever</option>
             <option value="smartrecruiters">SmartRecruiters</option>
+            <option value="ashby">Ashby</option>
+            <option value="workday">Workday</option>
           </select>
         </label>
         <label>
@@ -1040,6 +1043,44 @@
     </div>
 
     <script>
+      // ---------- DATE FORMATTING ----------
+      function formatDateWithAge(isoDate) {
+        if (!isoDate) return "—";
+        
+        try {
+          const date = new Date(isoDate);
+          if (isNaN(date.getTime())) return isoDate;
+          
+          const now = new Date();
+          const diffMs = now - date;
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          
+          // Format date: "Dec 19"
+          const month = date.toLocaleDateString('en-US', { month: 'short' });
+          const day = date.getDate();
+          const dateStr = `${month} ${day}`;
+          
+          // Age indicator
+          let ageStr;
+          if (diffDays === 0) {
+            ageStr = "today";
+          } else if (diffDays === 1) {
+            ageStr = "1d";
+          } else if (diffDays <= 7) {
+            ageStr = `${diffDays}d`;
+          } else if (diffDays <= 30) {
+            const weeks = Math.floor(diffDays / 7);
+            ageStr = `${weeks}w`;
+          } else {
+            ageStr = "30d+";
+          }
+          
+          return `${dateStr} (${ageStr})`;
+        } catch (e) {
+          return isoDate;
+        }
+      }
+
       // ---------- GLOBAL STATE ----------
       let ALL_JOBS_RAW = [];  // All jobs before role filter
       let ALL_JOBS = [];      // Jobs after role filter
@@ -1577,15 +1618,18 @@
 
           // dataset for sorting (case-insensitive)
           // Ensure updated_at is a string (could be Date object or dict)
-          const updatedAtStr = typeof job.updated_at === 'string' 
+          const updatedAtRaw = typeof job.updated_at === 'string' 
             ? job.updated_at 
             : (job.updated_at ? String(job.updated_at) : "");
+          
+          // Format date for display (Dec 19, 3d ago)
+          const updatedAtStr = formatDateWithAge(updatedAtRaw);
           
           row.dataset.company = (job.company || "").trim();
           row.dataset.industry = tagsStr;
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
-          row.dataset.updated = updatedAtStr.trim();
+          row.dataset.updated = updatedAtRaw.trim(); // Use raw ISO for sorting
           row.dataset.ats = (job.ats || "").trim();
           row.dataset.status = (st || "New").trim();
 

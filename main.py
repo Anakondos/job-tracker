@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import json
 from collections import Counter
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 # Environment: PROD or DEV
@@ -23,7 +24,7 @@ from parsers.greenhouse import fetch_greenhouse
 from parsers.lever import fetch_lever
 from parsers.smartrecruiters import fetch_smartrecruiters
 from parsers.ashby import fetch_ashby_jobs
-from parsers.workday import fetch_workday
+from parsers.workday_v2 import fetch_workday_v2
 from ats_detector import try_repair_company, verify_ats_url
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
@@ -243,7 +244,7 @@ def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[di
         elif ats == "ashby":
             jobs = fetch_ashby_jobs(url)
         elif ats == "workday":
-            jobs = fetch_workday(company, url)
+            jobs = fetch_workday_v2(company, url)
         else:
             jobs = []
 
@@ -406,15 +407,29 @@ async def get_jobs(
         companies_cfg = load_profile(profile)
         all_jobs: list[dict] = []
         
+        # Filter companies first
+        companies_to_fetch = []
         for cfg in companies_cfg:
-            # Skip disabled companies
             if cfg.get("enabled") == False:
                 continue
             ats = cfg.get("ats", "")
             if ats_filter != "all" and ats_filter != ats:
                 continue
-            jobs = _fetch_for_company(profile, cfg)
-            all_jobs.extend(jobs)
+            companies_to_fetch.append(cfg)
+        
+        # Parallel fetch with ThreadPoolExecutor
+        def fetch_company(cfg):
+            return _fetch_for_company(profile, cfg)
+        
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(fetch_company, cfg): cfg for cfg in companies_to_fetch}
+            for future in as_completed(futures):
+                try:
+                    jobs = future.result()
+                    all_jobs.extend(jobs)
+                except Exception as e:
+                    cfg = futures[future]
+                    print(f"Error fetching {cfg.get('company', 'unknown')}: {e}")
         
         # NEW: Save to cache after parsing all companies
         save_cache(cache_key, all_jobs)
@@ -954,45 +969,79 @@ def cache_clear_all_endpoint():
 @app.get("/refresh/stream")
 async def refresh_stream(profile: str = Query("all")):
     """
-    Streaming refresh endpoint - sends progress updates as Server-Sent Events.
-    Each event contains: company name, status (loading/ok/error), jobs count, progress.
+    Two-wave streaming refresh:
+    Wave 1: Fast ATS (greenhouse, lever, ashby, smartrecruiters) - quick results
+    Wave 2: Slow ATS (workday) - parallel in background
     """
     import asyncio
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    FAST_ATS = {"greenhouse", "lever", "ashby", "smartrecruiters"}
+    SLOW_ATS = {"workday"}
     
     async def generate():
         companies_cfg = load_profile(profile)
-        # Filter enabled companies
         companies_cfg = [c for c in companies_cfg if c.get("enabled", True) != False]
+        
+        # Split into waves
+        wave1 = [c for c in companies_cfg if c.get("ats", "") in FAST_ATS]
+        wave2 = [c for c in companies_cfg if c.get("ats", "") in SLOW_ATS]
+        
         total = len(companies_cfg)
         all_jobs = []
+        idx = 0
         
         # Send start event
-        yield f"data: {json.dumps({'type': 'start', 'total': total})}\n\n"
+        yield f"data: {json.dumps({'type': 'start', 'total': total, 'wave1': len(wave1), 'wave2': len(wave2)})}\n\n"
         
-        for idx, cfg in enumerate(companies_cfg):
+        # === WAVE 1: Fast ATS (sequential, quick) ===
+        yield f"data: {json.dumps({'type': 'wave', 'wave': 1, 'message': 'Fast ATS (Greenhouse, Lever, Ashby)'})}\n\n"
+        
+        for cfg in wave1:
             company_name = cfg.get("company", "") or cfg.get("name", "")
-            ats = cfg.get("ats", "")
-            
-            # Send loading event
             yield f"data: {json.dumps({'type': 'loading', 'company': company_name, 'index': idx, 'total': total})}\n\n"
             
             try:
-                # Fetch jobs (this is sync, but we yield control)
                 jobs = _fetch_for_company(profile, cfg)
                 all_jobs.extend(jobs)
-                
-                # Send success event
                 yield f"data: {json.dumps({'type': 'ok', 'company': company_name, 'jobs': len(jobs), 'index': idx, 'total': total})}\n\n"
-                
             except Exception as e:
-                # Send error event
                 yield f"data: {json.dumps({'type': 'error', 'company': company_name, 'error': str(e)[:100], 'index': idx, 'total': total})}\n\n"
             
-            # Small delay to allow UI to update
+            idx += 1
             await asyncio.sleep(0.01)
         
-        # Save to cache
+        # Save intermediate cache (Wave 1 complete)
         save_cache(profile, all_jobs)
+        yield f"data: {json.dumps({'type': 'wave_complete', 'wave': 1, 'jobs': len(all_jobs)})}\n\n"
+        
+        # === WAVE 2: Slow ATS (parallel) ===
+        if wave2:
+            yield f"data: {json.dumps({'type': 'wave', 'wave': 2, 'message': 'Slow ATS (Workday) - parallel'})}\n\n"
+            
+            def fetch_slow(cfg):
+                return cfg, _fetch_for_company(profile, cfg)
+            
+            # Process in parallel with ThreadPoolExecutor
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {executor.submit(fetch_slow, cfg): cfg for cfg in wave2}
+                
+                for future in as_completed(futures):
+                    cfg = futures[future]
+                    company_name = cfg.get("company", "") or cfg.get("name", "")
+                    
+                    try:
+                        _, jobs = future.result()
+                        all_jobs.extend(jobs)
+                        yield f"data: {json.dumps({'type': 'ok', 'company': company_name, 'jobs': len(jobs), 'index': idx, 'total': total})}\n\n"
+                    except Exception as e:
+                        yield f"data: {json.dumps({'type': 'error', 'company': company_name, 'error': str(e)[:100], 'index': idx, 'total': total})}\n\n"
+                    
+                    idx += 1
+            
+            # Save final cache
+            save_cache(profile, all_jobs)
         
         # Save stats
         from utils.cache_manager import save_stats
