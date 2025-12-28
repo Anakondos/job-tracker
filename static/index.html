@@ -638,6 +638,46 @@
       }
 
       /* Modal */
+      /* Modal for Add Job */
+      #addJobModal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+      }
+      #addJobModal .modal-content {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        width: 500px;
+        max-width: 90vw;
+      }
+      #addJobModal h3 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+      }
+      #addJobModal input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        font-size: 14px;
+        box-sizing: border-box;
+        color: var(--text);
+      }
+      #addJobModal input:focus {
+        border-color: var(--accent);
+        outline: none;
+      }
+
       .modal-overlay {
         position: fixed;
         top: 0;
@@ -790,117 +830,43 @@
     <div class="tab-content active" id="tab-jobs">
     <div class="wrap">
       <div class="controls">
-        <label>
-          Status
-          <select id="statusFilter">
-            <option value="all">All</option>
-            <option value="New">New</option>
-            <option value="Applied">Applied</option>
-            <option value="Interview">Interview</option>
-            <option value="Offer">Offer</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Withdrawn">Withdrawn</option>
-            <option value="Closed">Closed</option>
-          </select>
-        </label>
-
         <div class="checkboxRow" style="min-width: 280px">
           <div style="display: flex; flex-direction: column; gap: 6px">
             <div style="color: var(--muted); font-size: 12px">Locations</div>
-            <div
-              style="
-                display: flex;
-                gap: 14px;
-                align-items: center;
-                flex-wrap: wrap;
-              "
-            >
-              <label
-                style="
-                  flex-direction: row;
-                  align-items: center;
-                  gap: 8px;
-                  margin: 0;
-                  color: var(--text);
-                  font-size: 13px;
-                "
-              >
-                <input type="checkbox" id="includeUS" checked />
-                US
+            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+              <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px;">
+                <input type="checkbox" id="includeUS" checked /> US
               </label>
-              <label
-                style="
-                  flex-direction: row;
-                  align-items: center;
-                  gap: 8px;
-                  margin: 0;
-                  color: var(--text);
-                  font-size: 13px;
-                "
-              >
-                <input type="checkbox" id="includeNonUS" />
-                Non-US
+              <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px;">
+                <input type="checkbox" id="includeNonUS" /> Non-US
               </label>
-              <label
-                style="
-                  flex-direction: row;
-                  align-items: center;
-                  gap: 8px;
-                  margin: 0;
-                  color: var(--text);
-                  font-size: 13px;
-                "
-              >
-                <input type="checkbox" id="includeRemoteUSA" checked />
-                Remote (USA)
+              <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px;">
+                <input type="checkbox" id="includeRemoteUSA" checked /> Remote (USA)
               </label>
             </div>
           </div>
         </div>
 
-        <!-- Multi-state dropdown -->
-        <div class="ms" id="stateMultiSelect">
-          <label>States (multi)</label>
-          <button class="msBtn" id="stateBtn" type="button">
-            <span id="stateBtnText">Select states…</span>
-            <span class="count" id="stateBtnCount">0</span>
-          </button>
-          <div class="msMenu" id="stateMenu">
-            <input
-              class="msSearch"
-              id="stateSearch"
-              placeholder="Search..."
-            />
-            <div id="stateList"></div>
-            <div class="msFooter">
-              <button type="button" id="stateClear" class="ghost">Clear</button>
-              <button type="button" id="stateClose">Done</button>
-            </div>
-          </div>
+        <span class="pill" id="loadPill"><span class="dot" id="loadDot"></span><span id="loadText">Idle</span></span>
+      </div>
+      
+      <!-- Pagination -->
+      <div id="pipelinePagination" style="display: flex; align-items: center; justify-content: space-between; margin: 12px 0; padding: 10px 0; border-bottom: 1px solid var(--border);">
+        <button id="addJobBtn" class="ghost" style="padding: 6px 12px; background: var(--accent); color: white;">+ Add Job</button>
+        <div style="color: var(--muted); font-size: 13px;">
+          Showing <span id="paginationStart">0</span>-<span id="paginationEnd">0</span> of <span id="paginationTotal">0</span> jobs
         </div>
-
-        <label>
-          Industry (tags)
-          <input id="industryFilter" placeholder="e.g., fintech, saas" />
-        </label>
-
-        <label>
-          Company
-          <input id="companyFilter" placeholder="e.g., stripe" />
-        </label>
-
-        <label>
-          Search
-          <input
-            id="searchFilter"
-            placeholder="e.g., TPM, Raleigh"
-          />
-        </label>
-
-        <span class="pill" id="loadPill"
-          ><span class="dot" id="loadDot"></span
-          ><span id="loadText">Idle</span></span
-        >
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button id="paginationPrev" class="ghost" style="padding: 6px 12px;" disabled>◀ Prev</button>
+          <span style="color: var(--muted); font-size: 13px;">Page <span id="paginationCurrent">1</span> of <span id="paginationPages">1</span></span>
+          <button id="paginationNext" class="ghost" style="padding: 6px 12px;" disabled>Next ▶</button>
+          <select id="paginationSize" class="column-filter" style="width: 80px; margin-left: 12px;">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+          </select>
+        </div>
       </div>
 
       <div class="tableWrap">
@@ -954,6 +920,52 @@
               </th>
               <th style="width: 80px">Actions</th>
             </tr>
+            <tr class="filter-row">
+              <th><input type="text" id="pipelineFilterCompany" placeholder="Filter..." class="column-filter"></th>
+              <th><input type="text" id="pipelineFilterIndustry" placeholder="Filter..." class="column-filter"></th>
+              <th><input type="text" id="pipelineFilterTitle" placeholder="Filter..." class="column-filter"></th>
+              <th>
+                <!-- Multi-state dropdown in table -->
+                <div class="ms" id="stateMultiSelect" style="min-width: 120px;">
+                  <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 4px 6px;">
+                    <span id="stateBtnText" style="font-size: 11px;">States...</span>
+                    <span class="count" id="stateBtnCount" style="font-size: 10px;">0</span>
+                  </button>
+                  <div class="msMenu" id="stateMenu">
+                    <input class="msSearch" id="stateSearch" placeholder="Search..." />
+                    <div id="stateList"></div>
+                    <div class="msFooter">
+                      <button type="button" id="stateClear" class="ghost">Clear</button>
+                      <button type="button" id="stateClose">Done</button>
+                    </div>
+                  </div>
+                </div>
+              </th>
+              <th></th>
+              <th>
+                <select id="pipelineFilterAts" class="column-filter">
+                  <option value="">All</option>
+                  <option value="greenhouse">greenhouse</option>
+                  <option value="lever">lever</option>
+                  <option value="workday">workday</option>
+                  <option value="smartrecruiters">smartrecruiters</option>
+                  <option value="ashby">ashby</option>
+                </select>
+              </th>
+              <th>
+                <select id="pipelineFilterStatus" class="column-filter">
+                  <option value="all">All</option>
+                  <option value="New">New</option>
+                  <option value="Applied">Applied</option>
+                  <option value="Interview">Interview</option>
+                  <option value="Offer">Offer</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Withdrawn">Withdrawn</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </th>
+              <th></th>
+            </tr>
           </thead>
           <tbody>
             <!-- rows -->
@@ -961,9 +973,6 @@
         </table>
       </div>
 
-      <div class="muted" style="margin-top: 10px">
-        Tip: Use "Refresh from ATS" to update jobs. Filters apply instantly on the client.
-      </div>
     </div>
     </div> <!-- end tab-jobs -->
 
@@ -1001,6 +1010,14 @@
             <th style="width: 150px">Role Reason</th>
             <th style="width: 90px">Pipeline</th>
           </tr>
+          <tr class="filter-row">
+            <th></th>
+            <th><input type="text" id="reviewFilterCompany" placeholder="Filter..." class="column-filter"></th>
+            <th><input type="text" id="reviewFilterTitle" placeholder="Filter..." class="column-filter"></th>
+            <th><input type="text" id="reviewFilterLocation" placeholder="Filter..." class="column-filter"></th>
+            <th></th>
+            <th></th>
+          </tr>
         </thead>
         <tbody>
           <!-- Review jobs will be loaded here -->
@@ -1011,6 +1028,26 @@
         Tip: Select jobs and click "Add Selected" to add them to your Pipeline.
       </div>
     </div> <!-- end tab-review -->
+
+    <!-- Add Job Modal -->
+    <div id="addJobModal" class="modal">
+      <div class="modal-content" style="max-width: 500px;">
+        <h3>Add Job to Pipeline</h3>
+        <p style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">Paste a job URL from any supported ATS (Greenhouse, Lever, Workday, SmartRecruiters, Ashby)</p>
+        
+        <label style="display: block; margin-bottom: 12px;">
+          Job URL *
+          <input type="url" id="addJobUrl" placeholder="https://boards.greenhouse.io/company/jobs/12345" style="width: 100%; margin-top: 4px;">
+        </label>
+        
+        <div id="addJobStatus" style="margin: 12px 0; padding: 8px; border-radius: 4px; display: none;"></div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+          <button type="button" id="addJobCancel" class="ghost">Cancel</button>
+          <button type="button" id="addJobSubmit" style="background: var(--accent); color: white;">Add Job</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Add Company Modal -->
     <div class="modal-overlay" id="addCompanyModal">
@@ -1114,6 +1151,11 @@
       let LAST_LOADED_AT = null;
       let isRefreshing = false;
       let CACHED_STATS = null;  // Pre-computed funnel stats from backend
+      
+      // Pagination state
+      let pipelinePage = 1;
+      let pipelinePageSize = 50;
+      let pipelineFilteredJobs = []; // Current filtered jobs for pagination
 
       // My Roles filter settings
       const MY_ROLES = ['product', 'tpm_program', 'project'];
@@ -1369,6 +1411,10 @@
         if (ln.state) {
           return true; // Has US state code
         }
+        // Check states array (for multi-location jobs)
+        if (ln.states && ln.states.length > 0) {
+          return true; // Has US states
+        }
         
         // Fallback to text heuristic
         const l = (job.location || "").toLowerCase();
@@ -1384,26 +1430,10 @@
 
       // ---------- MAIN FILTER FUNCTION ----------
       function applyFilters(jobs) {
-        const industryFilter = (document.getElementById("industryFilter")?.value || "").trim().toLowerCase();
-        const status = document.getElementById("statusFilter")?.value || "all";
+        const status = document.getElementById("pipelineFilterStatus")?.value || "all";
         const nonus = includeNonUS;
 
-        const companyFilter = (document.getElementById("companyFilter")?.value || "").trim();
-
-        const search = (document.getElementById("searchFilter")?.value || "")
-          .trim()
-          .toLowerCase();
-
         let filtered = jobs;
-
-        // ===== Industry filter by tags =====
-        if (industryFilter) {
-          filtered = filtered.filter((job) => {
-            const jobTags = (job.company_data?.tags || []).map(t => t.toLowerCase());
-            return jobTags.some(tag => tag.includes(industryFilter));
-          });
-        }
-        debugCounts.afterIndustry = filtered.length;
 
         // Location filter (US / Non-US / Remote USA)
         // Remote USA jobs should pass if Remote checkbox is on, regardless of US/Non-US
@@ -1412,10 +1442,12 @@
         filtered = filtered.filter((job) => {
           const ln = job.location_norm;
           const isUS = isUSHeuristic(job);
-          const isRemote = ln?.remote && ['usa', 'US', 'USA', 'us'].includes(ln?.remote_scope);
+          // Remote USA or generic Remote (assume USA if not specified)
+          const remoteScope = ln?.remote_scope?.toLowerCase() || '';
+          const isRemoteUSA = ln?.remote && ['usa', 'us', 'global', ''].includes(remoteScope);
           
           // Remote USA passes if Remote checkbox is on
-          if (isRemote && remoteUSA) return true;
+          if (isRemoteUSA && remoteUSA) return true;
           
           // US jobs pass if US checkbox is on
           if (isUS && us) return true;
@@ -1426,26 +1458,6 @@
           return false;
         });
         debugCounts.afterLocation = filtered.length;
-
-        // Company
-        filtered = filtered.filter((job) => {
-          if (!companyFilter) return true;
-          return (job.company || "")
-            .toLowerCase()
-            .includes(companyFilter.toLowerCase());
-        });
-        debugCounts.afterCompany = filtered.length;
-
-        // Search
-        if (search) {
-          filtered = filtered.filter((job) => {
-            const h = `${job.title || ""} ${job.location || ""} ${
-              job.company || ""
-            }`.toLowerCase();
-            return h.includes(search);
-          });
-        }
-        debugCounts.afterSearch = filtered.length;
 
         // States filter (only if states selected)
         const hasStateFilter = selectedStates.length > 0;
@@ -1460,7 +1472,8 @@
             }
             
             // Remote USA jobs pass state filter (they can work from any state)
-            if (ln?.remote && ['usa', 'US', 'USA', 'us'].includes(ln?.remote_scope)) {
+            const remoteScope = ln?.remote_scope?.toLowerCase() || '';
+            if (ln?.remote && ['usa', 'us', 'global', ''].includes(remoteScope)) {
               return true;
             }
             
@@ -1476,6 +1489,27 @@
           return st === status;
         });
         debugCounts.afterStatus = filtered.length;
+
+        // Pipeline column filters (additional inline filters)
+        if (pipelineFilters.company) {
+          filtered = filtered.filter(j => 
+            (j.company || "").toLowerCase().includes(pipelineFilters.company.toLowerCase())
+          );
+        }
+        if (pipelineFilters.industry) {
+          filtered = filtered.filter(j => {
+            const tags = (j.company_data?.tags || []).join(" ").toLowerCase();
+            return tags.includes(pipelineFilters.industry.toLowerCase());
+          });
+        }
+        if (pipelineFilters.title) {
+          filtered = filtered.filter(j => 
+            (j.title || "").toLowerCase().includes(pipelineFilters.title.toLowerCase())
+          );
+        }
+        if (pipelineFilters.ats) {
+          filtered = filtered.filter(j => j.ats === pipelineFilters.ats);
+        }
 
         return filtered;
       }
@@ -1559,10 +1593,35 @@
       }
 
       function renderJobs(jobs) {
+        // Store filtered jobs for pagination
+        pipelineFilteredJobs = jobs;
+        
+        // Calculate pagination
+        const totalJobs = jobs.length;
+        const totalPages = Math.ceil(totalJobs / pipelinePageSize) || 1;
+        
+        // Ensure current page is valid
+        if (pipelinePage > totalPages) pipelinePage = totalPages;
+        if (pipelinePage < 1) pipelinePage = 1;
+        
+        const startIdx = (pipelinePage - 1) * pipelinePageSize;
+        const endIdx = Math.min(startIdx + pipelinePageSize, totalJobs);
+        const pageJobs = jobs.slice(startIdx, endIdx);
+        
+        // Update pagination UI
+        document.getElementById("paginationStart").textContent = totalJobs > 0 ? startIdx + 1 : 0;
+        document.getElementById("paginationEnd").textContent = endIdx;
+        document.getElementById("paginationTotal").textContent = totalJobs;
+        document.getElementById("paginationCurrent").textContent = pipelinePage;
+        document.getElementById("paginationPages").textContent = totalPages;
+        
+        document.getElementById("paginationPrev").disabled = pipelinePage <= 1;
+        document.getElementById("paginationNext").disabled = pipelinePage >= totalPages;
+        
         const tbody = document.querySelector("#jobsTable tbody");
         tbody.innerHTML = "";
 
-        for (const job of jobs) {
+        for (const job of pageJobs) {
           const row = document.createElement("tr");
           const url = job.job_url || job.url || "#";
           const jobKey = job.job_key || url || "";
@@ -2131,10 +2190,7 @@
       // ---------- EVENTS ----------
 
       const filterIds = [
-        "statusFilter",
-        "companyFilter",
-        "searchFilter",
-        "industryFilter",
+        "pipelineFilterStatus",
       ];
       for (const id of filterIds) {
         const el = document.getElementById(id);
@@ -2238,6 +2294,21 @@
         ats: "",
         jobsMin: 0,
         status: ""
+      };
+      
+      // Pipeline column filters state
+      let pipelineFilters = {
+        company: "",
+        industry: "",
+        title: "",
+        ats: ""
+      };
+      
+      // Review column filters state
+      let reviewFilters = {
+        company: "",
+        title: "",
+        location: ""
       };
       
       function filterCompanies(companies) {
@@ -2637,8 +2708,9 @@
       }
       
       function showJobsForCompany(company) {
-        // Set company filter
-        document.getElementById("companyFilter").value = company;
+        // Set company filter in Pipeline table
+        document.getElementById("pipelineFilterCompany").value = company;
+        pipelineFilters.company = company;
         
         // Switch to Jobs tab
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -2932,6 +3004,61 @@
         applyCompanyFilters();
       });
       
+      // Pipeline column filter event listeners
+      function applyPipelineColumnFilters() {
+        pipelinePage = 1; // Reset to first page on filter change
+        if (ALL_JOBS.length > 0) {
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(filtered);
+        }
+      }
+      
+      document.getElementById("pipelineFilterCompany").addEventListener("input", (e) => {
+        pipelineFilters.company = e.target.value;
+        applyPipelineColumnFilters();
+      });
+      document.getElementById("pipelineFilterIndustry").addEventListener("input", (e) => {
+        pipelineFilters.industry = e.target.value;
+        applyPipelineColumnFilters();
+      });
+      document.getElementById("pipelineFilterTitle").addEventListener("input", (e) => {
+        pipelineFilters.title = e.target.value;
+        applyPipelineColumnFilters();
+      });
+
+      document.getElementById("pipelineFilterAts").addEventListener("change", (e) => {
+        pipelineFilters.ats = e.target.value;
+        applyPipelineColumnFilters();
+      });
+      
+      // Review column filter event listeners
+      function applyReviewColumnFilters() {
+        // Triggers server-side filtering via loadReviewJobs
+        // But we also filter client-side for instant feedback
+        if (currentReviewJobs.length > 0) {
+          const filtered = currentReviewJobs.filter(j => {
+            if (reviewFilters.company && !(j.company || "").toLowerCase().includes(reviewFilters.company.toLowerCase())) return false;
+            if (reviewFilters.title && !(j.title || "").toLowerCase().includes(reviewFilters.title.toLowerCase())) return false;
+            if (reviewFilters.location && !(j.location || "").toLowerCase().includes(reviewFilters.location.toLowerCase())) return false;
+            return true;
+          });
+          renderReviewJobs(filtered);
+        }
+      }
+      
+      document.getElementById("reviewFilterCompany").addEventListener("input", (e) => {
+        reviewFilters.company = e.target.value;
+        applyReviewColumnFilters();
+      });
+      document.getElementById("reviewFilterTitle").addEventListener("input", (e) => {
+        reviewFilters.title = e.target.value;
+        applyReviewColumnFilters();
+      });
+      document.getElementById("reviewFilterLocation").addEventListener("input", (e) => {
+        reviewFilters.location = e.target.value;
+        applyReviewColumnFilters();
+      });
+      
       // Restore active tab from localStorage
       const savedTab = localStorage.getItem('activeTab');
       if (savedTab) {
@@ -2946,6 +3073,109 @@
       
       loadCompanies();
       loadJobsFromCache();  // Load jobs for header stats
+      
+      // Pagination event listeners
+      document.getElementById("paginationPrev").addEventListener("click", () => {
+        if (pipelinePage > 1) {
+          pipelinePage--;
+          renderJobs(pipelineFilteredJobs);
+        }
+      });
+      
+      document.getElementById("paginationNext").addEventListener("click", () => {
+        const totalPages = Math.ceil(pipelineFilteredJobs.length / pipelinePageSize);
+        if (pipelinePage < totalPages) {
+          pipelinePage++;
+          renderJobs(pipelineFilteredJobs);
+        }
+      });
+      
+      document.getElementById("paginationSize").addEventListener("change", (e) => {
+        pipelinePageSize = parseInt(e.target.value);
+        pipelinePage = 1; // Reset to first page
+        renderJobs(pipelineFilteredJobs);
+      });
+
+      // Add Job Modal
+      const addJobModal = document.getElementById("addJobModal");
+      const addJobBtn = document.getElementById("addJobBtn");
+      const addJobCancel = document.getElementById("addJobCancel");
+      const addJobSubmit = document.getElementById("addJobSubmit");
+      const addJobUrl = document.getElementById("addJobUrl");
+      const addJobStatus = document.getElementById("addJobStatus");
+      
+      addJobBtn.addEventListener("click", () => {
+        addJobModal.style.display = "flex";
+        addJobUrl.value = "";
+        addJobStatus.style.display = "none";
+        addJobUrl.focus();
+      });
+      
+      addJobCancel.addEventListener("click", () => {
+        addJobModal.style.display = "none";
+      });
+      
+      addJobModal.addEventListener("click", (e) => {
+        if (e.target === addJobModal) {
+          addJobModal.style.display = "none";
+        }
+      });
+      
+      addJobSubmit.addEventListener("click", async () => {
+        const url = addJobUrl.value.trim();
+        if (!url) {
+          addJobStatus.style.display = "block";
+          addJobStatus.style.background = "rgba(255,100,100,0.2)";
+          addJobStatus.textContent = "Please enter a job URL";
+          return;
+        }
+        
+        addJobSubmit.disabled = true;
+        addJobSubmit.textContent = "Adding...";
+        addJobStatus.style.display = "block";
+        addJobStatus.style.background = "rgba(100,150,255,0.2)";
+        addJobStatus.textContent = "Parsing job from URL...";
+        
+        try {
+          const response = await fetch("/onboard", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: url })
+          });
+          
+          const data = await response.json();
+          
+          if (data.ok) {
+            addJobStatus.style.background = "rgba(100,200,100,0.2)";
+            if (data.added_to_pipeline === false) {
+              addJobStatus.innerHTML = `<strong>Job exists or not in target roles:</strong> ${data.job?.title || 'Unknown'} at ${data.job?.company || 'Unknown'}`;
+            } else {
+              addJobStatus.innerHTML = `<strong>✅ Added:</strong> ${data.job?.title || 'Unknown'} at ${data.job?.company || 'Unknown'}`;
+            }
+            // Reload jobs
+            setTimeout(() => {
+              addJobModal.style.display = "none";
+              loadJobsFromCache();
+            }, 1500);
+          } else {
+            addJobStatus.style.background = "rgba(255,100,100,0.2)";
+            addJobStatus.textContent = `Error: ${data.message || 'Failed to add job'}`;
+          }
+        } catch (err) {
+          addJobStatus.style.background = "rgba(255,100,100,0.2)";
+          addJobStatus.textContent = `Error: ${err.message}`;
+        } finally {
+          addJobSubmit.disabled = false;
+          addJobSubmit.textContent = "Add Job";
+        }
+      });
+      
+      // Enter key to submit
+      addJobUrl.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          addJobSubmit.click();
+        }
+      });
 
       // Add Company Modal
       const modal = document.getElementById("addCompanyModal");

@@ -1651,7 +1651,16 @@ def detect_ats_from_url(url: str) -> dict:
                 "job_id": job_id
             }
     
-    return {"error": f"Unknown ATS for URL: {url}"}
+    # Unknown ATS - use universal parser
+    # Extract company from domain
+    company = host.replace("www.", "").replace("jobs.", "").split(".")[0]
+    return {
+        "ats": "universal",
+        "company": company.title(),
+        "company_slug": company,
+        "board_url": f"https://{host}",
+        "job_url": url
+    }
 
 
 def fetch_single_job(ats_info: dict) -> dict:
@@ -1733,6 +1742,23 @@ def fetch_single_job(ats_info: dict) -> dict:
                 return {"error": f"Lever API returned {resp.status_code}"}
         except Exception as e:
             return {"error": str(e)}
+    
+    elif ats == "universal":
+        # Use Playwright-based universal parser
+        try:
+            from parsers.universal import extract_job_details
+            result = extract_job_details(ats_info.get("job_url"))
+            if result.get("error"):
+                return {"error": result["error"]}
+            return {
+                "title": result.get("title", ""),
+                "location": result.get("location", ""),
+                "url": result.get("url", ats_info.get("job_url")),
+                "description": result.get("description", ""),
+                "salary": result.get("salary", ""),
+            }
+        except Exception as e:
+            return {"error": f"Universal parser error: {str(e)}"}
     
     return {"error": f"Fetch not implemented for ATS: {ats}"}
 

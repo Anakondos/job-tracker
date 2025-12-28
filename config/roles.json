@@ -3,9 +3,10 @@
     {
       "id": "product_manager",
       "name": "Product Manager",
-      "aliases": ["Product Manager", "PM", "Senior Product Manager", "Lead Product Manager", "Staff Product Manager", "Principal Product Manager"],
+      "aliases": ["Product Manager", "PM", "Senior Product Manager", "Lead Product Manager", "Staff Product Manager", "Principal Product Manager", "Senior Associate, Product Management"],
       "keywords_title": [
         "product manager",
+        "product management",
         "pm",
         "product lead",
         "lead product",
@@ -124,13 +125,56 @@
       "category": "primary"
     },
     {
+      "id": "project_lead",
+      "name": "Project Lead",
+      "aliases": ["Project Lead", "Strategic Project Lead", "Technical Project Lead"],
+      "keywords_title": [
+        "project lead",
+        "strategic project lead",
+        "technical project lead",
+        "lead project",
+        "projects lead"
+      ],
+      "keywords_description": [
+        "project leadership",
+        "cross-functional",
+        "stakeholder",
+        "team management",
+        "delivery"
+      ],
+      "priority": 7,
+      "category": "primary"
+    },
+    {
+      "id": "delivery_manager",
+      "name": "Delivery Manager",
+      "aliases": ["Delivery Manager", "Senior Delivery Manager", "Technical Delivery Manager"],
+      "keywords_title": [
+        "delivery manager",
+        "delivery lead",
+        "technical delivery manager",
+        "senior delivery manager",
+        "engineering delivery"
+      ],
+      "keywords_description": [
+        "delivery management",
+        "release management",
+        "agile delivery",
+        "program delivery",
+        "sprint delivery"
+      ],
+      "priority": 8,
+      "category": "primary"
+    },
+    {
       "id": "scrum_master",
       "name": "Scrum Master",
       "aliases": ["Scrum Master", "Senior Scrum Master", "Agile Coach"],
       "keywords_title": [
         "scrum master",
         "senior scrum",
-        "agile coach"
+        "agile coach",
+        "agile lead"
       ],
       "keywords_description": [
         "scrum",
@@ -140,6 +184,26 @@
         "daily standup",
         "scrum ceremonies",
         "agile practices"
+      ],
+      "priority": 6,
+      "category": "primary"
+    },
+    {
+      "id": "release_manager",
+      "name": "Release Manager",
+      "aliases": ["Release Manager", "Release Train Engineer", "RTE"],
+      "keywords_title": [
+        "release manager",
+        "release train engineer",
+        "rte",
+        "release management"
+      ],
+      "keywords_description": [
+        "release coordination",
+        "deployment",
+        "release planning",
+        "safe",
+        "pi planning"
       ],
       "priority": 6,
       "category": "primary"
@@ -177,6 +241,22 @@
       "priority": 7,
       "category": "adjacent",
       "level": "director"
+    },
+    {
+      "id": "chief_of_staff",
+      "name": "Chief of Staff",
+      "aliases": ["Chief of Staff", "CoS"],
+      "keywords_title": [
+        "chief of staff",
+        "cos"
+      ],
+      "keywords_description": [
+        "executive operations",
+        "strategic initiatives",
+        "cross-functional"
+      ],
+      "priority": 7,
+      "category": "adjacent"
     },
     {
       "id": "product_analyst",
@@ -218,12 +298,74 @@
       "keywords_title": [
         "strategy & operations",
         "strategy and operations",
-        "strategic operations"
+        "strategic operations",
+        "strategy operations"
       ],
       "keywords_description": [
         "strategic initiatives",
         "operational excellence",
         "business operations"
+      ],
+      "priority": 5,
+      "category": "adjacent"
+    },
+    {
+      "id": "operations_manager",
+      "name": "Operations Manager",
+      "aliases": ["Operations Manager", "Technical Operations Manager"],
+      "keywords_title": [
+        "operations manager",
+        "technical operations",
+        "tech ops manager",
+        "data operations"
+      ],
+      "keywords_description": [
+        "operations management",
+        "process optimization",
+        "team management",
+        "operational efficiency"
+      ],
+      "exclude_keywords": [
+        "warehouse",
+        "retail",
+        "store",
+        "manufacturing",
+        "logistics"
+      ],
+      "priority": 5,
+      "category": "adjacent"
+    },
+    {
+      "id": "engagement_manager",
+      "name": "Engagement Manager",
+      "aliases": ["Engagement Manager", "Client Engagement Manager"],
+      "keywords_title": [
+        "engagement manager",
+        "client engagement",
+        "customer engagement"
+      ],
+      "keywords_description": [
+        "client management",
+        "project delivery",
+        "stakeholder engagement"
+      ],
+      "priority": 5,
+      "category": "adjacent"
+    },
+    {
+      "id": "implementation_manager",
+      "name": "Implementation Manager",
+      "aliases": ["Implementation Manager", "Technical Implementation Manager"],
+      "keywords_title": [
+        "implementation manager",
+        "technical implementation",
+        "solutions implementation"
+      ],
+      "keywords_description": [
+        "implementation",
+        "onboarding",
+        "integration",
+        "deployment"
       ],
       "priority": 5,
       "category": "adjacent"
@@ -240,7 +382,9 @@
       "sre",
       "data engineer",
       "ml engineer",
-      "machine learning engineer"
+      "machine learning engineer",
+      "platform engineer",
+      "infrastructure engineer"
     ],
     "design": [
       "designer",
@@ -254,21 +398,37 @@
       "qa engineer",
       "quality assurance",
       "test engineer",
-      "sdet"
+      "sdet",
+      "automation engineer"
     ],
     "sales_marketing": [
       "account executive",
       "sales representative",
       "marketing manager",
       "growth marketer",
-      "demand generation"
+      "demand generation",
+      "sales manager",
+      "account manager"
+    ],
+    "hr_recruiting": [
+      "recruiter",
+      "talent acquisition",
+      "hr manager",
+      "people operations"
+    ],
+    "finance": [
+      "accountant",
+      "financial analyst",
+      "controller",
+      "finance manager"
     ],
     "non_it": [
       "construction manager",
       "facility manager",
       "warehouse manager",
       "retail manager",
-      "store manager"
+      "store manager",
+      "manufacturing manager"
     ]
   }
 }

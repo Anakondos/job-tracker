@@ -184,10 +184,11 @@ def normalize_location(location: Optional[str]) -> dict:
     city = cities[0] if cities else None
 
     # Determine state and full state
+    # For multi-location jobs, use first state
     state = None
     state_full = None
-    if len(states) == 1:
-        state = next(iter(states))
+    if states:
+        state = sorted(list(states))[0]  # First state alphabetically
         for full_name, code in STATE_MAP.items():
             if code == state:
                 state_full = full_name.title()
