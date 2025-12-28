@@ -214,6 +214,30 @@
         color: var(--muted);
       }
 
+      /* Column filters for Companies table */
+      .filter-row th {
+        padding: 4px 6px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .column-filter {
+        width: 100%;
+        padding: 4px 6px;
+        font-size: 11px;
+        border-radius: 4px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: var(--text);
+        box-sizing: border-box;
+      }
+      .column-filter:focus {
+        border-color: var(--accent);
+        outline: none;
+      }
+      .column-filter::placeholder {
+        color: var(--muted);
+        opacity: 0.6;
+      }
+
       .wrap {
         padding: 14px 18px 24px;
       }
@@ -724,6 +748,34 @@
                 <th class="sortable" style="width: 100px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
                 <th class="sortable" style="width: 90px" onclick="sortCompanies('last_checked')">Updated <span class="sortIcon" id="sortIcon-c-last_checked">⬍</span></th>
                 <th style="width: 60px">Actions</th>
+              </tr>
+              <tr class="filter-row">
+                <th><input type="text" id="filterCompany" placeholder="Filter..." class="column-filter"></th>
+                <th><input type="text" id="filterIndustry" placeholder="Filter..." class="column-filter"></th>
+                <th>
+                  <select id="filterAts" class="column-filter">
+                    <option value="">All</option>
+                    <option value="greenhouse">greenhouse</option>
+                    <option value="lever">lever</option>
+                    <option value="workday">workday</option>
+                    <option value="smartrecruiters">smartrecruiters</option>
+                    <option value="ashby">ashby</option>
+                  </select>
+                </th>
+                <th></th>
+                <th><input type="number" id="filterJobsMin" placeholder="Min" class="column-filter" style="width: 50px"></th>
+                <th></th>
+                <th></th>
+                <th>
+                  <select id="filterStatus" class="column-filter">
+                    <option value="">All</option>
+                    <option value="ok">✅ OK</option>
+                    <option value="error">❌ Error</option>
+                    <option value="disabled">⏸️ Disabled</option>
+                  </select>
+                </th>
+                <th></th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="companiesBody">
@@ -2179,6 +2231,56 @@
       let companiesSortCol = "jobs_count";
       let companiesSortDir = "desc";
       
+      // Company column filters state
+      let companyFilters = {
+        company: "",
+        industry: "",
+        ats: "",
+        jobsMin: 0,
+        status: ""
+      };
+      
+      function filterCompanies(companies) {
+        return companies.filter(c => {
+          // Company name filter
+          if (companyFilters.company && !c.company.toLowerCase().includes(companyFilters.company.toLowerCase())) {
+            return false;
+          }
+          
+          // Industry/tags filter
+          if (companyFilters.industry) {
+            const tags = (c.tags || []).join(" ").toLowerCase() + " " + (c.industry || "").toLowerCase();
+            if (!tags.includes(companyFilters.industry.toLowerCase())) {
+              return false;
+            }
+          }
+          
+          // ATS filter
+          if (companyFilters.ats && c.ats !== companyFilters.ats) {
+            return false;
+          }
+          
+          // Jobs min filter
+          if (companyFilters.jobsMin > 0 && (c.jobs_count || 0) < companyFilters.jobsMin) {
+            return false;
+          }
+          
+          // Status filter
+          if (companyFilters.status) {
+            if (companyFilters.status === "ok" && c.last_ok !== true) return false;
+            if (companyFilters.status === "error" && c.last_ok !== false) return false;
+            if (companyFilters.status === "disabled" && c.last_ok !== "disabled") return false;
+          }
+          
+          return true;
+        });
+      }
+      
+      function applyCompanyFilters() {
+        const filtered = filterCompanies(COMPANIES_DATA);
+        renderCompanies(filtered);
+      }
+      
       // ---------- REVIEW TAB EVENT LISTENERS ----------
       document.getElementById("reviewCategoryFilter").addEventListener("change", () => {
         reviewSelectedJobs.clear();
@@ -2314,7 +2416,10 @@
           companiesSortDir = ["total_jobs", "jobs_count", "new_count", "applied_count", "last_ok", "last_checked"].includes(col) ? "desc" : "asc";
         }
         
-        const sorted = [...COMPANIES_DATA].sort((a, b) => {
+        // Apply filters first, then sort
+        const filtered = filterCompanies(COMPANIES_DATA);
+        
+        const sorted = [...filtered].sort((a, b) => {
           let va = a[col] ?? "";
           let vb = b[col] ?? "";
           
@@ -2804,6 +2909,28 @@
       
       // Load data on page load
       loadEnv();
+      
+      // Company column filter event listeners
+      document.getElementById("filterCompany").addEventListener("input", (e) => {
+        companyFilters.company = e.target.value;
+        applyCompanyFilters();
+      });
+      document.getElementById("filterIndustry").addEventListener("input", (e) => {
+        companyFilters.industry = e.target.value;
+        applyCompanyFilters();
+      });
+      document.getElementById("filterAts").addEventListener("change", (e) => {
+        companyFilters.ats = e.target.value;
+        applyCompanyFilters();
+      });
+      document.getElementById("filterJobsMin").addEventListener("input", (e) => {
+        companyFilters.jobsMin = parseInt(e.target.value) || 0;
+        applyCompanyFilters();
+      });
+      document.getElementById("filterStatus").addEventListener("change", (e) => {
+        companyFilters.status = e.target.value;
+        applyCompanyFilters();
+      });
       
       // Restore active tab from localStorage
       const savedTab = localStorage.getItem('activeTab');

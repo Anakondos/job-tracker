@@ -40,7 +40,7 @@ def sync_companies():
 
 
 def sync_jobs():
-    """Merge new jobs from DEV to PROD, preserving PROD statuses"""
+    """Merge new jobs from DEV to PROD, preserving PROD statuses BUT copying DEV statuses if PROD has none"""
     dev_file = DEV_DIR / "data/jobs.json"
     prod_file = PROD_DIR / "data/jobs.json"
     
@@ -52,6 +52,7 @@ def sync_jobs():
     
     added = 0
     updated = 0
+    status_synced = 0
     
     for job in dev_jobs:
         job_id = job.get("id")
@@ -64,26 +65,17 @@ def sync_jobs():
             added += 1
             print(f"  + Job: {job.get('title')} @ {job.get('company')}")
         else:
-            # Existing job - update fields but PRESERVE status
+            # Existing job - check if need to sync status from DEV
             prod_job = prod_by_id[job_id]
+            dev_status = job.get("status", "new")
+            prod_status = prod_job.get("status", "new")
             
-            # Fields to preserve from PROD
-            preserved = {
-                "status": prod_job.get("status"),
-                "status_history": prod_job.get("status_history"),
-                "notes": prod_job.get("notes"),
-                "application_status": prod_job.get("application_status"),
-            }
-            
-            # Update other fields from DEV
-            for key, value in job.items():
-                if key not in preserved:
-                    prod_job[key] = value
-            
-            # Restore preserved fields
-            for key, value in preserved.items():
-                if value is not None:
-                    prod_job[key] = value
+            # If DEV has non-new status and PROD is still new, copy DEV status
+            if dev_status != "new" and prod_status == "new":
+                prod_job["status"] = dev_status
+                prod_job["status_history"] = job.get("status_history", [])
+                status_synced += 1
+                print(f"  ↑ Status: {job.get('title')} @ {job.get('company')} -> {dev_status}")
             
             updated += 1
     
@@ -91,7 +83,7 @@ def sync_jobs():
     with open(prod_file, "w") as f:
         json.dump(prod_jobs, f, indent=2, ensure_ascii=False)
     
-    return {"added": added, "updated": updated, "total": len(prod_jobs)}
+    return {"added": added, "updated": updated, "status_synced": status_synced, "total": len(prod_jobs)}
 
 
 def main():

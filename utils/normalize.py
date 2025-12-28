@@ -60,6 +60,20 @@ RE_CITY_STATE = re.compile(r"(?P<city>[a-zA-Z\s]+),\s*(?P<state>[A-Za-z\s]{2,})"
 RE_SEPARATORS = re.compile(r"[;|\n\/]+")
 
 
+# Countries to exclude from US state matching
+NON_US_COUNTRIES = {
+    "india", "canada", "uk", "united kingdom", "germany", "france", "spain",
+    "italy", "japan", "china", "australia", "brazil", "mexico", "ireland",
+    "netherlands", "sweden", "norway", "denmark", "finland", "poland",
+    "singapore", "hong kong", "israel", "philippines", "vietnam", "thailand",
+    "indonesia", "malaysia", "south korea", "taiwan", "argentina", "chile",
+    "colombia", "peru", "south africa", "nigeria", "egypt", "uae",
+    "united arab emirates", "saudi arabia", "portugal", "belgium", "austria",
+    "switzerland", "czech republic", "romania", "hungary", "ukraine", "russia",
+    "new zealand", "costa rica", "puerto rico"
+}
+
+
 def normalize_location(location: Optional[str]) -> dict:
     raw = location or ""
     if not raw:
@@ -71,6 +85,30 @@ def normalize_location(location: Optional[str]) -> dict:
             "states": [],
             "remote": False,
             "remote_scope": None,
+        }
+
+    # Check if location contains a non-US country - skip US state matching
+    raw_lower = raw.lower()
+    # Use word boundaries to avoid false matches like "Indianapolis" -> "india"
+    is_non_us = any(
+        re.search(r'\b' + re.escape(country) + r'\b', raw_lower) 
+        for country in NON_US_COUNTRIES
+    )
+    
+    # Quick return for obvious non-US locations
+    if is_non_us and "united states" not in raw_lower and "usa" not in raw_lower:
+        # Extract city (first part before comma)
+        city = None
+        if "," in raw:
+            city = raw.split(",")[0].strip()
+        return {
+            "raw": raw,
+            "city": city,
+            "state": None,
+            "state_full": None,
+            "states": [],
+            "remote": "remote" in raw_lower,
+            "remote_scope": "global" if "remote" in raw_lower else None,
         }
 
     parts = RE_SEPARATORS.split(raw)
