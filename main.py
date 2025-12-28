@@ -1510,6 +1510,33 @@ def pipeline_attention_endpoint():
     return {"count": len(attention), "jobs": attention}
 
 
+# ============= SYNC DEV->PROD ENDPOINT =============
+
+@app.post("/sync-to-prod")
+def sync_to_prod_endpoint():
+    """
+    Sync data from DEV to PROD.
+    Only available in DEV environment.
+    """
+    if ENV != "DEV":
+        return {"ok": False, "error": "Only available in DEV environment"}
+    
+    try:
+        from sync_to_prod import sync_companies, sync_jobs
+        
+        companies_result = sync_companies()
+        jobs_result = sync_jobs()
+        
+        return {
+            "ok": True,
+            "companies": companies_result,
+            "jobs": jobs_result,
+            "synced_at": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # ============= ONBOARDING ENDPOINTS =============
 
 import re

@@ -707,6 +707,7 @@
             <div class="summary-label">Applied</div>
           </div>
           <button id="addCompanyBtn" class="ghost" style="margin-left: 8px;">+ Add Company</button>
+          <button id="syncToProdBtn" class="ghost" style="margin-left: 8px; display: none;">🔄 Sync to PROD</button>
         </div>
         
         <div class="tableWrap">
@@ -1542,6 +1543,8 @@
           const showAddButton = ['unknown', 'excluded'].includes(roleCategory);
           const inPipeline = job.in_pipeline || job.status; // Job is already in pipeline if has status
           const isManual = job.source === 'manual';
+          const isOnboarded = job.source === 'onboard' || job.source === 'manual_onboard';
+          const sourceIcon = isOnboarded ? '<span title="User added via onboarding" style="margin-left: 4px;">📌</span>' : '';
           
           row.innerHTML = `
         <td>${escapeHtml(job.company || "")}</td>
@@ -1550,7 +1553,7 @@
           url
         )}" target="_blank" rel="noopener">${escapeHtml(
             job.title || ""
-          )}</a></td>
+          )}</a>${sourceIcon}</td>
         <td>${escapeHtml(job.location || "")}</td>
         <td>${escapeHtml(updatedAtStr)}</td>
         <td>${escapeHtml(job.ats || "")}</td>
@@ -2791,6 +2794,8 @@
           if (env === "DEV") {
             document.body.classList.add("env-dev");
             document.title = "[DEV] Job Tracker";
+            // Show Sync to PROD button only in DEV
+            document.getElementById("syncToProdBtn").style.display = "inline-block";
           }
         } catch (e) {
           console.error("Failed to load env:", e);
@@ -2821,6 +2826,29 @@
       document.getElementById("addCompanyBtn").addEventListener("click", () => {
         modal.classList.add("open");
         document.getElementById("newCompanyName").focus();
+      });
+
+      // Sync to PROD button (DEV only)
+      document.getElementById("syncToProdBtn").addEventListener("click", async () => {
+        const btn = document.getElementById("syncToProdBtn");
+        btn.disabled = true;
+        btn.textContent = "🔄 Syncing...";
+        
+        try {
+          const res = await fetch("/sync-to-prod", { method: "POST" });
+          const data = await res.json();
+          
+          if (data.ok) {
+            alert(`✅ Sync complete!\n\nCompanies: +${data.companies.added} (total: ${data.companies.total})\nJobs: +${data.jobs.added} (total: ${data.jobs.total})`);
+          } else {
+            alert(`❌ Sync failed: ${data.error}`);
+          }
+        } catch (e) {
+          alert(`❌ Sync error: ${e.message}`);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "🔄 Sync to PROD";
+        }
       });
       
       document.getElementById("cancelAddCompany").addEventListener("click", () => {
