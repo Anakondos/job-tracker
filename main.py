@@ -968,11 +968,16 @@ def refresh_single_company(company_id: str, profile: str = Query("all")):
         all_jobs = other_jobs + jobs
         save_cache(profile, all_jobs)
         
+        # Sync to pipeline (add new My Roles jobs)
+        sync_result = sync_cache_to_pipeline(jobs)
+        
         return {
             "ok": True,
             "company": company_name,
             "jobs_count": len(jobs),
-            "total_cache": len(all_jobs)
+            "total_cache": len(all_jobs),
+            "pipeline_added": sync_result["added"],
+            "pipeline_updated": sync_result["updated"]
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -1505,6 +1510,346 @@ def pipeline_attention_endpoint():
     return {"count": len(attention), "jobs": attention}
 
 
+# ============= ONBOARDING ENDPOINTS =============
+
+import re
+from urllib.parse import urlparse
+
+
+def detect_ats_from_url(url: str) -> dict:
+    """
+    Detect ATS type and extract company info from job URL.
+    Returns: {ats, company, board_url, job_id} or {error}
+    """
+    url = url.strip()
+    parsed = urlparse(url)
+    host = parsed.netloc.lower()
+    path = parsed.path
+    
+    # Greenhouse: boards.greenhouse.io/company/jobs/123 or company.com/jobs?gh_jid=123
+    if "greenhouse.io" in host:
+        # https://boards.greenhouse.io/stripe/jobs/7294977
+        match = re.match(r"/([^/]+)/jobs/(\d+)", path)
+        if match:
+            company = match.group(1)
+            job_id = match.group(2)
+            return {
+                "ats": "greenhouse",
+                "company": company.replace("-", " ").title(),
+                "company_slug": company,
+                "board_url": f"https://boards.greenhouse.io/{company}",
+                "job_id": job_id,
+                "job_api_url": f"https://boards-api.greenhouse.io/v1/boards/{company}/jobs/{job_id}"
+            }
+    
+    if "gh_jid" in url:
+        # https://stripe.com/jobs/search?gh_jid=7294977
+        match = re.search(r"gh_jid=(\d+)", url)
+        if match:
+            job_id = match.group(1)
+            # Extract company from domain
+            company = host.replace("www.", "").split(".")[0]
+            return {
+                "ats": "greenhouse",
+                "company": company.title(),
+                "company_slug": company,
+                "board_url": f"https://boards.greenhouse.io/{company}",
+                "job_id": job_id,
+                "job_api_url": f"https://boards-api.greenhouse.io/v1/boards/{company}/jobs/{job_id}"
+            }
+    
+    # Workday: company.wd1.myworkdayjobs.com/site/job/..._JOBID
+    if "myworkdayjobs.com" in host:
+        # https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi/job/..._R0082977
+        parts = host.split(".")
+        company = parts[0] if parts else ""
+        
+        # Extract job ID from path (usually ends with _JOBID)
+        job_id_match = re.search(r"_([A-Z0-9]+)$", path)
+        job_id = job_id_match.group(1) if job_id_match else ""
+        
+        # Extract site name from path
+        site_match = re.search(r"myworkdayjobs\.com/(?:en-US/)?([^/]+)", url)
+        site = site_match.group(1) if site_match else company
+        
+        return {
+            "ats": "workday",
+            "company": company.title(),
+            "company_slug": company,
+            "board_url": f"https://{company}.wd1.myworkdayjobs.com/{site}",
+            "job_id": job_id,
+            "job_path": path
+        }
+    
+    # Lever: jobs.lever.co/company/job-uuid
+    if "lever.co" in host:
+        match = re.match(r"/([^/]+)/([a-f0-9-]+)", path)
+        if match:
+            company = match.group(1)
+            job_id = match.group(2)
+            return {
+                "ats": "lever",
+                "company": company.replace("-", " ").title(),
+                "company_slug": company,
+                "board_url": f"https://jobs.lever.co/{company}",
+                "job_id": job_id,
+                "job_api_url": f"https://api.lever.co/v0/postings/{company}/{job_id}"
+            }
+    
+    # SmartRecruiters: jobs.smartrecruiters.com/Company/job-id
+    if "smartrecruiters.com" in host:
+        match = re.match(r"/([^/]+)/([^/]+)", path)
+        if match:
+            company = match.group(1)
+            job_id = match.group(2)
+            return {
+                "ats": "smartrecruiters",
+                "company": company.replace("-", " ").title(),
+                "company_slug": company,
+                "board_url": f"https://jobs.smartrecruiters.com/{company}",
+                "job_id": job_id
+            }
+    
+    # Ashby: jobs.ashbyhq.com/company/job-uuid
+    if "ashbyhq.com" in host:
+        match = re.match(r"/([^/]+)/([a-f0-9-]+)", path)
+        if match:
+            company = match.group(1)
+            job_id = match.group(2)
+            return {
+                "ats": "ashby",
+                "company": company.replace("-", " ").title(),
+                "company_slug": company,
+                "board_url": f"https://jobs.ashbyhq.com/{company}",
+                "job_id": job_id
+            }
+    
+    return {"error": f"Unknown ATS for URL: {url}"}
+
+
+def fetch_single_job(ats_info: dict) -> dict:
+    """
+    Fetch single job details from ATS.
+    Returns job dict or {error}
+    """
+    import requests
+    
+    ats = ats_info.get("ats")
+    
+    if ats == "greenhouse":
+        api_url = ats_info.get("job_api_url")
+        try:
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "title": data.get("title", ""),
+                    "location": data.get("location", {}).get("name", ""),
+                    "url": data.get("absolute_url", ""),
+                    "updated_at": data.get("updated_at", ""),
+                    "ats_job_id": str(data.get("id", "")),
+                }
+            else:
+                return {"error": f"Greenhouse API returned {resp.status_code}"}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    elif ats == "workday":
+        # Search by job ID
+        company_slug = ats_info.get("company_slug")
+        job_id = ats_info.get("job_id")
+        board_url = ats_info.get("board_url")
+        
+        # Extract site from board_url
+        site_match = re.search(r"myworkdayjobs\.com/([^/]+)", board_url)
+        site = site_match.group(1) if site_match else company_slug
+        
+        search_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
+        try:
+            resp = requests.post(
+                search_url,
+                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": job_id},
+                headers={"Content-Type": "application/json"},
+                timeout=15
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                postings = data.get("jobPostings", [])
+                if postings:
+                    job = postings[0]
+                    return {
+                        "title": job.get("title", ""),
+                        "location": job.get("locationsText", ""),
+                        "url": f"https://{company_slug}.wd1.myworkdayjobs.com{job.get('externalPath', '')}",
+                        "ats_job_id": job_id,
+                    }
+                else:
+                    return {"error": f"Job {job_id} not found"}
+            else:
+                return {"error": f"Workday API returned {resp.status_code}"}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    elif ats == "lever":
+        api_url = ats_info.get("job_api_url")
+        try:
+            resp = requests.get(api_url, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "title": data.get("text", ""),
+                    "location": data.get("categories", {}).get("location", ""),
+                    "url": data.get("hostedUrl", ""),
+                    "ats_job_id": data.get("id", ""),
+                }
+            else:
+                return {"error": f"Lever API returned {resp.status_code}"}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    return {"error": f"Fetch not implemented for ATS: {ats}"}
+
+
+class OnboardRequest(BaseModel):
+    url: str
+
+
+@app.post("/onboard")
+def onboard_job(payload: OnboardRequest):
+    """
+    Onboard a new job by URL.
+    1. Detect ATS and extract company info
+    2. Add company if new
+    3. Fetch single job details
+    4. Classify role
+    5. Add to pipeline if relevant
+    """
+    url = payload.url.strip()
+    
+    # 1. Detect ATS
+    ats_info = detect_ats_from_url(url)
+    if "error" in ats_info:
+        return {"ok": False, "error": ats_info["error"]}
+    
+    ats = ats_info["ats"]
+    company_name = ats_info["company"]
+    company_slug = ats_info["company_slug"]
+    board_url = ats_info["board_url"]
+    
+    # 2. Check if company exists
+    companies_path = Path("data/companies.json")
+    companies = json.load(open(companies_path)) if companies_path.exists() else []
+    
+    company_exists = any(
+        c.get("id") == company_slug or c.get("name", "").lower() == company_name.lower()
+        for c in companies
+    )
+    
+    new_company = None
+    if not company_exists:
+        new_company = {
+            "id": company_slug,
+            "name": company_name,
+            "ats": ats,
+            "board_url": board_url,
+            "industry": "",
+            "tags": [],
+            "priority": 0,
+            "hq_state": None,
+            "region": "global",
+            "enabled": True
+        }
+        companies.append(new_company)
+        with open(companies_path, "w") as f:
+            json.dump(companies, f, indent=2, ensure_ascii=False)
+    
+    # 3. Fetch single job
+    job_data = fetch_single_job(ats_info)
+    if "error" in job_data:
+        return {
+            "ok": False, 
+            "error": job_data["error"],
+            "company": {"name": company_name, "new": new_company is not None}
+        }
+    
+    # 4. Build full job object
+    job = {
+        "company": company_name,
+        "ats": ats,
+        "ats_job_id": job_data.get("ats_job_id", ats_info.get("job_id", "")),
+        "title": job_data.get("title", ""),
+        "location": job_data.get("location", ""),
+        "job_url": job_data.get("url", url),
+        "updated_at": job_data.get("updated_at", datetime.now(timezone.utc).isoformat()),
+    }
+    
+    # Generate ID
+    job["id"] = generate_job_id(job)
+    
+    # Normalize location
+    loc_norm = normalize_location(job.get("location"))
+    job["location_norm"] = loc_norm
+    
+    # Classify role
+    role = classify_role(job.get("title"), "")
+    job["role_family"] = role.get("role_family")
+    job["role_category"] = role.get("role_category")
+    job["role_id"] = role.get("role_id")
+    job["role_confidence"] = role.get("confidence")
+    job["role_reason"] = role.get("reason")
+    job["role_excluded"] = role.get("excluded", False)
+    
+    # Geo scoring
+    bucket, score = compute_geo_bucket_and_score(loc_norm)
+    job["geo_bucket"] = bucket
+    job["geo_score"] = score
+    
+    # Company data
+    job["company_data"] = {
+        "priority": 0,
+        "hq_state": None,
+        "region": "global",
+        "tags": []
+    }
+    
+    job["source"] = "onboard"
+    
+    # 5. Add to pipeline if relevant role
+    added_to_pipeline = False
+    if job.get("role_family") in MY_ROLE_FAMILIES and not job.get("role_excluded"):
+        # Check if already exists
+        existing = get_job_by_id(job["id"])
+        if not existing:
+            add_job(job)
+            added_to_pipeline = True
+    
+    return {
+        "ok": True,
+        "company": {
+            "name": company_name,
+            "new": new_company is not None,
+            "ats": ats
+        },
+        "job": {
+            "id": job["id"],
+            "title": job["title"],
+            "location": job["location"],
+            "url": job["job_url"]
+        },
+        "classification": {
+            "role_family": job.get("role_family"),
+            "role_id": job.get("role_id"),
+            "confidence": job.get("role_confidence"),
+            "reason": job.get("role_reason")
+        },
+        "geo": {
+            "bucket": bucket,
+            "score": score
+        },
+        "added_to_pipeline": added_to_pipeline
+    }
+
+
 # ============= APPLY AUTOMATION ENDPOINTS =============
 
 class ApplyRequest(BaseModel):
@@ -1516,37 +1861,41 @@ class ApplyRequest(BaseModel):
 def apply_greenhouse_endpoint(payload: ApplyRequest):
     """
     Open Greenhouse job application and auto-fill form.
-    Launches browser, navigates to job URL, fills form with profile data.
-    Browser stays open for user to review and submit.
     """
     import subprocess
     import sys
+    import os
     
     job_url = payload.job_url
     profile_name = payload.profile
     
-    # Validate URL
-    if "greenhouse" not in job_url.lower():
+    if "greenhouse" not in job_url.lower() and "gh_jid" not in job_url.lower():
         return {"ok": False, "error": "Only Greenhouse URLs supported"}
     
-    # Check profile exists
     profile_path = Path(f"browser/profiles/{profile_name}.json")
     if not profile_path.exists():
         return {"ok": False, "error": f"Profile '{profile_name}' not found"}
     
-    # Launch browser automation in background process
-    import os
+    # Use symlink path without spaces for subprocess compatibility
     cwd = os.path.dirname(os.path.abspath(__file__))
+    if "Mobile Documents" in cwd:
+        cwd = cwd.replace(
+            "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects",
+            "/Users/antonkondakov/icloud-projects"
+        )
     
-    script = f'''
+    # Write script to file to avoid shell escaping issues
+    script_file = "/tmp/greenhouse_apply_script.py"
+    with open(script_file, "w") as f:
+        f.write(f'''
 import sys
 sys.path.insert(0, '{cwd}')
+import os
+os.chdir('{cwd}')
+
 from browser import BrowserClient, ProfileManager
 from pathlib import Path
 import time
-import os
-
-os.chdir('{cwd}')
 
 profile = ProfileManager(Path("browser/profiles/{profile_name}.json"))
 browser = BrowserClient()
@@ -1554,38 +1903,44 @@ browser.start()
 
 try:
     browser.open_job_page("{job_url}")
-    time.sleep(2)
+    time.sleep(3)
     
-    # Click Apply if visible
-    apply_btn = browser.page.query_selector("text=Apply")
-    if apply_btn:
-        apply_btn.click()
-        time.sleep(2)
+    # Try to click Apply button if visible (some pages go directly to form)
+    try:
+        apply_btn = browser.page.query_selector("a:has-text('Apply'), button:has-text('Apply')")
+        if apply_btn and apply_btn.is_visible():
+            print("Found Apply button, clicking...")
+            apply_btn.click()
+            time.sleep(2)
+        else:
+            print("No Apply button found or already on form")
+    except Exception as e:
+        print(f"Apply button click skipped: {{e}}")
     
     # Fill form
     result = browser.fill_greenhouse_complete(profile)
     print(f"Filled {{result['total']}} fields")
-    
-    # Keep browser open for user
     print("Browser open - review and submit manually")
-    print("Press Ctrl+C to close")
     
     while True:
         time.sleep(60)
 except KeyboardInterrupt:
     pass
+except Exception as e:
+    print(f"Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+    time.sleep(30)  # Keep open to see error
 finally:
     browser.close()
-'''
+''')
     
-    # Run in background, capture output for debugging
     log_file = open('/tmp/greenhouse_apply.log', 'w')
     subprocess.Popen(
-        [sys.executable, "-c", script],
+        [sys.executable, script_file],
         stdout=log_file,
         stderr=log_file,
-        start_new_session=True,
-        cwd=cwd
+        start_new_session=True
     )
     
     return {

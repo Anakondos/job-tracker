@@ -1275,16 +1275,16 @@
           if (!j.location_norm) {
             j.location_norm = normalizeLocation(j.location || "");
           }
-          // status fallback - Pipeline uses 'status', prefer it over 'application_status'
+          // status fallback - Pipeline uses 'status' (lowercase), convert to Title Case for UI
           if (j.status) {
-            // Pipeline job - use status field
-            j.application_status = j.status;
+            // Capitalize first letter for UI display
+            j.application_status = j.status.charAt(0).toUpperCase() + j.status.slice(1);
           } else if (j.application_status) {
             // Legacy job - use application_status
-            j.status = j.application_status;
+            j.status = j.application_status.toLowerCase();
           } else {
             // No status - default to New
-            j.status = "New";
+            j.status = "new";
             j.application_status = "New";
           }
         }
@@ -1599,7 +1599,7 @@
             job.status = newStatus;  // Pipeline uses 'status' field
             row.dataset.status = newStatus;
 
-            const ok = await persistStatus(jobId, newStatus);
+            const ok = await persistStatus(jobId, newStatus.toLowerCase());
             if (!ok) {
               // revert
               e.target.value = oldStatus;
@@ -1607,6 +1607,17 @@
               job.status = oldStatus;
               row.dataset.status = oldStatus;
             } else {
+              // Update status in ALL_JOBS arrays too
+              const updateJobInArray = (arr, id, status) => {
+                const found = arr.find(j => j.id === id);
+                if (found) {
+                  found.status = status;
+                  found.application_status = status.charAt(0).toUpperCase() + status.slice(1);
+                }
+              };
+              updateJobInArray(ALL_JOBS, jobId, newStatus.toLowerCase());
+              updateJobInArray(ALL_JOBS_RAW, jobId, newStatus.toLowerCase());
+              
               // if status filter active, re-render
               const filtered = applyFilters(ALL_JOBS);
               renderJobs(filtered);
