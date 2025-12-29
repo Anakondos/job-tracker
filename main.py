@@ -1789,6 +1789,17 @@ def onboard_job(payload: OnboardRequest):
     company_slug = ats_info["company_slug"]
     board_url = ats_info["board_url"]
     
+    # Fix company name using AI if it looks like a URL slug
+    if ats == "universal" and (company_name.lower() == company_slug or "careers" in company_name.lower()):
+        try:
+            from utils.ollama_ai import fix_company_name, is_ollama_available
+            if is_ollama_available():
+                fixed_name = fix_company_name(company_name, board_url)
+                if fixed_name and fixed_name != company_name:
+                    company_name = fixed_name
+        except Exception as e:
+            print(f"AI company name fix error: {e}")
+    
     # 2. Check if company exists
     companies_path = Path("data/companies.json")
     companies = json.load(open(companies_path)) if companies_path.exists() else []
@@ -1843,8 +1854,21 @@ def onboard_job(payload: OnboardRequest):
     loc_norm = normalize_location(job.get("location"))
     job["location_norm"] = loc_norm
     
-    # Classify role
-    role = classify_role(job.get("title"), "")
+    # Classify role (rule-based first, then AI fallback)
+    role = classify_role(job.get("title"), job_data.get("description", ""))
+    
+    # If rule-based classification failed, try AI
+    if role.get("role_family") == "other" and role.get("confidence", 0) < 60:
+        try:
+            from utils.ollama_ai import classify_role_ai, is_ollama_available
+            if is_ollama_available():
+                ai_role = classify_role_ai(job.get("title"), job_data.get("description", ""))
+                if ai_role.get("confidence", 0) > role.get("confidence", 0):
+                    role = ai_role
+                    role["role_category"] = "ai_classified"
+        except Exception as e:
+            print(f"AI classification error: {e}")
+    
     job["role_family"] = role.get("role_family")
     job["role_category"] = role.get("role_category")
     job["role_id"] = role.get("role_id")
