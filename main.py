@@ -2025,3 +2025,114 @@ finally:
         "message": f"Opening browser for {job_url}...",
         "profile": profile_name
     }
+
+
+# ==================== ANSWER LIBRARY ====================
+
+@app.get("/answers")
+def get_answer_library():
+    """Get the full answer library."""
+    path = Path("data/answer_library.json")
+    if not path.exists():
+        return {"personal": {}, "links": {}, "answers": {}, "cover_letter_template": {}}
+    with open(path) as f:
+        return json.load(f)
+
+
+@app.put("/answers")
+def update_answer_library(data: dict):
+    """Update the answer library."""
+    path = Path("data/answer_library.json")
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True}
+
+
+@app.get("/answers/{category}/{key}")
+def get_answer(category: str, key: str):
+    """Get a specific answer."""
+    path = Path("data/answer_library.json")
+    if not path.exists():
+        return {"error": "Answer library not found"}
+    with open(path) as f:
+        data = json.load(f)
+    
+    if category in data and key in data[category]:
+        return {"value": data[category][key]}
+    return {"error": f"Key {category}/{key} not found"}
+
+
+@app.post("/generate-cover-letter")
+def generate_cover_letter(payload: dict):
+    """
+    Generate a personalized cover letter.
+    Expects: {company, position, job_description?, highlights?}
+    """
+    company = payload.get("company", "[Company]")
+    position = payload.get("position", "[Position]")
+    job_description = payload.get("job_description", "")
+    
+    # Load answer library
+    path = Path("data/answer_library.json")
+    if not path.exists():
+        return {"error": "Answer library not found"}
+    with open(path) as f:
+        library = json.load(f)
+    
+    template = library.get("cover_letter_template", {})
+    personal = library.get("personal", {})
+    
+    # Try AI-generated bullet points
+    bullets = []
+    try:
+        from utils.ollama_ai import generate_cover_letter_points, is_ollama_available
+        if is_ollama_available() and job_description:
+            cv_highlights = f"""
+            - 15+ years TPM/Program Manager experience
+            - Led teams of 50+ engineers across global time zones
+            - GCP cloud migration: $1.2M savings, 25% uptime improvement
+            - Deutsche Bank, UBS, DXC Technology experience
+            - SAFe POPM certified, Scrum Master
+            """
+            bullets = generate_cover_letter_points(position, company, job_description, cv_highlights)
+    except Exception as e:
+        print(f"AI cover letter error: {e}")
+    
+    # Fallback bullets
+    if not bullets:
+        bullets = [
+            "15+ years leading complex technology programs for Fortune 500 companies",
+            "Proven track record delivering cloud migrations with $1.2M+ cost savings",
+            "Experience managing cross-functional teams of 50+ engineers across global time zones"
+        ]
+    
+    # Build cover letter
+    opening = template.get("opening", "").replace("[POSITION]", position).replace("[COMPANY]", company)
+    closing = template.get("closing", "").replace("[COMPANY]", company)
+    
+    bullet_text = "\n".join([f"• {b}" for b in bullets])
+    body = f"My experience directly addresses your key requirements:\n\n{bullet_text}"
+    
+    cover_letter = f"""{personal.get('full_name', 'Anton Kondakov')}
+{personal.get('phone', '')} | {personal.get('email', '')} | {personal.get('linkedin', '')}
+{personal.get('location', '')}
+
+Dear Hiring Manager,
+
+{opening}
+
+{body}
+
+{closing}
+
+Sincerely,
+{personal.get('full_name', 'Anton Kondakov')}
+"""
+    
+    return {
+        "ok": True,
+        "cover_letter": cover_letter,
+        "bullets": bullets,
+        "company": company,
+        "position": position
+    }

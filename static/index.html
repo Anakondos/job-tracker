@@ -748,6 +748,7 @@
       <button class="tab-btn" data-tab="companies">Companies</button>
       <button class="tab-btn active" data-tab="jobs">Pipeline</button>
       <button class="tab-btn" data-tab="review">Review</button>
+      <button class="tab-btn" data-tab="answers">Answers</button>
     </div>
 
     <!-- Companies Tab -->
@@ -1028,6 +1029,62 @@
         Tip: Select jobs and click "Add Selected" to add them to your Pipeline.
       </div>
     </div> <!-- end tab-review -->
+
+    <!-- Answers Tab -->
+    <div class="tab-content" id="tab-answers">
+      <h3 style="margin: 0 0 16px 0;">Answer Library</h3>
+      
+      <!-- Personal Info -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Personal Info</h4>
+        <div id="personalInfo" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;"></div>
+      </div>
+      
+      <!-- Demographics -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Demographics (EEO)</h4>
+        <div id="demographicsInfo" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;"></div>
+      </div>
+      
+      <!-- Education -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Education</h4>
+        <div id="educationInfo"></div>
+      </div>
+      
+      <!-- Employment -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Employment History</h4>
+        <div id="employmentInfo"></div>
+      </div>
+      
+      <!-- Answers -->
+      <div class="card" style="padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Common Questions</h4>
+        <div id="answersList"></div>
+      </div>
+    </div> <!-- end tab-answers -->
+
+    <!-- Cover Letter Modal -->
+    <div id="coverLetterModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200;">
+      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; width:700px; max-width:90vw; max-height:80vh; overflow-y:auto;">
+        <h3 style="margin:0 0 16px 0;">Generate Cover Letter</h3>
+        <div style="display:grid; gap:12px; margin-bottom:16px;">
+          <label>Company <input type="text" id="clCompany" style="width:100%; margin-top:4px;"></label>
+          <label>Position <input type="text" id="clPosition" style="width:100%; margin-top:4px;"></label>
+          <label>Job Description (optional) <textarea id="clDescription" rows="4" style="width:100%; margin-top:4px;"></textarea></label>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button id="clCancel" class="ghost">Cancel</button>
+          <button id="clGenerate" style="background:var(--accent); color:white;">Generate</button>
+        </div>
+        <div id="clResult" style="margin-top:16px; display:none;">
+          <h4>Generated Cover Letter:</h4>
+          <pre id="clOutput" style="background:var(--panel); padding:16px; border-radius:8px; white-space:pre-wrap; font-size:13px;"></pre>
+          <button id="clCopy" style="margin-top:8px; background:var(--accent); color:white;">Copy to Clipboard</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Add Job Modal -->
     <div id="addJobModal" class="modal">
@@ -1689,6 +1746,7 @@
           </select>
         </td>
         <td>
+          <button class="coverLetterBtn" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Generate Cover Letter" style="background:none; border:none; cursor:pointer; font-size:14px;">📄</button>
           ${(job.ats || '').toLowerCase() === 'greenhouse'
             ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form">📝 Apply</button>`
             : ''}
@@ -1798,6 +1856,20 @@
                 console.error("Remove from pipeline error:", err);
                 alert("Error removing from pipeline");
               }
+            });
+          }
+          
+          // Cover Letter button handler
+          const clBtn = row.querySelector(".coverLetterBtn");
+          if (clBtn) {
+            clBtn.addEventListener("click", (e) => {
+              const company = e.target.dataset.company;
+              const position = e.target.dataset.position;
+              document.getElementById('clCompany').value = company || '';
+              document.getElementById('clPosition').value = position || '';
+              document.getElementById('clDescription').value = '';
+              document.getElementById('clResult').style.display = 'none';
+              document.getElementById('coverLetterModal').style.display = 'flex';
             });
           }
           
@@ -2447,6 +2519,9 @@
           } else if (tab === "review") {
             // Review tab - auto-load first page
             loadReviewJobs(1);
+          } else if (tab === "answers") {
+            // Answers tab - load answer library
+            if (!answerLibrary.personal) loadAnswerLibrary();
           }
         });
       });
@@ -3096,6 +3171,150 @@
         renderJobs(pipelineFilteredJobs);
       });
 
+      // ==================== ANSWERS TAB ====================
+      let answerLibrary = {};
+      
+      async function loadAnswerLibrary() {
+        try {
+          const resp = await fetch('/answers');
+          answerLibrary = await resp.json();
+          renderAnswers();
+        } catch (e) {
+          console.error('Failed to load answers:', e);
+        }
+      }
+      
+      function renderAnswers() {
+        // Personal Info
+        const personalDiv = document.getElementById('personalInfo');
+        const personal = answerLibrary.personal || {};
+        personalDiv.innerHTML = Object.entries(personal).map(([key, value]) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:var(--panel); border-radius:6px;">
+            <div>
+              <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">${key.replace(/_/g, ' ')}</div>
+              <div style="font-size:13px;">${value}</div>
+            </div>
+            <button class="ghost copy-btn" data-value="${String(value).replace(/"/g, '&quot;')}" style="padding:4px 8px; font-size:11px;">Copy</button>
+          </div>
+        `).join('');
+        
+        // Demographics
+        const demoDiv = document.getElementById('demographicsInfo');
+        const demographics = answerLibrary.demographics || {};
+        demoDiv.innerHTML = Object.entries(demographics).map(([key, value]) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:var(--panel); border-radius:6px;">
+            <div>
+              <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">${key.replace(/_/g, ' ')}</div>
+              <div style="font-size:13px;">${value}</div>
+            </div>
+            <button class="ghost copy-btn" data-value="${String(value).replace(/"/g, '&quot;')}" style="padding:4px 8px; font-size:11px;">Copy</button>
+          </div>
+        `).join('');
+        
+        // Education
+        const eduDiv = document.getElementById('educationInfo');
+        const education = answerLibrary.education || [];
+        eduDiv.innerHTML = education.map((edu, i) => `
+          <div style="padding:12px; background:var(--panel); border-radius:8px; margin-bottom:12px;">
+            <div style="font-weight:600; color:var(--accent);">${edu.school}</div>
+            <div style="font-size:13px;">${edu.degree} - ${edu.discipline}</div>
+            <div style="font-size:12px; color:var(--muted);">${edu.start_month} ${edu.start_year} - ${edu.end_month} ${edu.end_year}</div>
+          </div>
+        `).join('');
+        
+        // Employment
+        const empDiv = document.getElementById('employmentInfo');
+        const employment = answerLibrary.employment || [];
+        empDiv.innerHTML = employment.map((emp, i) => `
+          <div style="padding:12px; background:var(--panel); border-radius:8px; margin-bottom:12px;">
+            <div style="font-weight:600; color:var(--accent);">${emp.company}</div>
+            <div style="font-size:13px;">${emp.title}</div>
+            <div style="font-size:12px; color:var(--muted);">${emp.start_month} ${emp.start_year} - ${emp.current ? 'Present' : emp.end_month + ' ' + emp.end_year}</div>
+          </div>
+        `).join('');
+        
+        // Answers
+        const answersDiv = document.getElementById('answersList');
+        const answers = answerLibrary.answers || {};
+        answersDiv.innerHTML = Object.entries(answers).map(([key, data]) => `
+          <div class="answer-item" style="margin-bottom:16px; padding:12px; background:var(--panel); border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:start;">
+              <div style="font-weight:600; color:var(--accent); margin-bottom:8px;">${data.question || key}</div>
+              <button class="ghost copy-btn" data-value="${String(data.answer || '').replace(/"/g, '&quot;')}" style="padding:4px 8px; font-size:11px;">Copy</button>
+            </div>
+            <div style="font-size:13px; line-height:1.5; color:var(--text);">${data.answer || ''}</div>
+            ${data.note ? `<div style="font-size:11px; color:var(--muted); margin-top:8px; font-style:italic;">Note: ${data.note}</div>` : ''}
+          </div>
+        `).join('');
+        
+        // Add copy handlers
+        document.querySelectorAll('#tab-answers .copy-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const value = btn.dataset.value;
+            navigator.clipboard.writeText(value).then(() => {
+              const orig = btn.textContent;
+              btn.textContent = 'Copied!';
+              btn.style.background = 'var(--accent)';
+              btn.style.color = 'white';
+              setTimeout(() => {
+                btn.textContent = orig;
+                btn.style.background = '';
+                btn.style.color = '';
+              }, 1500);
+            });
+          });
+        });
+      }
+      
+      // Cover Letter Modal
+      const clModal = document.getElementById('coverLetterModal');
+      document.getElementById('clCancel').addEventListener('click', () => {
+        clModal.style.display = 'none';
+      });
+      clModal.addEventListener('click', (e) => {
+        if (e.target === clModal) clModal.style.display = 'none';
+      });
+      
+      document.getElementById('clGenerate').addEventListener('click', async () => {
+        const company = document.getElementById('clCompany').value || '[Company]';
+        const position = document.getElementById('clPosition').value || '[Position]';
+        const description = document.getElementById('clDescription').value;
+        
+        document.getElementById('clGenerate').textContent = 'Generating...';
+        document.getElementById('clGenerate').disabled = true;
+        
+        try {
+          const resp = await fetch('/generate-cover-letter', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({company, position, job_description: description})
+          });
+          const data = await resp.json();
+          
+          if (data.ok) {
+            document.getElementById('clOutput').textContent = data.cover_letter;
+            document.getElementById('clResult').style.display = 'block';
+          } else {
+            alert('Error: ' + (data.error || 'Failed to generate'));
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        } finally {
+          document.getElementById('clGenerate').textContent = 'Generate';
+          document.getElementById('clGenerate').disabled = false;
+        }
+      });
+      
+      document.getElementById('clCopy').addEventListener('click', () => {
+        const text = document.getElementById('clOutput').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          document.getElementById('clCopy').textContent = 'Copied!';
+          setTimeout(() => {
+            document.getElementById('clCopy').textContent = 'Copy to Clipboard';
+          }, 1500);
+        });
+      });
+      
       // Add Job Modal
       const addJobModal = document.getElementById("addJobModal");
       const addJobBtn = document.getElementById("addJobBtn");
