@@ -174,20 +174,28 @@ def generate_cover_letter_points(job_title: str, company: str, job_description: 
     """
     Generate key points for a cover letter based on job and CV.
     """
-    system = """Generate 3-5 key talking points for a cover letter that connects the candidate's experience to the job requirements.
-Be specific and actionable.
+    system = """You are a cover letter expert. Generate 3 SHORT bullet points (max 20 words each) that:
+1. Connect candidate's SPECIFIC experience to job requirements
+2. Include concrete numbers/metrics when possible
+3. Show genuine interest in THIS company (not generic)
 
-Respond ONLY with JSON: {"points": ["point 1", "point 2", ...]}"""
+Rules:
+- Each bullet must be ONE sentence, under 20 words
+- No generic phrases like "drive innovation", "stay ahead of the curve"
+- No repeating company name in every bullet
+- Focus on RESULTS and IMPACT, not responsibilities
 
-    prompt = f"""Generate cover letter points:
+Respond ONLY with JSON: {"points": ["point 1", "point 2", "point 3"]}"""
+
+    prompt = f"""Generate 3 cover letter bullets:
 
 JOB: {job_title} at {company}
-Description: {job_description[:800] if job_description else 'N/A'}
+Description: {job_description[:600] if job_description else 'N/A'}
 
-CANDIDATE HIGHLIGHTS:
-{cv_highlights[:500]}
+CANDIDATE:
+{cv_highlights[:400]}
 
-JSON response:"""
+JSON (3 short bullets):"""
 
     response = ollama_request(prompt, system, temperature=0.5)
     
@@ -204,6 +212,127 @@ JSON response:"""
     return []
 
 
+def select_cv_for_role(job_title: str, available_cvs: list) -> str:
+    """
+    Use AI to select the best CV for a job role.
+    
+    Args:
+        job_title: Job title to match
+        available_cvs: List of CV file paths
+        
+    Returns:
+        Path to the best matching CV
+    """
+    if not available_cvs:
+        return None
+    
+    if len(available_cvs) == 1:
+        return available_cvs[0]
+    
+    system = """You are a CV selector. Given a job title and available CVs, select the best match.
+
+CV naming patterns:
+- TPM_CV, TPM = Technical Program Manager roles
+- Product_Manager_CV, PM_CV = Product Manager roles  
+- Project_Manager_CV = Project Manager roles
+- Scrum_Master_CV = Scrum Master/Agile roles
+- DeliveryLead_CV = Delivery Lead roles
+- PO_CV = Product Owner roles
+
+Respond ONLY with the index number (0, 1, 2, etc.) of the best CV."""
+
+    cv_list = "\n".join([f"{i}: {cv.split('/')[-1]}" for i, cv in enumerate(available_cvs)])
+    
+    prompt = f"""Select best CV for this job:
+
+JOB TITLE: {job_title}
+
+AVAILABLE CVs:
+{cv_list}
+
+Best CV index:"""
+
+    response = ollama_request(prompt, system, temperature=0)
+    
+    if response:
+        try:
+            # Extract number from response
+            idx = int(''.join(filter(str.isdigit, response.split()[0])))
+            if 0 <= idx < len(available_cvs):
+                return available_cvs[idx]
+        except (ValueError, IndexError):
+            pass
+    
+    # Default: return first CV with matching keyword
+    title_lower = job_title.lower()
+    for cv in available_cvs:
+        cv_lower = cv.lower()
+        if 'tpm' in title_lower and 'tpm' in cv_lower:
+            return cv
+        if 'product' in title_lower and 'product' in cv_lower:
+            return cv
+        if 'project' in title_lower and 'project' in cv_lower:
+            return cv
+        if 'program' in title_lower and ('tpm' in cv_lower or 'program' in cv_lower):
+            return cv
+    
+    return available_cvs[0]
+
+
+def generate_cover_letter(company: str, position: str, job_description: str = "", profile_summary: str = "") -> str:
+    """
+    Generate a personalized cover letter using AI.
+    
+    Returns:
+        Cover letter text
+    """
+    system = """You are a professional cover letter writer. Write concise, compelling cover letters.
+
+Rules:
+- Keep it under 300 words
+- Be specific about why this company and role
+- Highlight 2-3 relevant achievements
+- Show enthusiasm without being generic
+- Professional but warm tone
+- End with a clear call to action
+
+Format:
+Dear Hiring Manager,
+
+[Opening paragraph - why this role/company]
+
+[Middle paragraph - relevant experience and achievements]
+
+[Closing paragraph - call to action]
+
+Sincerely,
+[Name]"""
+
+    prompt = f"""Write a cover letter for:
+
+COMPANY: {company}
+POSITION: {position}
+JOB DESCRIPTION: {job_description[:1000] if job_description else 'Not provided'}
+
+CANDIDATE SUMMARY:
+{profile_summary[:800] if profile_summary else 'Experienced Technical Program Manager with 9+ years in fintech and banking.'}
+
+Cover letter:"""
+
+    response = ollama_request(prompt, system, temperature=0.7)
+    
+    return response if response else f"""Dear Hiring Manager,
+
+I am writing to express my strong interest in the {position} position at {company}.
+
+With over 9 years of experience in program management within fintech and banking sectors, I bring a proven track record of delivering complex technical programs on time and within budget.
+
+I would welcome the opportunity to discuss how my background aligns with your team's needs.
+
+Sincerely,
+Anton Kondakov"""
+
+
 def is_ollama_available() -> bool:
     """Check if Ollama server is running."""
     try:
@@ -211,6 +340,114 @@ def is_ollama_available() -> bool:
         return resp.status_code == 200
     except:
         return False
+
+
+def verify_form_fields(page_html: str, expected_fields: dict) -> dict:
+    """
+    Use AI to verify that form fields are correctly filled.
+    
+    Args:
+        page_html: HTML content of the form page
+        expected_fields: Dict of field names and expected values
+        
+    Returns:
+        {"ok": bool, "filled": [...], "missing": [...], "incorrect": [...], "suggestions": [...]}
+    """
+    system = """You are a form validation assistant. Analyze the HTML form and check if fields are filled correctly.
+
+For each expected field, check:
+1. Is the field present in the form?
+2. Is it filled with the expected value or similar?
+3. If not filled, what value is shown?
+
+Respond ONLY with JSON:
+{
+    "ok": true/false,
+    "filled": [{"field": "...", "value": "..."}],
+    "missing": [{"field": "...", "expected": "..."}],
+    "incorrect": [{"field": "...", "expected": "...", "actual": "..."}],
+    "suggestions": ["..."]
+}"""
+
+    # Truncate HTML but keep form elements
+    html_truncated = page_html[:8000] if len(page_html) > 8000 else page_html
+    
+    prompt = f"""Check if these fields are filled in the form:
+
+EXPECTED FIELDS:
+{json.dumps(expected_fields, indent=2)}
+
+FORM HTML:
+{html_truncated}
+
+JSON response:"""
+
+    response = ollama_request(prompt, system, temperature=0.1)
+    
+    if response:
+        try:
+            start = response.find('{')
+            end = response.rfind('}') + 1
+            if start >= 0 and end > start:
+                return json.loads(response[start:end])
+        except json.JSONDecodeError:
+            pass
+    
+    return {
+        "ok": False,
+        "filled": [],
+        "missing": [],
+        "incorrect": [],
+        "suggestions": ["Could not verify form - AI check failed"]
+    }
+
+
+def suggest_form_fixes(page_html: str, profile_data: dict) -> list:
+    """
+    Use AI to suggest what fields need to be filled and how.
+    
+    Returns list of actions: [{"action": "fill", "field": "...", "value": "...", "selector": "..."}]
+    """
+    system = """You are a form automation assistant. Analyze the HTML form and suggest what fields need to be filled.
+
+For each unfilled or incorrectly filled field:
+1. Identify the field (by label, id, or name)
+2. Suggest the value from the profile
+3. Provide a CSS selector to find it
+
+Respond ONLY with JSON:
+{
+    "actions": [
+        {"action": "fill", "field": "field_name", "value": "value_to_fill", "selector": "css_selector"},
+        {"action": "select", "field": "dropdown_name", "value": "option_text", "selector": "css_selector"}
+    ]
+}"""
+
+    html_truncated = page_html[:6000] if len(page_html) > 6000 else page_html
+    
+    prompt = f"""Analyze this form and suggest fills:
+
+PROFILE DATA:
+{json.dumps(profile_data, indent=2)[:2000]}
+
+FORM HTML:
+{html_truncated}
+
+JSON response:"""
+
+    response = ollama_request(prompt, system, temperature=0.2)
+    
+    if response:
+        try:
+            start = response.find('{')
+            end = response.rfind('}') + 1
+            if start >= 0 and end > start:
+                data = json.loads(response[start:end])
+                return data.get("actions", [])
+        except json.JSONDecodeError:
+            pass
+    
+    return []
 
 
 # Test

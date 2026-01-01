@@ -1,0 +1,55 @@
+{
+  "_meta": {
+    "description": "Knowledge base for AI-generated answers",
+    "version": "1.0"
+  },
+  
+  "skills": {
+    "tools": [
+      "Jira", "Confluence", "Asana", "Monday.com",
+      "Salesforce", "NetSuite", "SAP",
+      "AWS", "GCP", "Azure",
+      "Tableau", "Power BI", "Looker",
+      "Git", "GitHub", "GitLab"
+    ],
+    "methodologies": [
+      "Agile", "Scrum", "SAFe", "Kanban", 
+      "Waterfall", "Lean", "Six Sigma"
+    ],
+    "domains": [
+      "fintech", "banking", "insurance", 
+      "payments", "trading", "investment banking",
+      "e-commerce", "SaaS", "enterprise"
+    ]
+  },
+  
+  "experience_snippets": {
+    "NetSuite": "Configured NetSuite ERP for multi-currency operations across 15 countries, including AP/AR workflows and financial reporting dashboards.",
+    
+    "multi-currency": "Led implementation of multi-currency trading systems at Deutsche Bank, supporting 8 asset classes across global markets with real-time FX conversion.",
+    
+    "Salesforce": "Integrated Salesforce CRM with internal systems, managing data pipelines and reporting for 500+ users.",
+    
+    "AWS": "Directed AWS cloud migration for 15 applications and 50+ microservices, achieving $1.2M annual cost savings.",
+    
+    "GCP": "Led GCP migration at Deutsche Bank, implementing containerized microservices architecture with Kubernetes.",
+    
+    "Agile": "10+ years leading Agile transformations, certified SAFe POPM and PSM I. Established Scrum Center of Excellence for 5 teams.",
+    
+    "program management": "15+ years managing enterprise technology programs for Fortune 500 companies, delivering $50M+ initiatives on time and budget.",
+    
+    "fintech": "Deep experience in fintech/banking: Deutsche Bank, UBS, insurance platforms. Led trading system modernization and regulatory compliance programs.",
+    
+    "migration": "Specialist in large-scale migrations: DB-Fidessa merger (8 asset classes), SharePoint consolidation (13,000+ sites), cloud transformations.",
+    
+    "team leadership": "Direct experience leading cross-functional teams of 60+ engineers across global time zones, with 10 direct reports."
+  },
+  
+  "answer_templates": {
+    "experience_with_X": "Yes, I have extensive experience with {tool}. {snippet} This directly applies to the requirements of this role.",
+    
+    "years_of_X": "I have {years}+ years of experience in {area}, demonstrated through my work at {companies}.",
+    
+    "why_interested": "I'm excited about this opportunity because it aligns with my background in {domain} and passion for {area}. My experience at {company} directly prepared me for this role."
+  }
+}

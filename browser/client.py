@@ -457,6 +457,27 @@ class BrowserClient:
                 except Exception as e:
                     result["skipped"].append(selector)
         
+        # Country dropdown (react-select)
+        country = profile.get("personal.country", "United States")
+        country_labels = self.page.query_selector_all("label")
+        for label in country_labels:
+            try:
+                if "country" in label.inner_text().lower():
+                    parent = label.evaluate_handle("el => el.parentElement")
+                    dropdown = parent.as_element().query_selector("[class*='select'], [class*='dropdown'], select, input")
+                    if dropdown and dropdown.is_visible():
+                        dropdown.click()
+                        time.sleep(0.3)
+                        # Type more specific text to avoid UAE
+                        self.page.keyboard.type("United Stat", delay=30)
+                        time.sleep(0.8)
+                        self.page.keyboard.press("Enter")
+                        result["filled"] += 1
+                        print(f"  ✅ Country: {country}")
+                        break
+            except:
+                pass
+        
         # Location field - might be Google Places autocomplete
         location = profile.get("personal.location")
         if location:
@@ -652,6 +673,7 @@ class BrowserClient:
     def upload_greenhouse_resume(self, file_path: str) -> bool:
         """
         Upload resume to Greenhouse form.
+        First removes any auto-filled resume, then uploads our file.
         
         Args:
             file_path: Path to resume file
@@ -662,6 +684,36 @@ class BrowserClient:
         print(f"\n📎 Uploading resume: {file_path}")
         
         try:
+            # First, remove any auto-filled resume (click X button)
+            remove_buttons = self.page.query_selector_all("button[aria-label*='Remove'], button[title*='Remove'], [class*='remove'], [class*='delete']")
+            for btn in remove_buttons:
+                try:
+                    # Check if it's near Resume/CV section
+                    parent_text = btn.evaluate("el => el.closest('div')?.innerText || ''")
+                    if 'resume' in parent_text.lower() or 'cv' in parent_text.lower() or '.pdf' in parent_text.lower():
+                        btn.click()
+                        time.sleep(0.5)
+                        print("  🗑️ Removed auto-filled resume")
+                        break
+                except:
+                    pass
+            
+            # Also try clicking × near filename
+            close_icons = self.page.query_selector_all("svg[class*='close'], span:has-text('×'), button:has-text('×')")
+            for icon in close_icons:
+                try:
+                    parent_text = icon.evaluate("el => el.closest('div')?.innerText || ''")
+                    if '.pdf' in parent_text.lower() or 'resume' in parent_text.lower():
+                        icon.click()
+                        time.sleep(0.5)
+                        print("  🗑️ Removed auto-filled resume")
+                        break
+                except:
+                    pass
+            
+            time.sleep(0.3)
+            
+            # Now upload our file
             with self.page.expect_file_chooser() as fc_info:
                 # Click first Attach button (Resume)
                 attach_buttons = self.page.query_selector_all("button:has-text('Attach')")
@@ -670,7 +722,7 @@ class BrowserClient:
             
             file_chooser = fc_info.value
             file_chooser.set_files(file_path)
-            print("  ✅ Resume uploaded")
+            print(f"  ✅ Resume uploaded: {file_path.split('/')[-1]}")
             return True
         except Exception as e:
             print(f"  ❌ Failed to upload resume: {e}")
@@ -755,6 +807,81 @@ class BrowserClient:
         print(f"   TOTAL: {result['total']} fields")
         print(f"{'='*50}")
         
+        # 8. AI Verification - check if any fields were missed
+        try:
+            from utils.ollama_ai import verify_form_fields, suggest_form_fixes, is_ollama_available
+            
+            if is_ollama_available():
+                print("\n🤖 AI Verification...")
+                
+                # Get page HTML for AI analysis
+                page_html = self.page.content()
+                
+                # Expected fields to verify
+                expected = {
+                    "first_name": profile.get("personal.first_name"),
+                    "last_name": profile.get("personal.last_name"),
+                    "email": profile.get("personal.email"),
+                    "phone": profile.get("personal.phone"),
+                    "country": profile.get("personal.country", "United States"),
+                    "gender": profile.get("demographics.gender", "Male"),
+                    "hispanic": profile.get("demographics.hispanic_latino", "No"),
+                    "race": profile.get("demographics.race_ethnicity", "White"),
+                    "veteran": profile.get("demographics.veteran_status"),
+                    "disability": profile.get("demographics.disability_status"),
+                }
+                
+                verification = verify_form_fields(page_html, expected)
+                
+                if verification.get("ok"):
+                    print("   ✅ All fields verified!")
+                else:
+                    # Found issues - try to fix them
+                    missing = verification.get("missing", [])
+                    incorrect = verification.get("incorrect", [])
+                    
+                    if missing:
+                        print(f"   ⚠️ Missing fields: {[m.get('field') for m in missing]}")
+                    if incorrect:
+                        print(f"   ⚠️ Incorrect fields: {[i.get('field') for i in incorrect]}")
+                    
+                    # Get fix suggestions from AI
+                    profile_data = {
+                        "personal": profile.profile.get("personal", {}),
+                        "demographics": profile.profile.get("demographics", {}),
+                    }
+                    fixes = suggest_form_fixes(page_html, profile_data)
+                    
+                    if fixes:
+                        print(f"   🔧 Attempting {len(fixes)} fixes...")
+                        for fix in fixes[:5]:  # Limit to 5 fixes
+                            try:
+                                selector = fix.get("selector")
+                                value = fix.get("value")
+                                action = fix.get("action", "fill")
+                                
+                                if selector and value:
+                                    el = self.page.query_selector(selector)
+                                    if el and el.is_visible():
+                                        if action == "select":
+                                            el.click()
+                                            time.sleep(0.3)
+                                            self.page.keyboard.type(value, delay=30)
+                                            time.sleep(0.5)
+                                            self.page.keyboard.press("Enter")
+                                        else:
+                                            el.fill(value)
+                                        print(f"      ✅ Fixed: {fix.get('field')}")
+                                        result["total"] += 1
+                            except Exception as e:
+                                print(f"      ❌ Fix failed: {fix.get('field')} - {e}")
+                    
+                    result["needs_attention"].extend(verification.get("suggestions", []))
+            else:
+                print("\n⚠️ Ollama not available - skipping AI verification")
+        except Exception as e:
+            print(f"\n⚠️ AI verification error: {e}")
+        
         return result
     
     def fill_greenhouse_demographics(self, profile: Optional[ProfileManager] = None) -> int:
@@ -769,32 +896,73 @@ class BrowserClient:
         print("\n📋 Filling Demographics (voluntary)...")
         filled = 0
         
-        # Direct ID-based filling for known demographics fields
-        demographics_fields = {
-            "#gender": profile.get("demographics.gender", "Decline"),
-            "#hispanic_ethnicity": profile.get("demographics.hispanic_latino", "Decline"),
-            "#veteran_status": profile.get("demographics.veteran_status", "I am not"),
-            "#disability_status": profile.get("demographics.disability_status", "I don't wish"),
+        # Label text -> value to select (Race will be filled after Hispanic)
+        demographics_map = {
+            "gender": profile.get("demographics.gender", "Male"),
+            "hispanic": profile.get("demographics.hispanic_latino", "No"),
+            "veteran": profile.get("demographics.veteran_status", "I am not a protected veteran"),
+            "disability": profile.get("demographics.disability_status", "No, I do not"),
         }
         
-        for selector, value in demographics_fields.items():
-            el = self.page.query_selector(selector)
-            if el:
+        filled_keys = set()  # Track what we've filled
+        
+        # Helper function to fill a dropdown by label
+        def fill_dropdown_by_label(key, value):
+            labels = self.page.query_selector_all("label")
+            for label in labels:
                 try:
-                    el.scroll_into_view_if_needed()
-                    time.sleep(0.3)
-                    el.click()
-                    time.sleep(0.3)
-                    el.type(value, delay=80)
-                    time.sleep(0.8)  # Wait for dropdown
-                    self.page.keyboard.press("ArrowDown")
-                    time.sleep(0.2)
-                    self.page.keyboard.press("Enter")
-                    time.sleep(0.3)
-                    filled += 1
-                    print(f"  ✅ {selector}: {value}")
-                except Exception as e:
-                    print(f"  ⚠️ {selector} failed: {e}")
+                    label_text = label.inner_text().lower().strip()
+                    if key in label_text:
+                        # Find dropdown
+                        dropdown = None
+                        parent = label.evaluate_handle("el => el.parentElement")
+                        if parent:
+                            dropdown = parent.as_element().query_selector("[class*='select'], [class*='Select'], input[role='combobox']")
+                        
+                        if not dropdown:
+                            grandparent = label.evaluate_handle("el => el.parentElement?.parentElement")
+                            if grandparent:
+                                dropdown = grandparent.as_element().query_selector("[class*='select'], [class*='Select'], input[role='combobox']")
+                        
+                        if dropdown and dropdown.is_visible():
+                            dropdown.scroll_into_view_if_needed()
+                            time.sleep(0.2)
+                            dropdown.click()
+                            time.sleep(0.3)
+                            self.page.keyboard.type(value, delay=30)
+                            time.sleep(0.5)
+                            self.page.keyboard.press("Enter")
+                            time.sleep(0.3)
+                            print(f"  ✅ {key}: {value}")
+                            return True
+                        break
+                except:
+                    pass
+            return False
+        
+        # Fill Gender first
+        if fill_dropdown_by_label("gender", demographics_map["gender"]):
+            filled += 1
+        
+        # Fill Hispanic - this will trigger Race field to appear
+        if fill_dropdown_by_label("hispanic", demographics_map["hispanic"]):
+            filled += 1
+            # Wait for Race field to appear dynamically
+            time.sleep(1.0)
+            print("  ⏳ Waiting for Race field to appear...")
+        
+        # Now fill Race (it should have appeared after Hispanic)
+        race_value = profile.get("demographics.race_ethnicity", "White")
+        if fill_dropdown_by_label("race", race_value):
+            filled += 1
+        
+        # Fill Veteran
+        if fill_dropdown_by_label("veteran", demographics_map["veteran"]):
+            filled += 1
+        
+        # Fill Disability
+        if fill_dropdown_by_label("disability", demographics_map["disability"]):
+            filled += 1
         
         return filled
     
@@ -906,6 +1074,11 @@ class BrowserClient:
             "most recent school": education[0].get("school", "") if education else "",
             "most recent degree": education[0].get("degree", "") if education else "",
             "current employer": work_exp[0].get("company", "") if work_exp else "",
+            # Experience years questions
+            "years of experience": "15",
+            "how many years": "15",
+            "product management": "15",
+            "program management": "15",
         }
         
         for question_text, value in text_questions.items():
@@ -929,6 +1102,66 @@ class BrowserClient:
                             except:
                                 pass
                     break
+        
+        # AI-powered answers for unknown questions
+        try:
+            from browser.ai_agent import answer_custom_question
+            from utils.ollama_ai import is_ollama_available
+            
+            if is_ollama_available():
+                print("  \n🤖 AI checking for unanswered questions...")
+                
+                # Find all unfilled required fields
+                labels = self.page.query_selector_all("label")
+                for label in labels:
+                    try:
+                        label_text = label.inner_text().strip()
+                        if not label_text or len(label_text) < 10:
+                            continue
+                        
+                        # Skip already handled questions
+                        already_handled = any(q in label_text.lower() for q in [
+                            "linkedin", "name", "email", "phone", "resume", "gender",
+                            "race", "veteran", "disability", "hispanic"
+                        ])
+                        if already_handled:
+                            continue
+                        
+                        # Check if field is empty
+                        label_for = label.get_attribute("for")
+                        if label_for:
+                            el = self.page.query_selector(f"#{label_for}")
+                            if el and el.is_visible():
+                                current_val = el.get_attribute("value") or el.inner_text()
+                                if current_val and len(current_val.strip()) > 0:
+                                    continue  # Already filled
+                                
+                                # Ask AI for answer
+                                profile_data = profile.profile if hasattr(profile, 'profile') else {}
+                                ai_answer = answer_custom_question(label_text, profile_data)
+                                
+                                if ai_answer:
+                                    el.scroll_into_view_if_needed()
+                                    time.sleep(0.2)
+                                    
+                                    tag = el.evaluate("el => el.tagName")
+                                    if tag == "INPUT":
+                                        el.fill(ai_answer)
+                                    else:
+                                        el.click()
+                                        time.sleep(0.2)
+                                        self.page.keyboard.type(ai_answer, delay=30)
+                                        time.sleep(0.3)
+                                        self.page.keyboard.press("Enter")
+                                    
+                                    filled += 1
+                                    print(f"  🤖 AI answered: {label_text[:40]}... = {ai_answer[:30]}...")
+                    except Exception as e:
+                        pass
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"  ⚠️ AI questions error: {e}")
         
         return filled
     

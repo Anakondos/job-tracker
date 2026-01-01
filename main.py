@@ -1476,9 +1476,9 @@ class PipelineStatusUpdate(BaseModel):
 def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
     """
     Update job status in pipeline.
-    Valid statuses: New, Applied, Interview, Offer, Rejected, Withdrawn, Closed
+    Valid statuses: New, Selected, Ready, Applied, Interview, Offer, Rejected, Withdrawn, Closed
     """
-    valid_statuses = [STATUS_NEW, STATUS_APPLIED, STATUS_INTERVIEW, 
+    valid_statuses = [STATUS_NEW, "Selected", "Ready", STATUS_APPLIED, STATUS_INTERVIEW, 
                       STATUS_OFFER, STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED]
     
     if payload.status not in valid_statuses:
@@ -1973,43 +1973,116 @@ os.chdir('{cwd}')
 from browser import BrowserClient, ProfileManager
 from pathlib import Path
 import time
+import re
 
-profile = ProfileManager(Path("browser/profiles/{profile_name}.json"))
+PROFILE_PATH = "browser/profiles/{profile_name}.json"
+profile = ProfileManager(Path(PROFILE_PATH))
 browser = BrowserClient()
 browser.start()
 
+# Convert company career page URL to direct Greenhouse form URL
+job_url = "{job_url}"
+if 'gh_jid=' in job_url and 'job-boards.greenhouse.io' not in job_url:
+    # Extract gh_jid and company from URL like coinbase.com/careers/positions/123?gh_jid=456
+    match = re.search(r'gh_jid=(\d+)', job_url)
+    if match:
+        gh_jid = match.group(1)
+        # Try to get company name from URL
+        company_match = re.search(r'https?://(?:www\.)?([^/]+)\.com', job_url)
+        company = company_match.group(1) if company_match else 'company'
+        # Use direct Greenhouse embed URL
+        job_url = "https://job-boards.greenhouse.io/embed/job_app?token=" + gh_jid + "&for=" + company + "&gh_jid=" + gh_jid
+        print("Converted to direct Greenhouse URL: " + job_url)
+
 try:
-    browser.open_job_page("{job_url}")
-    time.sleep(3)
+    browser.open_job_page(job_url)
+    time.sleep(2)  # Brief wait for form load
     
-    # Try to click Apply button if visible (some pages go directly to form)
+    # Check if we're on a form page or need to click Apply
+    page_url = browser.page.url
     try:
-        apply_btn = browser.page.query_selector("a:has-text('Apply'), button:has-text('Apply')")
-        if apply_btn and apply_btn.is_visible():
-            print("Found Apply button, clicking...")
+        
+        # Try multiple selectors for Apply button
+        apply_selectors = [
+            "span:has-text('Apply') >> visible=true",
+            "a:has-text('Apply')",
+            "button:has-text('Apply')",
+            "div:has-text('Apply') >> visible=true",
+            "a:has-text('Apply Now')",
+            "button:has-text('Apply Now')",
+            "a:has-text('Apply for this job')",
+            "[data-qa='apply-button']",
+            ".apply-button",
+            "#apply-button",
+        ]
+        
+        apply_btn = None
+        for sel in apply_selectors:
+            try:
+                elements = browser.page.query_selector_all(sel)
+                for el in elements:
+                    # Skip if it's in footer or very small
+                    if el.is_visible():
+                        box = el.bounding_box()
+                        if box and box['height'] > 20 and box['y'] < 2000:  # Not in footer
+                            apply_btn = el
+                            print("Found Apply button with selector: " + sel)
+                            break
+                if apply_btn:
+                    break
+            except:
+                pass
+        
+        # If still not found, scroll and try again
+        if not apply_btn:
+            browser.page.evaluate("window.scrollBy(0, 300)")
+            time.sleep(0.5)
+            for sel in apply_selectors[:3]:  # Try first 3 selectors again
+                try:
+                    apply_btn = browser.page.query_selector(sel)
+                    if apply_btn and apply_btn.is_visible():
+                        print("Found Apply button after scroll: " + sel)
+                        break
+                    apply_btn = None
+                except:
+                    pass
+        
+        if apply_btn:
+            print("Clicking Apply button...")
+            apply_btn.scroll_into_view_if_needed()
+            time.sleep(0.5)
             apply_btn.click()
-            time.sleep(2)
+            time.sleep(3)  # Wait for form to load
+            
+            # Check if redirected to Greenhouse
+            current_url = browser.page.url
+            if 'greenhouse' in current_url or 'boards.greenhouse.io' in current_url:
+                print("Redirected to Greenhouse: " + current_url)
+            else:
+                # Maybe form appeared on same page - wait a bit more
+                time.sleep(2)
         else:
-            print("No Apply button found or already on form")
+            print("No Apply button found - assuming already on form")
     except Exception as e:
-        print(f"Apply button click skipped: {{e}}")
+        print("Apply button click skipped: " + str(e))
     
     # Fill form
     result = browser.fill_greenhouse_complete(profile)
     print(f"Filled {{result['total']}} fields")
-    print("Browser open - review and submit manually")
+    print("Browser will stay open for 60 seconds for review...")
     
-    while True:
-        time.sleep(60)
+    # Keep open for review, then close
+    time.sleep(60)
 except KeyboardInterrupt:
     pass
 except Exception as e:
     print(f"Error: {{e}}")
     import traceback
     traceback.print_exc()
-    time.sleep(30)  # Keep open to see error
+    time.sleep(10)  # Keep open to see error
 finally:
     browser.close()
+    print("Browser closed")
 ''')
     
     log_file = open('/tmp/greenhouse_apply.log', 'w')
@@ -2135,4 +2208,270 @@ Sincerely,
         "bullets": bullets,
         "company": company,
         "position": position
+    }
+
+
+@app.post("/save-cover-letter")
+def save_cover_letter(payload: dict):
+    """
+    Save cover letter to file.
+    Expects: {company, position, content}
+    Returns: {ok, file_path}
+    """
+    company = payload.get("company", "Unknown").replace(" ", "_").replace("/", "_")
+    position = payload.get("position", "Position").replace(" ", "_").replace("/", "_")
+    content = payload.get("content", "")
+    
+    if not content:
+        return {"error": "No content provided"}
+    
+    # Create cover letters folder
+    cover_letters_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/cover_letters")
+    cover_letters_dir.mkdir(exist_ok=True)
+    
+    # Save as text file (can convert to PDF later)
+    filename = f"{company}_{position}_Cover_Letter.txt"
+    file_path = cover_letters_dir / filename
+    
+    with open(file_path, "w") as f:
+        f.write(content)
+    
+    return {
+        "ok": True,
+        "file_path": str(file_path),
+        "filename": filename
+    }
+
+
+@app.get("/available-cvs")
+def get_available_cvs():
+    """
+    Get list of available CV files.
+    """
+    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    cvs = []
+    
+    for f in cv_dir.glob("*.pdf"):
+        cvs.append({"path": str(f), "name": f.name})
+    
+    # Also check for docx
+    for f in cv_dir.glob("*CV*.docx"):
+        if not f.name.startswith("~"):
+            cvs.append({"path": str(f), "name": f.name})
+    
+    return {"cvs": cvs}
+
+
+@app.post("/select-cv")
+def select_cv_for_job(payload: dict):
+    """
+    Use AI to select best CV for a job.
+    Expects: {job_title}
+    Returns: {selected_cv, reason}
+    """
+    job_title = payload.get("job_title", "")
+    
+    # Get available CVs
+    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    available_cvs = [str(f) for f in cv_dir.glob("*.pdf")]
+    
+    if not available_cvs:
+        return {"error": "No CV files found"}
+    
+    try:
+        from utils.ollama_ai import select_cv_for_role, is_ollama_available
+        
+        if is_ollama_available():
+            selected = select_cv_for_role(job_title, available_cvs)
+            return {
+                "ok": True,
+                "selected_cv": selected,
+                "filename": Path(selected).name if selected else None,
+                "ai_selected": True
+            }
+    except Exception as e:
+        print(f"AI CV selection error: {e}")
+    
+    # Fallback: simple keyword matching
+    title_lower = job_title.lower()
+    for cv in available_cvs:
+        cv_lower = cv.lower()
+        if 'tpm' in title_lower and 'tpm' in cv_lower:
+            return {"ok": True, "selected_cv": cv, "filename": Path(cv).name, "ai_selected": False}
+        if 'product' in title_lower and 'product' in cv_lower:
+            return {"ok": True, "selected_cv": cv, "filename": Path(cv).name, "ai_selected": False}
+        if 'program' in title_lower and 'tpm' in cv_lower:
+            return {"ok": True, "selected_cv": cv, "filename": Path(cv).name, "ai_selected": False}
+    
+    return {"ok": True, "selected_cv": available_cvs[0], "filename": Path(available_cvs[0]).name, "ai_selected": False}
+
+
+@app.get("/apply-log")
+def get_apply_log():
+    """
+    Get the latest apply log content.
+    """
+    log_path = Path("/tmp/greenhouse_apply.log")
+    if not log_path.exists():
+        return {"ok": False, "log": "No log file found"}
+    
+    try:
+        with open(log_path, "r") as f:
+            content = f.read()
+        return {"ok": True, "log": content}
+    except Exception as e:
+        return {"ok": False, "log": f"Error reading log: {e}"}
+
+
+@app.post("/fetch-job-description")
+def fetch_job_description(payload: dict):
+    """
+    Fetch job description from URL.
+    Expects: {url}
+    Returns: {ok, description}
+    """
+    import requests
+    from bs4 import BeautifulSoup
+    
+    url = payload.get("url", "")
+    if not url:
+        return {"ok": False, "error": "No URL provided"}
+    
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+        
+        soup = BeautifulSoup(resp.text, "html.parser")
+        
+        # Try different selectors for job description
+        description = ""
+        
+        # Greenhouse
+        content = soup.select_one("#content, .content, [data-automation='job-description']")
+        if content:
+            description = content.get_text(separator="\n", strip=True)
+        
+        # Lever
+        if not description:
+            content = soup.select_one(".posting-page, .section-wrapper")
+            if content:
+                description = content.get_text(separator="\n", strip=True)
+        
+        # Generic fallback - main content area
+        if not description:
+            for selector in ["main", "article", ".job-description", ".description", "#job-content"]:
+                content = soup.select_one(selector)
+                if content:
+                    description = content.get_text(separator="\n", strip=True)
+                    break
+        
+        # Clean up - remove excessive whitespace, limit length
+        if description:
+            lines = [line.strip() for line in description.split("\n") if line.strip()]
+            description = "\n".join(lines[:100])  # Limit to ~100 lines
+            description = description[:3000]  # Limit to 3000 chars
+        
+        if description:
+            return {"ok": True, "description": description}
+        else:
+            return {"ok": False, "error": "Could not extract job description"}
+            
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.post("/apply/vision")
+def apply_with_vision(payload: ApplyRequest):
+    """
+    Apply to job using Vision AI Agent.
+    AI looks at screenshots and fills form like a human.
+    """
+    import subprocess
+    import sys
+    import os
+    
+    job_url = payload.job_url
+    profile_name = payload.profile
+    
+    profile_path = Path(f"browser/profiles/{profile_name}.json")
+    if not profile_path.exists():
+        return {"ok": False, "error": f"Profile '{profile_name}' not found"}
+    
+    # Load profile data
+    with open(profile_path) as f:
+        profile_data = json.load(f)
+    
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    if "Mobile Documents" in cwd:
+        cwd = cwd.replace(
+            "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects",
+            "/Users/antonkondakov/icloud-projects"
+        )
+    
+    script = f'''import sys
+sys.path.insert(0, '{cwd}')
+import os
+os.chdir('{cwd}')
+
+from browser.client import BrowserClient
+from browser.vision_agent import VisionFormAgent
+import json
+import time
+
+# Load profile from file
+with open("browser/profiles/{profile_name}.json") as f:
+    profile = json.load(f)
+
+# Start browser
+browser = BrowserClient()
+browser.start()
+
+try:
+    # Open job page
+    browser.open_job_page("{job_url}")
+    time.sleep(3)
+    
+    # Start Vision Agent
+    agent = VisionFormAgent(browser.page, profile)
+    result = agent.fill_form()
+    
+    print("\\n" + "="*50)
+    print(f"Result: {{result}}")
+    print("="*50)
+    
+    # Keep open for review
+    print("\\nBrowser stays open for 60 seconds...")
+    time.sleep(60)
+    
+except Exception as e:
+    print(f"Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+    time.sleep(10)
+finally:
+    browser.close()
+'''
+    
+    # Write and execute script
+    script_file = "/tmp/vision_apply_script.py"
+    log_file = "/tmp/vision_apply.log"
+    
+    with open(script_file, "w") as f:
+        f.write(script)
+    
+    # Run in background
+    subprocess.Popen(
+        [sys.executable, script_file],
+        stdout=open(log_file, "w"),
+        stderr=subprocess.STDOUT,
+        start_new_session=True
+    )
+    
+    return {
+        "ok": True,
+        "message": f"Vision AI Agent started for {job_url}",
+        "log_file": log_file,
+        "screenshots_dir": "/tmp/vision_agent"
     }

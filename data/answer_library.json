@@ -85,7 +85,11 @@
     "why_this_company": {
       "question": "Why do you want to work at [Company]?",
       "answer": "I'm drawn to [Company]'s commitment to innovation and technology excellence. Your focus on [specific area] resonates with my background in delivering enterprise-scale solutions. I'm particularly impressed by [recent news/product/initiative] and see a strong alignment between my experience driving digital transformation programs and your company's strategic direction.",
-      "placeholders": ["[Company]", "[specific area]", "[recent news/product/initiative]"]
+      "placeholders": [
+        "[Company]",
+        "[specific area]",
+        "[recent news/product/initiative]"
+      ]
     },
     "biggest_achievement": {
       "question": "What is your biggest professional achievement?",
@@ -131,7 +135,22 @@
   },
   "cover_letter_template": {
     "opening": "I am writing to express my strong interest in the [POSITION] position at [COMPANY]. With over 15 years of experience leading complex technology programs for Fortune 500 companies, I bring a proven track record of delivering large-scale cloud migrations, platform modernizations, and cross-functional program execution.",
-    "body_template": "My experience directly addresses your key requirements:\n\n• [BULLET_1]\n• [BULLET_2]\n• [BULLET_3]",
+    "body_template": "My experience directly addresses your key requirements:\n\n\u2022 [BULLET_1]\n\u2022 [BULLET_2]\n\u2022 [BULLET_3]",
     "closing": "I would welcome the opportunity to discuss how my background can contribute to [COMPANY]'s continued success. Thank you for considering my application."
+  },
+  "experience_answers": {
+    "years_product_management": "15",
+    "years_program_management": "15",
+    "years_tpm": "10",
+    "years_project_management": "15",
+    "years_leadership": "10",
+    "years_agile": "12",
+    "years_scrum": "10",
+    "team_size_managed": "50+",
+    "budget_managed": "$10M+",
+    "current_salary": "Prefer not to disclose",
+    "expected_salary": "Negotiable based on total compensation",
+    "notice_period": "2 weeks",
+    "start_date": "Immediately available"
   }
 }

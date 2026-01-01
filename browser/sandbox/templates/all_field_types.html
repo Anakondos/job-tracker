@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Field Types - Form Sandbox</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; border-left: 4px solid #007bff; padding-left: 10px; }
+        
+        .form-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .field-group {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        label .required { color: red; }
+        label .field-type { 
+            font-size: 0.8em; 
+            color: #888; 
+            font-weight: normal;
+            margin-left: 10px;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="url"],
+        input[type="number"],
+        input[type="password"],
+        input[type="search"],
+        input[type="date"],
+        input[type="time"],
+        input[type="datetime-local"],
+        input[type="month"],
+        input[type="week"],
+        input[type="color"],
+        input[type="range"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        
+        input[aria-invalid="true"] {
+            border-color: red;
+        }
+        
+        textarea { min-height: 100px; resize: vertical; }
+        
+        .radio-group, .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        
+        .radio-group input, .checkbox-group input {
+            margin-right: 8px;
+            width: auto;
+        }
+        
+        .hint {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .error {
+            font-size: 0.85em;
+            color: red;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        input:invalid + .error {
+            display: block;
+        }
+        
+        button[type="submit"] {
+            background: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        button[type="submit"]:hover {
+            background: #0056b3;
+        }
+        
+        /* Custom React-like Select */
+        .custom-select-wrapper {
+            position: relative;
+        }
+        
+        .custom-select {
+            cursor: pointer;
+        }
+        
+        .custom-select-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+        
+        .custom-select-menu.open {
+            display: block;
+        }
+        
+        .custom-select-option {
+            padding: 10px;
+            cursor: pointer;
+        }
+        
+        .custom-select-option:hover {
+            background: #f0f0f0;
+        }
+        
+        .custom-select-option.selected {
+            background: #007bff;
+            color: white;
+        }
+        
+        /* File drop zone */
+        .file-drop-zone {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            color: #666;
+            transition: all 0.2s;
+        }
+        
+        .file-drop-zone:hover, .file-drop-zone.dragover {
+            border-color: #007bff;
+            background: rgba(0,123,255,0.05);
+        }
+        
+        .file-drop-zone input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 All Field Types Test</h1>
+    <p>This form contains all HTML input types for testing Smart Filler V4.0</p>
+    
+    <form action="/submit" method="POST" enctype="multipart/form-data" id="test-form">
+        
+        <!-- SECTION 1: Text Fields -->
+        <div class="form-section">
+            <h2>📝 Text Fields</h2>
+            
+            <div class="field-group">
+                <label for="first_name">
+                    First Name <span class="required">*</span>
+                    <span class="field-type">input[type=text]</span>
+                </label>
+                <input type="text" id="first_name" name="first_name" required 
+                       placeholder="Enter your first name">
+            </div>
+            
+            <div class="field-group">
+                <label for="last_name">
+                    Last Name <span class="required">*</span>
+                    <span class="field-type">input[type=text]</span>
+                </label>
+                <input type="text" id="last_name" name="last_name" required>
+            </div>
+            
+            <div class="field-group">
+                <label for="email">
+                    Email <span class="required">*</span>
+                    <span class="field-type">input[type=email]</span>
+                </label>
+                <input type="email" id="email" name="email" required 
+                       placeholder="you@example.com">
+                <div class="error">Please enter a valid email address</div>
+            </div>
+            
+            <div class="field-group">
+                <label for="phone">
+                    Phone
+                    <span class="field-type">input[type=tel]</span>
+                </label>
+                <input type="tel" id="phone" name="phone" 
+                       placeholder="(123) 456-7890">
+            </div>
+            
+            <div class="field-group">
+                <label for="website">
+                    Website/Portfolio
+                    <span class="field-type">input[type=url]</span>
+                </label>
+                <input type="url" id="website" name="website" 
+                       placeholder="https://yoursite.com">
+            </div>
+            
+            <div class="field-group">
+                <label for="linkedin">
+                    LinkedIn URL
+                    <span class="field-type">input[type=url]</span>
+                </label>
+                <input type="url" id="linkedin" name="linkedin" 
+                       placeholder="https://linkedin.com/in/yourprofile">
+            </div>
+            
+            <div class="field-group">
+                <label for="password">
+                    Create Password (test only)
+                    <span class="field-type">input[type=password]</span>
+                </label>
+                <input type="password" id="password" name="password">
+            </div>
+            
+            <div class="field-group">
+                <label for="search_field">
+                    Search (test)
+                    <span class="field-type">input[type=search]</span>
+                </label>
+                <input type="search" id="search_field" name="search_field" 
+                       placeholder="Search...">
+            </div>
+        </div>
+        
+        <!-- SECTION 2: Number Fields -->
+        <div class="form-section">
+            <h2>🔢 Number Fields</h2>
+            
+            <div class="field-group">
+                <label for="years_experience">
+                    Years of Experience <span class="required">*</span>
+                    <span class="field-type">input[type=number]</span>
+                </label>
+                <input type="number" id="years_experience" name="years_experience" 
+                       min="0" max="50" required>
+            </div>
+            
+            <div class="field-group">
+                <label for="salary_expectation">
+                    Salary Expectation ($)
+                    <span class="field-type">input[type=number]</span>
+                </label>
+                <input type="number" id="salary_expectation" name="salary_expectation" 
+                       min="0" step="1000" placeholder="e.g., 150000">
+            </div>
+            
+            <div class="field-group">
+                <label for="skill_level">
+                    Skill Level (1-10)
+                    <span class="field-type">input[type=range]</span>
+                </label>
+                <input type="range" id="skill_level" name="skill_level" 
+                       min="1" max="10" value="5">
+                <div class="hint">Current: <span id="skill_level_value">5</span></div>
+            </div>
+        </div>
+        
+        <!-- SECTION 3: Textarea -->
+        <div class="form-section">
+            <h2>📄 Textarea</h2>
+            
+            <div class="field-group">
+                <label for="cover_letter">
+                    Cover Letter / Why are you interested?
+                    <span class="field-type">textarea</span>
+                </label>
+                <textarea id="cover_letter" name="cover_letter" 
+                          placeholder="Tell us why you're interested in this role..."></textarea>
+                <div class="hint">Max 500 words</div>
+            </div>
+            
+            <div class="field-group">
+                <label for="additional_info">
+                    Additional Information
+                    <span class="field-type">textarea</span>
+                </label>
+                <textarea id="additional_info" name="additional_info"></textarea>
+            </div>
+        </div>
+        
+        <!-- SECTION 4: Native Select (Dropdown) -->
+        <div class="form-section">
+            <h2>📋 Native Select (Dropdown)</h2>
+            
+            <div class="field-group">
+                <label for="country">
+                    Country <span class="required">*</span>
+                    <span class="field-type">select</span>
+                </label>
+                <select id="country" name="country" required>
+                    <option value="">Select country...</option>
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="UK">United Kingdom</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                    <option value="AU">Australia</option>
+                    <option value="JP">Japan</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+            
+            <div class="field-group">
+                <label for="state">
+                    State (US only)
+                    <span class="field-type">select</span>
+                </label>
+                <select id="state" name="state">
+                    <option value="">Select state...</option>
+                    <option value="AL">Alabama</option>
+                    <option value="AK">Alaska</option>
+                    <option value="AZ">Arizona</option>
+                    <option value="CA">California</option>
+                    <option value="CO">Colorado</option>
+                    <option value="NC">North Carolina</option>
+                    <option value="NY">New York</option>
+                    <option value="TX">Texas</option>
+                    <option value="WA">Washington</option>
+                </select>
+            </div>
+            
+            <div class="field-group">
+                <label for="employment_type">
+                    Employment Type
+                    <span class="field-type">select</span>
+                </label>
+                <select id="employment_type" name="employment_type">
+                    <option value="">Select...</option>
+                    <option value="full_time">Full-time</option>
+                    <option value="part_time">Part-time</option>
+                    <option value="contract">Contract</option>
+                    <option value="internship">Internship</option>
+                </select>
+            </div>
+            
+            <div class="field-group">
+                <label for="how_heard">
+                    How did you hear about us? <span class="required">*</span>
+                    <span class="field-type">select</span>
+                </label>
+                <select id="how_heard" name="how_heard" required>
+                    <option value="">Select...</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="indeed">Indeed</option>
+                    <option value="glassdoor">Glassdoor</option>
+                    <option value="referral">Employee Referral</option>
+                    <option value="company_website">Company Website</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- SECTION 5: Radio Buttons -->
+        <div class="form-section">
+            <h2>🔘 Radio Buttons</h2>
+            
+            <div class="field-group">
+                <label>
+                    Are you authorized to work in the US? <span class="required">*</span>
+                    <span class="field-type">input[type=radio]</span>
+                </label>
+                <div class="radio-group">
+                    <label><input type="radio" name="authorized_us" value="yes" required> Yes</label>
+                    <label><input type="radio" name="authorized_us" value="no"> No</label>
+                </div>
+            </div>
+            
+            <div class="field-group">
+                <label>
+                    Will you require visa sponsorship?
+                    <span class="field-type">input[type=radio]</span>
+                </label>
+                <div class="radio-group">
+                    <label><input type="radio" name="visa_sponsorship" value="yes"> Yes</label>
+                    <label><input type="radio" name="visa_sponsorship" value="no"> No</label>
+                </div>
+            </div>
+            
+            <div class="field-group">
+                <label>
+                    Preferred Work Location
+                    <span class="field-type">input[type=radio]</span>
+                </label>
+                <div class="radio-group">
+                    <label><input type="radio" name="work_location" value="onsite"> On-site</label>
+                    <label><input type="radio" name="work_location" value="hybrid"> Hybrid</label>
+                    <label><input type="radio" name="work_location" value="remote"> Remote</label>
+                </div>
+            </div>
+            
+            <div class="field-group">
+                <label>
+                    Gender (optional)
+                    <span class="field-type">input[type=radio]</span>
+                </label>
+                <div class="radio-group">
+                    <label><input type="radio" name="gender" value="male"> Male</label>
+                    <label><input type="radio" name="gender" value="female"> Female</label>
+                    <label><input type="radio" name="gender" value="non_binary"> Non-binary</label>
+                    <label><input type="radio" name="gender" value="decline"> Decline to self-identify</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SECTION 6: Checkboxes -->
+        <div class="form-section">
+            <h2>☑️ Checkboxes</h2>
+            
+            <div class="field-group">
+                <label>
+                    <span class="field-type">input[type=checkbox] - single</span>
+                </label>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="age_confirm" id="age_confirm" required>
+                        I confirm I am at least 18 years old <span class="required">*</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="field-group">
+                <label>
+                    <span class="field-type">input[type=checkbox] - single</span>
+                </label>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="terms_agree" id="terms_agree" required>
+                        I agree to the Terms and Conditions <span class="required">*</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="field-group">
+                <label>
+                    Skills (select all that apply)
+                    <span class="field-type">input[type=checkbox] - multiple</span>
+                </label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" name="skills" value="python"> Python</label>
+                    <label><input type="checkbox" name="skills" value="javascript"> JavaScript</label>
+                    <label><input type="checkbox" name="skills" value="sql"> SQL</label>
+                    <label><input type="checkbox" name="skills" value="aws"> AWS</label>
+                    <label><input type="checkbox" name="skills" value="agile"> Agile/Scrum</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SECTION 7: Date/Time Fields -->
+        <div class="form-section">
+            <h2>📅 Date/Time Fields</h2>
+            
+            <div class="field-group">
+                <label for="start_date">
+                    Earliest Start Date
+                    <span class="field-type">input[type=date]</span>
+                </label>
+                <input type="date" id="start_date" name="start_date">
+            </div>
+            
+            <div class="field-group">
+                <label for="birth_date">
+                    Date of Birth (optional)
+                    <span class="field-type">input[type=date]</span>
+                </label>
+                <input type="date" id="birth_date" name="birth_date">
+            </div>
+            
+            <div class="field-group">
+                <label for="preferred_time">
+                    Preferred Interview Time
+                    <span class="field-type">input[type=time]</span>
+                </label>
+                <input type="time" id="preferred_time" name="preferred_time">
+            </div>
+            
+            <div class="field-group">
+                <label for="datetime_test">
+                    DateTime Test
+                    <span class="field-type">input[type=datetime-local]</span>
+                </label>
+                <input type="datetime-local" id="datetime_test" name="datetime_test">
+            </div>
+            
+            <div class="field-group">
+                <label for="month_test">
+                    Month Test
+                    <span class="field-type">input[type=month]</span>
+                </label>
+                <input type="month" id="month_test" name="month_test">
+            </div>
+            
+            <div class="field-group">
+                <label for="week_test">
+                    Week Test
+                    <span class="field-type">input[type=week]</span>
+                </label>
+                <input type="week" id="week_test" name="week_test">
+            </div>
+        </div>
+        
+        <!-- SECTION 8: File Upload -->
+        <div class="form-section">
+            <h2>📎 File Upload</h2>
+            
+            <div class="field-group">
+                <label for="resume">
+                    Resume/CV <span class="required">*</span>
+                    <span class="field-type">input[type=file]</span>
+                </label>
+                <input type="file" id="resume" name="resume" 
+                       accept=".pdf,.doc,.docx" required>
+                <div class="hint">Accepted formats: PDF, DOC, DOCX (max 5MB)</div>
+            </div>
+            
+            <div class="field-group">
+                <label for="cover_letter_file">
+                    Cover Letter (optional)
+                    <span class="field-type">input[type=file]</span>
+                </label>
+                <input type="file" id="cover_letter_file" name="cover_letter_file" 
+                       accept=".pdf,.doc,.docx">
+            </div>
+            
+            <div class="field-group">
+                <label for="portfolio">
+                    Portfolio/Work Samples
+                    <span class="field-type">input[type=file] multiple</span>
+                </label>
+                <input type="file" id="portfolio" name="portfolio" 
+                       accept=".pdf,.png,.jpg,.zip" multiple>
+            </div>
+            
+            <div class="field-group">
+                <label>
+                    Drag & Drop Upload
+                    <span class="field-type">custom drop zone</span>
+                </label>
+                <div class="file-drop-zone" id="drop_zone">
+                    <p>Drag files here or click to upload</p>
+                    <input type="file" id="drop_zone_input" name="drop_files">
+                </div>
+            </div>
+        </div>
+        
+        <!-- SECTION 9: Special Fields -->
+        <div class="form-section">
+            <h2>🎨 Special Fields</h2>
+            
+            <div class="field-group">
+                <label for="favorite_color">
+                    Favorite Color (test)
+                    <span class="field-type">input[type=color]</span>
+                </label>
+                <input type="color" id="favorite_color" name="favorite_color" value="#007bff">
+            </div>
+            
+            <div class="field-group">
+                <label for="hidden_field">
+                    Hidden Field (should be skipped)
+                    <span class="field-type">input[type=hidden]</span>
+                </label>
+                <input type="hidden" id="hidden_field" name="hidden_field" value="secret_value">
+            </div>
+        </div>
+        
+        <!-- SECTION 10: Custom Autocomplete (React Select style) -->
+        <div class="form-section">
+            <h2>🔍 Custom Autocomplete (React Select style)</h2>
+            
+            <div class="field-group">
+                <label for="city_autocomplete">
+                    City
+                    <span class="field-type">custom combobox</span>
+                </label>
+                <div class="custom-select-wrapper">
+                    <input type="text" id="city_autocomplete" name="city" 
+                           role="combobox" 
+                           aria-haspopup="listbox"
+                           aria-autocomplete="list"
+                           placeholder="Start typing a city..."
+                           autocomplete="off">
+                    <div class="custom-select-menu" id="city_menu" role="listbox">
+                        <div class="custom-select-option" data-value="raleigh">Raleigh, NC</div>
+                        <div class="custom-select-option" data-value="durham">Durham, NC</div>
+                        <div class="custom-select-option" data-value="charlotte">Charlotte, NC</div>
+                        <div class="custom-select-option" data-value="new_york">New York, NY</div>
+                        <div class="custom-select-option" data-value="san_francisco">San Francisco, CA</div>
+                        <div class="custom-select-option" data-value="los_angeles">Los Angeles, CA</div>
+                        <div class="custom-select-option" data-value="seattle">Seattle, WA</div>
+                        <div class="custom-select-option" data-value="austin">Austin, TX</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="field-group">
+                <label for="company_autocomplete">
+                    Previous Company (large list)
+                    <span class="field-type">custom combobox - 50+ options</span>
+                </label>
+                <div class="custom-select-wrapper">
+                    <input type="text" id="company_autocomplete" name="previous_company" 
+                           role="combobox" 
+                           aria-haspopup="listbox"
+                           aria-autocomplete="list"
+                           placeholder="Start typing company name..."
+                           autocomplete="off">
+                    <div class="custom-select-menu" id="company_menu" role="listbox">
+                        <!-- Will be populated by JavaScript with 50+ companies -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SECTION 11: Datalist (HTML5 native autocomplete) -->
+        <div class="form-section">
+            <h2>📝 Datalist (Native Autocomplete)</h2>
+            
+            <div class="field-group">
+                <label for="degree">
+                    Degree
+                    <span class="field-type">input + datalist</span>
+                </label>
+                <input type="text" id="degree" name="degree" list="degree_list"
+                       placeholder="Select or type degree...">
+                <datalist id="degree_list">
+                    <option value="High School">
+                    <option value="Associate's Degree">
+                    <option value="Bachelor's Degree">
+                    <option value="Master's Degree">
+                    <option value="MBA">
+                    <option value="Ph.D.">
+                    <option value="Other">
+                </datalist>
+            </div>
+            
+            <div class="field-group">
+                <label for="university">
+                    University
+                    <span class="field-type">input + datalist</span>
+                </label>
+                <input type="text" id="university" name="university" list="university_list"
+                       placeholder="Select or type university...">
+                <datalist id="university_list">
+                    <option value="MIT">
+                    <option value="Stanford University">
+                    <option value="Harvard University">
+                    <option value="UC Berkeley">
+                    <option value="Carnegie Mellon University">
+                    <option value="Georgia Tech">
+                    <option value="NC State University">
+                    <option value="Duke University">
+                </datalist>
+            </div>
+        </div>
+        
+        <!-- Submit -->
+        <div class="form-section">
+            <button type="submit">Submit Application</button>
+        </div>
+    </form>
+    
+    <script>
+        // Range slider value display
+        const skillLevel = document.getElementById('skill_level');
+        const skillLevelValue = document.getElementById('skill_level_value');
+        skillLevel.addEventListener('input', () => {
+            skillLevelValue.textContent = skillLevel.value;
+        });
+        
+        // Custom autocomplete - City
+        const cityInput = document.getElementById('city_autocomplete');
+        const cityMenu = document.getElementById('city_menu');
+        
+        cityInput.addEventListener('focus', () => cityMenu.classList.add('open'));
+        cityInput.addEventListener('blur', () => setTimeout(() => cityMenu.classList.remove('open'), 200));
+        
+        cityInput.addEventListener('input', () => {
+            const filter = cityInput.value.toLowerCase();
+            const options = cityMenu.querySelectorAll('.custom-select-option');
+            options.forEach(opt => {
+                const match = opt.textContent.toLowerCase().includes(filter);
+                opt.style.display = match ? 'block' : 'none';
+            });
+        });
+        
+        cityMenu.querySelectorAll('.custom-select-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                cityInput.value = opt.textContent;
+                cityMenu.classList.remove('open');
+            });
+        });
+        
+        // Custom autocomplete - Company (large list)
+        const companies = [
+            'Google', 'Meta', 'Amazon', 'Apple', 'Microsoft', 'Netflix', 'Stripe', 'Coinbase',
+            'Uber', 'Lyft', 'Airbnb', 'Dropbox', 'Slack', 'Zoom', 'Salesforce', 'Adobe',
+            'Oracle', 'IBM', 'Intel', 'Cisco', 'VMware', 'ServiceNow', 'Workday', 'Splunk',
+            'Twilio', 'Datadog', 'Snowflake', 'Databricks', 'Confluent', 'HashiCorp',
+            'MongoDB', 'Elastic', 'Cloudflare', 'Fastly', 'Okta', 'CrowdStrike', 'Zscaler',
+            'Palo Alto Networks', 'Fortinet', 'SentinelOne', 'Tanium', 'Lacework',
+            'Goldman Sachs', 'Morgan Stanley', 'JPMorgan Chase', 'Bank of America', 'Wells Fargo',
+            'Capital One', 'American Express', 'Visa', 'Mastercard', 'PayPal', 'Square'
+        ];
+        
+        const companyInput = document.getElementById('company_autocomplete');
+        const companyMenu = document.getElementById('company_menu');
+        
+        // Populate company options
+        companies.forEach(company => {
+            const opt = document.createElement('div');
+            opt.className = 'custom-select-option';
+            opt.dataset.value = company.toLowerCase().replace(/\s+/g, '_');
+            opt.textContent = company;
+            companyMenu.appendChild(opt);
+        });
+        
+        companyInput.addEventListener('focus', () => companyMenu.classList.add('open'));
+        companyInput.addEventListener('blur', () => setTimeout(() => companyMenu.classList.remove('open'), 200));
+        
+        companyInput.addEventListener('input', () => {
+            const filter = companyInput.value.toLowerCase();
+            const options = companyMenu.querySelectorAll('.custom-select-option');
+            options.forEach(opt => {
+                const match = opt.textContent.toLowerCase().includes(filter);
+                opt.style.display = match ? 'block' : 'none';
+            });
+        });
+        
+        companyMenu.querySelectorAll('.custom-select-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                companyInput.value = opt.textContent;
+                companyMenu.classList.remove('open');
+            });
+        });
+        
+        // Drag & drop zone
+        const dropZone = document.getElementById('drop_zone');
+        const dropInput = document.getElementById('drop_zone_input');
+        
+        dropZone.addEventListener('click', () => dropInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            dropInput.files = e.dataTransfer.files;
+            dropZone.querySelector('p').textContent = `Selected: ${e.dataTransfer.files[0].name}`;
+        });
+        
+        // Form submission
+        document.getElementById('test-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            console.log('Form submitted:', data);
+            alert('Form submitted! Check console for data.');
+        });
+    </script>
+</body>
+</html>

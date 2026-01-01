@@ -484,6 +484,12 @@
       }
 
       /* Status row colors */
+      tr[data-status="Selected"] {
+        background: rgba(251, 191, 36, 0.15);
+      }
+      tr[data-status="Ready"] {
+        background: rgba(16, 185, 129, 0.15);
+      }
       tr[data-status="Applied"] {
         background: rgba(96, 165, 250, 0.1);
       }
@@ -957,6 +963,8 @@
                 <select id="pipelineFilterStatus" class="column-filter">
                   <option value="all">All</option>
                   <option value="New">New</option>
+                  <option value="Selected">Selected</option>
+                  <option value="Ready">Ready</option>
                   <option value="Applied">Applied</option>
                   <option value="Interview">Interview</option>
                   <option value="Offer">Offer</option>
@@ -1081,7 +1089,11 @@
         <div id="clResult" style="margin-top:16px; display:none;">
           <h4>Generated Cover Letter:</h4>
           <pre id="clOutput" style="background:var(--panel); padding:16px; border-radius:8px; white-space:pre-wrap; font-size:13px;"></pre>
-          <button id="clCopy" style="margin-top:8px; background:var(--accent); color:white;">Copy to Clipboard</button>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button id="clCopy" style="background:var(--accent); color:white;">📋 Copy to Clipboard</button>
+            <button id="clSave" style="background:#2d5a2d; color:white;">💾 Save to File</button>
+          </div>
+          <div id="clSaveStatus" style="margin-top:8px; font-size:12px; color:var(--muted);"></div>
         </div>
       </div>
     </div>
@@ -1727,11 +1739,13 @@
         <td>${escapeHtml(job.ats || "")}</td>
         <td>
           <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
-            ${["New", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
+            ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
               .map(
                 (x) => {
                   const icons = {
                     "New": "⚪",
+                    "Selected": "📋",
+                    "Ready": "✅",
                     "Applied": "📤",
                     "Interview": "🎯",
                     "Offer": "🎉",
@@ -1747,7 +1761,13 @@
         </td>
         <td>
           <button class="coverLetterBtn" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Generate Cover Letter" style="background:none; border:none; cursor:pointer; font-size:14px;">📄</button>
-          ${(job.ats || '').toLowerCase() === 'greenhouse'
+          ${st === 'Selected'
+            ? `<button class="prepareBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`
+            : ''}
+          ${st === 'Ready' && (job.ats || '').toLowerCase() === 'greenhouse'
+            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply Now</button>`
+            : ''}
+          ${(job.ats || '').toLowerCase() === 'greenhouse' && !['Selected', 'Ready', 'Applied', 'Interview', 'Offer', 'Rejected', 'Withdrawn', 'Closed'].includes(st)
             ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form">📝 Apply</button>`
             : ''}
           ${showAddButton && !inPipeline 
@@ -1771,7 +1791,7 @@
             job.status = newStatus;  // Pipeline uses 'status' field
             row.dataset.status = newStatus;
 
-            const ok = await persistStatus(jobId, newStatus.toLowerCase());
+            const ok = await persistStatus(jobId, newStatus);  // Keep original case
             if (!ok) {
               // revert
               e.target.value = oldStatus;
@@ -1784,13 +1804,13 @@
                 const found = arr.find(j => j.id === id);
                 if (found) {
                   found.status = status;
-                  found.application_status = status.charAt(0).toUpperCase() + status.slice(1);
+                  found.application_status = status;
                 }
               };
-              updateJobInArray(ALL_JOBS, jobId, newStatus.toLowerCase());
-              updateJobInArray(ALL_JOBS_RAW, jobId, newStatus.toLowerCase());
+              updateJobInArray(ALL_JOBS, jobId, newStatus);
+              updateJobInArray(ALL_JOBS_RAW, jobId, newStatus);
               
-              // if status filter active, re-render
+              // Refresh to show/hide buttons based on new status
               const filtered = applyFilters(ALL_JOBS);
               renderJobs(filtered);
             }
@@ -1862,14 +1882,118 @@
           // Cover Letter button handler
           const clBtn = row.querySelector(".coverLetterBtn");
           if (clBtn) {
-            clBtn.addEventListener("click", (e) => {
+            clBtn.addEventListener("click", async (e) => {
               const company = e.target.dataset.company;
               const position = e.target.dataset.position;
+              const jobUrl = e.target.dataset.joburl;
+              
               document.getElementById('clCompany').value = company || '';
               document.getElementById('clPosition').value = position || '';
               document.getElementById('clDescription').value = '';
               document.getElementById('clResult').style.display = 'none';
+              document.getElementById('clSaveStatus').textContent = '';
               document.getElementById('coverLetterModal').style.display = 'flex';
+              
+              // Auto-fetch job description if URL available
+              if (jobUrl) {
+                document.getElementById('clDescription').value = '⏳ Loading job description...';
+                document.getElementById('clDescription').disabled = true;
+                
+                try {
+                  const res = await fetch('/fetch-job-description', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: jobUrl })
+                  });
+                  const data = await res.json();
+                  
+                  if (data.ok && data.description) {
+                    document.getElementById('clDescription').value = data.description;
+                  } else {
+                    document.getElementById('clDescription').value = '';
+                    document.getElementById('clDescription').placeholder = 'Could not fetch JD. Paste manually if needed.';
+                  }
+                } catch (err) {
+                  document.getElementById('clDescription').value = '';
+                  console.error('Failed to fetch JD:', err);
+                } finally {
+                  document.getElementById('clDescription').disabled = false;
+                }
+              }
+            });
+          }
+          
+          // Prepare button handler (Selected status)
+          const prepareBtn = row.querySelector(".prepareBtn");
+          if (prepareBtn) {
+            prepareBtn.addEventListener("click", async (e) => {
+              const jobKey = e.target.dataset.jobkey;
+              const company = e.target.dataset.company;
+              const position = e.target.dataset.position;
+              const jobUrl = e.target.dataset.joburl;
+              
+              e.target.disabled = true;
+              e.target.textContent = "⏳ Preparing...";
+              
+              try {
+                // 1. Fetch JD
+                let jd = '';
+                if (jobUrl) {
+                  const jdRes = await fetch('/fetch-job-description', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: jobUrl })
+                  });
+                  const jdData = await jdRes.json();
+                  if (jdData.ok) jd = jdData.description;
+                }
+                
+                // 2. Select CV
+                const cvRes = await fetch('/select-cv', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ job_title: position })
+                });
+                const cvData = await cvRes.json();
+                
+                // 3. Generate Cover Letter
+                const clRes = await fetch('/generate-cover-letter', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ company, position, job_description: jd })
+                });
+                const clData = await clRes.json();
+                
+                // 4. Save Cover Letter
+                if (clData.ok && clData.cover_letter) {
+                  await fetch('/save-cover-letter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company, position, content: clData.cover_letter })
+                  });
+                }
+                
+                // 5. Update status to Ready
+                await fetch('/pipeline/status', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ job_id: jobKey, status: 'Ready' })
+                });
+                
+                alert(`✅ Prepared for ${company}!\n\n📄 CV: ${cvData.filename || 'Selected'}\n📝 Cover Letter: Saved\n\nStatus changed to Ready. Click "🚀 Apply Now" to submit.`);
+                
+                // Update local job status and refresh
+                job.status = 'Ready';
+                job.application_status = 'Ready';
+                const filtered = applyFilters(ALL_JOBS);
+                renderJobs(filtered);
+                
+              } catch (err) {
+                console.error('Prepare error:', err);
+                alert('Error preparing application: ' + err.message);
+                e.target.disabled = false;
+                e.target.textContent = '📦 Prepare';
+              }
             });
           }
           
@@ -1895,9 +2019,28 @@
                   const data = await res.json();
                   e.target.textContent = "📝 Apply";
                   e.target.disabled = false;
-                  if (data.message) {
-                    alert(data.message);
+                  
+                  // Add View Log button next to Apply
+                  let logBtn = e.target.parentElement.querySelector('.viewLogBtn');
+                  if (!logBtn) {
+                    logBtn = document.createElement('button');
+                    logBtn.className = 'viewLogBtn';
+                    logBtn.textContent = '📜 Log';
+                    logBtn.style.cssText = 'margin-left: 5px; padding: 2px 6px; font-size: 12px; cursor: pointer;';
+                    logBtn.onclick = async () => {
+                      const logRes = await fetch('/apply-log');
+                      const logData = await logRes.json();
+                      if (logData.ok) {
+                        const logWindow = window.open('', 'Apply Log', 'width=900,height=700');
+                        logWindow.document.write(`<html><head><title>Apply Log</title></head><body style="margin:0;"><pre style="font-family: 'SF Mono', Monaco, monospace; font-size: 13px; padding: 20px; background: #1e1e1e; color: #d4d4d4; margin:0; min-height:100vh; white-space: pre-wrap;">${logData.log.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`);
+                      } else {
+                        alert('No log available yet');
+                      }
+                    };
+                    e.target.parentElement.appendChild(logBtn);
                   }
+                  
+                  alert(`🚀 Browser opened for auto-fill!\n\n⏳ Form filling in progress...\n🕒 Browser closes in 60 seconds.\n\nClick "📜 Log" button to view results.`);
                 } else {
                   const err = await res.json();
                   alert("Error: " + (err.detail || "Failed to open form"));
@@ -3308,11 +3451,50 @@
       document.getElementById('clCopy').addEventListener('click', () => {
         const text = document.getElementById('clOutput').textContent;
         navigator.clipboard.writeText(text).then(() => {
-          document.getElementById('clCopy').textContent = 'Copied!';
+          document.getElementById('clCopy').textContent = '✅ Copied!';
           setTimeout(() => {
-            document.getElementById('clCopy').textContent = 'Copy to Clipboard';
+            document.getElementById('clCopy').textContent = '📋 Copy to Clipboard';
           }, 1500);
         });
+      });
+      
+      // Save Cover Letter to file
+      document.getElementById('clSave').addEventListener('click', async () => {
+        const company = document.getElementById('clCompany').value;
+        const position = document.getElementById('clPosition').value;
+        const content = document.getElementById('clOutput').textContent;
+        const statusEl = document.getElementById('clSaveStatus');
+        
+        if (!content) {
+          statusEl.textContent = '⚠️ No cover letter to save';
+          return;
+        }
+        
+        document.getElementById('clSave').textContent = '⏳ Saving...';
+        document.getElementById('clSave').disabled = true;
+        
+        try {
+          const res = await fetch('/save-cover-letter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company, position, content })
+          });
+          const data = await res.json();
+          
+          if (data.ok) {
+            statusEl.textContent = `✅ Saved: ${data.filename}`;
+            statusEl.style.color = '#4ade80';
+          } else {
+            statusEl.textContent = `❌ Error: ${data.error}`;
+            statusEl.style.color = '#f87171';
+          }
+        } catch (err) {
+          statusEl.textContent = `❌ Error: ${err.message}`;
+          statusEl.style.color = '#f87171';
+        } finally {
+          document.getElementById('clSave').textContent = '💾 Save to File';
+          document.getElementById('clSave').disabled = false;
+        }
       });
       
       // Add Job Modal
