@@ -2,26 +2,38 @@
   "personal": {
     "first_name": "Anton",
     "last_name": "Kondakov",
+    "full_name": "Anton Kondakov",
     "email": "anton.kondakov.PM@gmail.com",
     "phone": "(910) 536-0602",
     "location": "Raleigh, NC",
-    "country": "United States"
+    "city": "Wake Forest",
+    "state": "North Carolina",
+    "zip_code": "27587",
+    "country": "United States",
+    "street_address": "2000 Sweet Samson St",
+    "full_address": "2000 Sweet Samson St, Wake Forest, NC 27587"
   },
   
   "links": {
-    "linkedin": "https://linkedin.com/in/antonkondakov"
+    "linkedin": "https://linkedin.com/in/antonkondakov",
+    "github": "https://github.com/Anakondos"
   },
   
   "files": {
-    "resume_path": "/Users/antonkondakov/icloud-projects/job-tracker-dev/browser/profiles/Anton_Kondakov_TPM.pdf",
+    "resume_path": "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Anton_Kondakov_TPM_CV.pdf",
     "cover_letter_path": null
+  },
+  
+  "work_authorization": {
+    "authorized_us": "Yes",
+    "requires_sponsorship": "No"
   },
   
   "work_experience": [
     {
-      "company": "DXC Technology",
-      "title": "Senior Technical Program Manager / Delivery Manager",
-      "start_month": "June",
+      "company": "DXC - London Market",
+      "title": "Senior Delivery Manager / Scrum Center of Excellence Lead",
+      "start_month": "July",
       "start_year": "2025",
       "end_month": "",
       "end_year": "",
@@ -47,29 +59,27 @@
       "end_year": "2020",
       "current": false,
       "description": "Managed technology programs for UBS investment banking division. Led infrastructure modernization migrating 13,000+ SharePoint sites. Delivered risk analytics platform reducing computation time by 88%."
-    },
-    {
-      "company": "Luxoft Europe",
-      "title": "Senior Project Manager",
-      "start_month": "October",
-      "start_year": "2013",
-      "end_month": "March",
-      "end_year": "2016",
-      "current": false,
-      "description": "Managed enterprise technology projects for Fortune 500 clients across energy, retail, and pharmaceutical sectors including Lukoil, PepsiCo, Pfizer, and Brookfield."
     }
   ],
   
   "education": [
     {
-      "school": "Moscow State University of Instrument Engineering",
+      "school": "Moscow Institute of Physics and Technology State University",
       "degree": "Master's Degree",
-      "discipline": "Computer Science"
+      "discipline": "Computer Science",
+      "start_month": "September",
+      "start_year": "1996",
+      "end_month": "June",
+      "end_year": "2001"
     },
     {
-      "school": "Presidential Program",
-      "degree": "Master's Degree",
-      "discipline": "Management (MBA)"
+      "school": "International Institute of Management LINK / The Open University Business School",
+      "degree": "Master of Business Administration (M.B.A.)",
+      "discipline": "Business Administration",
+      "start_month": "January",
+      "start_year": "2012",
+      "end_month": "July",
+      "end_year": "2013"
     }
   ],
   
@@ -94,23 +104,54 @@
     "ai_tools_comfortable": "Yes",
     "employed_at_company_before": "No",
     "non_compete": "No",
-    "background_check": "Yes"
+    "background_check": "Yes",
+    "years_experience_tpm": "15+",
+    "years_experience_agile": "10+",
+    "years_experience_cloud": "5+"
   },
   
   "demographics": {
-    "gender": "Decline",
-    "hispanic_latino": "Decline", 
-    "race_ethnicity": "Decline",
-    "veteran_status": "I am not",
-    "disability_status": "I don't wish"
+    "gender": "Male",
+    "hispanic_latino": "No",
+    "race_ethnicity": "White",
+    "veteran_status": "I am not a protected veteran",
+    "disability_status": "No, I do not"
   },
   
-  "summary": "Results-driven Senior Technical Program Manager with 15+ years leading complex technology programs for Fortune 500 companies in financial services, insurance, and enterprise technology. Proven track record delivering large-scale cloud migrations, system integrations, and platform modernizations with cross-functional teams of 50+ engineers across global time zones. Deep expertise in Agile (Scrum, SAFe, Kanban) and Waterfall methodologies with strong technical background in cloud platforms (AWS, GCP, Azure).",
+  "availability": {
+    "start_date": "2-3 weeks",
+    "notice_period": "2 weeks"
+  },
   
-  "skills": {
-    "cloud": ["AWS", "GCP", "Azure", "Terraform", "Docker", "Kubernetes"],
-    "tools": ["JIRA", "Confluence", "ServiceNow", "MS Project", "Azure DevOps", "Jenkins", "GitHub"],
-    "methodologies": ["Agile", "Scrum", "SAFe", "Kanban", "Waterfall", "ITIL"],
-    "technical": ["CI/CD", "Microservices", "REST APIs", "SQL", "Python", "Java"]
-  }
+  "salary": {
+    "expected_salary": "150000-180000",
+    "salary_min": "150000",
+    "salary_max": "180000"
+  },
+  
+  "field_mappings": {
+    "_comment": "Maps form field names to profile keys",
+    "first_name": ["first name", "first_name", "firstname", "given name"],
+    "last_name": ["last name", "last_name", "lastname", "surname", "family name"],
+    "full_name": ["full name", "name", "your name"],
+    "email": ["email", "e-mail", "email address"],
+    "phone": ["phone", "telephone", "mobile", "phone number", "contact number"],
+    "city": ["city", "current city"],
+    "state": ["state", "province", "region"],
+    "zip_code": ["zip", "postal", "zip code", "postal code"],
+    "country": ["country"],
+    "linkedin": ["linkedin", "linkedin url", "linkedin profile"],
+    "github": ["github", "github url"],
+    "authorized": ["authorized to work", "legally authorized", "work authorization", "eligible to work"],
+    "sponsorship": ["sponsorship", "visa sponsorship", "require sponsorship", "need sponsorship"],
+    "gender": ["gender", "sex"],
+    "veteran": ["veteran", "military"],
+    "disability": ["disability", "disabled"],
+    "ethnicity": ["race", "ethnicity", "ethnic"],
+    "hispanic": ["hispanic", "latino", "latina"],
+    "salary": ["salary", "compensation", "expected salary", "desired salary"],
+    "start_date": ["start date", "when can you start", "availability", "available to start"]
+  },
+  
+  "summary": "Results-driven Senior Technical Program Manager with 15+ years leading complex technology programs for Fortune 500 companies in financial services, insurance, and enterprise technology. Proven track record delivering large-scale cloud migrations, system integrations, and platform modernizations with cross-functional teams of 50+ engineers across global time zones."
 }

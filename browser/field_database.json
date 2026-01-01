@@ -1,0 +1,465 @@
+{
+  "_meta": {
+    "description": "Field answers database for job application forms",
+    "version": "1.1",
+    "updated": "2024-12-29"
+  },
+  "field_patterns": {
+    "first_name": {
+      "selectors": [
+        "#first_name",
+        "input[name='first_name']"
+      ],
+      "labels": [
+        "first name",
+        "given name"
+      ],
+      "type": "profile",
+      "profile_key": "personal.first_name"
+    },
+    "last_name": {
+      "selectors": [
+        "#last_name",
+        "input[name='last_name']"
+      ],
+      "labels": [
+        "last name",
+        "family name",
+        "surname"
+      ],
+      "type": "profile",
+      "profile_key": "personal.last_name"
+    },
+    "email": {
+      "selectors": [
+        "#email",
+        "input[type='email']"
+      ],
+      "labels": [
+        "email",
+        "e-mail"
+      ],
+      "type": "profile",
+      "profile_key": "personal.email"
+    },
+    "phone": {
+      "selectors": [
+        "#phone",
+        "input[type='tel']"
+      ],
+      "labels": [
+        "phone",
+        "telephone",
+        "mobile"
+      ],
+      "type": "profile",
+      "profile_key": "personal.phone"
+    },
+    "location": {
+      "selectors": [
+        "#candidate-location"
+      ],
+      "labels": [
+        "location",
+        "city"
+      ],
+      "type": "profile",
+      "profile_key": "personal.location"
+    },
+    "country": {
+      "selectors": [
+        "#country"
+      ],
+      "labels": [
+        "country"
+      ],
+      "type": "profile",
+      "profile_key": "personal.country"
+    },
+    "linkedin": {
+      "selectors": [],
+      "labels": [
+        "linkedin"
+      ],
+      "type": "profile",
+      "profile_key": "links.linkedin"
+    },
+    "company_name": {
+      "selectors": [
+        "#company-name-0",
+        "#company-name-1"
+      ],
+      "labels": [
+        "company name",
+        "employer",
+        "company"
+      ],
+      "type": "work_experience",
+      "profile_key": "work_experience.0.company"
+    },
+    "job_title": {
+      "selectors": [
+        "#title-0",
+        "#title-1"
+      ],
+      "labels": [
+        "title",
+        "job title",
+        "position"
+      ],
+      "type": "work_experience",
+      "profile_key": "work_experience.0.title"
+    },
+    "start_month": {
+      "selectors": [
+        "#start-date-month-0"
+      ],
+      "labels": [
+        "start date month",
+        "start month"
+      ],
+      "type": "work_experience",
+      "profile_key": "work_experience.0.start_month"
+    },
+    "start_year": {
+      "selectors": [
+        "#start-date-year-0"
+      ],
+      "labels": [
+        "start date year",
+        "start year"
+      ],
+      "type": "work_experience",
+      "profile_key": "work_experience.0.start_year"
+    },
+    "end_month": {
+      "selectors": [
+        "#end-date-month-0"
+      ],
+      "labels": [
+        "end date month",
+        "end month"
+      ],
+      "type": "work_experience",
+      "profile_key": "work_experience.0.end_month"
+    },
+    "end_year": {
+      "selectors": [
+        "#end-date-year-0"
+      ],
+      "labels": [
+        "end date year",
+        "end year"
+      ],
+      "type": "work_experience",
+      "profile_key": "work_experience.0.end_year"
+    },
+    "current_role": {
+      "selectors": [
+        "#current-role-0"
+      ],
+      "labels": [
+        "current role",
+        "i currently work here"
+      ],
+      "type": "work_experience",
+      "profile_key": "work_experience.0.current"
+    },
+    "school": {
+      "selectors": [
+        "#school--0",
+        "#school--1"
+      ],
+      "labels": [
+        "school",
+        "university",
+        "college",
+        "institution"
+      ],
+      "type": "education",
+      "profile_key": "education.0.school"
+    },
+    "degree": {
+      "selectors": [
+        "#degree--0",
+        "#degree--1"
+      ],
+      "labels": [
+        "degree",
+        "qualification"
+      ],
+      "type": "education",
+      "profile_key": "education.0.degree"
+    },
+    "discipline": {
+      "selectors": [
+        "#discipline--0",
+        "#discipline--1"
+      ],
+      "labels": [
+        "discipline",
+        "major",
+        "field of study",
+        "subject"
+      ],
+      "type": "education",
+      "profile_key": "education.0.discipline"
+    },
+    "gender": {
+      "selectors": [
+        "#gender"
+      ],
+      "labels": [
+        "gender"
+      ],
+      "type": "demographic",
+      "default_answer": "Decline to self-identify"
+    },
+    "race_ethnicity": {
+      "selectors": [
+        "#race"
+      ],
+      "labels": [
+        "race",
+        "ethnicity"
+      ],
+      "type": "demographic",
+      "default_answer": "Decline to self-identify"
+    },
+    "hispanic_latino": {
+      "selectors": [
+        "#hispanic_ethnicity"
+      ],
+      "labels": [
+        "hispanic",
+        "latino"
+      ],
+      "type": "demographic",
+      "default_answer": "Decline to self-identify"
+    },
+    "veteran_status": {
+      "selectors": [
+        "#veteran_status"
+      ],
+      "labels": [
+        "veteran"
+      ],
+      "type": "demographic",
+      "default_answer": "I am not a protected veteran"
+    },
+    "disability_status": {
+      "selectors": [
+        "#disability_status"
+      ],
+      "labels": [
+        "disability"
+      ],
+      "type": "demographic",
+      "default_answer": "I do not want to answer"
+    },
+    "work_authorization": {
+      "selectors": [],
+      "labels": [
+        "authorized to work",
+        "legally authorized",
+        "eligible to work"
+      ],
+      "type": "yes_no",
+      "answer_key": "authorized_to_work_us"
+    },
+    "sponsorship_required": {
+      "selectors": [],
+      "labels": [
+        "sponsorship",
+        "visa sponsorship",
+        "require sponsorship"
+      ],
+      "type": "yes_no",
+      "answer_key": "requires_sponsorship"
+    },
+    "age_18": {
+      "selectors": [],
+      "labels": [
+        "18 years",
+        "18 or older",
+        "at least 18"
+      ],
+      "type": "yes_no",
+      "answer_key": "is_18_or_older"
+    },
+    "previously_employed": {
+      "selectors": [],
+      "labels": [
+        "previously employed",
+        "former employee"
+      ],
+      "type": "yes_no",
+      "answer_key": "previously_employed"
+    },
+    "referred": {
+      "selectors": [],
+      "labels": [
+        "referred",
+        "referral"
+      ],
+      "type": "yes_no",
+      "answer_key": "was_referred"
+    },
+    "how_heard": {
+      "selectors": [],
+      "labels": [
+        "how did you hear",
+        "how did you find",
+        "source"
+      ],
+      "type": "select",
+      "answer_key": "how_heard_about"
+    },
+    "years_experience": {
+      "selectors": [],
+      "labels": [
+        "years of experience",
+        "how many years"
+      ],
+      "type": "text_short",
+      "answer_key": "years_experience"
+    },
+    "confirm_receipt": {
+      "selectors": [],
+      "labels": [
+        "confirm receipt",
+        "please confirm",
+        "acknowledge"
+      ],
+      "type": "yes_no",
+      "answer_key": "confirm_receipt"
+    },
+    "privacy_notice": {
+      "selectors": [],
+      "labels": [
+        "privacy notice",
+        "data privacy",
+        "privacy policy"
+      ],
+      "type": "yes_no",
+      "answer_key": "privacy_notice"
+    },
+    "end_date_month": {
+      "selectors": [
+        "#end-date-month-0"
+      ],
+      "labels": [
+        "end date month*"
+      ],
+      "type": "text_short"
+    },
+    "end_date_year": {
+      "selectors": [
+        "#end-date-year-0"
+      ],
+      "labels": [
+        "end date year*"
+      ],
+      "type": "text_short"
+    }
+  },
+  "answers": {
+    "yes_no": {
+      "authorized_to_work_us": {
+        "answer": "Yes",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      },
+      "requires_sponsorship": {
+        "answer": "No",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      },
+      "is_18_or_older": {
+        "answer": "Yes",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      },
+      "previously_employed": {
+        "answer": "No",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      },
+      "was_referred": {
+        "answer": "No",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      },
+      "confirm_receipt": {
+        "answer": "Confirmed",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      },
+      "privacy_notice": {
+        "answer": "Confirmed",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      }
+    },
+    "select": {
+      "how_heard_about": {
+        "answer": "Company website",
+        "roles": [
+          "*"
+        ],
+        "jd_dependent": false,
+        "source": "default"
+      }
+    },
+    "text_short": {
+      "years_experience": {
+        "answer": "15",
+        "roles": [
+          "TPM",
+          "PM",
+          "Program Manager"
+        ],
+        "jd_dependent": false,
+        "source": "user"
+      },
+      "end_date_month": {
+        "answer": "4",
+        "roles": [
+          "TPM"
+        ],
+        "jd_dependent": false,
+        "source": "user"
+      },
+      "end_date_year": {
+        "answer": "Current role",
+        "roles": [
+          "TPM"
+        ],
+        "jd_dependent": false,
+        "source": "user"
+      }
+    }
+  },
+  "ai_generated_cache": {}
+}
