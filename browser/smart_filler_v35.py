@@ -1578,7 +1578,7 @@ def main():
     print("   4. Fill with confidence")
     print("="*65)
     
-    filler = SmartFillerV34(headless=False)
+    filler = SmartFillerV35(headless=False)
     filler.run(url, interactive=True)
 
 
