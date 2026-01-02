@@ -864,22 +864,7 @@
     <div class="tab-content active" id="tab-jobs">
     <div class="wrap">
       <div class="controls">
-        <div class="checkboxRow" style="min-width: 280px">
-          <div style="display: flex; flex-direction: column; gap: 6px">
-            <div style="color: var(--muted); font-size: 12px">Locations</div>
-            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
-              <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px;">
-                <input type="checkbox" id="includeUS" checked /> US
-              </label>
-              <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px;">
-                <input type="checkbox" id="includeNonUS" /> Non-US
-              </label>
-              <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px;">
-                <input type="checkbox" id="includeRemoteUSA" checked /> Remote (USA)
-              </label>
-            </div>
-          </div>
-        </div>
+        
 
         <span class="pill" id="loadPill"><span class="dot" id="loadDot"></span><span id="loadText">Idle</span></span>
       </div>
@@ -959,8 +944,15 @@
               <th><input type="text" id="pipelineFilterIndustry" placeholder="Filter..." class="column-filter"></th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="Filter..." class="column-filter"></th>
               <th>
-                <!-- Multi-state dropdown in table -->
-                <div class="ms" id="stateMultiSelect" style="min-width: 120px;">
+                <!-- Location category + states -->
+                <div style="display: flex; gap: 4px; align-items: center;">
+                  <select id="locationCategoryFilter" class="column-filter" style="width: 70px; font-size: 11px; padding: 4px;">
+                    <option value="all">All</option>
+                    <option value="us">US</option>
+                    <option value="remote">Remote</option>
+                    <option value="nonus">Non-US</option>
+                  </select>
+                <div class="ms" id="stateMultiSelect" style="min-width: 80px;">
                   <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 4px 6px;">
                     <span id="stateBtnText" style="font-size: 11px;">States...</span>
                     <span class="count" id="stateBtnCount" style="font-size: 10px;">0</span>
@@ -984,6 +976,7 @@
                   <option value="workday">workday</option>
                   <option value="smartrecruiters">smartrecruiters</option>
                   <option value="ashby">ashby</option>
+                  <option value="manual">📌 manual</option>
                 </select>
               </th>
               <th>
@@ -1263,10 +1256,7 @@
       
       // Defaults: all locations visible when toggles are off
       let selectedStates = [];
-      let includeNonUS = false;
-      let includeUS = true;
-      let includeRemoteUSA = true;
-
+      let locationCategory = "all"; // all, us, remote, nonus
       // Job status cache: job_key -> status
       let STATUS_MAP = {};
 
@@ -1527,31 +1517,21 @@
       // ---------- MAIN FILTER FUNCTION ----------
       function applyFilters(jobs) {
         const status = document.getElementById("pipelineFilterStatus")?.value || "all";
-        const nonus = includeNonUS;
-
         let filtered = jobs;
 
-        // Location filter (US / Non-US / Remote USA)
-        // Remote USA jobs should pass if Remote checkbox is on, regardless of US/Non-US
-        const us = includeUS;
-        const remoteUSA = includeRemoteUSA;
+        // Location filter by category
         filtered = filtered.filter((job) => {
-          const ln = job.location_norm;
+          const ln = job.location_norm || {};
           const isUS = isUSHeuristic(job);
-          // Remote USA or generic Remote (assume USA if not specified)
-          const remoteScope = ln?.remote_scope?.toLowerCase() || '';
-          const isRemoteUSA = ln?.remote && ['usa', 'us', 'global', ''].includes(remoteScope);
+          const isRemote = ln.remote === true;
           
-          // Remote USA passes if Remote checkbox is on
-          if (isRemoteUSA && remoteUSA) return true;
-          
-          // US jobs pass if US checkbox is on
-          if (isUS && us) return true;
-          
-          // Non-US jobs pass if Non-US checkbox is on
-          if (!isUS && nonus) return true;
-          
-          return false;
+          switch (locationCategory) {
+            case "all": return true;
+            case "us": return isUS;
+            case "remote": return isRemote;
+            case "nonus": return !isUS && !isRemote;
+            default: return true;
+          }
         });
         debugCounts.afterLocation = filtered.length;
 
@@ -1563,7 +1543,7 @@
             const isUS = isUSHeuristic(job);
             
             // If Non-US job and Include Non-US is on, skip state filter
-            if (!isUS && nonus) {
+            if (!isUS && locationCategory === "nonus") {
               return true;
             }
             
@@ -1604,7 +1584,7 @@
           );
         }
         if (pipelineFilters.ats) {
-          filtered = filtered.filter(j => j.ats === pipelineFilters.ats);
+          filtered = filtered.filter(j => pipelineFilters.ats === "manual" ? j.source === "onboard" : j.ats === pipelineFilters.ats);
         }
 
         return filtered;
@@ -1742,7 +1722,7 @@
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
           row.dataset.updated = updatedAtRaw.trim(); // Use raw ISO for sorting
-          row.dataset.ats = (job.ats || "").trim();
+          row.dataset.ats = job.source === "onboard" ? "manual" : (job.ats || "").trim();
           row.dataset.status = (st || "New").trim();
 
           // Determine role category for showing Add to Pipeline button
@@ -1763,7 +1743,7 @@
           )}</a>${sourceIcon}</td>
         <td>${escapeHtml(job.location || "")}</td>
         <td>${escapeHtml(updatedAtStr)}</td>
-        <td>${escapeHtml(job.ats || "")}</td>
+        <td>${job.source === "onboard" ? "📌 manual" : escapeHtml(job.ats || "")}</td>
         <td>
           <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
             ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
@@ -2455,29 +2435,9 @@
       }
 
       document
-        .getElementById("includeUS")
+        .getElementById("locationCategoryFilter")
         .addEventListener("change", (e) => {
-          includeUS = !!e.target.checked;
-          if (ALL_JOBS.length > 0) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
-          }
-        });
-
-      document
-        .getElementById("includeNonUS")
-        .addEventListener("change", (e) => {
-          includeNonUS = !!e.target.checked;
-          if (ALL_JOBS.length > 0) {
-            const filtered = applyFilters(ALL_JOBS);
-            renderJobs(filtered);
-          }
-        });
-
-      document
-        .getElementById("includeRemoteUSA")
-        .addEventListener("change", (e) => {
-          includeRemoteUSA = !!e.target.checked;
+          locationCategory = e.target.value;
           if (ALL_JOBS.length > 0) {
             const filtered = applyFilters(ALL_JOBS);
             renderJobs(filtered);
@@ -2514,9 +2474,9 @@
       });
 
       // Init defaults
-      document.getElementById("includeUS").checked = includeUS;
-      document.getElementById("includeNonUS").checked = includeNonUS;
-      document.getElementById("includeRemoteUSA").checked = includeRemoteUSA;
+      document.getElementById("locationCategoryFilter").value = locationCategory;
+      
+      
 
       syncStateButton();
       renderStateList("");
@@ -3292,9 +3252,9 @@
         }
         
         // Update UI checkboxes
-        document.getElementById("includeUS").checked = includeUS;
-        document.getElementById("includeNonUS").checked = includeNonUS;
-        document.getElementById("includeRemoteUSA").checked = includeRemoteUSA;
+        document.getElementById("locationCategoryFilter").value = locationCategory;
+        
+        
         
         // Update states UI
         syncStateButton();
