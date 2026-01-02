@@ -1292,7 +1292,166 @@ def get_funnel_stats():
         }
 
 
+
+@app.get("/stats/by-date")
+def get_stats_by_date(days: int = Query(14, ge=1, le=60)):
+    """Get job statistics grouped by date with breakdown by category and location."""
+    from collections import defaultdict
+    from datetime import datetime, timedelta
+    
+    # Load from cache
+    cached = load_cache("all")
+    if not cached:
+        return {"error": "Cache not loaded", "dates": []}
+    
+    all_jobs = cached.get("jobs", [])
+    
+    # Group by date
+    by_date = defaultdict(lambda: {
+        "total": 0,
+        "primary": 0,
+        "adjacent": 0,
+        "unknown": 0,
+        "excluded": 0,
+        "us": 0,
+        "remote": 0,
+        "nc": 0,
+        "neighbor": 0,
+        "nonus": 0
+    })
+    
+    neighbor_states = {"VA", "SC", "GA", "TN"}
+    
+    for job in all_jobs:
+        # Get date
+        updated = job.get("updated_at", "")
+        if isinstance(updated, int):
+            # Unix timestamp
+            # Handle milliseconds
+            if updated > 10000000000:
+                updated = updated / 1000
+            date_str = datetime.fromtimestamp(updated).strftime("%Y-%m-%d")
+        elif updated:
+            date_str = str(updated)[:10]
+        else:
+            date_str = "unknown"
+        
+        stats = by_date[date_str]
+        stats["total"] += 1
+        
+        # Category
+        cat = job.get("role_category", "unknown")
+        if cat in stats:
+            stats[cat] += 1
+        
+        # Location
+        ln = job.get("location_norm", {}) or {}
+        state = (ln.get("state") or "").upper()
+        is_remote = ln.get("remote", False)
+        
+        if is_remote:
+            stats["remote"] += 1
+            stats["us"] += 1  # Remote USA counts as US
+        elif state == "NC":
+            stats["nc"] += 1
+            stats["us"] += 1
+        elif state in neighbor_states:
+            stats["neighbor"] += 1
+            stats["us"] += 1
+        elif state:
+            stats["us"] += 1
+        elif job.get("location"):
+            stats["nonus"] += 1
+    
+    # Sort by date descending, limit to days
+    sorted_dates = sorted(by_date.items(), key=lambda x: x[0], reverse=True)
+    
+    # Filter to recent days only
+    result = []
+    for date_str, stats in sorted_dates[:days]:
+        if date_str == "unknown":
+            continue
+        result.append({
+            "date": date_str,
+            **stats
+        })
+    
+    return {
+        "dates": result,
+        "last_refresh": cached.get("last_updated")
+    }
+
 # ============= PIPELINE ENDPOINTS =============
+
+
+@app.get("/cache/browse")
+def browse_cache_jobs(
+    date: str = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    category: str = Query(None, description="Filter by role_category"),
+    location: str = Query(None, description="Filter by location (us/nc/neighbor/remote)"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=10, le=500)
+):
+    """Browse ALL cached jobs with filters (not just pipeline)"""
+    from datetime import datetime
+    
+    cached = load_cache("all")
+    if not cached:
+        return {"error": "Cache not loaded", "jobs": [], "total": 0}
+    
+    all_jobs = cached.get("jobs", [])
+    neighbor_states = {"VA", "SC", "GA", "TN"}
+    
+    # Apply date filter
+    if date:
+        def match_date(j):
+            updated = j.get("updated_at", "")
+            if isinstance(updated, int):
+                if updated > 10000000000:
+                    updated = updated / 1000
+                return datetime.fromtimestamp(updated).strftime("%Y-%m-%d") == date
+            return str(updated)[:10] == date
+        all_jobs = [j for j in all_jobs if match_date(j)]
+    
+    # Apply category filter
+    if category:
+        all_jobs = [j for j in all_jobs if j.get("role_category") == category]
+    
+    # Apply location filter
+    if location:
+        filtered = []
+        for j in all_jobs:
+            ln = j.get("location_norm", {}) or {}
+            state = (ln.get("state") or "").upper()
+            is_remote = ln.get("remote", False)
+            
+            if location == "us" and (state or is_remote):
+                filtered.append(j)
+            elif location == "nc" and state == "NC":
+                filtered.append(j)
+            elif location == "neighbor" and state in neighbor_states:
+                filtered.append(j)
+            elif location == "remote" and is_remote:
+                filtered.append(j)
+        all_jobs = filtered
+    
+    # Check which are in pipeline
+    pipeline_ids = get_all_job_ids()
+    for j in all_jobs:
+        j["in_pipeline"] = j.get("id") in pipeline_ids
+    
+    # Pagination
+    total = len(all_jobs)
+    start = (page - 1) * limit
+    end = start + limit
+    
+    return {
+        "jobs": all_jobs[start:end],
+        "total": total,
+        "page": page,
+        "has_prev": page > 1,
+        "has_next": end < total
+    }
 
 @app.get("/pipeline/stats")
 def pipeline_stats_endpoint():
@@ -1302,6 +1461,7 @@ def pipeline_stats_endpoint():
 
 @app.get("/jobs/review")
 def get_review_jobs(
+    date: str = Query(None, description="Filter by date (YYYY-MM-DD)"),
     category: str = Query("unknown", description="unknown / excluded / all"),
     search: str = Query("", description="Search in title, company, location"),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
@@ -1319,6 +1479,10 @@ def get_review_jobs(
         return {"error": "Cache not loaded. Run /jobs?refresh=true first.", "jobs": [], "total": 0}
     
     all_jobs = cached.get("jobs", [])
+
+    # Apply date filter
+    if date:
+        all_jobs = [j for j in all_jobs if str(j.get("updated_at", ""))[:10] == date]
     
     # Filter by role_category (unknown or excluded)
     def get_category(job):
@@ -1367,15 +1531,48 @@ def get_review_jobs(
 
 
 @app.get("/pipeline/all")
-def pipeline_all_endpoint():
-    """Get ALL jobs from storage"""
+def pipeline_all_endpoint(
+    date: str = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    category: str = Query(None, description="Filter by role_category (primary/adjacent)"),
+    location: str = Query(None, description="Filter by location (us/nc/neighbor/remote)")
+):
+    """Get ALL jobs from storage with optional filters"""
     all_jobs = get_all_jobs()
+    
+    # Apply date filter
+    if date:
+        all_jobs = [j for j in all_jobs if str(j.get("updated_at", ""))[:10] == date]
+    
+    # Apply category filter
+    if category:
+        all_jobs = [j for j in all_jobs if j.get("role_category") == category]
+    
+    # Apply location filter
+    if location:
+        neighbor_states = {"VA", "SC", "GA", "TN"}
+        filtered = []
+        for j in all_jobs:
+            ln = j.get("location_norm", {}) or {}
+            state = (ln.get("state") or "").upper()
+            is_remote = ln.get("remote", False)
+            
+            if location == "us" and (state or is_remote):
+                filtered.append(j)
+            elif location == "nc" and state == "NC":
+                filtered.append(j)
+            elif location == "neighbor" and state in neighbor_states:
+                filtered.append(j)
+            elif location == "remote" and is_remote:
+                filtered.append(j)
+        all_jobs = filtered
+    
     stats = get_job_stats()
     return {
         "count": len(all_jobs), 
         "jobs": all_jobs,
         "breakdown": stats["status_breakdown"]
     }
+
 
 
 @app.get("/pipeline/new")
@@ -1937,7 +2134,7 @@ class ApplyRequest(BaseModel):
 @app.post("/apply/greenhouse")
 def apply_greenhouse_endpoint(payload: ApplyRequest):
     """
-    Open Greenhouse job application and auto-fill form.
+    Open Greenhouse job application and auto-fill form using SmartFillerV35.
     """
     import subprocess
     import sys
@@ -1970,108 +2167,30 @@ sys.path.insert(0, '{cwd}')
 import os
 os.chdir('{cwd}')
 
-from browser import BrowserClient, ProfileManager
-from pathlib import Path
-import time
+from browser.smart_filler_v35 import SmartFillerV35
 import re
 
-PROFILE_PATH = "browser/profiles/{profile_name}.json"
-profile = ProfileManager(Path(PROFILE_PATH))
-browser = BrowserClient()
-browser.start()
+job_url = "{job_url}"
 
 # Convert company career page URL to direct Greenhouse form URL
-job_url = "{job_url}"
 if 'gh_jid=' in job_url and 'job-boards.greenhouse.io' not in job_url:
-    # Extract gh_jid and company from URL like coinbase.com/careers/positions/123?gh_jid=456
-    match = re.search(r'gh_jid=(\d+)', job_url)
+    match = re.search(r'gh_jid=(\\d+)', job_url)
     if match:
         gh_jid = match.group(1)
-        # Try to get company name from URL
-        company_match = re.search(r'https?://(?:www\.)?([^/]+)\.com', job_url)
+        company_match = re.search(r'https?://(?:www\\.)?([^/]+)\\.com', job_url)
         company = company_match.group(1) if company_match else 'company'
-        # Use direct Greenhouse embed URL
         job_url = "https://job-boards.greenhouse.io/embed/job_app?token=" + gh_jid + "&for=" + company + "&gh_jid=" + gh_jid
         print("Converted to direct Greenhouse URL: " + job_url)
 
 try:
-    browser.open_job_page(job_url)
-    time.sleep(2)  # Brief wait for form load
+    filler = SmartFillerV35(headless=False)
+    filler.run(job_url, interactive=False)
     
-    # Check if we're on a form page or need to click Apply
-    page_url = browser.page.url
-    try:
-        
-        # Try multiple selectors for Apply button
-        apply_selectors = [
-            "span:has-text('Apply') >> visible=true",
-            "a:has-text('Apply')",
-            "button:has-text('Apply')",
-            "div:has-text('Apply') >> visible=true",
-            "a:has-text('Apply Now')",
-            "button:has-text('Apply Now')",
-            "a:has-text('Apply for this job')",
-            "[data-qa='apply-button']",
-            ".apply-button",
-            "#apply-button",
-        ]
-        
-        apply_btn = None
-        for sel in apply_selectors:
-            try:
-                elements = browser.page.query_selector_all(sel)
-                for el in elements:
-                    # Skip if it's in footer or very small
-                    if el.is_visible():
-                        box = el.bounding_box()
-                        if box and box['height'] > 20 and box['y'] < 2000:  # Not in footer
-                            apply_btn = el
-                            print("Found Apply button with selector: " + sel)
-                            break
-                if apply_btn:
-                    break
-            except:
-                pass
-        
-        # If still not found, scroll and try again
-        if not apply_btn:
-            browser.page.evaluate("window.scrollBy(0, 300)")
-            time.sleep(0.5)
-            for sel in apply_selectors[:3]:  # Try first 3 selectors again
-                try:
-                    apply_btn = browser.page.query_selector(sel)
-                    if apply_btn and apply_btn.is_visible():
-                        print("Found Apply button after scroll: " + sel)
-                        break
-                    apply_btn = None
-                except:
-                    pass
-        
-        if apply_btn:
-            print("Clicking Apply button...")
-            apply_btn.scroll_into_view_if_needed()
-            time.sleep(0.5)
-            apply_btn.click()
-            time.sleep(3)  # Wait for form to load
-            
-            # Check if redirected to Greenhouse
-            current_url = browser.page.url
-            if 'greenhouse' in current_url or 'boards.greenhouse.io' in current_url:
-                print("Redirected to Greenhouse: " + current_url)
-            else:
-                # Maybe form appeared on same page - wait a bit more
-                time.sleep(2)
-        else:
-            print("No Apply button found - assuming already on form")
-    except Exception as e:
-        print("Apply button click skipped: " + str(e))
-    
-    # Fill form
-    result = browser.fill_greenhouse_complete(profile)
-    print(f"Filled {{result['total']}} fields")
+    print("\\n" + "="*60)
     print("Browser will stay open for 60 seconds for review...")
+    print("="*60)
     
-    # Keep open for review, then close
+    import time
     time.sleep(60)
 except KeyboardInterrupt:
     pass
@@ -2079,28 +2198,35 @@ except Exception as e:
     print(f"Error: {{e}}")
     import traceback
     traceback.print_exc()
-    time.sleep(10)  # Keep open to see error
+    import time
+    time.sleep(10)
 finally:
-    browser.close()
+    if 'filler' in dir() and filler:
+        filler.stop()
     print("Browser closed")
 ''')
     
-    log_file = open('/tmp/greenhouse_apply.log', 'w')
-    subprocess.Popen(
+    # Run script in background
+    log_file = "/tmp/apply_greenhouse.log"
+    with open(log_file, "w") as log:
+        log.write(f"Starting apply for: {job_url}\n")
+        log.write(f"Profile: {profile_name}\n")
+        log.write("="*60 + "\n")
+    
+    # Start subprocess
+    process = subprocess.Popen(
         [sys.executable, script_file],
-        stdout=log_file,
-        stderr=log_file,
-        start_new_session=True
+        stdout=open(log_file, "a"),
+        stderr=subprocess.STDOUT,
+        cwd=cwd
     )
     
     return {
-        "ok": True, 
-        "message": f"Opening browser for {job_url}...",
-        "profile": profile_name
+        "ok": True,
+        "message": "Application form opened with SmartFiller V3.5",
+        "pid": process.pid,
+        "log_file": log_file
     }
-
-
-# ==================== ANSWER LIBRARY ====================
 
 @app.get("/answers")
 def get_answer_library():

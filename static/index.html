@@ -780,7 +780,34 @@
           <button id="addCompanyBtn" class="ghost" style="margin-left: 8px;">+ Add Company</button>
           <button id="syncToProdBtn" class="ghost" style="margin-left: 8px; display: none;">🔄 Sync to PROD</button>
         </div>
-        
+
+        <!-- Stats by Date -->
+        <div id="statsByDateSection" style="margin-top: 16px; margin-bottom: 16px;">
+          <h3 style="margin-bottom: 12px; color: var(--text); font-size: 14px;">📊 Jobs by Date</h3>
+          <div style="overflow-x: auto;">
+            <table id="statsByDateTable" style="width: 100%; font-size: 12px;">
+              <thead>
+                <tr style="background: var(--card);">
+                  <th style="text-align: left; padding: 8px;">Date</th>
+                  <th style="text-align: right; padding: 8px;">Total</th>
+                  <th style="text-align: right; padding: 8px; color: #10b981;">Primary</th>
+                  <th style="text-align: right; padding: 8px; color: #3b82f6;">Adjacent</th>
+                  <th style="text-align: right; padding: 8px; color: #f59e0b;">Unknown</th>
+                  <th style="text-align: right; padding: 8px; color: #ef4444;">Excluded</th>
+                  <th style="text-align: right; padding: 8px; color: #3b82f6;">US</th>
+                  <th style="text-align: right; padding: 8px; color: #10b981;">NC</th>
+                  <th style="text-align: right; padding: 8px; color: #8b5cf6;">Neighbor</th>
+                  <th style="text-align: right; padding: 8px; color: #6366f1;">Remote</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="10" style="text-align:center; padding: 20px; color: var(--muted);">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="statsLastRefresh" style="margin-top: 8px; font-size: 11px; color: var(--muted);"></div>
+        </div>
+
         <div class="tableWrap">
           <table id="companiesTable">
             <thead>
@@ -2670,6 +2697,102 @@
       });
       
       // Load companies
+
+      // === Stats by Date functions ===
+      async function loadStatsByDate() {
+        try {
+          const res = await fetch("/stats/by-date?days=14");
+          const data = await res.json();
+          if (data.error) return;
+          renderStatsByDate(data.dates, data.last_refresh);
+        } catch (e) {
+          console.error("Failed to load stats by date:", e);
+        }
+      }
+      
+      function renderStatsByDate(dates, lastRefresh) {
+        const tbody = document.querySelector("#statsByDateTable tbody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+        
+        for (const d of dates) {
+          const row = document.createElement("tr");
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const dateObj = new Date(d.date + "T00:00:00");
+          const dateFormatted = months[dateObj.getMonth()] + " " + dateObj.getDate();
+          
+          row.innerHTML = 
+            '<td style="padding: 6px 8px; font-weight: 500;">' + dateFormatted + '</td>' +
+            '<td style="padding: 6px 8px; text-align: right;">' + d.total + '</td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="primary" data-date="' + d.date + '" style="color: #10b981;">' + d.primary + '</a></td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="adjacent" data-date="' + d.date + '" style="color: #3b82f6;">' + d.adjacent + '</a></td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="unknown" data-date="' + d.date + '" style="color: #f59e0b;">' + d.unknown + '</a></td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="excluded" data-date="' + d.date + '" style="color: #ef4444;">' + d.excluded + '</a></td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="us" data-date="' + d.date + '" style="color: #3b82f6;">' + d.us + '</a></td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="nc" data-date="' + d.date + '" style="color: #10b981;">' + d.nc + '</a></td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="neighbor" data-date="' + d.date + '" style="color: #8b5cf6;">' + d.neighbor + '</a></td>' +
+            '<td style="padding: 6px 8px; text-align: right;"><a href="#" class="stats-link" data-filter="remote" data-date="' + d.date + '" style="color: #6366f1;">' + d.remote + '</a></td>';
+          tbody.appendChild(row);
+        }
+        
+        if (lastRefresh) {
+          const mins = Math.floor((new Date() - new Date(lastRefresh)) / 60000);
+          let ago = mins < 60 ? mins + " min ago" : Math.floor(mins / 60) + "h ago";
+          document.getElementById("statsLastRefresh").textContent = "Last refresh: " + ago;
+        }
+        
+        document.querySelectorAll(".stats-link").forEach(function(link) {
+          link.addEventListener("click", function(e) {
+            e.preventDefault();
+            var filter = e.target.dataset.filter;
+            var date = e.target.dataset.date;
+            openFilteredView(filter, date);
+          });
+        });
+      }
+      
+      function openFilteredView(filter, date) {
+        // Switch tab
+        var tabName = (filter === "unknown" || filter === "excluded") ? "review" : "jobs";
+        document.querySelectorAll(".tab-btn").forEach(function(btn) {
+          btn.classList.toggle("active", btn.dataset.tab === tabName);
+        });
+        document.querySelectorAll(".tab-content").forEach(function(c) {
+          c.classList.toggle("active", c.id === "tab-" + tabName);
+        });
+        
+        // Build URL
+        var url = "/cache/browse?date=" + date;
+        if (filter === "primary" || filter === "adjacent" || filter === "unknown" || filter === "excluded") {
+          url += "&category=" + filter;
+        } else if (filter === "us" || filter === "nc" || filter === "neighbor" || filter === "remote") {
+          url += "&location=" + filter;
+        }
+        
+        // Load and display
+        fetch(url)
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            var dateObj = new Date(date + "T00:00:00");
+            var dateLabel = months[dateObj.getMonth()] + " " + dateObj.getDate();
+            
+            if (tabName === "jobs") {
+              ALL_JOBS = enrichJobsLocationNorm(data.jobs || []);
+              pipelineFilteredJobs = ALL_JOBS;
+              pipelinePage = 1;
+              renderJobs(pipelineFilteredJobs);
+              document.getElementById("statusPipeline").innerHTML = 
+                '<span class="pipe-item active">📅 ' + dateLabel + ': ' + data.total + ' ' + filter + ' jobs</span>';
+            } else {
+              renderReviewJobs(data.jobs || []);
+              var statusEl = document.getElementById("reviewStatus");
+              if (statusEl) statusEl.innerHTML = '📅 ' + dateLabel + ': ' + data.total + ' ' + filter + ' jobs';
+            }
+          })
+          .catch(function(e) { console.error("Failed to load:", e); });
+      }
+
       async function loadCompanies() {
         try {
           const res = await fetch(`/companies?profile=all&my_roles=${myRolesEnabled}&my_location=${myLocationEnabled}`);
@@ -3290,6 +3413,7 @@
       }
       
       loadCompanies();
+      loadStatsByDate();
       loadJobsFromCache();  // Load jobs for header stats
       
       // Pagination event listeners
