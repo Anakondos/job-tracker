@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+import asyncio
+from datetime import datetime, timezone, timedelta
 import json
 from collections import Counter
 from pathlib import Path
@@ -31,6 +32,17 @@ from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info, load_stats
 from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
+
+# ATS parser mapping
+ATS_PARSERS = {
+    "greenhouse": lambda url: fetch_greenhouse("", url),
+    "lever": lambda url: fetch_lever("", url),
+    "smartrecruiters": lambda url: fetch_smartrecruiters("", url),
+    "ashby": fetch_ashby_jobs,
+    "workday": lambda url: fetch_workday_v2("", url),
+    "atlassian": lambda url: fetch_atlassian("", url),
+}
+
 from storage.job_storage import (
     get_all_jobs, get_jobs_by_status, get_jobs_by_statuses,
     get_active_jobs, get_archive_jobs, get_all_job_ids,
@@ -236,6 +248,231 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ========== BACKGROUND REFRESH DAEMON ==========
+
+# Daemon status (global)
+DAEMON_STATUS = {
+    "enabled": True,
+    "running": False,
+    "current_company": None,
+    "last_company": None,
+    "last_updated": None,
+    "next_company": None,
+    "companies_in_cycle": 0,
+    "current_index": 0,
+    "batch_size": 3,
+    "pause_seconds": 45,
+    "cycle_count": 0
+}
+
+async def refresh_company_async(company: dict) -> dict:
+    """Parse a single company (runs in thread pool to not block async)"""
+    import concurrent.futures
+    
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        result = await loop.run_in_executor(pool, refresh_company_sync, company)
+    return result
+
+def refresh_company_sync(company: dict) -> dict:
+    """Synchronous company refresh (called from thread pool)"""
+    company_id = company.get("id", company.get("name", "unknown"))
+    ats = company.get("ats", "unknown")
+    board_url = company.get("board_url", "")
+    
+    result = {
+        "company": company_id,
+        "ok": False,
+        "jobs": 0,
+        "error": None
+    }
+    
+    try:
+        fetcher = ATS_PARSERS.get(ats)
+        if not fetcher:
+            result["error"] = f"Unknown ATS: {ats}"
+            return result
+        
+        jobs = fetcher(board_url)
+        result["jobs"] = len(jobs) if jobs else 0
+        result["ok"] = True
+        
+        # Update company status in storage
+        from company_storage import update_company_status
+        update_company_status(company_id, ok=True, jobs_count=len(jobs) if jobs else 0)
+        
+        # Update cache with new jobs
+        update_cache_for_company(company_id, jobs or [])
+        
+    except Exception as e:
+        result["error"] = str(e)
+        from company_storage import update_company_status
+        update_company_status(company_id, ok=False, error=str(e))
+    
+    return result
+
+def update_cache_for_company(company_id: str, new_jobs: list):
+    """Update jobs_all.json cache for a specific company"""
+    from utils.cache_manager import get_cache_path
+    from utils.role_classifier import classify_role
+    from utils.normalize import normalize_location
+    
+    cache_path = get_cache_path("all")
+    if not cache_path.exists():
+        return
+    
+    try:
+        with open(cache_path, "r") as f:
+            cache_data = json.load(f)
+        
+        all_jobs = cache_data.get("jobs", [])
+        
+        # Remove old jobs from this company
+        all_jobs = [j for j in all_jobs if j.get("company_id") != company_id]
+        
+        # Normalize and classify new jobs
+        for job in new_jobs:
+            job["company_id"] = company_id
+            if "location_norm" not in job:
+                job["location_norm"] = normalize_location(job.get("location", ""))
+            if "role_category" not in job:
+                role_info = classify_role(job.get("title", ""))
+                job["role_category"] = role_info.get("category", "unknown")
+                job["role_id"] = role_info.get("role_id")
+        
+        # Add new jobs
+        all_jobs.extend(new_jobs)
+        
+        # Save back
+        cache_data["jobs"] = all_jobs
+        cache_data["jobs_count"] = len(all_jobs)
+        cache_data["last_updated"] = datetime.now(timezone.utc).isoformat()
+        
+        with open(cache_path, "w") as f:
+            json.dump(cache_data, f)
+        
+        # Also update pipeline (jobs.json) with relevant jobs
+        update_pipeline_for_company(company_id, new_jobs)
+        
+    except Exception as e:
+        print(f"[Daemon] Cache update error for {company_id}: {e}")
+
+def update_pipeline_for_company(company_id: str, new_jobs: list):
+    """Update pipeline jobs.json with new relevant jobs from company"""
+    from storage.job_storage import get_all_jobs, add_job
+    
+    # Get existing pipeline jobs
+    existing = get_all_jobs()
+    existing_urls = {j.get("job_url") or j.get("url") for j in existing}
+    
+    # Add new relevant jobs (primary/adjacent only)
+    added = 0
+    for job in new_jobs:
+        if job.get("role_category") in ["primary", "adjacent"]:
+            job_url = job.get("job_url") or job.get("url")
+            if job_url and job_url not in existing_urls:
+                if add_job(job):
+                    added += 1
+    
+    if added > 0:
+        print(f"[Daemon] Added {added} new jobs to pipeline from {company_id}")
+
+async def background_refresh_daemon():
+    """Background task that continuously refreshes companies"""
+    global DAEMON_STATUS
+    
+    # Wait for app to fully start
+    await asyncio.sleep(5)
+    
+    print("[Daemon] Background refresh daemon started")
+    DAEMON_STATUS["running"] = True
+    
+    while DAEMON_STATUS["enabled"]:
+        try:
+            # Load all companies
+            from company_storage import load_companies_master
+            companies = load_companies_master()
+            
+            # Filter to enabled companies only
+            companies = [c for c in companies if c.get("disabled") != True]
+            
+            # Sort by last_checked (oldest first)
+            companies.sort(key=lambda c: c.get("last_checked") or "1970-01-01")
+            
+            DAEMON_STATUS["companies_in_cycle"] = len(companies)
+            DAEMON_STATUS["cycle_count"] += 1
+            
+            print(f"[Daemon] Starting cycle #{DAEMON_STATUS['cycle_count']} with {len(companies)} companies")
+            
+            # Process in batches
+            batch_size = DAEMON_STATUS["batch_size"]
+            for i in range(0, len(companies), batch_size):
+                if not DAEMON_STATUS["enabled"]:
+                    break
+                
+                batch = companies[i:i+batch_size]
+                DAEMON_STATUS["current_index"] = i
+                
+                for company in batch:
+                    if not DAEMON_STATUS["enabled"]:
+                        break
+                    
+                    company_name = company.get("name", company.get("id", "unknown"))
+                    DAEMON_STATUS["current_company"] = company_name
+                    
+                    # Set next company
+                    next_idx = companies.index(company) + 1
+                    if next_idx < len(companies):
+                        DAEMON_STATUS["next_company"] = companies[next_idx].get("name")
+                    else:
+                        DAEMON_STATUS["next_company"] = companies[0].get("name") if companies else None
+                    
+                    print(f"[Daemon] Refreshing: {company_name}")
+                    
+                    result = await refresh_company_async(company)
+                    
+                    DAEMON_STATUS["last_company"] = company_name
+                    DAEMON_STATUS["last_updated"] = datetime.now(timezone.utc).isoformat()
+                    
+                    if result["ok"]:
+                        print(f"[Daemon] ✓ {company_name}: {result['jobs']} jobs")
+                    else:
+                        print(f"[Daemon] ✗ {company_name}: {result['error']}")
+                
+                DAEMON_STATUS["current_company"] = None
+                
+                # Pause between batches
+                if DAEMON_STATUS["enabled"] and i + batch_size < len(companies):
+                    await asyncio.sleep(DAEMON_STATUS["pause_seconds"])
+            
+            # Pause before next cycle (5 minutes)
+            print(f"[Daemon] Cycle #{DAEMON_STATUS['cycle_count']} complete. Waiting 5 minutes...")
+            await asyncio.sleep(300)
+            
+        except Exception as e:
+            print(f"[Daemon] Error: {e}")
+            await asyncio.sleep(60)  # Wait on error
+    
+    DAEMON_STATUS["running"] = False
+    print("[Daemon] Background refresh daemon stopped")
+
+# Start daemon on app startup
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(background_refresh_daemon())
+
+@app.get("/daemon/status")
+def get_daemon_status():
+    """Get background refresh daemon status"""
+    return DAEMON_STATUS
+
+@app.post("/daemon/toggle")
+def toggle_daemon(enabled: bool = Query(...)):
+    """Enable or disable background refresh daemon"""
+    global DAEMON_STATUS
+    DAEMON_STATUS["enabled"] = enabled
+    return {"ok": True, "enabled": enabled}
 
 
 @app.get("/")
@@ -449,7 +686,7 @@ async def get_jobs(
     """
     # NEW: Check cache first (unless refresh=True)
     cache_key = profile
-    cached = None if refresh else load_cache(cache_key)
+    cached = None if refresh else load_cache(cache_key, ignore_ttl=True)
     
     if cached:
         print(f"✅ Using cached data ({cached['jobs_count']} jobs)")
@@ -733,7 +970,7 @@ def get_companies(
     all_pipeline_jobs = get_active_jobs()
     
     # Load cache to get total jobs per company (all jobs from ATS)
-    cache_data = load_cache(profile)  # Cache key is just 'all', not 'jobs_all'
+    cache_data = load_cache(profile, ignore_ttl=True)  # Cache key is just 'all', not 'jobs_all'
     cache_jobs = cache_data.get("jobs", []) if cache_data else []
     
     # Build total_jobs per company from cache
@@ -963,7 +1200,7 @@ def refresh_single_company(company_id: str, profile: str = Query("all")):
         jobs = _fetch_for_company(profile, cfg)
         
         # Update cache - load existing, replace this company's jobs, save
-        cached = load_cache(profile) or {"jobs": []}
+        cached = load_cache(profile, ignore_ttl=True) or {"jobs": []}
         other_jobs = [j for j in cached.get("jobs", []) if j.get("company") != company_name]
         all_jobs = other_jobs + jobs
         save_cache(profile, all_jobs)
@@ -1066,7 +1303,7 @@ async def refresh_single_company_stream(company_id: str, profile: str = Query("a
             jobs_count = len(jobs)
             
             # Update cache
-            cached = load_cache(profile) or {"jobs": []}
+            cached = load_cache(profile, ignore_ttl=True) or {"jobs": []}
             other_jobs = [j for j in cached.get("jobs", []) if j.get("company") != company_name]
             all_jobs = other_jobs + jobs
             save_cache(profile, all_jobs)
@@ -1278,8 +1515,27 @@ async def refresh_stream(profile: str = Query("all")):
 @app.get("/stats")
 def get_funnel_stats():
     """Get funnel stats (Total -> Role -> US -> My Area) from cache."""
+    from datetime import datetime, timezone, timedelta
+    
     stats = load_stats()
     if stats:
+        # Check cache age
+        updated_at = stats.get("updated_at")
+        is_stale = False
+        age_hours = 0
+        
+        if updated_at:
+            try:
+                last_updated = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                now = datetime.now(timezone.utc)
+                age = now - last_updated
+                age_hours = age.total_seconds() / 3600
+                is_stale = age > timedelta(hours=6)
+            except:
+                pass
+        
+        stats["is_stale"] = is_stale
+        stats["age_hours"] = round(age_hours, 1)
         return stats
     else:
         return {
@@ -1288,6 +1544,8 @@ def get_funnel_stats():
             "us": 0,
             "my_area": 0,
             "updated_at": None,
+            "is_stale": True,
+            "age_hours": 0,
             "message": "Stats not computed yet. Run /jobs?refresh=true first."
         }
 
@@ -1299,8 +1557,8 @@ def get_stats_by_date(days: int = Query(14, ge=1, le=60)):
     from collections import defaultdict
     from datetime import datetime, timedelta
     
-    # Load from cache
-    cached = load_cache("all")
+    # Load from cache (ignore TTL - we want to show stats even if expired)
+    cached = load_cache("all", ignore_ttl=True)
     if not cached:
         return {"error": "Cache not loaded", "dates": []}
     
@@ -1395,7 +1653,7 @@ def browse_cache_jobs(
     """Browse ALL cached jobs with filters (not just pipeline)"""
     from datetime import datetime
     
-    cached = load_cache("all")
+    cached = load_cache("all", ignore_ttl=True)
     if not cached:
         return {"error": "Cache not loaded", "jobs": [], "total": 0}
     
@@ -1473,7 +1731,7 @@ def get_review_jobs(
     """
     # Load from cache
     cache_key = "all"
-    cached = load_cache(cache_key)
+    cached = load_cache(cache_key, ignore_ttl=True)
     
     if not cached:
         return {"error": "Cache not loaded. Run /jobs?refresh=true first.", "jobs": [], "total": 0}
