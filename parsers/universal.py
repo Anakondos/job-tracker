@@ -65,6 +65,19 @@ def extract_job_details(url: str, timeout: int = 15000) -> dict:
 
 def extract_title(page) -> str:
     """Extract job title using common selectors and patterns."""
+    # Try og:title first (often has clean job title)
+    try:
+        og_title = page.query_selector("meta[property=\"og:title\"]")
+        if og_title:
+            content = og_title.get_attribute("content")
+            if content and len(content) > 10:
+                # Clean common prefixes like "Check out this job at Company, "
+                if ", " in content and "job at" in content.lower():
+                    return content.split(", ", 1)[-1].strip()
+                return content
+    except:
+        pass
+    
     selectors = [
         # Common job title selectors
         'h1[class*="title"]',

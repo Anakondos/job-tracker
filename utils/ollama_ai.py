@@ -462,3 +462,48 @@ if __name__ == "__main__":
         # Test company name fix
         fixed = fix_company_name("capitalonecareers", "https://www.capitalonecareers.com")
         print(f"Company name: {fixed}")
+
+
+def generate_company_mission(company: str, job_description: str = "", position: str = "") -> str:
+    """
+    Generate a personalized sentence about why the candidate wants to work at this company.
+    Based on company name, job description, and position.
+    
+    Returns something like:
+    "I'm particularly drawn to Coinbase's mission to increase economic freedom - 
+    a vision I'm eager to contribute to through my fintech experience."
+    """
+    prompt = f"""Generate ONE sentence (30-50 words) explaining why a candidate is excited to work at {company}.
+
+Company: {company}
+Position: {position}
+Job Description excerpt: {job_description[:500] if job_description else 'Not provided'}
+
+Requirements:
+- Start with "I'm particularly drawn to" or "I'm excited about" or similar
+- Mention something specific about the company's mission, product, or impact
+- Connect it to the candidate's desire to contribute
+- Keep it genuine and professional, not generic
+- ONE sentence only, no quotes
+
+Example good outputs:
+- "I'm particularly drawn to Stripe's mission to increase the GDP of the internet, and I'm eager to contribute my payments platform experience to this vision."
+- "I'm excited about Airbnb's focus on creating belonging anywhere, which aligns with my passion for building products that connect people globally."
+
+Generate the sentence:"""
+
+    system = "You are a career coach helping write compelling cover letters. Be specific and genuine, avoid generic phrases."
+    
+    result = ollama_request(prompt, system, temperature=0.7)
+    
+    if result:
+        # Clean up the result
+        result = result.strip().strip('"').strip("'")
+        # Ensure it starts appropriately
+        if not any(result.lower().startswith(s) for s in ["i'm", "i am", "what"]):
+            result = "I'm particularly drawn to " + result
+        return result
+    
+    # Fallback
+    return f"I'm excited about the opportunity to contribute to {company}'s continued growth and innovation."
+

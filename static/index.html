@@ -813,14 +813,14 @@
             <thead>
               <tr>
                 <th class="sortable" style="width: 180px" onclick="sortCompanies('company')">Company <span class="sortIcon" id="sortIcon-c-company">⬍</span></th>
-                <th class="sortable" style="width: 120px" onclick="sortCompanies('industry')">Industry <span class="sortIcon" id="sortIcon-c-industry">⬍</span></th>
-                <th class="sortable" style="width: 100px" onclick="sortCompanies('ats')">ATS <span class="sortIcon" id="sortIcon-c-ats">⬍</span></th>
+                <th class="sortable" style="width: 80px" onclick="sortCompanies('industry')">Industry <span class="sortIcon" id="sortIcon-c-industry">⬍</span></th>
+                <th class="sortable" style="width: 80px" onclick="sortCompanies('ats')">ATS <span class="sortIcon" id="sortIcon-c-ats">⬍</span></th>
                 <th class="sortable" style="width: 80px" onclick="sortCompanies('total_jobs')" title="Total jobs from ATS">Total <span class="sortIcon" id="sortIcon-c-total_jobs">⬍</span></th>
                 <th class="sortable" style="width: 80px" onclick="sortCompanies('jobs_count')" title="PM/TPM jobs in pipeline">Jobs <span class="sortIcon" id="sortIcon-c-jobs_count">⬍</span></th>
                 <th class="sortable" style="width: 60px" onclick="sortCompanies('new_count')">New <span class="sortIcon" id="sortIcon-c-new_count">⬍</span></th>
                 <th class="sortable" style="width: 70px" onclick="sortCompanies('applied_count')">Applied <span class="sortIcon" id="sortIcon-c-applied_count">⬍</span></th>
-                <th class="sortable" style="width: 100px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
-                <th class="sortable" style="width: 90px" onclick="sortCompanies('last_checked')">Updated <span class="sortIcon" id="sortIcon-c-last_checked">⬍</span></th>
+                <th class="sortable" style="width: 80px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
+                <th class="sortable" style="width: 75px" onclick="sortCompanies('last_checked')">Updated <span class="sortIcon" id="sortIcon-c-last_checked">⬍</span></th>
                 <th style="width: 60px">Actions</th>
               </tr>
               <tr class="filter-row">
@@ -872,6 +872,32 @@
       <!-- Pagination -->
       <div id="pipelinePagination" style="display: flex; align-items: center; justify-content: space-between; margin: 12px 0; padding: 10px 0; border-bottom: 1px solid var(--border);">
         <button id="addJobBtn" class="ghost" style="padding: 6px 12px; background: var(--accent); color: white;">+ Add Job</button>
+        
+        <!-- Location filters moved here -->
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span style="font-size: 12px; color: var(--muted);">Location:</span>
+          <select id="locationCategoryFilter" class="column-filter" style="width: 80px; font-size: 12px; padding: 6px;">
+            <option value="all">All</option>
+            <option value="us">US</option>
+            <option value="remote">Remote</option>
+            <option value="nonus">Non-US</option>
+          </select>
+          <div class="ms" id="stateMultiSelect" style="min-width: 100px;">
+            <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 6px 8px;">
+              <span id="stateBtnText" style="font-size: 12px;">States...</span>
+              <span class="count" id="stateBtnCount" style="font-size: 11px;">0</span>
+            </button>
+            <div class="msMenu" id="stateMenu">
+              <input class="msSearch" id="stateSearch" placeholder="Search..." />
+              <div id="stateList"></div>
+              <div class="msFooter">
+                <button type="button" id="stateClear" class="ghost">Clear</button>
+                <button type="button" id="stateClose">Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <div style="color: var(--muted); font-size: 13px;">
           Showing <span id="paginationStart">0</span>-<span id="paginationEnd">0</span> of <span id="paginationTotal">0</span> jobs
         </div>
@@ -889,19 +915,19 @@
       </div>
 
       <div class="tableWrap">
-        <table id="jobsTable">
+        <div style="overflow-x: auto;"><table id="jobsTable" style="min-width: 950px;">
           <thead>
             <tr>
               <th
                 class="sortable"
-                style="width: 150px"
+                style="width: 100px"
                 onclick="sortTable('company')"
               >
                 Company <span class="sortIcon" id="sortIcon-company">⬍</span>
               </th>
               <th
                 class="sortable"
-                style="width: 140px"
+                style="width: 70px"
                 onclick="sortTable('industry')"
               >
                 Industry <span class="sortIcon" id="sortIcon-industry">⬍</span>
@@ -911,62 +937,40 @@
               </th>
               <th
                 class="sortable"
-                style="width: 280px"
+                style="width: 110px"
                 onclick="sortTable('location')"
               >
                 Location <span class="sortIcon" id="sortIcon-location">⬍</span>
               </th>
               <th
                 class="sortable"
-                style="width: 170px"
+                style="width: 70px"
                 onclick="sortTable('updated')"
               >
                 Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
               </th>
               <th
                 class="sortable"
-                style="width: 120px"
+                style="width: 70px"
                 onclick="sortTable('ats')"
               >
                 ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
               </th>
               <th
                 class="sortable"
-                style="width: 140px"
+                style="width: 100px"
                 onclick="sortTable('status')"
               >
                 Status <span class="sortIcon" id="sortIcon-status">⬍</span>
               </th>
-              <th style="width: 80px">Actions</th>
+              <th style="width: 20px; text-align: center; padding: 2px;" title="Documents folder">📁</th>
+              <th style="width: 70px">Actions</th>
             </tr>
             <tr class="filter-row">
               <th><input type="text" id="pipelineFilterCompany" placeholder="Filter..." class="column-filter"></th>
               <th><input type="text" id="pipelineFilterIndustry" placeholder="Filter..." class="column-filter"></th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="Filter..." class="column-filter"></th>
-              <th>
-                <!-- Location category + states -->
-                <div style="display: flex; gap: 4px; align-items: center;">
-                  <select id="locationCategoryFilter" class="column-filter" style="width: 70px; font-size: 11px; padding: 4px;">
-                    <option value="all">All</option>
-                    <option value="us">US</option>
-                    <option value="remote">Remote</option>
-                    <option value="nonus">Non-US</option>
-                  </select>
-                <div class="ms" id="stateMultiSelect" style="min-width: 80px;">
-                  <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 4px 6px;">
-                    <span id="stateBtnText" style="font-size: 11px;">States...</span>
-                    <span class="count" id="stateBtnCount" style="font-size: 10px;">0</span>
-                  </button>
-                  <div class="msMenu" id="stateMenu">
-                    <input class="msSearch" id="stateSearch" placeholder="Search..." />
-                    <div id="stateList"></div>
-                    <div class="msFooter">
-                      <button type="button" id="stateClear" class="ghost">Clear</button>
-                      <button type="button" id="stateClose">Done</button>
-                    </div>
-                  </div>
-                </div>
-              </th>
+              <th><input type="text" id="pipelineFilterLocation" placeholder="Filter..." class="column-filter"></th>
               <th></th>
               <th>
                 <select id="pipelineFilterAts" class="column-filter">
@@ -993,6 +997,7 @@
                   <option value="Closed">Closed</option>
                 </select>
               </th>
+              <th></th>
               <th></th>
             </tr>
           </thead>
@@ -1033,11 +1038,11 @@
         <thead>
           <tr>
             <th style="width: 40px;"><input type="checkbox" id="reviewSelectAll" title="Select all"></th>
-            <th class="sortable" style="width: 150px" data-sort="company">Company <span class="sortIcon">⬍</span></th>
+            <th class="sortable" style="width: 120px" data-sort="company">Company <span class="sortIcon">⬍</span></th>
             <th class="sortable" data-sort="title">Title <span class="sortIcon">⬍</span></th>
             <th class="sortable" style="width: 200px" data-sort="location">Location <span class="sortIcon">⬍</span></th>
-            <th style="width: 150px">Role Reason</th>
-            <th style="width: 90px">Pipeline</th>
+            <th style="width: 120px">Role Reason</th>
+            <th style="width: 75px">Pipeline</th>
           </tr>
           <tr class="filter-row">
             <th></th>
@@ -1095,29 +1100,56 @@
 
     <!-- Cover Letter Modal -->
     <div id="coverLetterModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200;">
-      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; width:700px; max-width:90vw; max-height:80vh; overflow-y:auto;">
-        <h3 style="margin:0 0 16px 0;">Generate Cover Letter</h3>
+      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; width:700px; max-width:90vw; max-height:85vh; overflow-y:auto;">
+        <h3 style="margin:0 0 16px 0;">📝 Generate Cover Letter</h3>
         <div style="display:grid; gap:12px; margin-bottom:16px;">
-          <label>Company <input type="text" id="clCompany" style="width:100%; margin-top:4px;"></label>
-          <label>Position <input type="text" id="clPosition" style="width:100%; margin-top:4px;"></label>
-          <label>Job Description (optional) <textarea id="clDescription" rows="4" style="width:100%; margin-top:4px;"></textarea></label>
+          <div style="display:flex; gap:12px;">
+            <label style="flex:1;">Company <input type="text" id="clCompany" style="width:100%; margin-top:4px;"></label>
+            <label style="flex:1;">Position <input type="text" id="clPosition" style="width:100%; margin-top:4px;"></label>
+          </div>
+          <label>Role Type
+            <select id="clRoleFamily" style="width:100%; margin-top:4px; padding:8px;">
+              <option value="product">Product Manager</option>
+              <option value="tpm_program">TPM / Delivery Lead</option>
+              <option value="project">Project Manager</option>
+              <option value="po">Product Owner</option>
+              <option value="scrum">Scrum Master</option>
+            </select>
+          </label>
+          <label>Job Description (optional - helps AI generate better mission statement)
+            <textarea id="clDescription" rows="4" style="width:100%; margin-top:4px;" placeholder="Paste job description here..."></textarea>
+          </label>
         </div>
         <div style="display:flex; gap:8px; justify-content:flex-end;">
           <button id="clCancel" class="ghost">Cancel</button>
-          <button id="clGenerate" style="background:var(--accent); color:white;">Generate</button>
+          <button id="clGenerate" style="background:var(--accent); color:white;">🚀 Generate</button>
         </div>
         <div id="clResult" style="margin-top:16px; display:none;">
-          <h4>Generated Cover Letter:</h4>
-          <pre id="clOutput" style="background:var(--panel); padding:16px; border-radius:8px; white-space:pre-wrap; font-size:13px;"></pre>
-          <div style="display:flex; gap:8px; margin-top:8px;">
-            <button id="clCopy" style="background:var(--accent); color:white;">📋 Copy to Clipboard</button>
-            <button id="clSave" style="background:#2d5a2d; color:white;">💾 Save to File</button>
+          <div style="display:flex; gap:12px; margin-bottom:12px;">
+            <div style="flex:1; padding:12px; background:var(--panel); border-radius:8px;">
+              <div style="font-size:11px; color:var(--muted);">📄 Template Used</div>
+              <div id="clTemplateName" style="font-weight:500;"></div>
+            </div>
+            <div style="flex:1; padding:12px; background:var(--panel); border-radius:8px;">
+              <div style="font-size:11px; color:var(--muted);">📁 Saved To</div>
+              <div id="clFolderName" style="font-weight:500; font-size:12px;"></div>
+            </div>
           </div>
-          <div id="clSaveStatus" style="margin-top:8px; font-size:12px; color:var(--muted);"></div>
+          <div style="margin-bottom:12px; padding:12px; background:#1a4d1a; border-radius:8px;">
+            <div style="font-size:11px; color:#86efac; margin-bottom:4px;">🎯 AI-Generated Company Mission</div>
+            <div id="clMission" style="color:#bbf7d0; font-style:italic;"></div>
+          </div>
+          <details style="margin-bottom:12px;">
+            <summary style="cursor:pointer; color:var(--muted);">Preview Full Letter</summary>
+            <pre id="clOutput" style="background:var(--panel); padding:16px; border-radius:8px; white-space:pre-wrap; font-size:12px; margin-top:8px; max-height:300px; overflow-y:auto;"></pre>
+          </details>
+          <div style="display:flex; gap:8px;">
+            <button id="clOpenFolder" style="background:#3b82f6; color:white; border:none; border-radius:6px; padding:8px 16px; cursor:pointer;">📁 Open in Finder</button>
+            <button id="clCopy" style="background:var(--accent); color:white; border:none; border-radius:6px; padding:8px 16px; cursor:pointer;">📋 Copy Text</button>
+          </div>
         </div>
       </div>
     </div>
-
     <!-- Add Job Modal -->
     <div id="addJobModal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
@@ -1134,6 +1166,44 @@
         <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
           <button type="button" id="addJobCancel" class="ghost">Cancel</button>
           <button type="button" id="addJobSubmit" style="background: var(--accent); color: white;">Add Job</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Prepare Result Modal -->
+    <div id="prepareResultModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200;">
+      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:700px; max-height:85vh; overflow-y:auto;">
+        <div class="modal-header">
+          <h3>✅ Application Prepared</h3>
+          <button class="modal-close" onclick="closePrepareModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div style="margin-bottom: 16px;">
+            <strong id="prepareCompanyName"></strong> - <span id="preparePositionName"></span>
+          </div>
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <div style="flex: 1; padding: 12px; background: var(--card); border-radius: 8px;">
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">📄 CV</div>
+              <div id="prepareCvName" style="font-weight: 500;"></div>
+            </div>
+            <div style="flex: 1; padding: 12px; background: var(--card); border-radius: 8px;">
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">📝 Template</div>
+              <div id="prepareTemplateName" style="font-weight: 500;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">🎯 Company Mission (AI Generated)</div>
+            <div id="prepareMission" style="padding: 12px; background: var(--card); border-radius: 8px; font-style: italic;"></div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">📁 Folder</div>
+            <div id="prepareFolderPath" style="padding: 8px; background: var(--card); border-radius: 4px; font-family: monospace; font-size: 11px; word-break: break-all;"></div>
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button onclick="openPrepareFolder()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer;">📁 Open in Finder</button>
+            <button onclick="closePrepareModal()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer;">Close</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1583,6 +1653,11 @@
             (j.title || "").toLowerCase().includes(pipelineFilters.title.toLowerCase())
           );
         }
+        if (pipelineFilters.location) {
+          filtered = filtered.filter(j => 
+            (j.location || "").toLowerCase().includes(pipelineFilters.location.toLowerCase())
+          );
+        }
         if (pipelineFilters.ats) {
           filtered = filtered.filter(j => pipelineFilters.ats === "manual" ? j.source === "onboard" : j.ats === pipelineFilters.ats);
         }
@@ -1766,8 +1841,10 @@
               .join("")}
           </select>
         </td>
+        <td style="text-align: center; padding: 2px;">
+          ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder" style="background:none; border:none; cursor:pointer; font-size:16px;">📁</button>` : ''}
+        </td>
         <td>
-          <button class="coverLetterBtn" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Generate Cover Letter" style="background:none; border:none; cursor:pointer; font-size:14px;">📄</button>
           ${st === 'Selected'
             ? `<button class="prepareBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`
             : ''}
@@ -1938,6 +2015,7 @@
               const company = e.target.dataset.company;
               const position = e.target.dataset.position;
               const jobUrl = e.target.dataset.joburl;
+              const roleFamily = job.role_family || 'product';
               
               e.target.disabled = true;
               e.target.textContent = "⏳ Preparing...";
@@ -1962,35 +2040,42 @@
                   body: JSON.stringify({ job_title: position })
                 });
                 const cvData = await cvRes.json();
+                const cvFilename = cvData.filename || '';
                 
-                // 3. Generate Cover Letter
+                // 3. Generate Cover Letter (from template + AI mission)
                 const clRes = await fetch('/generate-cover-letter', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ company, position, job_description: jd })
+                  body: JSON.stringify({ 
+                    company, 
+                    position, 
+                    job_description: jd,
+                    role_family: roleFamily
+                  })
                 });
                 const clData = await clRes.json();
                 
-                // 4. Save Cover Letter
-                if (clData.ok && clData.cover_letter) {
+                // 4. Copy CV to application folder
+                if (cvFilename) {
                   await fetch('/save-cover-letter', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ company, position, content: clData.cover_letter })
+                    body: JSON.stringify({ company, position, cv_filename: cvFilename })
                   });
                 }
                 
-                // 5. Update status to Ready
+                // 5. Update status to Ready with folder path
+                const folderPath = clData.folder_path || '';
                 await fetch('/pipeline/status', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ job_id: jobKey, status: 'Ready' })
+                  body: JSON.stringify({ job_id: jobKey, status: 'Ready', folder_path: folderPath })
                 });
-                
-                alert(`✅ Prepared for ${company}!\n\n📄 CV: ${cvData.filename || 'Selected'}\n📝 Cover Letter: Saved\n\nStatus changed to Ready. Click "🚀 Apply Now" to submit.`);
+                showPrepareResult(company, position, cvFilename, clData);
                 
                 // Update local job status and refresh
                 job.status = 'Ready';
+                job.folder_path = clData.folder_path || '';
                 job.application_status = 'Ready';
                 const filtered = applyFilters(ALL_JOBS);
                 renderJobs(filtered);
@@ -2004,6 +2089,26 @@
             });
           }
           
+
+          // Open folder button handler
+          const openFolderBtn = row.querySelector(".openFolderBtn");
+          if (openFolderBtn) {
+            openFolderBtn.addEventListener("click", async (e) => {
+              const folderPath = e.target.dataset.folder;
+              if (folderPath) {
+                try {
+                  await fetch("/open-folder", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ path: folderPath })
+                  });
+                } catch (err) {
+                  console.error("Failed to open folder:", err);
+                }
+              }
+            });
+          }
+
           // Apply button handler (Greenhouse only)
           const applyBtn = row.querySelector(".applyBtn");
           if (applyBtn) {
@@ -2503,6 +2608,7 @@
         company: "",
         industry: "",
         title: "",
+        location: "",
         ats: ""
       };
       
@@ -2751,6 +2857,39 @@
             }
           })
           .catch(function(e) { console.error("Failed to load:", e); });
+      }
+
+
+      // === Prepare Result Modal ===
+      let currentPrepareFolder = "";
+      
+      function showPrepareResult(company, position, cvFilename, clData) {
+        console.log("showPrepareResult called:", company, position, clData);
+        document.getElementById("prepareCompanyName").textContent = company;
+        document.getElementById("preparePositionName").textContent = position;
+        document.getElementById("prepareCvName").textContent = cvFilename || "Not selected";
+        document.getElementById("prepareTemplateName").textContent = clData.template_used || "Generated";
+        document.getElementById("prepareMission").textContent = clData.company_mission || "";
+        document.getElementById("prepareFolderPath").textContent = clData.folder_path || "";
+        currentPrepareFolder = clData.folder_path || "";
+        document.getElementById("prepareResultModal").style.display = "flex";
+      }
+      
+      function closePrepareModal() {
+        document.getElementById("prepareResultModal").style.display = "none";
+      }
+      
+      async function openPrepareFolder() {
+        if (!currentPrepareFolder) return;
+        try {
+          await fetch("/open-folder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: currentPrepareFolder })
+          });
+        } catch (e) {
+          console.error("Failed to open folder:", e);
+        }
       }
 
       async function loadCompanies() {
@@ -3326,6 +3465,10 @@
         pipelineFilters.title = e.target.value;
         applyPipelineColumnFilters();
       });
+      document.getElementById("pipelineFilterLocation").addEventListener("input", (e) => {
+        pipelineFilters.location = e.target.value;
+        applyPipelineColumnFilters();
+      });
 
       document.getElementById("pipelineFilterAts").addEventListener("change", (e) => {
         pipelineFilters.ats = e.target.value;
@@ -3502,24 +3645,31 @@
         if (e.target === clModal) clModal.style.display = 'none';
       });
       
+      let currentClFolder = '';
+      
       document.getElementById('clGenerate').addEventListener('click', async () => {
         const company = document.getElementById('clCompany').value || '[Company]';
         const position = document.getElementById('clPosition').value || '[Position]';
         const description = document.getElementById('clDescription').value;
+        const roleFamily = document.getElementById('clRoleFamily').value;
         
-        document.getElementById('clGenerate').textContent = 'Generating...';
+        document.getElementById('clGenerate').textContent = '⏳ Generating...';
         document.getElementById('clGenerate').disabled = true;
         
         try {
           const resp = await fetch('/generate-cover-letter', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({company, position, job_description: description})
+            body: JSON.stringify({company, position, job_description: description, role_family: roleFamily})
           });
           const data = await resp.json();
           
           if (data.ok) {
             document.getElementById('clOutput').textContent = data.cover_letter;
+            document.getElementById('clTemplateName').textContent = data.template_used || 'Generated';
+            document.getElementById('clFolderName').textContent = data.folder_path ? data.folder_path.split('/').pop() : '';
+            document.getElementById('clMission').textContent = data.company_mission || '';
+            currentClFolder = data.folder_path || '';
             document.getElementById('clResult').style.display = 'block';
           } else {
             alert('Error: ' + (data.error || 'Failed to generate'));
@@ -3527,8 +3677,21 @@
         } catch (e) {
           alert('Error: ' + e.message);
         } finally {
-          document.getElementById('clGenerate').textContent = 'Generate';
+          document.getElementById('clGenerate').textContent = '🚀 Generate';
           document.getElementById('clGenerate').disabled = false;
+        }
+      });
+      
+      document.getElementById('clOpenFolder').addEventListener('click', async () => {
+        if (!currentClFolder) return;
+        try {
+          await fetch('/open-folder', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: currentClFolder})
+          });
+        } catch (e) {
+          console.error('Failed to open folder:', e);
         }
       });
       
@@ -3537,48 +3700,9 @@
         navigator.clipboard.writeText(text).then(() => {
           document.getElementById('clCopy').textContent = '✅ Copied!';
           setTimeout(() => {
-            document.getElementById('clCopy').textContent = '📋 Copy to Clipboard';
+            document.getElementById('clCopy').textContent = '📋 Copy Text';
           }, 1500);
         });
-      });
-      
-      // Save Cover Letter to file
-      document.getElementById('clSave').addEventListener('click', async () => {
-        const company = document.getElementById('clCompany').value;
-        const position = document.getElementById('clPosition').value;
-        const content = document.getElementById('clOutput').textContent;
-        const statusEl = document.getElementById('clSaveStatus');
-        
-        if (!content) {
-          statusEl.textContent = '⚠️ No cover letter to save';
-          return;
-        }
-        
-        document.getElementById('clSave').textContent = '⏳ Saving...';
-        document.getElementById('clSave').disabled = true;
-        
-        try {
-          const res = await fetch('/save-cover-letter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ company, position, content })
-          });
-          const data = await res.json();
-          
-          if (data.ok) {
-            statusEl.textContent = `✅ Saved: ${data.filename}`;
-            statusEl.style.color = '#4ade80';
-          } else {
-            statusEl.textContent = `❌ Error: ${data.error}`;
-            statusEl.style.color = '#f87171';
-          }
-        } catch (err) {
-          statusEl.textContent = `❌ Error: ${err.message}`;
-          statusEl.style.color = '#f87171';
-        } finally {
-          document.getElementById('clSave').textContent = '💾 Save to File';
-          document.getElementById('clSave').disabled = false;
-        }
       });
       
       // Add Job Modal

@@ -1667,6 +1667,7 @@ class PipelineStatusUpdate(BaseModel):
     job_id: str
     status: str
     notes: str = ""
+    folder_path: str = ""
 
 
 @app.post("/pipeline/status")
@@ -1681,7 +1682,7 @@ def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
     if payload.status not in valid_statuses:
         return {"ok": False, "error": f"Invalid status. Valid: {valid_statuses}"}
     
-    job = job_update_status(payload.job_id, payload.status, payload.notes)
+    job = job_update_status(payload.job_id, payload.status, payload.notes, payload.folder_path)
     
     if job:
         return {"ok": True, "job": job}
@@ -1793,7 +1794,7 @@ def detect_ats_from_url(url: str) -> dict:
         job_id = job_id_match.group(1) if job_id_match else ""
         
         # Extract site name from path
-        site_match = re.search(r"myworkdayjobs\.com/(?:en-US/)?([^/]+)", url)
+        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", url)
         site = site_match.group(1) if site_match else company
         
         return {
@@ -1849,12 +1850,16 @@ def detect_ats_from_url(url: str) -> dict:
             }
     
     # Unknown ATS - use universal parser
-    # Extract company from domain
-    company = host.replace("www.", "").replace("jobs.", "").split(".")[0]
+    # Extract company from domain (skip common prefixes like apply, careers, jobs)
+    parts = host.replace("www.", "").split(".")
+    skip_prefixes = {"apply", "careers", "jobs", "job", "hire", "recruiting", "talent"}
+    company = parts[0]
+    if company.lower() in skip_prefixes and len(parts) > 1:
+        company = parts[1]
     return {
         "ats": "universal",
         "company": company.title(),
-        "company_slug": company,
+        "company_slug": company.lower(),
         "board_url": f"https://{host}",
         "job_url": url
     }
@@ -1894,7 +1899,7 @@ def fetch_single_job(ats_info: dict) -> dict:
         board_url = ats_info.get("board_url")
         
         # Extract site from board_url
-        site_match = re.search(r"myworkdayjobs\.com/([^/]+)", board_url)
+        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url)
         site = site_match.group(1) if site_match else company_slug
         
         search_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
@@ -2262,111 +2267,119 @@ def get_answer(category: str, key: str):
 
 
 @app.post("/generate-cover-letter")
-def generate_cover_letter(payload: dict):
+def generate_cover_letter_endpoint(payload: dict):
     """
-    Generate a personalized cover letter.
-    Expects: {company, position, job_description?, highlights?}
+    Generate a personalized cover letter from DOCX template.
+    Expects: {company, position, job_description?, role_family?}
+    Returns: {ok, cover_letter, file_path}
     """
-    company = payload.get("company", "[Company]")
-    position = payload.get("position", "[Position]")
+    from docx import Document
+    import shutil
+    
+    company = payload.get("company", "Company")
+    position = payload.get("position", "Position")
     job_description = payload.get("job_description", "")
+    role_family = payload.get("role_family", "product")  # product, tpm_program, project
     
-    # Load answer library
-    path = Path("data/answer_library.json")
-    if not path.exists():
-        return {"error": "Answer library not found"}
-    with open(path) as f:
-        library = json.load(f)
+    # Map role_family to template
+    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    template_map = {
+        "product": "Cover_Letter_Anton_Kondakov_ProductM.docx",
+        "tpm_program": "Cover_Letter_Anton_Kondakov_Delivery Lead.docx",
+        "project": "Cover_Letter_Anton_Kondakov_Project Manager.docx",
+        "scrum": "Cover_Letter_Anton_Kondakov_Scrum Master.docx",
+        "po": "Cover_Letter_Anton_Kondakov_PO.docx",
+    }
     
-    template = library.get("cover_letter_template", {})
-    personal = library.get("personal", {})
+    template_name = template_map.get(role_family, template_map["product"])
+    template_path = cv_dir / template_name
     
-    # Try AI-generated bullet points
-    bullets = []
+    if not template_path.exists():
+        return {"error": f"Template not found: {template_name}"}
+    
+    # Generate company mission using AI
+    company_mission = ""
     try:
-        from utils.ollama_ai import generate_cover_letter_points, is_ollama_available
-        if is_ollama_available() and job_description:
-            cv_highlights = f"""
-            - 15+ years TPM/Program Manager experience
-            - Led teams of 50+ engineers across global time zones
-            - GCP cloud migration: $1.2M savings, 25% uptime improvement
-            - Deutsche Bank, UBS, DXC Technology experience
-            - SAFe POPM certified, Scrum Master
-            """
-            bullets = generate_cover_letter_points(position, company, job_description, cv_highlights)
+        from utils.ollama_ai import generate_company_mission, is_ollama_available
+        if is_ollama_available():
+            company_mission = generate_company_mission(company, job_description, position)
+            print(f"Generated mission: {company_mission}")
     except Exception as e:
-        print(f"AI cover letter error: {e}")
+        print(f"AI mission generation error: {e}")
+        company_mission = f"I'm excited about the opportunity to contribute to {company}'s continued success."
     
-    # Fallback bullets
-    if not bullets:
-        bullets = [
-            "15+ years leading complex technology programs for Fortune 500 companies",
-            "Proven track record delivering cloud migrations with $1.2M+ cost savings",
-            "Experience managing cross-functional teams of 50+ engineers across global time zones"
-        ]
+    # Load and modify template
+    doc = Document(str(template_path))
     
-    # Build cover letter
-    opening = template.get("opening", "").replace("[POSITION]", position).replace("[COMPANY]", company)
-    closing = template.get("closing", "").replace("[COMPANY]", company)
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if "[COMPANY NAME]" in run.text:
+                run.text = run.text.replace("[COMPANY NAME]", company)
+            if "[POSITION TITLE]" in run.text:
+                run.text = run.text.replace("[POSITION TITLE]", position)
+            if "[COMPANY MISSION]" in run.text:
+                run.text = run.text.replace("[COMPANY MISSION]", company_mission)
     
-    bullet_text = "\n".join([f"• {b}" for b in bullets])
-    body = f"My experience directly addresses your key requirements:\n\n{bullet_text}"
+    # Create Applications folder
+    applications_dir = cv_dir / "Applications"
+    applications_dir.mkdir(exist_ok=True)
     
-    cover_letter = f"""{personal.get('full_name', 'Anton Kondakov')}
-{personal.get('phone', '')} | {personal.get('email', '')} | {personal.get('linkedin', '')}
-{personal.get('location', '')}
-
-Dear Hiring Manager,
-
-{opening}
-
-{body}
-
-{closing}
-
-Sincerely,
-{personal.get('full_name', 'Anton Kondakov')}
-"""
+    # Create company folder
+    safe_company = company.replace(" ", "_").replace("/", "_").replace("\\", "_")
+    safe_position = position.replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
+    job_folder = applications_dir / f"{safe_company}_{safe_position}"
+    job_folder.mkdir(exist_ok=True)
+    
+    # Save cover letter
+    output_filename = f"Cover_Letter_{safe_company}_{safe_position}.docx"
+    output_path = job_folder / output_filename
+    doc.save(str(output_path))
+    
+    # Also extract text for preview
+    cover_letter_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
     
     return {
         "ok": True,
-        "cover_letter": cover_letter,
-        "bullets": bullets,
-        "company": company,
-        "position": position
+        "cover_letter": cover_letter_text,
+        "file_path": str(output_path),
+        "folder_path": str(job_folder),
+        "company_mission": company_mission,
+        "template_used": template_name
     }
-
 
 @app.post("/save-cover-letter")
 def save_cover_letter(payload: dict):
     """
-    Save cover letter to file.
-    Expects: {company, position, content}
-    Returns: {ok, file_path}
+    Copy selected CV to the job application folder.
+    Expects: {company, position, cv_filename}
+    Returns: {ok, folder_path}
     """
-    company = payload.get("company", "Unknown").replace(" ", "_").replace("/", "_")
-    position = payload.get("position", "Position").replace(" ", "_").replace("/", "_")
-    content = payload.get("content", "")
+    import shutil
     
-    if not content:
-        return {"error": "No content provided"}
+    company = payload.get("company", "Unknown").replace(" ", "_").replace("/", "_").replace("\\", "_")
+    position = payload.get("position", "Position").replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
+    cv_filename = payload.get("cv_filename", "")
     
-    # Create cover letters folder
-    cover_letters_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/cover_letters")
-    cover_letters_dir.mkdir(exist_ok=True)
+    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    applications_dir = cv_dir / "Applications"
+    job_folder = applications_dir / f"{company}_{position}"
     
-    # Save as text file (can convert to PDF later)
-    filename = f"{company}_{position}_Cover_Letter.txt"
-    file_path = cover_letters_dir / filename
+    # Ensure folder exists
+    job_folder.mkdir(parents=True, exist_ok=True)
     
-    with open(file_path, "w") as f:
-        f.write(content)
+    # Copy CV if specified
+    if cv_filename:
+        cv_source = cv_dir / cv_filename
+        if cv_source.exists():
+            cv_dest = job_folder / cv_filename
+            shutil.copy2(cv_source, cv_dest)
+            print(f"Copied CV: {cv_filename} -> {job_folder}")
     
     return {
         "ok": True,
-        "file_path": str(file_path),
-        "filename": filename
+        "folder_path": str(job_folder)
     }
+
 
 
 @app.get("/available-cvs")
@@ -2601,3 +2614,42 @@ finally:
         "log_file": log_file,
         "screenshots_dir": "/tmp/vision_agent"
     }
+
+
+@app.post("/open-folder")
+def open_folder(payload: dict):
+    """Open folder in Finder (macOS)"""
+    import subprocess
+    folder_path = payload.get("path", "")
+    
+    if not folder_path or not Path(folder_path).exists():
+        return {"error": "Folder not found"}
+    
+    try:
+        subprocess.run(["open", folder_path], check=True)
+        return {"ok": True}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/applications")
+def list_applications():
+    """List all prepared job applications"""
+    applications_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Applications")
+    
+    if not applications_dir.exists():
+        return {"applications": []}
+    
+    apps = []
+    for folder in sorted(applications_dir.iterdir(), reverse=True):
+        if folder.is_dir() and not folder.name.startswith("."):
+            files = [f.name for f in folder.iterdir() if f.is_file()]
+            apps.append({
+                "name": folder.name,
+                "path": str(folder),
+                "files": files,
+                "created": folder.stat().st_mtime
+            })
+    
+    return {"applications": apps}
+

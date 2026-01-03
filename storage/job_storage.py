@@ -183,7 +183,7 @@ def add_jobs_bulk(new_jobs: List[dict], status: str = STATUS_NEW) -> int:
     return added
 
 
-def update_status(job_id: str, new_status: str, notes: str = "") -> Optional[dict]:
+def update_status(job_id: str, new_status: str, notes: str = "", folder_path: str = "") -> Optional[dict]:
     """
     Update job status.
     Returns updated job or None if not found.
@@ -199,6 +199,8 @@ def update_status(job_id: str, new_status: str, notes: str = "") -> Optional[dic
             job["status_history"].append({"status": new_status, "date": now})
             job["updated_at"] = now
             
+            if folder_path:
+                job["folder_path"] = folder_path
             if notes:
                 job["notes"] = notes
             
