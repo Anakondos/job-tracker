@@ -2048,7 +2048,7 @@ def detect_ats_from_url(url: str) -> dict:
         company = parts[0] if parts else ""
         
         # Extract job ID from path (usually ends with _JOBID)
-        job_id_match = re.search(r"_([A-Z0-9]+)$", path)
+        job_id_match = re.search(r"_([A-Z0-9]+-?[0-9]*)$", path)
         job_id = job_id_match.group(1) if job_id_match else ""
         
         # Extract site name from path
@@ -2156,6 +2156,9 @@ def fetch_single_job(ats_info: dict) -> dict:
         job_id = ats_info.get("job_id")
         board_url = ats_info.get("board_url")
         
+        # Clean job_id - remove trailing -N suffix for search
+        clean_job_id = re.sub(r'-[0-9]+$', '', job_id) if job_id else ""
+        
         # Extract site from board_url
         site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url)
         site = site_match.group(1) if site_match else company_slug
@@ -2164,14 +2167,30 @@ def fetch_single_job(ats_info: dict) -> dict:
         try:
             resp = requests.post(
                 search_url,
-                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": job_id},
+                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": clean_job_id},
                 headers={"Content-Type": "application/json"},
                 timeout=15
             )
             if resp.status_code == 200:
                 data = resp.json()
                 postings = data.get("jobPostings", [])
-                if postings:
+                
+                # Find exact match by job ID in externalPath
+                matched_job = None
+                for posting in postings:
+                    ext_path = posting.get("externalPath", "")
+                    if job_id in ext_path or clean_job_id in ext_path:
+                        matched_job = posting
+                        break
+                
+                if matched_job:
+                    return {
+                        "title": matched_job.get("title", ""),
+                        "location": matched_job.get("locationsText", ""),
+                        "url": f"https://{company_slug}.wd1.myworkdayjobs.com{matched_job.get('externalPath', '')}",
+                        "ats_job_id": job_id,
+                    }
+                elif postings:
                     job = postings[0]
                     return {
                         "title": job.get("title", ""),

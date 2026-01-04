@@ -169,6 +169,7 @@ class Profile:
         "email": "personal.email",
         "phone": "personal.phone",
         "location": "personal.location",
+        "location (city)": "personal.city",
         "city": "personal.city",
         "country": "personal.country",
         "street": "personal.street_address",
@@ -1184,11 +1185,17 @@ Sincerely,
         needs_review = []
         current_role_checked = False
         
-        # First pass: check if "Current role" checkbox exists and should be checked
+        # First pass: check if "Current role" checkbox exists and is checked
         for field in fields:
             ll = field.label.lower()
             if field.field_type == FieldType.CHECKBOX and any(x in ll for x in ["current role", "currently work", "i currently work"]):
-                current_role_checked = True
+                # Check if it's actually checked
+                try:
+                    el = self.page.query_selector(field.selector)
+                    if el and el.is_checked():
+                        current_role_checked = True
+                except:
+                    pass
                 break
         
         for field in fields:
@@ -1546,16 +1553,21 @@ Sincerely,
     # MAIN
     # ───────────────────────────────────────────────────────────────
     
-    def run(self, url: str, interactive: bool = True):
+    def run(self, url: str, interactive: bool = True, wait_for_input: bool = True):
         try:
             self.start()
             self.goto(url)
             self.multi_pass_fill(interactive)
             
-            if not self.headless:
+            if not self.headless and wait_for_input:
                 print("\n👀 Review in browser. Submit when ready.")
                 print("   Press ENTER to close...")
-                input()
+                try:
+                    input()
+                except EOFError:
+                    # Running without tty, just wait
+                    import time
+                    time.sleep(60)
         finally:
             self.stop()
 
