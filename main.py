@@ -1934,13 +1934,24 @@ def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
     Update job status in pipeline.
     Valid statuses: New, Selected, Ready, Applied, Interview, Offer, Rejected, Withdrawn, Closed
     """
-    valid_statuses = [STATUS_NEW, "Selected", "Ready", STATUS_APPLIED, STATUS_INTERVIEW, 
-                      STATUS_OFFER, STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED]
+    # Accept both capitalized and lowercase status values
+    status_map = {
+        "new": "new", "New": "new",
+        "selected": "Selected", "Selected": "Selected",
+        "ready": "Ready", "Ready": "Ready",
+        "applied": "applied", "Applied": "applied",
+        "interview": "interview", "Interview": "interview",
+        "offer": "offer", "Offer": "offer",
+        "rejected": "rejected", "Rejected": "rejected",
+        "withdrawn": "withdrawn", "Withdrawn": "withdrawn",
+        "closed": "closed", "Closed": "closed",
+    }
     
-    if payload.status not in valid_statuses:
-        return {"ok": False, "error": f"Invalid status. Valid: {valid_statuses}"}
+    normalized_status = status_map.get(payload.status)
+    if not normalized_status:
+        return {"ok": False, "error": f"Invalid status: {payload.status}"}
     
-    job = job_update_status(payload.job_id, payload.status, payload.notes, payload.folder_path)
+    job = job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path)
     
     if job:
         return {"ok": True, "job": job}

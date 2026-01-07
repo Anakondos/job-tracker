@@ -894,6 +894,7 @@
         
         <!-- Location filters moved here -->
         <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="clearFiltersBtn" class="ghost" style="padding: 4px 8px; font-size: 11px; color: var(--muted);" title="Clear all filters">✕ Clear</button>
           <span style="font-size: 12px; color: var(--muted);">Location:</span>
           <select id="locationCategoryFilter" class="column-filter" style="width: 80px; font-size: 12px; padding: 6px;">
             <option value="all">All</option>
@@ -3643,6 +3644,26 @@
         pipelinePageSize = parseInt(e.target.value);
         pipelinePage = 1; // Reset to first page
         renderJobs(pipelineFilteredJobs);
+      });
+
+      // Clear all filters button
+      document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+        // Reset all column filters in table
+        document.querySelectorAll("#jobsTable .column-filter").forEach(el => {
+          if (el.tagName === "SELECT") el.value = "all";
+          else if (el.tagName === "INPUT") el.value = "";
+        });
+        // Reset location category
+        document.getElementById("locationCategoryFilter").value = "all";
+        // Reset state multi-select
+        selectedStates.clear();
+        updateStateButtonText();
+        // Reset sort
+        currentSortColumn = null;
+        currentSortDirection = "asc";
+        document.querySelectorAll(".sortIcon").forEach(icon => icon.textContent = "\u2B0D");
+        // Re-apply filters
+        applyFilters();
       });
 
       // ==================== ANSWERS TAB ====================
