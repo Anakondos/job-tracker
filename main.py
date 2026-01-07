@@ -2118,6 +2118,30 @@ def detect_ats_from_url(url: str) -> dict:
                 "job_id": job_id
             }
     
+    # iCIMS: external-company.icims.com/jobs/12345/title/job
+    if "icims.com" in host:
+        # Extract company from subdomain: external-firstcitizens.icims.com -> firstcitizens
+        subdomain = host.split(".")[0]  # external-firstcitizens
+        company_slug = subdomain.replace("external-", "").replace("careers-", "")
+        
+        # Extract job ID from path: /jobs/32378/title/job
+        job_id_match = re.match(r"/jobs/(\d+)", path)
+        job_id = job_id_match.group(1) if job_id_match else ""
+        
+        # Extract title from path
+        title_match = re.match(r"/jobs/\d+/([^/]+)/job", path)
+        title_slug = title_match.group(1) if title_match else ""
+        
+        return {
+            "ats": "icims",
+            "company": company_slug.replace("-", " ").title(),
+            "company_slug": company_slug,
+            "board_url": f"https://{subdomain}.icims.com/jobs",
+            "job_id": job_id,
+            "title_slug": title_slug,
+            "job_url": url
+        }
+    
     # Unknown ATS - use universal parser
     # Extract company from domain (skip common prefixes like apply, careers, jobs)
     parts = host.replace("www.", "").split(".")
@@ -2215,6 +2239,24 @@ def fetch_single_job(ats_info: dict) -> dict:
                 return {"error": f"Workday API returned {resp.status_code}"}
         except Exception as e:
             return {"error": str(e)}
+    
+    elif ats == "icims":
+        # iCIMS - extract from URL/title slug since no public API
+        job_url = ats_info.get("job_url", "")
+        job_id = ats_info.get("job_id", "")
+        title_slug = ats_info.get("title_slug", "")
+        
+        # Decode title from URL slug
+        title = title_slug.replace("-", " ").title() if title_slug else ""
+        # Clean up common URL encoding
+        title = title.replace("%26", "&").replace("%2f", "/")
+        
+        return {
+            "title": title,
+            "location": "",  # Would need to scrape page for location
+            "url": job_url,
+            "ats_job_id": job_id,
+        }
     
     elif ats == "lever":
         api_url = ats_info.get("job_api_url")

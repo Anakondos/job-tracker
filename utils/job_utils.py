@@ -239,7 +239,7 @@ def _get_role_family(role_id: str) -> str:
         return "product"
     
     # TPM/Program family
-    if any(x in role_id_lower for x in ["program_manager", "technical_program", "tpm", "director_program", "strategy_operations", "scrum_master"]):
+    if any(x in role_id_lower for x in ["program_manager", "technical_program", "tpm", "director_program", "strategy_operations", "scrum_master", "delivery_manager", "release_manager", "implementation_manager", "engagement_manager"]):
         return "tpm_program"
     
     # Project family
