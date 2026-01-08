@@ -2795,17 +2795,104 @@ def get_apply_log():
 def fetch_job_description(payload: dict):
     """
     Fetch job description from URL.
+    Tries Greenhouse API first, then falls back to scraping.
     Expects: {url}
     Returns: {ok, description}
     """
     import requests
     from bs4 import BeautifulSoup
+    import re
+    import html
     
     url = payload.get("url", "")
     if not url:
         return {"ok": False, "error": "No URL provided"}
     
     try:
+        # Try to extract Greenhouse job ID from URL
+        gh_job_id = None
+        gh_board = None
+        
+        # Pattern 1: gh_jid parameter
+        gh_match = re.search(r'gh_jid=(\d+)', url)
+        if gh_match:
+            gh_job_id = gh_match.group(1)
+        
+        # Pattern 2: /jobs/12345 in path
+        if not gh_job_id:
+            job_match = re.search(r'/jobs/(\d+)', url)
+            if job_match:
+                gh_job_id = job_match.group(1)
+        
+        # Try to get board name from URL or pipeline data
+        # Common patterns: boards.greenhouse.io/BOARD, company.ai/careers
+        if 'greenhouse.io' in url:
+            board_match = re.search(r'greenhouse\.io/([^/]+)', url)
+            if board_match:
+                gh_board = board_match.group(1)
+        
+        # If we have job ID, try Greenhouse API
+        if gh_job_id:
+            # Try to find board from our companies data
+            if not gh_board:
+                # Look up in companies.json
+                companies_path = Path("data/companies.json")
+                if companies_path.exists():
+                    companies = json.loads(companies_path.read_text())
+                    for comp in companies:
+                        if comp.get("ats") == "greenhouse" and comp.get("board_url"):
+                            board_url = comp.get("board_url", "")
+                            if board_url:
+                                # Extract board name
+                                match = re.search(r'greenhouse\.io/([^/]+)', board_url)
+                                if match:
+                                    test_board = match.group(1)
+                                    # Try this board
+                                    api_url = f"https://boards-api.greenhouse.io/v1/boards/{test_board}/jobs/{gh_job_id}"
+                                    try:
+                                        resp = requests.get(api_url, timeout=5)
+                                        if resp.status_code == 200:
+                                            gh_board = test_board
+                                            break
+                                    except:
+                                        pass
+            
+            # Common board names to try
+            boards_to_try = [gh_board] if gh_board else []
+            
+            # Extract potential board from URL domain
+            domain_match = re.search(r'https?://([^/\.]+)', url)
+            if domain_match:
+                potential_board = domain_match.group(1).replace('-', '').lower()
+                if potential_board not in boards_to_try:
+                    boards_to_try.append(potential_board)
+            
+            # Try some common variations
+            for board in boards_to_try:
+                if not board:
+                    continue
+                api_url = f"https://boards-api.greenhouse.io/v1/boards/{board}/jobs/{gh_job_id}"
+                try:
+                    resp = requests.get(api_url, timeout=10)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = data.get("content", "")
+                        if content:
+                            # Unescape HTML entities first (Greenhouse returns double-escaped)
+                            content = html.unescape(content)
+                            # Parse HTML content
+                            soup = BeautifulSoup(content, "html.parser")
+                            text = soup.get_text(separator="\n", strip=True)
+                            # Clean up
+                            lines = [l.strip() for l in text.split("\n") if l.strip()]
+                            text = "\n".join(lines)
+                            # Limit length
+                            text = text[:5000]
+                            return {"ok": True, "description": text, "source": "greenhouse_api"}
+                except Exception as e:
+                    pass
+        
+        # Fallback: try direct scraping
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
@@ -2837,15 +2924,13 @@ def fetch_job_description(payload: dict):
                     break
         
         # Clean up - remove excessive whitespace, limit length
-        if description:
+        if description and len(description) > 50:
             lines = [line.strip() for line in description.split("\n") if line.strip()]
             description = "\n".join(lines[:100])  # Limit to ~100 lines
-            description = description[:3000]  # Limit to 3000 chars
+            description = description[:5000]  # Limit to 5000 chars
+            return {"ok": True, "description": description, "source": "scraping"}
         
-        if description:
-            return {"ok": True, "description": description}
-        else:
-            return {"ok": False, "error": "Could not extract job description"}
+        return {"ok": False, "error": "Could not extract job description"}
             
     except Exception as e:
         return {"ok": False, "error": str(e)}
