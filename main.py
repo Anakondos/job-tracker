@@ -3183,6 +3183,15 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
     matched_kw = set(k.lower() for k in payload.matched_keywords)
     inject_kw = set(k.lower() for k in payload.keywords_to_add)
     
+    # Fallback: if no keywords provided, use common PM keywords for highlighting
+    if not matched_kw:
+        matched_kw = {
+            "product strategy", "roadmap", "agile", "scrum", "stakeholder",
+            "cross-functional", "backlog", "user stories", "sprint", "kpi",
+            "okr", "prioritization", "requirements", "delivery", "release",
+            "jira", "confluence", "aws", "sql", "data analysis"
+        }
+    
     # Track if we've injected keywords
     keywords_injected = False
     injected_section_html = ""
