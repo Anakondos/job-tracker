@@ -1197,7 +1197,7 @@
 
     <!-- Job Analysis Modal -->
     <div id="jobAnalysisModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200;">
-      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:800px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:1000px; width:95%; max-height:90vh; overflow-y:auto;">
         <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <h3 style="margin:0;">🔍 Job Analysis</h3>
           <button class="modal-close" onclick="closeAnalysisModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted);">×</button>
@@ -1207,50 +1207,73 @@
             <strong id="analysisCompanyName"></strong> - <span id="analysisPositionName"></span>
           </div>
           
-          <!-- Match Score -->
-          <div style="display: flex; gap: 16px; margin-bottom: 20px;">
-            <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-              <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Match Score</div>
-              <div id="analysisMatchScore" style="font-size: 32px; font-weight: bold;">--</div>
+          <!-- Tabs -->
+          <div style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border);">
+            <button id="tabAnalysis" onclick="showAnalysisTab('analysis')" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px 6px 0 0; cursor: pointer;">📊 Analysis</button>
+            <button id="tabCvPreview" onclick="showAnalysisTab('cv')" style="padding: 8px 16px; background: var(--bg); color: var(--text); border: none; border-radius: 6px 6px 0 0; cursor: pointer;">📄 CV Preview</button>
+          </div>
+          
+          <!-- Analysis Tab -->
+          <div id="analysisTabContent">
+            <!-- Match Score -->
+            <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+              <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
+                <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Match Score</div>
+                <div id="analysisMatchScore" style="font-size: 32px; font-weight: bold;">--</div>
+              </div>
+              <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
+                <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Response Chance</div>
+                <div id="analysisResponseChance" style="font-size: 18px; font-weight: 500;">--</div>
+              </div>
+              <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
+                <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">CV Selected</div>
+                <div id="analysisCvFile" style="font-size: 12px;">--</div>
+              </div>
             </div>
-            <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-              <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Response Chance</div>
-              <div id="analysisResponseChance" style="font-size: 18px; font-weight: 500;">--</div>
+            
+            <!-- Red Flags -->
+            <div id="analysisRedFlags" style="margin-bottom: 16px; display: none;">
+              <div style="font-size: 12px; color: #ef4444; font-weight: 500; margin-bottom: 8px;">⚠️ Red Flags</div>
+              <div id="analysisRedFlagsList" style="padding: 12px; background: rgba(239,68,68,0.1); border-radius: 8px; border-left: 3px solid #ef4444;"></div>
             </div>
-            <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-              <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">CV Selected</div>
-              <div id="analysisCvFile" style="font-size: 12px;">--</div>
+            
+            <!-- ATS Tips -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">📋 ATS Optimization Tips</div>
+              <div id="analysisAtsTips" style="padding: 12px; background: var(--bg); border-radius: 8px;"></div>
+            </div>
+            
+            <!-- Keywords to Add -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">🔑 Keywords to Add to CV <span style="color: #eab308;">(will be highlighted in yellow)</span></div>
+              <div id="analysisKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+            </div>
+            
+            <!-- Found Keywords -->
+            <div style="margin-bottom: 20px;">
+              <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">✅ Your Matching Keywords <span style="color: #10b981;">(highlighted in green)</span></div>
+              <div id="analysisFoundKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
             </div>
           </div>
           
-          <!-- Red Flags -->
-          <div id="analysisRedFlags" style="margin-bottom: 16px; display: none;">
-            <div style="font-size: 12px; color: #ef4444; font-weight: 500; margin-bottom: 8px;">⚠️ Red Flags</div>
-            <div id="analysisRedFlagsList" style="padding: 12px; background: rgba(239,68,68,0.1); border-radius: 8px; border-left: 3px solid #ef4444;"></div>
-          </div>
-          
-          <!-- ATS Tips -->
-          <div style="margin-bottom: 16px;">
-            <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">📋 ATS Optimization Tips</div>
-            <div id="analysisAtsTips" style="padding: 12px; background: var(--bg); border-radius: 8px;"></div>
-          </div>
-          
-          <!-- Keywords to Add -->
-          <div style="margin-bottom: 16px;">
-            <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">🔑 Keywords to Add to CV</div>
-            <div id="analysisKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
-          </div>
-          
-          <!-- Found Keywords -->
-          <div style="margin-bottom: 20px;">
-            <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">✅ Your Matching Keywords</div>
-            <div id="analysisFoundKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+          <!-- CV Preview Tab -->
+          <div id="cvPreviewTabContent" style="display: none;">
+            <div style="margin-bottom: 12px; padding: 12px; background: var(--bg); border-radius: 8px;">
+              <div style="display: flex; gap: 16px; font-size: 12px;">
+                <span><span style="background: #bbf7d0; padding: 2px 6px; border-radius: 3px;">Green</span> = Matched keywords (already in your CV)</span>
+                <span><span style="background: #fde047; padding: 2px 6px; border-radius: 3px;">Yellow</span> = Keywords to be added</span>
+              </div>
+            </div>
+            <div id="cvPreviewContent" style="max-height: 500px; overflow-y: auto; padding: 16px; background: white; border-radius: 8px; border: 1px solid var(--border);">
+              <div style="text-align: center; color: var(--muted); padding: 40px;">Click "Preview CV" to load...</div>
+            </div>
           </div>
           
           <!-- Actions -->
-          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border);">
+          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 16px;">
             <button onclick="closeAnalysisModal()" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 20px; cursor: pointer;">Cancel</button>
-            <button id="analysisProceedBtn" onclick="proceedWithApplication()" style="background: #16a34a; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer; font-weight: 500;">🚀 Proceed to Apply</button>
+            <button id="previewCvBtn" onclick="loadCvPreview()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer;">👁️ Preview CV</button>
+            <button id="analysisProceedBtn" onclick="proceedWithApplication()" style="background: #16a34a; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer; font-weight: 500;">✅ Accept & Apply</button>
           </div>
         </div>
       </div>
@@ -3022,9 +3045,95 @@
 
       // === Job Analysis Modal ===
       let currentAnalysisData = null;
+      let cvPreviewLoaded = false;
+      
+      function showAnalysisTab(tab) {
+        const analysisTab = document.getElementById('analysisTabContent');
+        const cvTab = document.getElementById('cvPreviewTabContent');
+        const tabAnalysisBtn = document.getElementById('tabAnalysis');
+        const tabCvBtn = document.getElementById('tabCvPreview');
+        
+        if (tab === 'analysis') {
+          analysisTab.style.display = 'block';
+          cvTab.style.display = 'none';
+          tabAnalysisBtn.style.background = 'var(--accent)';
+          tabAnalysisBtn.style.color = 'white';
+          tabCvBtn.style.background = 'var(--bg)';
+          tabCvBtn.style.color = 'var(--text)';
+        } else {
+          analysisTab.style.display = 'none';
+          cvTab.style.display = 'block';
+          tabAnalysisBtn.style.background = 'var(--bg)';
+          tabAnalysisBtn.style.color = 'var(--text)';
+          tabCvBtn.style.background = 'var(--accent)';
+          tabCvBtn.style.color = 'white';
+          
+          // Auto-load CV preview if not loaded
+          if (!cvPreviewLoaded) {
+            loadCvPreview();
+          }
+        }
+      }
+      
+      async function loadCvPreview() {
+        if (!currentAnalysisData) return;
+        
+        const btn = document.getElementById('previewCvBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Loading...';
+        
+        const { company, position, analysisData, jobData } = currentAnalysisData;
+        const roleFamily = jobData.role_family || 'product';
+        
+        // Get matched keywords (flat list)
+        const matchedKw = [
+          ...(analysisData.found_keywords?.hard_skills || []),
+          ...(analysisData.found_keywords?.soft_skills || [])
+        ];
+        
+        try {
+          const res = await fetch('/cv/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              job_title: position,
+              company: company,
+              role_family: roleFamily,
+              keywords_to_add: analysisData.keywords_to_add || [],
+              matched_keywords: matchedKw
+            })
+          });
+          
+          const data = await res.json();
+          
+          if (data.ok) {
+            document.getElementById('cvPreviewContent').innerHTML = data.html;
+            cvPreviewLoaded = true;
+            
+            // Switch to CV tab
+            showAnalysisTab('cv');
+          } else {
+            document.getElementById('cvPreviewContent').innerHTML = 
+              '<div style="color: #ef4444; padding: 20px;">Error loading CV: ' + (data.error || 'Unknown error') + '</div>';
+          }
+        } catch (err) {
+          console.error('CV preview error:', err);
+          document.getElementById('cvPreviewContent').innerHTML = 
+            '<div style="color: #ef4444; padding: 20px;">Error: ' + err.message + '</div>';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '👁️ Preview CV';
+        }
+      }
       
       function showAnalysisModal(company, position, analysisData, jobData) {
         currentAnalysisData = { company, position, analysisData, jobData };
+        cvPreviewLoaded = false;  // Reset CV preview state
+        
+        // Reset to Analysis tab
+        showAnalysisTab('analysis');
+        document.getElementById('cvPreviewContent').innerHTML = 
+          '<div style="text-align: center; color: var(--muted); padding: 40px;">Click "Preview CV" to load...</div>';
         
         document.getElementById('analysisCompanyName').textContent = company;
         document.getElementById('analysisPositionName').textContent = position;
@@ -3082,59 +3191,59 @@
       async function proceedWithApplication() {
         if (!currentAnalysisData) return;
         
-        const { company, position, jobData } = currentAnalysisData;
+        const { company, position, analysisData, jobData } = currentAnalysisData;
         const btn = document.getElementById('analysisProceedBtn');
         btn.disabled = true;
-        btn.textContent = '⏳ Preparing...';
+        btn.textContent = '⏳ Creating tailored CV...';
         
         try {
           const jobUrl = jobData.url || jobData.job_url || '';
           const roleFamily = jobData.role_family || 'product';
           const jobKey = jobData.id || '';
+          const keywordsToAdd = analysisData.keywords_to_add || [];
           
-          // 1. Select CV
-          const cvRes = await fetch('/select-cv', {
+          // 1. Create tailored CV with injected keywords
+          btn.textContent = '⏳ Tailoring CV...';
+          const tailorRes = await fetch('/cv/tailor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ job_title: position })
+            body: JSON.stringify({
+              job_title: position,
+              company: company,
+              position: position,
+              role_family: roleFamily,
+              keywords_to_add: keywordsToAdd
+            })
           });
-          const cvData = await cvRes.json();
-          const cvFilename = cvData.filename || '';
+          const tailorData = await tailorRes.json();
+          const cvPath = tailorData.cv_path || '';
           
           // 2. Generate Cover Letter
+          btn.textContent = '⏳ Generating Cover Letter...';
           const clRes = await fetch('/generate-cover-letter', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               company, 
               position, 
-              job_description: currentAnalysisData.analysisData.jd || '',
+              job_description: analysisData.jd || '',
               role_family: roleFamily
             })
           });
           const clData = await clRes.json();
           
-          // 3. Copy CV to application folder
-          if (cvFilename) {
-            await fetch('/save-cover-letter', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ company, position, cv_filename: cvFilename })
-            });
-          }
-          
-          // 4. Update status to Ready
+          // 3. Update status to Ready
           if (jobKey) {
             await fetch('/pipeline/status', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ job_id: jobKey, status: 'Ready', folder_path: clData.folder_path || '' })
+              body: JSON.stringify({ job_id: jobKey, status: 'Ready', folder_path: clData.folder_path || tailorData.folder || '' })
             });
           }
           
           closeAnalysisModal();
           
-          // 5. Start auto-fill
+          // 4. Start auto-fill
           btn.textContent = '🚀 Opening form...';
           const applyRes = await fetch('/apply/greenhouse', {
             method: 'POST',
@@ -3142,13 +3251,17 @@
             body: JSON.stringify({ job_url: jobUrl, profile: 'anton_tpm' })
           });
           
+          const addedKwMsg = keywordsToAdd.length > 0 
+            ? '\n🔑 Added keywords: ' + keywordsToAdd.join(', ')
+            : '';
+          
           if (applyRes.ok) {
-            alert('🚀 Application started!\n\n✅ CV & Cover Letter prepared\n⏳ Form filling in progress...\n\nCheck the browser window.');
+            alert('🚀 Application started!\n\n✅ Tailored CV created' + addedKwMsg + '\n✅ Cover Letter generated\n⏳ Form filling in progress...\n\nCheck the browser window.');
             // Refresh jobs list
             const filtered = applyFilters(ALL_JOBS);
             renderJobs(filtered);
           } else {
-            alert('Prepared successfully! Open the job URL manually to apply.');
+            alert('Prepared successfully!' + addedKwMsg + '\n\nOpen the job URL manually to apply.');
           }
           
         } catch (err) {

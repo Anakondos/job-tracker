@@ -3137,3 +3137,211 @@ async def analyze_job_endpoint(payload: AnalyzeJobRequest):
         "cv_file": cv_file,
         "keywords_to_add": missing_keywords["hard_skills"][:5]
     }
+
+
+# ============= CV PREVIEW & TAILORING =============
+
+class CVPreviewRequest(BaseModel):
+    job_title: str
+    company: str
+    role_family: str = "product"
+    keywords_to_add: list = []
+    matched_keywords: list = []
+
+@app.post("/cv/preview")
+async def cv_preview_endpoint(payload: CVPreviewRequest):
+    """
+    Generate CV preview with highlighted keywords.
+    Returns HTML with:
+    - Green highlights: matched keywords (already in CV and JD)
+    - Yellow highlights: injected keywords (added to Skills section)
+    """
+    from docx import Document
+    from pathlib import Path
+    import re
+    
+    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    
+    # Select CV based on role
+    role_cv_map = {
+        "product": "CV_Anton_Kondakov_Product Manager.docx",
+        "tpm_program": "CV_Anton_Kondakov_TPM.docx",
+        "project": "CV_Anton_Kondakov_Project Manager.docx",
+    }
+    cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
+    cv_path = gold_cv_path / cv_filename
+    
+    if not cv_path.exists():
+        return {"ok": False, "error": f"CV not found: {cv_filename}"}
+    
+    doc = Document(cv_path)
+    
+    # Build HTML preview
+    html_parts = []
+    html_parts.append('<div class="cv-preview" style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; max-width: 800px;">')
+    
+    matched_kw = set(k.lower() for k in payload.matched_keywords)
+    inject_kw = set(k.lower() for k in payload.keywords_to_add)
+    
+    # Track if we've injected keywords
+    keywords_injected = False
+    injected_section_html = ""
+    
+    if inject_kw:
+        injected_section_html = '<div style="margin: 8px 0; padding: 8px; background: #fef9c3; border-radius: 4px; border-left: 3px solid #eab308;">'
+        injected_section_html += '<strong style="color: #854d0e;">➕ Added Keywords:</strong> '
+        injected_section_html += ', '.join(f'<span style="background: #fde047; padding: 1px 4px; border-radius: 2px;">{kw}</span>' for kw in payload.keywords_to_add)
+        injected_section_html += '</div>'
+    
+    def highlight_text(text: str) -> str:
+        """Highlight matched and injected keywords in text."""
+        result = text
+        
+        # First highlight matched keywords (green)
+        for kw in matched_kw:
+            pattern = re.compile(re.escape(kw), re.IGNORECASE)
+            result = pattern.sub(
+                f'<span style="background: #bbf7d0; padding: 1px 3px; border-radius: 2px;">{kw}</span>',
+                result
+            )
+        
+        return result
+    
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if not text:
+            continue
+        
+        style = para.style.name if para.style else "Normal"
+        highlighted = highlight_text(text)
+        
+        # Detect section headers
+        if text.isupper() or style == "Heading 1" or text in ["CORE COMPETENCIES", "PROFESSIONAL EXPERIENCE", "EDUCATION", "CERTIFICATIONS"]:
+            html_parts.append(f'<h3 style="margin: 16px 0 8px 0; color: #1e3a5f; border-bottom: 1px solid #ddd; padding-bottom: 4px;">{text}</h3>')
+            
+            # Inject keywords after CORE COMPETENCIES
+            if "COMPETENCIES" in text.upper() and not keywords_injected and injected_section_html:
+                html_parts.append(injected_section_html)
+                keywords_injected = True
+                
+        elif style == "List Paragraph":
+            html_parts.append(f'<div style="margin: 4px 0 4px 20px; padding-left: 10px; border-left: 2px solid #e5e7eb;">• {highlighted}</div>')
+        else:
+            # Check if it's a job title/company line
+            if " | " in text or "–" in text:
+                html_parts.append(f'<div style="margin: 12px 0 4px 0; font-weight: 600; color: #374151;">{highlighted}</div>')
+            else:
+                html_parts.append(f'<div style="margin: 4px 0;">{highlighted}</div>')
+    
+    html_parts.append('</div>')
+    
+    # Summary stats
+    stats = {
+        "matched_count": len(matched_kw),
+        "injected_count": len(inject_kw),
+        "cv_file": cv_filename
+    }
+    
+    return {
+        "ok": True,
+        "html": "\n".join(html_parts),
+        "stats": stats,
+        "keywords_matched": list(matched_kw),
+        "keywords_injected": list(inject_kw)
+    }
+
+
+class CVTailorRequest(BaseModel):
+    job_title: str
+    company: str
+    position: str
+    role_family: str = "product"
+    keywords_to_add: list = []
+
+@app.post("/cv/tailor")
+async def cv_tailor_endpoint(payload: CVTailorRequest):
+    """
+    Create tailored CV with injected keywords.
+    Saves to Applications folder.
+    Returns path to new CV.
+    """
+    from docx import Document
+    from docx.shared import RGBColor
+    from pathlib import Path
+    import re
+    
+    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    apps_path = gold_cv_path / "Applications"
+    
+    # Select CV based on role
+    role_cv_map = {
+        "product": "CV_Anton_Kondakov_Product Manager.docx",
+        "tpm_program": "CV_Anton_Kondakov_TPM.docx",
+        "project": "CV_Anton_Kondakov_Project Manager.docx",
+    }
+    cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
+    cv_path = gold_cv_path / cv_filename
+    
+    if not cv_path.exists():
+        return {"ok": False, "error": f"CV not found: {cv_filename}"}
+    
+    # Create application folder
+    safe_company = re.sub(r'[^\w\s-]', '', payload.company).strip().replace(' ', '_')
+    safe_position = re.sub(r'[^\w\s-]', '', payload.position).strip().replace(' ', '_')[:50]
+    folder_name = f"{safe_company}_{safe_position}"
+    app_folder = apps_path / folder_name
+    app_folder.mkdir(parents=True, exist_ok=True)
+    
+    # Load and modify CV
+    doc = Document(cv_path)
+    
+    keywords_to_add = payload.keywords_to_add
+    
+    if keywords_to_add:
+        # Find CORE COMPETENCIES section and add keywords
+        for i, para in enumerate(doc.paragraphs):
+            text = para.text.strip().upper()
+            if "COMPETENCIES" in text or "SKILLS" in text:
+                # Find the next list paragraph and add keywords there
+                for j in range(i+1, min(i+10, len(doc.paragraphs))):
+                    next_para = doc.paragraphs[j]
+                    if next_para.style and "List" in next_para.style.name:
+                        # Add keywords to Technical Acumen or create new line
+                        if "technical" in next_para.text.lower() or "tools" in next_para.text.lower():
+                            # Append to existing
+                            current_text = next_para.text
+                            if not current_text.endswith('.'):
+                                current_text += '.'
+                            new_keywords = ', '.join(keywords_to_add)
+                            next_para.clear()
+                            next_para.add_run(f"{current_text} Additional: {new_keywords}.")
+                            break
+                break
+    
+    # Save tailored CV
+    output_filename = f"CV_Anton_Kondakov_{safe_company}_{safe_position}.docx"
+    output_path = app_folder / output_filename
+    doc.save(output_path)
+    
+    # Also try to create PDF (if possible)
+    pdf_path = None
+    try:
+        import subprocess
+        # Try using LibreOffice for conversion (if available)
+        pdf_output = output_path.with_suffix('.pdf')
+        result = subprocess.run([
+            'soffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', str(app_folder), str(output_path)
+        ], capture_output=True, timeout=30)
+        if pdf_output.exists():
+            pdf_path = str(pdf_output)
+    except Exception:
+        pass  # PDF conversion optional
+    
+    return {
+        "ok": True,
+        "cv_path": str(output_path),
+        "pdf_path": pdf_path,
+        "folder": str(app_folder),
+        "keywords_added": keywords_to_add
+    }
