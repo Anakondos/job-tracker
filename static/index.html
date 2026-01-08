@@ -1195,14 +1195,14 @@
     </div>
 
 
-    <!-- Job Analysis Modal -->
-    <div id="jobAnalysisModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200;">
-      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:1000px; width:95%; max-height:90vh; overflow-y:auto;">
-        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <!-- Job Analysis Modal - Fullscreen -->
+    <div id="jobAnalysisModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:200;">
+      <div class="modal-content" style="background:var(--card); position:absolute; top:20px; left:20px; right:20px; bottom:20px; border-radius:12px; padding:24px; overflow:hidden; display:flex; flex-direction:column;">
+        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-shrink:0;">
           <h3 style="margin:0;">🔍 Job Analysis</h3>
           <button class="modal-close" onclick="closeAnalysisModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted);">×</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
           <div style="margin-bottom: 16px;">
             <strong id="analysisCompanyName"></strong> - <span id="analysisPositionName"></span>
           </div>
@@ -1214,7 +1214,7 @@
           </div>
           
           <!-- Analysis Tab -->
-          <div id="analysisTabContent">
+          <div id="analysisTabContent" style="flex:1; overflow-y:auto;">
             <!-- Match Score -->
             <div style="display: flex; gap: 16px; margin-bottom: 20px;">
               <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
@@ -1257,20 +1257,20 @@
           </div>
           
           <!-- CV Preview Tab -->
-          <div id="cvPreviewTabContent" style="display: none;">
-            <div style="margin-bottom: 12px; padding: 12px; background: var(--bg); border-radius: 8px;">
-              <div style="display: flex; gap: 16px; font-size: 12px;">
-                <span><span style="background: #bbf7d0; padding: 2px 6px; border-radius: 3px;">Green</span> = Matched keywords (already in your CV)</span>
-                <span><span style="background: #fde047; padding: 2px 6px; border-radius: 3px;">Yellow</span> = Keywords to be added</span>
+          <div id="cvPreviewTabContent" style="display: none; flex:1; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="margin-bottom: 12px; padding: 12px; background: var(--bg); border-radius: 8px; flex-shrink:0;">
+              <div style="display: flex; gap: 16px; font-size: 13px; align-items:center;">
+                <span><span style="background: #bbf7d0; padding: 2px 8px; border-radius: 3px; color: #166534; font-weight:500;">Green</span> = Matched keywords (already in your CV)</span>
+                <span><span style="background: #fde047; padding: 2px 8px; border-radius: 3px; color: #854d0e; font-weight:500;">Yellow</span> = Keywords to be added</span>
               </div>
             </div>
-            <div id="cvPreviewContent" style="max-height: 500px; overflow-y: auto; padding: 16px; background: white; border-radius: 8px; border: 1px solid var(--border);">
-              <div style="text-align: center; color: var(--muted); padding: 40px;">Click "Preview CV" to load...</div>
+            <div id="cvPreviewContent" style="flex:1; overflow-y: auto; padding: 24px; background: #ffffff; border-radius: 8px; border: 1px solid var(--border); color: #1f2937; font-size: 13px; line-height: 1.6;">
+              <div style="text-align: center; color: #6b7280; padding: 40px;">Click "Preview CV" to load...</div>
             </div>
           </div>
           
           <!-- Actions -->
-          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 16px;">
+          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 16px; flex-shrink:0;">
             <button onclick="closeAnalysisModal()" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 20px; cursor: pointer;">Cancel</button>
             <button id="previewCvBtn" onclick="loadCvPreview()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer;">👁️ Preview CV</button>
             <button id="analysisProceedBtn" onclick="proceedWithApplication()" style="background: #16a34a; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer; font-weight: 500;">✅ Accept & Apply</button>
@@ -3062,7 +3062,8 @@
           tabCvBtn.style.color = 'var(--text)';
         } else {
           analysisTab.style.display = 'none';
-          cvTab.style.display = 'block';
+          cvTab.style.display = 'flex';
+          cvTab.style.flexDirection = 'column';
           tabAnalysisBtn.style.background = 'var(--bg)';
           tabAnalysisBtn.style.color = 'var(--text)';
           tabCvBtn.style.background = 'var(--accent)';
