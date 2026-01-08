@@ -2982,3 +2982,158 @@ def list_applications():
     
     return {"applications": apps}
 
+
+
+# ============= JOB ANALYSIS ENDPOINT =============
+
+class AnalyzeJobRequest(BaseModel):
+    job_description: str
+    job_title: str
+    company: str
+    role_family: str = "product"
+
+@app.post("/analyze-job")
+async def analyze_job_endpoint(payload: AnalyzeJobRequest):
+    """
+    Analyze job description against candidate profile.
+    Returns match score, missing keywords, ATS tips.
+    """
+    import re
+    from pathlib import Path
+    
+    # Load candidate profile (Gold CV)
+    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    
+    # Select CV based on role
+    role_cv_map = {
+        "product": "CV_Anton_Kondakov_Product Manager.pdf",
+        "tpm_program": "CV_Anton_Kondakov_TPM_CV.pdf",
+        "project": "CV_Anton_Kondakov_Project Manager.pdf",
+    }
+    cv_file = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.pdf")
+    
+    jd = payload.job_description.lower()
+    title = payload.job_title.lower()
+    
+    # Extract keywords from JD
+    # Common PM/TPM keywords
+    skill_keywords = {
+        "hard_skills": [
+            "agile", "scrum", "kanban", "jira", "confluence", "sql", "python", "api", 
+            "aws", "azure", "gcp", "kubernetes", "docker", "ci/cd", "devops",
+            "data analysis", "analytics", "tableau", "looker", "amplitude",
+            "a/b testing", "product analytics", "roadmap", "okr", "kpi",
+            "user research", "ux", "figma", "prototyping", "wireframes",
+            "technical specifications", "prd", "requirements", "stakeholder",
+            "cross-functional", "program management", "project management",
+            "release management", "sprint planning", "backlog", "prioritization",
+            "saas", "b2b", "b2c", "enterprise", "platform", "infrastructure",
+            "machine learning", "ml", "ai", "artificial intelligence",
+            "payments", "fintech", "banking", "financial services",
+            "security", "compliance", "gdpr", "sox", "pci"
+        ],
+        "soft_skills": [
+            "leadership", "communication", "collaboration", "problem-solving",
+            "strategic thinking", "decision-making", "influence", "negotiation",
+            "mentoring", "coaching", "presentation", "executive"
+        ],
+        "experience": [
+            "5+ years", "7+ years", "10+ years", "senior", "staff", "principal",
+            "director", "lead", "manager", "head of"
+        ]
+    }
+    
+    # Find keywords in JD
+    found_keywords = {"hard_skills": [], "soft_skills": [], "experience": []}
+    missing_keywords = {"hard_skills": [], "soft_skills": [], "experience": []}
+    
+    # My profile keywords (from CV)
+    my_keywords = {
+        "agile", "scrum", "kanban", "jira", "confluence", "sql", "python",
+        "aws", "data analysis", "analytics", "roadmap", "okr", "kpi",
+        "cross-functional", "program management", "project management",
+        "release management", "sprint planning", "backlog", "prioritization",
+        "saas", "b2b", "enterprise", "platform", "stakeholder",
+        "leadership", "communication", "collaboration", "strategic thinking",
+        "prd", "requirements", "technical specifications", "api",
+        "fintech", "payments", "banking"
+    }
+    
+    for category, keywords in skill_keywords.items():
+        for kw in keywords:
+            if kw in jd:
+                found_keywords[category].append(kw)
+                if kw.lower() not in my_keywords:
+                    missing_keywords[category].append(kw)
+    
+    # Calculate match score
+    total_found = len(found_keywords["hard_skills"]) + len(found_keywords["soft_skills"])
+    total_missing = len(missing_keywords["hard_skills"]) + len(missing_keywords["soft_skills"])
+    
+    if total_found + total_missing > 0:
+        match_score = int((total_found - total_missing * 0.5) / (total_found + total_missing) * 100)
+        match_score = max(0, min(100, match_score + 50))  # Normalize to 0-100
+    else:
+        match_score = 70  # Default
+    
+    # ATS tips
+    ats_tips = []
+    
+    # Check for exact title match
+    if "product manager" in title and "product" in payload.role_family:
+        ats_tips.append("✅ Title matches your target role")
+    elif "program manager" in title and "tpm" in payload.role_family:
+        ats_tips.append("✅ Title matches your target role")
+    else:
+        ats_tips.append("⚠️ Consider tailoring CV title to match job title")
+    
+    # Check years of experience
+    exp_match = re.search(r'(\d+)\+?\s*years?', jd)
+    if exp_match:
+        years_required = int(exp_match.group(1))
+        if years_required <= 12:  # Assuming 12+ years experience
+            ats_tips.append(f"✅ You meet the {years_required}+ years requirement")
+        else:
+            ats_tips.append(f"⚠️ Position requires {years_required}+ years")
+    
+    # Check for missing critical keywords
+    critical_missing = [kw for kw in missing_keywords["hard_skills"] if kw in ["machine learning", "ml", "ai", "kubernetes", "docker"]]
+    if critical_missing:
+        ats_tips.append(f"⚠️ Add if applicable: {', '.join(critical_missing[:3])}")
+    
+    if missing_keywords["hard_skills"]:
+        top_missing = missing_keywords["hard_skills"][:5]
+        ats_tips.append(f"💡 Consider adding: {', '.join(top_missing)}")
+    
+    # Red flags
+    red_flags = []
+    if "clearance" in jd or "security clearance" in jd:
+        red_flags.append("🚨 Requires security clearance")
+    if "relocation" in jd and "not" not in jd:
+        red_flags.append("⚠️ May require relocation")
+    if "visa" in jd and "sponsor" not in jd:
+        red_flags.append("⚠️ Check visa sponsorship policy")
+    
+    # Response chance estimate
+    if match_score >= 80:
+        response_chance = "High (70-90%)"
+        response_color = "#10b981"
+    elif match_score >= 60:
+        response_chance = "Medium (40-60%)"
+        response_color = "#f59e0b"
+    else:
+        response_chance = "Low (10-30%)"
+        response_color = "#ef4444"
+    
+    return {
+        "ok": True,
+        "match_score": match_score,
+        "response_chance": response_chance,
+        "response_color": response_color,
+        "found_keywords": found_keywords,
+        "missing_keywords": missing_keywords,
+        "ats_tips": ats_tips,
+        "red_flags": red_flags,
+        "cv_file": cv_file,
+        "keywords_to_add": missing_keywords["hard_skills"][:5]
+    }
