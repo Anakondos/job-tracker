@@ -3092,6 +3092,12 @@
           ...(analysisData.found_keywords?.soft_skills || [])
         ];
         
+        console.log('CV Preview request:', {
+          keywords_to_add: analysisData.keywords_to_add,
+          matched_keywords: matchedKw,
+          role_family: roleFamily
+        });
+        
         try {
           const res = await fetch('/cv/preview', {
             method: 'POST',
@@ -3106,6 +3112,7 @@
           });
           
           const data = await res.json();
+          console.log('CV Preview response stats:', data.stats);
           
           if (data.ok) {
             document.getElementById('cvPreviewContent').innerHTML = data.html;

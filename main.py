@@ -3188,9 +3188,9 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
     injected_section_html = ""
     
     if inject_kw:
-        injected_section_html = '<div style="margin: 8px 0; padding: 8px; background: #fef9c3; border-radius: 4px; border-left: 3px solid #eab308;">'
+        injected_section_html = '<div style="margin: 8px 0; padding: 8px; background-color: #fef08a !important; border-radius: 4px; border-left: 3px solid #eab308;">'
         injected_section_html += '<strong style="color: #854d0e;">➕ Added Keywords:</strong> '
-        injected_section_html += ', '.join(f'<span style="background: #fde047; padding: 1px 4px; border-radius: 2px;">{kw}</span>' for kw in payload.keywords_to_add)
+        injected_section_html += ', '.join(f'<mark style="background-color: #facc15 !important; padding: 1px 4px; border-radius: 2px;">{kw}</mark>' for kw in payload.keywords_to_add)
         injected_section_html += '</div>'
     
     def highlight_text(text: str) -> str:
@@ -3201,7 +3201,7 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
         for kw in matched_kw:
             pattern = re.compile(f'({re.escape(kw)})', re.IGNORECASE)
             result = pattern.sub(
-                r'<span style="background: #bbf7d0; padding: 1px 3px; border-radius: 2px;">\1</span>',
+                r'<mark style="background-color: #86efac !important; padding: 1px 3px; border-radius: 2px;">\1</mark>',
                 result
             )
         
