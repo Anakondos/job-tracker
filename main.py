@@ -263,7 +263,11 @@ DAEMON_STATUS = {
     "current_index": 0,
     "batch_size": 3,
     "pause_seconds": 45,
-    "cycle_count": 0
+    "cycle_count": 0,
+    "jobs_added_this_cycle": 0,
+    "jobs_added_total": 0,
+    "last_cycle_jobs_added": 0,
+    "companies_refreshed_this_cycle": 0
 }
 
 async def refresh_company_async(company: dict) -> dict:
@@ -285,6 +289,7 @@ def refresh_company_sync(company: dict) -> dict:
         "company": company_id,
         "ok": False,
         "jobs": 0,
+        "jobs_added": 0,
         "error": None
     }
     
@@ -302,8 +307,9 @@ def refresh_company_sync(company: dict) -> dict:
         from company_storage import update_company_status
         update_company_status(company_id, ok=True, jobs_count=len(jobs) if jobs else 0)
         
-        # Update cache with new jobs
-        update_cache_for_company(company_id, jobs or [])
+        # Update cache with new jobs and track added count
+        added = update_cache_for_company(company_id, jobs or [])
+        result["jobs_added"] = added or 0
         
     except Exception as e:
         result["error"] = str(e)
@@ -312,8 +318,8 @@ def refresh_company_sync(company: dict) -> dict:
     
     return result
 
-def update_cache_for_company(company_id: str, new_jobs: list):
-    """Update jobs_all.json cache for a specific company"""
+def update_cache_for_company(company_id: str, new_jobs: list) -> int:
+    """Update jobs_all.json cache for a specific company. Returns count of new jobs added to pipeline."""
     from utils.cache_manager import get_cache_path
     from utils.role_classifier import classify_role
     from utils.normalize import normalize_location
@@ -353,13 +359,15 @@ def update_cache_for_company(company_id: str, new_jobs: list):
             json.dump(cache_data, f)
         
         # Also update pipeline (jobs.json) with relevant jobs
-        update_pipeline_for_company(company_id, new_jobs)
+        added = update_pipeline_for_company(company_id, new_jobs)
+        return added
         
     except Exception as e:
         print(f"[Daemon] Cache update error for {company_id}: {e}")
+        return 0
 
-def update_pipeline_for_company(company_id: str, new_jobs: list):
-    """Update pipeline jobs.json with new relevant jobs from company"""
+def update_pipeline_for_company(company_id: str, new_jobs: list) -> int:
+    """Update pipeline jobs.json with new relevant jobs from company. Returns count added."""
     from storage.job_storage import get_all_jobs, add_job
     
     # Get existing pipeline jobs
@@ -374,6 +382,8 @@ def update_pipeline_for_company(company_id: str, new_jobs: list):
             if job_url and job_url not in existing_urls:
                 if add_job(job):
                     added += 1
+    
+    return added
     
     if added > 0:
         print(f"[Daemon] Added {added} new jobs to pipeline from {company_id}")
@@ -402,6 +412,9 @@ async def background_refresh_daemon():
             
             DAEMON_STATUS["companies_in_cycle"] = len(companies)
             DAEMON_STATUS["cycle_count"] += 1
+            DAEMON_STATUS["last_cycle_jobs_added"] = DAEMON_STATUS["jobs_added_this_cycle"]
+            DAEMON_STATUS["jobs_added_this_cycle"] = 0
+            DAEMON_STATUS["companies_refreshed_this_cycle"] = 0
             
             print(f"[Daemon] Starting cycle #{DAEMON_STATUS['cycle_count']} with {len(companies)} companies")
             
@@ -434,9 +447,17 @@ async def background_refresh_daemon():
                     
                     DAEMON_STATUS["last_company"] = company_name
                     DAEMON_STATUS["last_updated"] = datetime.now(timezone.utc).isoformat()
+                    DAEMON_STATUS["companies_refreshed_this_cycle"] += 1
+                    
+                    # Track jobs added
+                    jobs_added = result.get("jobs_added", 0)
+                    if jobs_added > 0:
+                        DAEMON_STATUS["jobs_added_this_cycle"] += jobs_added
+                        DAEMON_STATUS["jobs_added_total"] += jobs_added
                     
                     if result["ok"]:
-                        print(f"[Daemon] ✓ {company_name}: {result['jobs']} jobs")
+                        added_str = f" (+{jobs_added} new)" if jobs_added > 0 else ""
+                        print(f"[Daemon] ✓ {company_name}: {result['jobs']} jobs{added_str}")
                     else:
                         print(f"[Daemon] ✗ {company_name}: {result['error']}")
                 

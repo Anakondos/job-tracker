@@ -2524,12 +2524,16 @@
             if (status.current_company) {
               // Currently parsing
               indicator.style.background = "#f59e0b";  // amber - working
-              text.textContent = `🔄 Refreshing: ${status.current_company} (${status.current_index + 1}/${status.companies_in_cycle})`;
+              const progress = `${status.companies_refreshed_this_cycle || status.current_index + 1}/${status.companies_in_cycle}`;
+              const newJobs = status.jobs_added_this_cycle > 0 ? ` | +${status.jobs_added_this_cycle} new` : '';
+              text.textContent = `🔄 Refreshing: ${status.current_company} (${progress})${newJobs}`;
             } else if (status.last_company) {
               // Idle between batches
               indicator.style.background = "#22c55e";  // green - active
               const ago = status.last_updated ? formatTimeAgo(status.last_updated) : '';
-              text.textContent = `✅ Auto-refresh ON | Last: ${status.last_company} ${ago}`;
+              const newJobs = status.jobs_added_this_cycle > 0 ? ` | +${status.jobs_added_this_cycle} new` : '';
+              const progress = `${status.companies_refreshed_this_cycle}/${status.companies_in_cycle}`;
+              text.textContent = `✅ Cycle ${status.cycle_count}: ${progress} ${ago}${newJobs}`;
             } else {
               indicator.style.background = "#22c55e";
               text.textContent = `✅ Auto-refresh ON | Starting...`;
