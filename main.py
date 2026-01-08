@@ -3197,11 +3197,11 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
         """Highlight matched and injected keywords in text."""
         result = text
         
-        # First highlight matched keywords (green)
+        # First highlight matched keywords (green) - preserve original case
         for kw in matched_kw:
-            pattern = re.compile(re.escape(kw), re.IGNORECASE)
+            pattern = re.compile(f'({re.escape(kw)})', re.IGNORECASE)
             result = pattern.sub(
-                f'<span style="background: #bbf7d0; padding: 1px 3px; border-radius: 2px;">{kw}</span>',
+                r'<span style="background: #bbf7d0; padding: 1px 3px; border-radius: 2px;">\1</span>',
                 result
             )
         
