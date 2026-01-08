@@ -1553,18 +1553,17 @@ def get_funnel_stats():
 
 @app.get("/stats/by-date")
 def get_stats_by_date(days: int = Query(14, ge=1, le=60)):
-    """Get job statistics grouped by date with breakdown by category and location."""
+    """Get job statistics grouped by first_seen date from pipeline (unique new jobs only)."""
     from collections import defaultdict
     from datetime import datetime, timedelta
     
-    # Load from cache (ignore TTL - we want to show stats even if expired)
-    cached = load_cache("all", ignore_ttl=True)
-    if not cached:
-        return {"error": "Cache not loaded", "dates": []}
+    # Load from pipeline (unique jobs only, not cache)
+    from storage.job_storage import get_all_jobs
+    pipeline_jobs = get_all_jobs()
+    if not pipeline_jobs:
+        return {"error": "Pipeline not loaded", "dates": []}
     
-    all_jobs = cached.get("jobs", [])
-    
-    # Group by date
+    # Group by first_seen date (when job was first added to pipeline)
     by_date = defaultdict(lambda: {
         "total": 0,
         "primary": 0,
@@ -1580,17 +1579,11 @@ def get_stats_by_date(days: int = Query(14, ge=1, le=60)):
     
     neighbor_states = {"VA", "SC", "GA", "TN"}
     
-    for job in all_jobs:
-        # Get date
-        updated = job.get("updated_at", "")
-        if isinstance(updated, int):
-            # Unix timestamp
-            # Handle milliseconds
-            if updated > 10000000000:
-                updated = updated / 1000
-            date_str = datetime.fromtimestamp(updated).strftime("%Y-%m-%d")
-        elif updated:
-            date_str = str(updated)[:10]
+    for job in pipeline_jobs:
+        # Use first_seen date (when job was first discovered/added)
+        first_seen = job.get("first_seen", "")
+        if first_seen:
+            date_str = str(first_seen)[:10]
         else:
             date_str = "unknown"
         
@@ -1606,10 +1599,11 @@ def get_stats_by_date(days: int = Query(14, ge=1, le=60)):
         ln = job.get("location_norm", {}) or {}
         state = (ln.get("state") or "").upper()
         is_remote = ln.get("remote", False)
+        remote_scope = (ln.get("remote_scope") or "").upper()
         
-        if is_remote:
+        if is_remote and remote_scope == "USA":
             stats["remote"] += 1
-            stats["us"] += 1  # Remote USA counts as US
+            stats["us"] += 1
         elif state == "NC":
             stats["nc"] += 1
             stats["us"] += 1
@@ -1634,9 +1628,14 @@ def get_stats_by_date(days: int = Query(14, ge=1, le=60)):
             **stats
         })
     
+    # Get last refresh from cache for display
+    cached = load_cache("all", ignore_ttl=True)
+    last_refresh = cached.get("last_updated") if cached else None
+    
     return {
         "dates": result,
-        "last_refresh": cached.get("last_updated")
+        "last_refresh": last_refresh,
+        "source": "pipeline"
     }
 
 # ============= PIPELINE ENDPOINTS =============
