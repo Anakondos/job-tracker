@@ -3413,6 +3413,8 @@
           return;
         }
         
+        const now = new Date();
+        
         tbody.innerHTML = companies.map(c => {
           const statusIcon = c.last_ok === true ? '✅' : 
                             c.last_ok === false ? '❌' : 
@@ -3431,9 +3433,22 @@
           // Format last_checked date
           const updatedStr = c.last_checked ? formatDateWithAge(c.last_checked) : '—';
           
+          // Check if recently updated (within 10 minutes)
+          let recentlyUpdated = false;
+          let rowStyle = '';
+          if (c.last_checked) {
+            const checkedDate = new Date(c.last_checked);
+            const diffMins = (now - checkedDate) / 60000;
+            if (diffMins < 10) {
+              recentlyUpdated = true;
+              rowStyle = 'background: linear-gradient(90deg, rgba(34, 197, 94, 0.15) 0%, transparent 100%); border-left: 3px solid #22c55e;';
+            }
+          }
+          const recentBadge = recentlyUpdated ? '<span style="background: #22c55e; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">JUST NOW</span>' : '';
+          
           return `
-            <tr class="company-row" data-company="${c.company}" data-id="${c.id || ''}">
-              <td><strong>${c.company}</strong></td>
+            <tr class="company-row" data-company="${c.company}" data-id="${c.id || ''}" style="${rowStyle}">
+              <td><strong>${c.company}</strong>${recentBadge}</td>
               <td style="color: var(--muted); font-size: 12px;">${c.industry || c.tags?.join(', ') || ''}</td>
               <td><span class="ats-badge">${c.ats}</span></td>
               <td><span class="${totalBadgeClass}">${c.total_jobs || 0}</span></td>
