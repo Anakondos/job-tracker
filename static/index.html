@@ -1960,7 +1960,10 @@
             ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply Now</button>`
             : ''}
           ${(job.ats || '').toLowerCase() === 'greenhouse' && !['Selected', 'Ready', 'Applied', 'Interview', 'Offer', 'Rejected', 'Withdrawn', 'Closed'].includes(st)
-            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form">📝 Apply</button>`
+            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" data-company="${escapeAttr(job.company || '')}" data-rolefamily="${escapeAttr(job.role_family || 'product')}" title="Analyze & Apply">📝 Apply</button>`
+            : ''}
+          ${['workday', 'manual'].includes((job.ats || '').toLowerCase()) && !['Selected', 'Ready', 'Applied', 'Interview', 'Offer', 'Rejected', 'Withdrawn', 'Closed'].includes(st)
+            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" data-company="${escapeAttr(job.company || '')}" data-rolefamily="${escapeAttr(job.role_family || 'product')}" title="Analyze & Apply">📝 Apply</button>`
             : ''}
           ${showAddButton && !inPipeline 
             ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
