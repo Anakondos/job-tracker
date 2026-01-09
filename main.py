@@ -3321,6 +3321,14 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
     matched_kw = set(k.lower() for k in payload.matched_keywords)
     inject_kw = set(k.lower() for k in payload.keywords_to_add)
     
+    # Add yellow banner at the TOP if there are keywords to add
+    if inject_kw:
+        html_parts.append('<div style="margin: 0 0 16px 0; padding: 12px; background-color: #fef08a; border-radius: 8px; border-left: 4px solid #eab308;">')
+        html_parts.append('<strong style="color: #854d0e; font-size: 13px;">🔑 Keywords to be added to your CV:</strong><br>')
+        html_parts.append('<div style="margin-top: 8px;">')
+        html_parts.append(', '.join(f'<mark style="background-color: #facc15; padding: 2px 6px; border-radius: 3px; font-weight: 500;">{kw}</mark>' for kw in payload.keywords_to_add))
+        html_parts.append('</div></div>')
+    
     # Fallback: if no keywords provided, use common PM keywords for highlighting
     if not matched_kw:
         matched_kw = {
@@ -3329,16 +3337,6 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
             "okr", "prioritization", "requirements", "delivery", "release",
             "jira", "confluence", "aws", "sql", "data analysis"
         }
-    
-    # Track if we've injected keywords
-    keywords_injected = False
-    injected_section_html = ""
-    
-    if inject_kw:
-        injected_section_html = '<div style="margin: 8px 0; padding: 8px; background-color: #fef08a !important; border-radius: 4px; border-left: 3px solid #eab308;">'
-        injected_section_html += '<strong style="color: #854d0e;">➕ Added Keywords:</strong> '
-        injected_section_html += ', '.join(f'<mark style="background-color: #facc15 !important; padding: 1px 4px; border-radius: 2px;">{kw}</mark>' for kw in payload.keywords_to_add)
-        injected_section_html += '</div>'
     
     def highlight_text(text: str) -> str:
         """Highlight matched and injected keywords in text."""
@@ -3365,11 +3363,6 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
         # Detect section headers
         if text.isupper() or style == "Heading 1" or text in ["CORE COMPETENCIES", "PROFESSIONAL EXPERIENCE", "EDUCATION", "CERTIFICATIONS"]:
             html_parts.append(f'<h3 style="margin: 16px 0 8px 0; color: #1e3a5f; border-bottom: 1px solid #ddd; padding-bottom: 4px;">{text}</h3>')
-            
-            # Inject keywords after CORE COMPETENCIES
-            if "COMPETENCIES" in text.upper() and not keywords_injected and injected_section_html:
-                html_parts.append(injected_section_html)
-                keywords_injected = True
                 
         elif style == "List Paragraph":
             html_parts.append(f'<div style="margin: 4px 0 4px 20px; padding-left: 10px; border-left: 2px solid #e5e7eb;">• {highlighted}</div>')
