@@ -400,9 +400,12 @@ async def background_refresh_daemon():
     
     while DAEMON_STATUS["enabled"]:
         try:
-            # Load all companies
-            from company_storage import load_companies_master
-            companies = load_companies_master()
+            # Load all companies from JSON
+            companies_path = Path("data/companies.json")
+            if companies_path.exists():
+                companies = json.loads(companies_path.read_text())
+            else:
+                companies = []
             
             # Filter to enabled companies only
             companies = [c for c in companies if c.get("disabled") != True]
