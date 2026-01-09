@@ -2836,30 +2836,73 @@ def fetch_job_description(payload: dict):
     try:
         # ============ WORKDAY API ============
         if "myworkdayjobs.com" in url:
-            # https://evercommerce.wd1.myworkdayjobs.com/en-US/evercommerce_careers/job/Remote--US/..._R-105810
-            wd_match = re.match(r'https?://([^\.]+)\.wd\d+\.myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)/job/(.+)', url)
-            if wd_match:
-                company_slug = wd_match.group(1)
-                site = wd_match.group(2)
-                job_path = wd_match.group(3)
+            # URL formats:
+            # 1. https://company.wd1.myworkdayjobs.com/en-US/site/job/Location/Title_JOBID
+            # 2. https://company.wd1.myworkdayjobs.com/site/job/Location/Title_JOBID  
+            # 3. https://company.wd1.myworkdayjobs.com/job/Location/Title_JOBID (no site)
+            
+            # Extract company slug
+            company_match = re.match(r'https?://([^\.]+)\.wd\d+\.myworkdayjobs\.com', url)
+            if not company_match:
+                pass  # Will fall through to scraping
+            else:
+                company_slug = company_match.group(1)
                 
-                api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                # Try to extract site and job path
+                # Pattern with site: /site/job/path or /en-US/site/job/path
+                site_job_match = re.search(r'myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)/job/(.+)', url)
+                # Pattern without site: /job/path
+                direct_job_match = re.search(r'myworkdayjobs\.com/job/(.+)', url)
                 
-                try:
-                    resp = requests.get(api_url, timeout=15)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        jp = data.get("jobPostingInfo", {})
-                        desc_html = jp.get("jobDescription", "")
-                        if desc_html:
-                            soup = BeautifulSoup(desc_html, "html.parser")
-                            text = soup.get_text(separator="\n", strip=True)
-                            text = html.unescape(text)
-                            lines = [l.strip() for l in text.split("\n") if l.strip()]
-                            text = "\n".join(lines)[:5000]
-                            return {"ok": True, "description": text, "source": "workday_api", "title": jp.get("title")}
-                except Exception as e:
-                    print(f"Workday API error: {e}")
+                if site_job_match:
+                    site = site_job_match.group(1)
+                    job_path = site_job_match.group(2)
+                elif direct_job_match:
+                    # No site in URL - try common site names
+                    job_path = direct_job_match.group(1)
+                    site = f"{company_slug}_careers"  # Common pattern
+                else:
+                    site = None
+                    job_path = None
+                
+                if site and job_path:
+                    api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                    
+                    try:
+                        resp = requests.get(api_url, timeout=15)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            jp = data.get("jobPostingInfo", {})
+                            desc_html = jp.get("jobDescription", "")
+                            if desc_html:
+                                soup = BeautifulSoup(desc_html, "html.parser")
+                                text = soup.get_text(separator="\n", strip=True)
+                                text = html.unescape(text)
+                                lines = [l.strip() for l in text.split("\n") if l.strip()]
+                                text = "\n".join(lines)[:5000]
+                                return {"ok": True, "description": text, "source": "workday_api", "title": jp.get("title")}
+                    except Exception as e:
+                        print(f"Workday API error for {api_url}: {e}")
+                    
+                    # If first site didn't work, try without _careers suffix
+                    if "_careers" in site:
+                        alt_site = company_slug
+                        api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{alt_site}/job/{job_path}"
+                        try:
+                            resp = requests.get(api_url, timeout=15)
+                            if resp.status_code == 200:
+                                data = resp.json()
+                                jp = data.get("jobPostingInfo", {})
+                                desc_html = jp.get("jobDescription", "")
+                                if desc_html:
+                                    soup = BeautifulSoup(desc_html, "html.parser")
+                                    text = soup.get_text(separator="\n", strip=True)
+                                    text = html.unescape(text)
+                                    lines = [l.strip() for l in text.split("\n") if l.strip()]
+                                    text = "\n".join(lines)[:5000]
+                                    return {"ok": True, "description": text, "source": "workday_api", "title": jp.get("title")}
+                        except Exception as e:
+                            print(f"Workday API error (alt site) for {api_url}: {e}")
         
         # ============ GREENHOUSE API ============
         # Try to extract Greenhouse job ID from URL
