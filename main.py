@@ -2214,8 +2214,9 @@ def fetch_single_job(ats_info: dict) -> dict:
         job_id = ats_info.get("job_id")
         board_url = ats_info.get("board_url")
         
-        # Clean job_id - remove trailing -N suffix for search
-        clean_job_id = re.sub(r'-[0-9]+$', '', job_id) if job_id else ""
+        # Use job_id directly for search - don't strip the number part
+        # R-105810 should stay R-105810, not become R
+        clean_job_id = job_id or ""
         
         # Extract site from board_url
         site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url)
@@ -2819,7 +2820,7 @@ def get_apply_log():
 def fetch_job_description(payload: dict):
     """
     Fetch job description from URL.
-    Tries Greenhouse API first, then falls back to scraping.
+    Supports: Workday API, Greenhouse API, and scraping fallback.
     Expects: {url}
     Returns: {ok, description}
     """
@@ -2833,6 +2834,34 @@ def fetch_job_description(payload: dict):
         return {"ok": False, "error": "No URL provided"}
     
     try:
+        # ============ WORKDAY API ============
+        if "myworkdayjobs.com" in url:
+            # https://evercommerce.wd1.myworkdayjobs.com/en-US/evercommerce_careers/job/Remote--US/..._R-105810
+            wd_match = re.match(r'https?://([^\.]+)\.wd\d+\.myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)/job/(.+)', url)
+            if wd_match:
+                company_slug = wd_match.group(1)
+                site = wd_match.group(2)
+                job_path = wd_match.group(3)
+                
+                api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                
+                try:
+                    resp = requests.get(api_url, timeout=15)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        jp = data.get("jobPostingInfo", {})
+                        desc_html = jp.get("jobDescription", "")
+                        if desc_html:
+                            soup = BeautifulSoup(desc_html, "html.parser")
+                            text = soup.get_text(separator="\n", strip=True)
+                            text = html.unescape(text)
+                            lines = [l.strip() for l in text.split("\n") if l.strip()]
+                            text = "\n".join(lines)[:5000]
+                            return {"ok": True, "description": text, "source": "workday_api", "title": jp.get("title")}
+                except Exception as e:
+                    print(f"Workday API error: {e}")
+        
+        # ============ GREENHOUSE API ============
         # Try to extract Greenhouse job ID from URL
         gh_job_id = None
         gh_board = None
@@ -3370,9 +3399,8 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
 
 
 class CVTailorRequest(BaseModel):
-    job_title: str
     company: str
-    position: str
+    position: str  # Job title
     role_family: str = "product"
     keywords_to_add: list = []
 
