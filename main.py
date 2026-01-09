@@ -3381,7 +3381,7 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
             "jira", "confluence", "aws", "sql", "data analysis"
         }
     
-    def highlight_text(text: str) -> str:
+    def highlight_text(text: str, is_technical_section: bool = False) -> str:
         """Highlight matched and injected keywords in text."""
         result = text
         
@@ -3393,7 +3393,14 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
                 result
             )
         
+        # Add injected keywords to Technical section with yellow highlight
+        if is_technical_section and inject_kw:
+            injected_str = ', '.join(f'<mark style="background-color: #facc15 !important; padding: 1px 3px; border-radius: 2px; font-weight: 500;">{kw}</mark>' for kw in payload.keywords_to_add)
+            result += f' <span style="color: #854d0e;">[+Added: {injected_str}]</span>'
+        
         return result
+    
+    keywords_injected = False
     
     for para in doc.paragraphs:
         text = para.text.strip()
@@ -3401,7 +3408,14 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
             continue
         
         style = para.style.name if para.style else "Normal"
-        highlighted = highlight_text(text)
+        
+        # Check if this is Technical Delivery/Acumen line where we inject keywords
+        # Must start with bullet point marker or "Technical Delivery" / "Technical Acumen"
+        is_technical = (text.startswith("Technical Delivery") or text.startswith("Technical Acumen") or 
+                       (text.startswith("•") and "Technical" in text)) and not keywords_injected
+        highlighted = highlight_text(text, is_technical_section=is_technical)
+        if is_technical and inject_kw:
+            keywords_injected = True
         
         # Detect section headers
         if text.isupper() or style == "Heading 1" or text in ["CORE COMPETENCIES", "PROFESSIONAL EXPERIENCE", "EDUCATION", "CERTIFICATIONS"]:
