@@ -3017,8 +3017,8 @@
           c.classList.toggle("active", c.id === "tab-" + tabName);
         });
         
-        // Build URL
-        var url = "/cache/browse?date=" + date;
+        // Build URL - use pipeline endpoint
+        var url = "/pipeline/all?date=" + date;
         if (filter === "primary" || filter === "adjacent" || filter === "unknown" || filter === "excluded") {
           url += "&category=" + filter;
         } else if (filter === "us" || filter === "nc" || filter === "neighbor" || filter === "remote") {
@@ -3039,11 +3039,11 @@
               pipelinePage = 1;
               renderJobs(pipelineFilteredJobs);
               document.getElementById("statusPipeline").innerHTML = 
-                '<span class="pipe-item active">📅 ' + dateLabel + ': ' + data.total + ' ' + filter + ' jobs</span>';
+                '<span class="pipe-item active">📅 ' + dateLabel + ': ' + (data.count || data.jobs?.length || 0) + ' ' + filter + ' jobs</span>';
             } else {
               renderReviewJobs(data.jobs || []);
               var statusEl = document.getElementById("reviewStatus");
-              if (statusEl) statusEl.innerHTML = '📅 ' + dateLabel + ': ' + data.total + ' ' + filter + ' jobs';
+              if (statusEl) statusEl.innerHTML = '📅 ' + dateLabel + ': ' + (data.count || data.jobs?.length || 0) + ' ' + filter + ' jobs';
             }
           })
           .catch(function(e) { console.error("Failed to load:", e); });

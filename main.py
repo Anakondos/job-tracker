@@ -1813,16 +1813,16 @@ def get_review_jobs(
 
 @app.get("/pipeline/all")
 def pipeline_all_endpoint(
-    date: str = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    date: str = Query(None, description="Filter by first_seen date (YYYY-MM-DD)"),
     category: str = Query(None, description="Filter by role_category (primary/adjacent)"),
     location: str = Query(None, description="Filter by location (us/nc/neighbor/remote)")
 ):
     """Get ALL jobs from storage with optional filters"""
     all_jobs = get_all_jobs()
     
-    # Apply date filter
+    # Apply date filter (by first_seen - when job was added to pipeline)
     if date:
-        all_jobs = [j for j in all_jobs if str(j.get("updated_at", ""))[:10] == date]
+        all_jobs = [j for j in all_jobs if str(j.get("first_seen", ""))[:10] == date]
     
     # Apply category filter
     if category:
