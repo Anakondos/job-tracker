@@ -1081,6 +1081,7 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _resolve_file_field(self, field: FormField):
         """Resolve file upload field based on job title."""
         label_lower = field.label.lower()
+        field_id = (field.element_id or "").lower()
         
         # Get job title from page
         job_title = self.page.title() if self.page else ""
@@ -1088,22 +1089,36 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         # Get CV and Cover Letter paths based on role
         cv_path, cover_letter_path = self.profile.get_files_for_role(job_title)
         
-        # Check what type of file is requested
-        if any(kw in label_lower for kw in ["cover letter", "cover_letter", "coverletter"]):
+        # Check what type of file is requested (check ID first, then label)
+        is_cover_letter = (
+            "cover_letter" in field_id or 
+            "coverletter" in field_id or
+            any(kw in label_lower for kw in ["cover letter", "cover_letter", "coverletter"])
+        )
+        
+        is_resume = (
+            "resume" in field_id or
+            "cv" in field_id or
+            any(kw in label_lower for kw in ["resume", "cv"])
+        )
+        
+        if is_cover_letter:
             # Cover Letter field
             if cover_letter_path and cover_letter_path.exists():
                 field.answer = str(cover_letter_path)
                 field.answer_source = AnswerSource.PROFILE
                 field.status = FillStatus.READY
+                print(f"   📄 Cover Letter: {cover_letter_path.name}")
             else:
                 field.status = FillStatus.NEEDS_INPUT
                 field.error_message = "Cover letter not found for this role"
-        elif any(kw in label_lower for kw in ["resume", "cv", "attach"]):
-            # Resume/CV field
+        elif is_resume or "attach" in label_lower:
+            # Resume/CV field (including generic "Attach")
             if cv_path and cv_path.exists():
                 field.answer = str(cv_path)
                 field.answer_source = AnswerSource.PROFILE
                 field.status = FillStatus.READY
+                print(f"   📄 Resume/CV: {cv_path.name}")
             else:
                 field.status = FillStatus.ERROR
                 field.error_message = "CV not found for this role"
