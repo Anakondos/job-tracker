@@ -1179,49 +1179,61 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         return True
     
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
-        """Fill autocomplete/combobox."""
+        """Fill autocomplete/combobox by clicking and selecting option."""
+        # Click to open dropdown (don't type - it filters and may not find)
         el.click()
-        time.sleep(0.2)
-        el.fill("")
-        el.type(field.answer, delay=20)
-        time.sleep(0.5)
+        time.sleep(0.3)
         
-        # Find and click matching option
         try:
             self.page.wait_for_selector('.select__menu', timeout=1500)
             
             options = self.page.query_selector_all('.select__option')
             answer_lower = field.answer.lower().replace('-', ' ').replace('_', ' ')
             
+            # Try to find matching option
             for opt in options:
-                opt_text = opt.inner_text().strip().lower().replace('-', ' ').replace('_', ' ')
+                opt_text = opt.inner_text().strip()
+                opt_lower = opt_text.lower().replace('-', ' ').replace('_', ' ')
+                
                 # Check containment both ways
-                if answer_lower in opt_text or opt_text in answer_lower:
+                if answer_lower in opt_lower or opt_lower in answer_lower:
                     opt.click()
                     time.sleep(0.2)
                     return True
-                # Also check word overlap for fuzzy match
+                
+                # Word overlap match
                 answer_words = set(answer_lower.split())
-                opt_words = set(opt_text.split())
-                if len(answer_words & opt_words) >= 2:  # At least 2 common words
+                opt_words = set(opt_lower.split())
+                if len(answer_words & opt_words) >= 2:
                     opt.click()
                     time.sleep(0.2)
                     return True
             
-            # Fallback: first option
+            # If no match found, try typing to filter
+            el.click()
+            time.sleep(0.2)
+            el.type(field.answer[:20], delay=30)  # Type first 20 chars
+            time.sleep(0.4)
+            
+            # Try again with filtered options
+            options = self.page.query_selector_all('.select__option')
             if options:
                 options[0].click()
+                time.sleep(0.2)
                 return True
+            
+            # Last resort: arrow down + enter
+            self.page.keyboard.press("ArrowDown")
+            time.sleep(0.1)
+            self.page.keyboard.press("Enter")
                 
-        except:
+        except Exception as e:
+            # Fallback: arrow navigation
             self.page.keyboard.press("ArrowDown")
             time.sleep(0.1)
             self.page.keyboard.press("Enter")
         
-        # Blur to trigger validation
         time.sleep(0.2)
-        self.page.keyboard.press("Tab")
-        
         return True
     
     def _fill_checkbox(self, el: ElementHandle, field: FormField) -> bool:
