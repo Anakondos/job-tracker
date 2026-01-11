@@ -747,6 +747,9 @@ class FormFillerV5:
             
             # Then fill remaining fields
             self._fill_all_fields(mode)
+            
+            # Blur all fields to trigger validation
+            self._blur_all_fields()
             self._validate_all_fields()
             
             # Keep browser open for review
@@ -1179,59 +1182,64 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         return True
     
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
-        """Fill autocomplete/combobox by clicking and selecting option."""
-        # Click to open dropdown (don't type - it filters and may not find)
+        """Fill autocomplete/combobox - smart strategy based on option count."""
         el.click()
         time.sleep(0.3)
         
         try:
             self.page.wait_for_selector('.select__menu', timeout=1500)
-            
             options = self.page.query_selector_all('.select__option')
-            answer_lower = field.answer.lower().replace('-', ' ').replace('_', ' ')
             
-            # Try to find matching option
-            for opt in options:
-                opt_text = opt.inner_text().strip()
-                opt_lower = opt_text.lower().replace('-', ' ').replace('_', ' ')
+            # Strategy: few options = search visually, many options = type to filter
+            if len(options) <= 10:
+                # Few options - find and click matching one
+                answer_lower = field.answer.lower().replace('-', ' ').replace('_', ' ')
                 
-                # Check containment both ways
-                if answer_lower in opt_lower or opt_lower in answer_lower:
-                    opt.click()
+                for opt in options:
+                    opt_text = opt.inner_text().strip()
+                    opt_lower = opt_text.lower().replace('-', ' ').replace('_', ' ')
+                    
+                    if answer_lower in opt_lower or opt_lower in answer_lower:
+                        opt.click()
+                        time.sleep(0.2)
+                        return True
+                    
+                    # Word overlap
+                    if len(set(answer_lower.split()) & set(opt_lower.split())) >= 2:
+                        opt.click()
+                        time.sleep(0.2)
+                        return True
+                
+                # No match - click first
+                if options:
+                    options[0].click()
                     time.sleep(0.2)
                     return True
-                
-                # Word overlap match
-                answer_words = set(answer_lower.split())
-                opt_words = set(opt_lower.split())
-                if len(answer_words & opt_words) >= 2:
-                    opt.click()
-                    time.sleep(0.2)
-                    return True
             
-            # If no match found, try typing to filter
-            el.click()
-            time.sleep(0.2)
-            el.type(field.answer[:20], delay=30)  # Type first 20 chars
-            time.sleep(0.4)
-            
-            # Try again with filtered options
-            options = self.page.query_selector_all('.select__option')
-            if options:
-                options[0].click()
+            else:
+                # Many options - type to filter first
+                self.page.keyboard.press('Escape')
+                time.sleep(0.1)
+                el.click()
                 time.sleep(0.2)
-                return True
-            
-            # Last resort: arrow down + enter
-            self.page.keyboard.press("ArrowDown")
-            time.sleep(0.1)
-            self.page.keyboard.press("Enter")
+                el.type(field.answer[:25], delay=15)
+                time.sleep(0.4)
+                
+                # Click first filtered option
+                options = self.page.query_selector_all('.select__option')
+                if options:
+                    options[0].click()
+                    time.sleep(0.2)
+                    return True
+                
+                # Fallback
+                self.page.keyboard.press('ArrowDown')
+                self.page.keyboard.press('Enter')
                 
         except Exception as e:
-            # Fallback: arrow navigation
-            self.page.keyboard.press("ArrowDown")
+            self.page.keyboard.press('ArrowDown')
             time.sleep(0.1)
-            self.page.keyboard.press("Enter")
+            self.page.keyboard.press('Enter')
         
         time.sleep(0.2)
         return True
@@ -1290,6 +1298,26 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     # ─────────────────────────────────────────────────────────────────────
     # LAYER 4: VALIDATION
     # ─────────────────────────────────────────────────────────────────────
+    
+    def _blur_all_fields(self):
+        """Click outside all fields to trigger blur/validation."""
+        try:
+            # Click on body to blur any focused field
+            self.page.click('body', position={'x': 10, 'y': 10})
+            time.sleep(0.3)
+            
+            # Also blur each field explicitly
+            for field in self.fields:
+                if field.selector:
+                    el = self.page.query_selector(field.selector)
+                    if el:
+                        try:
+                            el.evaluate("e => e.blur()")
+                        except:
+                            pass
+            time.sleep(0.3)
+        except:
+            pass
     
     def _validate_all_fields(self):
         """Validate all filled fields."""
@@ -1401,17 +1429,29 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 role = el.get_attribute('role') or ''
                 aria = el.get_attribute('aria-haspopup') or ''
                 
-                # Determine field type
+                # Determine field type and fill
                 if tag == 'select':
                     el.select_option(label=str(value))
                 elif role == 'combobox' or aria in ('true', 'listbox'):
+                    # For autocomplete: type to filter, then click first match
                     el.click()
                     time.sleep(0.2)
+                    
+                    # Type first part of value to filter options
+                    search_text = str(value)[:25]
                     el.fill('')
-                    el.type(str(value), delay=20)
-                    time.sleep(0.3)
-                    self.page.keyboard.press('ArrowDown')
-                    self.page.keyboard.press('Enter')
+                    el.type(search_text, delay=15)
+                    time.sleep(0.4)
+                    
+                    # Click first matching option
+                    opts = self.page.query_selector_all('.select__option')
+                    if opts:
+                        opts[0].click()
+                    else:
+                        # No matches - try arrow+enter
+                        self.page.keyboard.press('ArrowDown')
+                        self.page.keyboard.press('Enter')
+                    time.sleep(0.2)
                 elif el_type == 'checkbox':
                     if value == 'checked' and not el.is_checked():
                         el.click()
