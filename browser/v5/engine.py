@@ -257,7 +257,7 @@ class Profile:
         "former employee": "No",
         "confirm": "Yes",
         "acknowledge": "Yes",
-        "confirm receipt": "Yes",
+        "confirm receipt": "Confirmed",
         "agree": "Yes",
         "i understand": "Yes",
         "current role": "Yes",
@@ -1167,11 +1167,15 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _fill_text(self, el: ElementHandle, field: FormField) -> bool:
         """Fill text/email/phone field."""
         el.fill(field.answer)
+        # Blur to trigger validation
+        el.evaluate("e => e.blur()")
         return True
     
     def _fill_select(self, el: ElementHandle, field: FormField) -> bool:
         """Fill native select."""
         el.select_option(label=field.answer)
+        # Blur to trigger validation
+        el.evaluate("e => e.blur()")
         return True
     
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
@@ -1187,12 +1191,21 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             self.page.wait_for_selector('.select__menu', timeout=1500)
             
             options = self.page.query_selector_all('.select__option')
-            answer_lower = field.answer.lower()
+            answer_lower = field.answer.lower().replace('-', ' ').replace('_', ' ')
             
             for opt in options:
-                opt_text = opt.inner_text().strip().lower()
+                opt_text = opt.inner_text().strip().lower().replace('-', ' ').replace('_', ' ')
+                # Check containment both ways
                 if answer_lower in opt_text or opt_text in answer_lower:
                     opt.click()
+                    time.sleep(0.2)
+                    return True
+                # Also check word overlap for fuzzy match
+                answer_words = set(answer_lower.split())
+                opt_words = set(opt_text.split())
+                if len(answer_words & opt_words) >= 2:  # At least 2 common words
+                    opt.click()
+                    time.sleep(0.2)
                     return True
             
             # Fallback: first option
@@ -1204,6 +1217,10 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             self.page.keyboard.press("ArrowDown")
             time.sleep(0.1)
             self.page.keyboard.press("Enter")
+        
+        # Blur to trigger validation
+        time.sleep(0.2)
+        self.page.keyboard.press("Tab")
         
         return True
     
