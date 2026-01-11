@@ -199,6 +199,7 @@ class Profile:
     
     # Label patterns → profile keys
     LABEL_MAPPINGS = {
+        # Personal info
         "first name": "personal.first_name",
         "last name": "personal.last_name",
         "email": "personal.email",
@@ -212,6 +213,28 @@ class Profile:
         "address": "personal.street_address",
         "linkedin": "links.linkedin",
         "github": "links.github",
+        # Work experience
+        "company name": "work_experience.0.company",
+        "employer": "work_experience.0.company",
+        "job title": "work_experience.0.title",
+        "title": "work_experience.0.title",
+        "start date month": "work_experience.0.start_month",
+        "start month": "work_experience.0.start_month",
+        "start date year": "work_experience.0.start_year",
+        "start year": "work_experience.0.start_year",
+        "end date month": "work_experience.0.end_month",
+        "end month": "work_experience.0.end_month",
+        "end date year": "work_experience.0.end_year",
+        "end year": "work_experience.0.end_year",
+        # Education
+        "school": "education.0.school",
+        "university": "education.0.school",
+        "degree": "education.0.degree",
+        "discipline": "education.0.discipline",
+        "your major": "education.0.discipline",
+        "field of study": "education.0.discipline",
+        # Common questions
+        "how did you hear": "common_answers.how_heard",
     }
     
     # Yes/No question patterns
@@ -219,13 +242,27 @@ class Profile:
         "18 years": "Yes",
         "authorized to work": "Yes",
         "legally authorized": "Yes",
+        "eligible to work": "Yes",
         "require sponsorship": "No",
         "visa sponsorship": "No",
         "government official": "No",
+        "close relative of a government": "No",
+        "conflict of interest": "No",
+        "connected to": "No",
+        "financial interest": "No",
+        "referred to this position by": "No",
+        "senior leader": "No",
         "previously employed": "No",
+        "previously been employed": "No",
+        "former employee": "No",
         "confirm": "Yes",
         "acknowledge": "Yes",
+        "confirm receipt": "Yes",
         "agree": "Yes",
+        "i understand": "Yes",
+        "current role": "Yes",
+        "currently work here": "Yes",
+        "currently work": "Yes",
     }
     
     # Demographic defaults
