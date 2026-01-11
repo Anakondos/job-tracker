@@ -848,6 +848,17 @@ class FormFillerV5:
             field.status = FillStatus.FILLED
             return
         
+        label_lower = field.label.lower()
+        
+        # Skip end date fields if current role (work_experience.0.current == true)
+        if any(kw in label_lower for kw in ["end date", "end month", "end year"]):
+            work_exp = self.profile.data.get("work_experience", [{}])
+            if work_exp and work_exp[0].get("current", False):
+                field.status = FillStatus.SKIPPED
+                field.answer = ""
+                field.error_message = "Skipped - current role"
+                return
+        
         # Cascade resolution
         answer, source, confidence = None, AnswerSource.NONE, 0.0
         
