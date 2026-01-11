@@ -289,6 +289,72 @@ class Profile:
         p = self.data.get("personal", {})
         w = self.data.get("work_experience", [{}])[0]
         return f"Name: {p.get('first_name', '')} {p.get('last_name', '')}\nLocation: {p.get('location', '')}\nRole: {w.get('title', '')} at {w.get('company', '')}"
+    
+    def get_files_for_role(self, job_title: str) -> Tuple[Optional[Path], Optional[Path]]:
+        """
+        Get CV and Cover Letter paths based on job title.
+        
+        Args:
+            job_title: Job title from the application (e.g. "Senior Product Manager, Finance")
+            
+        Returns:
+            Tuple of (cv_path, cover_letter_path) - either can be None if not found
+        """
+        files_config = self.data.get("files", {})
+        base_path = Path(files_config.get("base_path", ""))
+        by_role = files_config.get("by_role", {})
+        default_role = files_config.get("default_role", "TPM")
+        
+        if not base_path.exists():
+            return None, None
+        
+        # Determine role from job title
+        job_title_lower = job_title.lower()
+        detected_role = None
+        
+        # Role detection patterns (order matters - more specific first)
+        role_patterns = [
+            ("TPM", ["technical program manager", "tpm"]),
+            ("Product Manager", ["product manager"]),
+            ("Product Owner", ["product owner"]),
+            ("Project Manager", ["project manager"]),
+            ("Scrum Master", ["scrum master", "agile coach"]),
+            ("Delivery Lead", ["delivery lead", "delivery manager"]),
+        ]
+        
+        for role_name, patterns in role_patterns:
+            for pattern in patterns:
+                if pattern in job_title_lower:
+                    detected_role = role_name
+                    break
+            if detected_role:
+                break
+        
+        # Use default if no match
+        if not detected_role:
+            detected_role = default_role
+        
+        # Get files for detected role
+        role_files = by_role.get(detected_role, by_role.get(default_role, {}))
+        
+        cv_filename = role_files.get("cv")
+        cover_letter_filename = role_files.get("cover_letter")
+        
+        cv_path = base_path / cv_filename if cv_filename else None
+        cover_letter_path = base_path / cover_letter_filename if cover_letter_filename else None
+        
+        # Verify files exist
+        if cv_path and not cv_path.exists():
+            print(f"   ⚠️ CV not found: {cv_path}")
+            cv_path = None
+        if cover_letter_path and not cover_letter_path.exists():
+            print(f"   ⚠️ Cover letter not found: {cover_letter_path}")
+            cover_letter_path = None
+        
+        if cv_path:
+            print(f"   📄 Selected CV for \'{detected_role}\': {cv_path.name}")
+        
+        return cv_path, cover_letter_path
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -819,22 +885,34 @@ class FormFillerV5:
         return None
     
     def _resolve_file_field(self, field: FormField):
-        """Resolve file upload field."""
+        """Resolve file upload field based on job title."""
         label_lower = field.label.lower()
         
-        resume_path = Path(self.profile.data.get("files", {}).get(
-            "resume_path", 
-            "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Anton_Kondakov_TPM_CV.pdf"
-        ))
+        # Get job title from page
+        job_title = self.page.title() if self.page else ""
         
-        if any(kw in label_lower for kw in ["resume", "cv", "attach"]):
-            if resume_path.exists():
-                field.answer = str(resume_path)
+        # Get CV and Cover Letter paths based on role
+        cv_path, cover_letter_path = self.profile.get_files_for_role(job_title)
+        
+        # Check what type of file is requested
+        if any(kw in label_lower for kw in ["cover letter", "cover_letter", "coverletter"]):
+            # Cover Letter field
+            if cover_letter_path and cover_letter_path.exists():
+                field.answer = str(cover_letter_path)
+                field.answer_source = AnswerSource.PROFILE
+                field.status = FillStatus.READY
+            else:
+                field.status = FillStatus.NEEDS_INPUT
+                field.error_message = "Cover letter not found for this role"
+        elif any(kw in label_lower for kw in ["resume", "cv", "attach"]):
+            # Resume/CV field
+            if cv_path and cv_path.exists():
+                field.answer = str(cv_path)
                 field.answer_source = AnswerSource.PROFILE
                 field.status = FillStatus.READY
             else:
                 field.status = FillStatus.ERROR
-                field.error_message = "Resume file not found"
+                field.error_message = "CV not found for this role"
         else:
             field.status = FillStatus.NEEDS_INPUT
     
