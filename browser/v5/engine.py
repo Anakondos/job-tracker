@@ -17,7 +17,7 @@ Modes:
 import json
 import re
 import time
-# import requests  # Not needed - using Claude API
+import requests  # For Ollama API
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field as dataclass_field
@@ -447,16 +447,101 @@ class LearnedDB:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# AI HELPER - CLAUDE API (Primary and Only)
+# OLLAMA HELPER - Local LLM for custom questions
+# ═══════════════════════════════════════════════════════════════════════════
+
+class OllamaHelper:
+    """Local LLM using llava:7b for generating answers to custom questions."""
+    
+    OLLAMA_URL = "http://localhost:11434/api/generate"
+    MODEL = "llava:7b"
+    
+    PROMPT_TEMPLATE = """Answer this job application question based on the candidate profile.
+
+CANDIDATE:
+{profile_context}
+
+QUESTION: {question}
+{options_text}
+
+RULES:
+1. "How many years of experience" -> answer with a number like "15+" 
+2. Questions about specific software (NetSuite, SAP, Salesforce, Oracle):
+   - Answer "No" unless that EXACT tool is mentioned in candidate profile above
+3. Multiple choice -> reply with EXACT option text only
+4. Yes/no -> reply "Yes" or "No" only
+5. Be concise - max 5 words
+
+ANSWER:"""
+
+    def __init__(self):
+        self._available = None
+    
+    @property
+    def available(self) -> bool:
+        if self._available is None:
+            try:
+                resp = requests.get("http://localhost:11434/api/tags", timeout=2)
+                self._available = resp.status_code == 200
+            except:
+                self._available = False
+        return self._available
+    
+    def generate(self, question: str, profile_context: str, options: List[str] = None) -> Optional[str]:
+        if not self.available:
+            return None
+        
+        options_text = ""
+        if options:
+            options_text = f"OPTIONS (choose one): {options}"
+        
+        prompt = self.PROMPT_TEMPLATE.format(
+            profile_context=profile_context,
+            question=question,
+            options_text=options_text
+        )
+        
+        try:
+            resp = requests.post(
+                self.OLLAMA_URL,
+                json={
+                    "model": self.MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 50}
+                },
+                timeout=60
+            )
+            
+            if resp.status_code == 200:
+                answer = resp.json().get("response", "").strip()
+                answer = answer.split("\n")[0].strip()
+                answer = re.sub(r'^[*\-]\s*', '', answer)
+                answer = re.sub(r'^(Answer:|ANSWER:|A:)\s*', '', answer)
+                return answer
+        except Exception as e:
+            print(f"   ⚠️ Ollama error: {e}")
+        return None
+    
+    def match_option(self, answer: str, options: List[str]) -> Optional[str]:
+        if not options:
+            return answer
+        answer_lower = answer.lower().strip()
+        for opt in options:
+            if opt.lower() == answer_lower:
+                return opt
+        for opt in options:
+            if answer_lower in opt.lower() or opt.lower() in answer_lower:
+                return opt
+        return options[0] if options else answer
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AI HELPER - Claude API for verification
 # ═══════════════════════════════════════════════════════════════════════════
 
 class AIHelper:
-    """
-    AI Helper using Claude API.
-    
-    Claude API is fast, accurate, and always available.
-    No local models, no fallbacks - just Claude.
-    """
+    """AI Helper using Claude API for verification."""
     
     def __init__(self):
         self._vision_ai = None
@@ -579,6 +664,7 @@ class FormFillerV5:
         self.profile = Profile()
         self.learned_db = LearnedDB()
         self.ai = AIHelper()
+        self.ollama = OllamaHelper()
         
         self.browser: Optional[BrowserManager] = None
         self.page: Optional[Page] = None
@@ -893,6 +979,16 @@ class FormFillerV5:
             if matched:
                 answer, source, confidence = matched, AnswerSource.DEFAULT, 0.7
         
+        # 6. Ollama for custom questions
+        if not answer and self.ollama.available:
+            profile_context = self._get_profile_context_for_ai()
+            ollama_answer = self.ollama.generate(field.label, profile_context, field.options)
+            if ollama_answer:
+                if field.options:
+                    ollama_answer = self.ollama.match_option(ollama_answer, field.options)
+                answer, source, confidence = ollama_answer, AnswerSource.AI, 0.6
+                print(f"   🤖 Ollama: '{field.label[:30]}' → '{ollama_answer[:30]}'")
+        
         # Set result
         if answer:
             field.answer = answer
@@ -901,6 +997,19 @@ class FormFillerV5:
             field.status = FillStatus.READY
         else:
             field.status = FillStatus.NEEDS_INPUT
+    
+    def _get_profile_context_for_ai(self) -> str:
+        """Get rich profile context for AI questions."""
+        p = self.profile.data.get("personal", {})
+        w = self.profile.data.get("work_experience", [{}])[0]
+        certs = self.profile.data.get("certifications", [])
+        
+        return f"""Name: {p.get('first_name', '')} {p.get('last_name', '')}
+Current Role: {w.get('title', '')} at {w.get('company', '')}
+Experience: {w.get('description', '')}
+Years: 15+ years in PM/TPM
+Tools: GCP, AWS, Jira, Confluence, SharePoint, Python, SQL
+Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     
     def _match_option(self, field: FormField) -> Optional[str]:
         """Try to match profile data to dropdown options."""
