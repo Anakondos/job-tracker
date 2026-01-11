@@ -659,6 +659,36 @@ class FormFillerV5:
         filler.fill("https://greenhouse.io/...", mode=FillMode.INTERACTIVE)
     """
     
+    # Repeatable sections configuration (Work Experience, Education)
+    REPEATABLE_SECTIONS = {
+        'work_experience': {
+            'profile_key': 'work_experience',
+            'add_button_selector': 'button.add-another-button',
+            'button_index': 0,
+            'field_patterns': {
+                'company-name-{N}': 'company',
+                'title-{N}': 'title',
+                'start-date-month-{N}': 'start_month',
+                'start-date-year-{N}': 'start_year',
+                'end-date-month-{N}': 'end_month',
+                'end-date-year-{N}': 'end_year',
+                'current-role-{N}_1': 'current',
+            },
+            'skip_end_date_if_current': True,
+        },
+        'education': {
+            'profile_key': 'education',
+            'add_button_selector': 'button.add-another-button',
+            'button_index': 1,
+            'field_patterns': {
+                'school--{N}': 'school',
+                'degree--{N}': 'degree',
+                'discipline--{N}': 'discipline',
+            },
+            'skip_end_date_if_current': False,
+        }
+    }
+    
     def __init__(self, browser_mode: BrowserMode = BrowserMode.CDP):
         self.browser_mode = browser_mode
         self.profile = Profile()
@@ -712,6 +742,10 @@ class FormFillerV5:
             if mode == FillMode.PRE_FLIGHT:
                 return self._generate_report(url)
             
+            # Fill repeatable sections first (work experience, education)
+            self.fill_all_repeatable_sections()
+            
+            # Then fill remaining fields
             self._fill_all_fields(mode)
             self._validate_all_fields()
             
@@ -1282,6 +1316,147 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     # ─────────────────────────────────────────────────────────────────────
     # REPORT
     # ─────────────────────────────────────────────────────────────────────
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # REPEATABLE SECTIONS (Work Experience, Education)
+    # ─────────────────────────────────────────────────────────────────────
+    
+    def fill_section_entry(self, section_name: str, entry_index: int, form_index: int) -> bool:
+        """Fill one entry of a repeatable section."""
+        config = self.REPEATABLE_SECTIONS.get(section_name)
+        if not config:
+            return False
+        
+        profile_key = config['profile_key']
+        field_patterns = config['field_patterns']
+        skip_end_if_current = config.get('skip_end_date_if_current', False)
+        
+        entries = self.profile.data.get(profile_key, [])
+        if entry_index >= len(entries):
+            return False
+        
+        entry = entries[entry_index]
+        is_current = entry.get('current', False)
+        
+        company_or_school = entry.get('company', entry.get('school', ''))
+        print(f"   📝 {section_name}[{entry_index}]: {company_or_school[:40]}")
+        
+        filled_any = False
+        
+        for pattern, field_name in field_patterns.items():
+            selector = '#' + pattern.replace('{N}', str(form_index))
+            
+            # Skip end date if current role
+            if skip_end_if_current and is_current and 'end' in field_name:
+                print(f"      ⏭️ {field_name} (skipped - current role)")
+                continue
+            
+            value = entry.get(field_name, '')
+            if not value and field_name != 'current':
+                continue
+            
+            # Handle boolean current field
+            if field_name == 'current':
+                if value == True:
+                    value = 'checked'
+                else:
+                    continue
+            
+            el = self.page.query_selector(selector)
+            if not el:
+                continue
+            
+            try:
+                tag = el.evaluate("e => e.tagName.toLowerCase()")
+                el_type = el.get_attribute('type') or 'text'
+                role = el.get_attribute('role') or ''
+                aria = el.get_attribute('aria-haspopup') or ''
+                
+                # Determine field type
+                if tag == 'select':
+                    el.select_option(label=str(value))
+                elif role == 'combobox' or aria in ('true', 'listbox'):
+                    el.click()
+                    time.sleep(0.2)
+                    el.fill('')
+                    el.type(str(value), delay=20)
+                    time.sleep(0.3)
+                    self.page.keyboard.press('ArrowDown')
+                    self.page.keyboard.press('Enter')
+                elif el_type == 'checkbox':
+                    if value == 'checked' and not el.is_checked():
+                        el.click()
+                else:
+                    el.fill(str(value))
+                
+                filled_any = True
+                print(f"      ✅ {field_name}: {str(value)[:25]}")
+                time.sleep(0.1)
+                
+            except Exception as e:
+                print(f"      ❌ {field_name}: {e}")
+        
+        return filled_any
+    
+    def click_add_another(self, section_name: str) -> bool:
+        """Click 'Add another' button for a section."""
+        config = self.REPEATABLE_SECTIONS.get(section_name)
+        if not config:
+            return False
+        
+        button_index = config['button_index']
+        buttons = self.page.query_selector_all(config['add_button_selector'])
+        
+        if button_index < len(buttons):
+            buttons[button_index].click()
+            time.sleep(0.5)
+            self.browser.wait_for_stable()
+            return True
+        
+        # Fallback: try finding by text
+        add_link = self.page.query_selector(f'a:has-text("Add another"), button:has-text("Add another")')
+        if add_link:
+            add_link.click()
+            time.sleep(0.5)
+            self.browser.wait_for_stable()
+            return True
+        
+        return False
+    
+    def fill_repeatable_section(self, section_name: str):
+        """Fill all entries for a repeatable section."""
+        config = self.REPEATABLE_SECTIONS.get(section_name)
+        if not config:
+            return
+        
+        entries = self.profile.data.get(config['profile_key'], [])
+        if not entries:
+            print(f"   ⚠️ No {section_name} entries in profile")
+            return
+        
+        print(f"\n🔄 Filling {section_name}: {len(entries)} entries")
+        
+        # Fill first entry
+        self.fill_section_entry(section_name, entry_index=0, form_index=0)
+        
+        # Add and fill additional entries
+        for i in range(1, len(entries)):
+            print(f"\n   ➕ Adding {section_name} entry {i+1}...")
+            if self.click_add_another(section_name):
+                time.sleep(0.3)
+                self.fill_section_entry(section_name, entry_index=i, form_index=i)
+            else:
+                print(f"   ❌ Could not add entry {i+1}")
+                break
+    
+    def fill_all_repeatable_sections(self):
+        """Fill all repeatable sections (work experience, education)."""
+        print("\n" + "="*60)
+        print("📋 FILLING REPEATABLE SECTIONS")
+        print("="*60)
+        
+        for section_name in self.REPEATABLE_SECTIONS.keys():
+            self.fill_repeatable_section(section_name)
     
     def _generate_report(self, url: str) -> FillReport:
         """Generate fill report."""
