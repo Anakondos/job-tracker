@@ -17,7 +17,7 @@ Modes:
 import json
 import re
 import time
-import requests
+# import requests  # Not needed - using Claude API
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field as dataclass_field
@@ -342,157 +342,120 @@ class LearnedDB:
         print(f"   💾 Learned: '{label[:30]}' → '{answer[:25]}'")
 
 
+
 # ═══════════════════════════════════════════════════════════════════════════
-# AI HELPER - CLAUDE API + OLLAMA FALLBACK
+# AI HELPER - CLAUDE API (Primary and Only)
 # ═══════════════════════════════════════════════════════════════════════════
 
 class AIHelper:
     """
-    AI Helper using Claude API for fast, accurate responses.
-    Falls back to local Ollama if Claude unavailable.
+    AI Helper using Claude API.
+    
+    Claude API is fast, accurate, and always available.
+    No local models, no fallbacks - just Claude.
     """
     
     def __init__(self):
         self._vision_ai = None
-        self._ollama_available = None
-        self.ollama_url = "http://localhost:11434"
     
     @property
     def vision_ai(self):
         """Lazy-load Vision AI."""
         if self._vision_ai is None:
-            try:
-                from .vision_ai import VisionAI
-                self._vision_ai = VisionAI()
-            except ImportError:
-                pass
+            from .vision_ai import VisionAI
+            self._vision_ai = VisionAI()
         return self._vision_ai
     
     @property
-    def claude_available(self) -> bool:
-        """Check if Claude API is available."""
-        return self.vision_ai is not None and self.vision_ai.available
-    
-    @property
-    def ollama_available(self) -> bool:
-        """Check if local Ollama is available."""
-        if self._ollama_available is None:
-            try:
-                self._ollama_available = requests.get(f"{self.ollama_url}/api/tags", timeout=3).ok
-            except:
-                self._ollama_available = False
-        return self._ollama_available
-    
-    @property
     def available(self) -> bool:
-        """Check if any AI is available."""
-        return self.claude_available or self.ollama_available
+        """Check if Claude API is configured."""
+        return self.vision_ai.available
     
     def generate(self, question: str, context: str, max_length: int = 150) -> str:
-        """Generate answer for custom question."""
-        # Try Claude first (fast, accurate)
-        if self.claude_available:
-            result = self.vision_ai.generate_custom_answer(
-                question=question,
-                profile_context=context,
-                max_words=max_length // 5  # Roughly convert tokens to words
-            )
-            if result.get("success") and result.get("answer"):
-                return result["answer"]
+        """Generate answer for custom question using Claude."""
+        if not self.available:
+            print("   ⚠️ Claude API not configured. Set ANTHROPIC_API_KEY.")
+            return ""
         
-        # Fallback to Ollama
-        if self.ollama_available:
-            try:
-                resp = requests.post(f"{self.ollama_url}/api/generate", json={
-                    "model": "llama3.2:3b",
-                    "prompt": f"""Job application question: {question}
-
-Profile: {context}
-
-Write a brief, professional answer (1-3 sentences):""",
-                    "stream": False,
-                    "options": {"temperature": 0.3, "num_predict": max_length}
-                }, timeout=30)
-                
-                if resp.ok:
-                    return resp.json().get("response", "").strip()
-            except:
-                pass
+        result = self.vision_ai.generate_custom_answer(
+            question=question,
+            profile_context=context,
+            max_words=max_length // 5
+        )
+        
+        if result.get("success") and result.get("answer"):
+            return result["answer"]
+        
+        if result.get("error"):
+            print(f"   ⚠️ Claude error: {result['error']}")
         
         return ""
     
     def choose_option(self, question: str, options: List[str], context: str) -> Optional[str]:
-        """Choose best option from list."""
+        """Choose best option from list using Claude."""
         if not options:
             return None
         
-        # Try Claude first
-        if self.claude_available:
-            try:
-                vision = self.vision_ai
-                
-                prompt = f"""Job application dropdown:
+        if not self.available:
+            print("   ⚠️ Claude API not configured. Set ANTHROPIC_API_KEY.")
+            return None
+        
+        try:
+            prompt = f"""Job application dropdown:
 Question: {question}
 Options: {options}
 Profile: {context}
 
 Which option should be selected? Return ONLY the exact option text, nothing else."""
-                
-                response = vision.client.messages.create(
-                    model=vision.config.model,
-                    max_tokens=100,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1,
-                )
-                
-                answer = response.content[0].text.strip()
-                
-                # Find matching option
-                for opt in options:
-                    if opt.lower() == answer.lower():
-                        return opt
-                    if opt.lower() in answer.lower() or answer.lower() in opt.lower():
-                        return opt
-                        
-            except Exception as e:
-                print(f"   ⚠️ Claude option selection failed: {e}")
-        
-        # Fallback to Ollama
-        if self.ollama_available:
-            try:
-                resp = requests.post(f"{self.ollama_url}/api/generate", json={
-                    "model": "llama3.2:3b",
-                    "prompt": f"Question: {question}\nOptions: {', '.join(options)}\nProfile: {context}\n\nWhich option? Reply with exact option text only:",
-                    "stream": False,
-                    "options": {"temperature": 0.1, "num_predict": 50}
-                }, timeout=20)
-                
-                if resp.ok:
-                    answer = resp.json().get("response", "").strip()
-                    for opt in options:
-                        if opt.lower() in answer.lower() or answer.lower() in opt.lower():
-                            return opt
-            except:
-                pass
+            
+            response = self.vision_ai.client.messages.create(
+                model=self.vision_ai.config.model,
+                max_tokens=100,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+            
+            answer = response.content[0].text.strip()
+            
+            # Find matching option (exact match first)
+            for opt in options:
+                if opt.lower() == answer.lower():
+                    return opt
+            
+            # Partial match
+            for opt in options:
+                if opt.lower() in answer.lower() or answer.lower() in opt.lower():
+                    return opt
+            
+            # Word overlap match
+            answer_words = set(answer.lower().split())
+            for opt in options:
+                opt_words = set(opt.lower().split())
+                if answer_words & opt_words:
+                    return opt
+                    
+        except Exception as e:
+            print(f"   ⚠️ Claude error: {e}")
         
         return None
     
     def analyze_field_screenshot(self, screenshot_path: str, field_description: str = "") -> Dict[str, Any]:
         """Analyze form field from screenshot using Claude Vision."""
-        if self.claude_available:
-            return self.vision_ai.analyze_field(screenshot_path, field_description)
-        return {"success": False, "error": "Claude Vision not available"}
+        if not self.available:
+            return {"success": False, "error": "Claude API not configured"}
+        return self.vision_ai.analyze_field(screenshot_path, field_description)
     
     def verify_field_filled(self, screenshot_path: str, expected_value: str, field_label: str = "") -> Dict[str, Any]:
         """Verify field was filled correctly using Claude Vision."""
-        if self.claude_available:
-            return self.vision_ai.verify_field_filled(screenshot_path, expected_value, field_label)
-        return {"success": False, "verified": False}
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# FORM FILLER ENGINE
-# ═══════════════════════════════════════════════════════════════════════════
+        if not self.available:
+            return {"success": False, "verified": False, "error": "Claude API not configured"}
+        return self.vision_ai.verify_field_filled(screenshot_path, expected_value, field_label)
+    
+    def analyze_full_form(self, screenshot_path: str) -> Dict[str, Any]:
+        """Analyze entire form from screenshot."""
+        if not self.available:
+            return {"success": False, "error": "Claude API not configured"}
+        return self.vision_ai.analyze_form(screenshot_path)
 
 class FormFillerV5:
     """
