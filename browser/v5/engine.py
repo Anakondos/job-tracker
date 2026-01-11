@@ -343,71 +343,151 @@ class LearnedDB:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# AI HELPER
+# AI HELPER - CLAUDE API + OLLAMA FALLBACK
 # ═══════════════════════════════════════════════════════════════════════════
 
 class AIHelper:
-    """Local AI (Ollama) for generating answers."""
+    """
+    AI Helper using Claude API for fast, accurate responses.
+    Falls back to local Ollama if Claude unavailable.
+    """
     
-    def __init__(self, model: str = "llama3.2:3b", url: str = "http://localhost:11434"):
-        self.model = model
-        self.url = url
-        self._available = None
+    def __init__(self):
+        self._vision_ai = None
+        self._ollama_available = None
+        self.ollama_url = "http://localhost:11434"
+    
+    @property
+    def vision_ai(self):
+        """Lazy-load Vision AI."""
+        if self._vision_ai is None:
+            try:
+                from .vision_ai import VisionAI
+                self._vision_ai = VisionAI()
+            except ImportError:
+                pass
+        return self._vision_ai
+    
+    @property
+    def claude_available(self) -> bool:
+        """Check if Claude API is available."""
+        return self.vision_ai is not None and self.vision_ai.available
+    
+    @property
+    def ollama_available(self) -> bool:
+        """Check if local Ollama is available."""
+        if self._ollama_available is None:
+            try:
+                self._ollama_available = requests.get(f"{self.ollama_url}/api/tags", timeout=3).ok
+            except:
+                self._ollama_available = False
+        return self._ollama_available
     
     @property
     def available(self) -> bool:
-        if self._available is None:
-            try:
-                self._available = requests.get(f"{self.url}/api/tags", timeout=3).ok
-            except:
-                self._available = False
-        return self._available
+        """Check if any AI is available."""
+        return self.claude_available or self.ollama_available
     
     def generate(self, question: str, context: str, max_length: int = 150) -> str:
         """Generate answer for custom question."""
-        if not self.available:
-            return ""
+        # Try Claude first (fast, accurate)
+        if self.claude_available:
+            result = self.vision_ai.generate_custom_answer(
+                question=question,
+                profile_context=context,
+                max_words=max_length // 5  # Roughly convert tokens to words
+            )
+            if result.get("success") and result.get("answer"):
+                return result["answer"]
         
-        try:
-            resp = requests.post(f"{self.url}/api/generate", json={
-                "model": self.model,
-                "prompt": f"""Job application question: {question}
+        # Fallback to Ollama
+        if self.ollama_available:
+            try:
+                resp = requests.post(f"{self.ollama_url}/api/generate", json={
+                    "model": "llama3.2:3b",
+                    "prompt": f"""Job application question: {question}
 
 Profile: {context}
 
 Write a brief, professional answer (1-3 sentences):""",
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": max_length}
-            }, timeout=30)
-            
-            if resp.ok:
-                return resp.json().get("response", "").strip()
-        except:
-            pass
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": max_length}
+                }, timeout=30)
+                
+                if resp.ok:
+                    return resp.json().get("response", "").strip()
+            except:
+                pass
+        
         return ""
     
     def choose_option(self, question: str, options: List[str], context: str) -> Optional[str]:
         """Choose best option from list."""
-        if not self.available or not options:
+        if not options:
             return None
         
-        try:
-            resp = requests.post(f"{self.url}/api/generate", json={
-                "model": self.model,
-                "prompt": f"Question: {question}\nOptions: {', '.join(options)}\nProfile: {context}\n\nWhich option? Reply with exact option text only:",
-                "stream": False,
-                "options": {"temperature": 0.1, "num_predict": 50}
-            }, timeout=20)
-            
-            if resp.ok:
-                answer = resp.json().get("response", "").strip()
+        # Try Claude first
+        if self.claude_available:
+            try:
+                vision = self.vision_ai
+                
+                prompt = f"""Job application dropdown:
+Question: {question}
+Options: {options}
+Profile: {context}
+
+Which option should be selected? Return ONLY the exact option text, nothing else."""
+                
+                response = vision.client.messages.create(
+                    model=vision.config.model,
+                    max_tokens=100,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1,
+                )
+                
+                answer = response.content[0].text.strip()
+                
                 # Find matching option
                 for opt in options:
+                    if opt.lower() == answer.lower():
+                        return opt
                     if opt.lower() in answer.lower() or answer.lower() in opt.lower():
                         return opt
-        except:
-            pass
+                        
+            except Exception as e:
+                print(f"   ⚠️ Claude option selection failed: {e}")
+        
+        # Fallback to Ollama
+        if self.ollama_available:
+            try:
+                resp = requests.post(f"{self.ollama_url}/api/generate", json={
+                    "model": "llama3.2:3b",
+                    "prompt": f"Question: {question}\nOptions: {', '.join(options)}\nProfile: {context}\n\nWhich option? Reply with exact option text only:",
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 50}
+                }, timeout=20)
+                
+                if resp.ok:
+                    answer = resp.json().get("response", "").strip()
+                    for opt in options:
+                        if opt.lower() in answer.lower() or answer.lower() in opt.lower():
+                            return opt
+            except:
+                pass
+        
         return None
+    
+    def analyze_field_screenshot(self, screenshot_path: str, field_description: str = "") -> Dict[str, Any]:
+        """Analyze form field from screenshot using Claude Vision."""
+        if self.claude_available:
+            return self.vision_ai.analyze_field(screenshot_path, field_description)
+        return {"success": False, "error": "Claude Vision not available"}
+    
+    def verify_field_filled(self, screenshot_path: str, expected_value: str, field_label: str = "") -> Dict[str, Any]:
+        """Verify field was filled correctly using Claude Vision."""
+        if self.claude_available:
+            return self.vision_ai.verify_field_filled(screenshot_path, expected_value, field_label)
+        return {"success": False, "verified": False}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
