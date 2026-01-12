@@ -1448,24 +1448,55 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 if tag == 'select':
                     el.select_option(label=str(value))
                 elif role == 'combobox' or aria in ('true', 'listbox'):
-                    # For autocomplete: type to filter, then click first match
+                    # For autocomplete: type to filter, then find best match
                     el.click()
                     time.sleep(0.2)
                     
-                    # Type first part of value to filter options
-                    search_text = str(value)[:25]
+                    # Type more text for better filtering
+                    search_text = str(value)[:40]
                     el.fill('')
-                    el.type(search_text, delay=15)
+                    el.type(search_text, delay=10)
                     time.sleep(0.4)
                     
-                    # Click first matching option
+                    # Find best matching option (not just first)
                     opts = self.page.query_selector_all('.select__option')
-                    if opts:
+                    value_lower = str(value).lower()
+                    best_match = None
+                    
+                    for opt in opts:
+                        opt_text = opt.inner_text().strip().lower()
+                        # Exact or very close match
+                        if value_lower in opt_text or opt_text in value_lower:
+                            best_match = opt
+                            break
+                        # Word overlap
+                        value_words = set(value_lower.split()[:3])
+                        opt_words = set(opt_text.split()[:3])
+                        if len(value_words & opt_words) >= 2:
+                            best_match = opt
+                            break
+                    
+                    if best_match:
+                        best_match.click()
+                    elif opts:
                         opts[0].click()
                     else:
-                        # No matches - try arrow+enter
-                        self.page.keyboard.press('ArrowDown')
-                        self.page.keyboard.press('Enter')
+                        # No matches - try "Other" option for school fields
+                        if 'school' in field_name.lower():
+                            self.page.keyboard.press('Escape')
+                            time.sleep(0.1)
+                            el.fill('')
+                            el.type('0 - Other', delay=10)
+                            time.sleep(0.3)
+                            other_opts = self.page.query_selector_all('.select__option')
+                            if other_opts:
+                                other_opts[0].click()
+                            else:
+                                self.page.keyboard.press('ArrowDown')
+                                self.page.keyboard.press('Enter')
+                        else:
+                            self.page.keyboard.press('ArrowDown')
+                            self.page.keyboard.press('Enter')
                     time.sleep(0.2)
                 elif el_type == 'checkbox':
                     if value == 'checked' and not el.is_checked():
