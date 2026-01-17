@@ -1726,31 +1726,48 @@
 
         // 1. Quick Filter (status-based presets)
         if (activeQuickFilter === "new-week") {
+          // New jobs only + force 7 days date range
           filtered = filtered.filter(j => {
             const st = (j.application_status || j.status || "new").toLowerCase();
             return st === "new";
+          });
+          // Override date range to 7 days for "new this week"
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          filtered = filtered.filter(j => {
+            const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
+            return jobDate >= weekAgo;
           });
         } else if (activeQuickFilter === "to-apply") {
           filtered = filtered.filter(j => {
             const st = (j.application_status || j.status || "new").toLowerCase();
             return ["new", "selected", "ready"].includes(st);
           });
+          // Apply date range filter for "to-apply"
+          if (dateRangeDays !== "all") {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateRangeDays));
+            filtered = filtered.filter(j => {
+              const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
+              return jobDate >= cutoffDate;
+            });
+          }
         } else if (activeQuickFilter === "applied") {
           filtered = filtered.filter(j => {
             const st = (j.application_status || j.status || "new").toLowerCase();
             return ["applied", "interview", "offer"].includes(st);
           });
-        }
-        // "all" shows everything
-        
-        // 2. Date Range filter
-        if (dateRangeDays !== "all") {
-          const cutoffDate = new Date();
-          cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateRangeDays));
-          filtered = filtered.filter(j => {
-            const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
-            return jobDate >= cutoffDate;
-          });
+          // No date filter for applied - show all
+        } else {
+          // "all" - apply date range filter
+          if (dateRangeDays !== "all") {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateRangeDays));
+            filtered = filtered.filter(j => {
+              const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
+              return jobDate >= cutoffDate;
+            });
+          }
         }
 
         // 3. Location filter by category
