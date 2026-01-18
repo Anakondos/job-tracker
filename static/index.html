@@ -772,7 +772,6 @@
     <div class="tabs">
       <button class="tab-btn" data-tab="companies">Companies</button>
       <button class="tab-btn active" data-tab="jobs">Pipeline</button>
-      <button class="tab-btn" data-tab="review">Review</button>
       <button class="tab-btn" data-tab="answers">Answers</button>
     </div>
 
@@ -883,40 +882,77 @@
     <div class="tab-content active" id="tab-jobs">
     <div class="wrap">
       <div class="controls">
-        
-
         <span class="pill" id="loadPill"><span class="dot" id="loadDot"></span><span id="loadText">Idle</span></span>
       </div>
       
-      <!-- Pagination -->
-      <div id="pipelinePagination" style="display: flex; align-items: center; justify-content: space-between; margin: 12px 0; padding: 10px 0; border-bottom: 1px solid var(--border);">
-        <button id="addJobBtn" class="ghost" style="padding: 6px 12px; background: var(--accent); color: white;">+ Add Job</button>
+      <!-- Quick Filters Row -->
+      <div id="quickFilters" style="display: flex; gap: 8px; align-items: center; margin: 12px 0; padding: 12px; background: var(--panel); border-radius: 8px; flex-wrap: wrap;">
+        <!-- Quick Filter Buttons -->
+        <div style="display: flex; gap: 6px; margin-right: 16px;">
+          <button class="quick-filter-btn active" data-filter="new-week" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">🔥 New this week</button>
+          <button class="quick-filter-btn" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
+          <button class="quick-filter-btn" data-filter="applied" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📤 Applied</button>
+          <button class="quick-filter-btn" data-filter="all" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">All</button>
+        </div>
         
-        <!-- Location filters moved here -->
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <button id="clearFiltersBtn" class="ghost" style="padding: 4px 8px; font-size: 11px; color: var(--muted);" title="Clear all filters">✕ Clear</button>
-          <span style="font-size: 12px; color: var(--muted);">Location:</span>
-          <select id="locationCategoryFilter" class="column-filter" style="width: 80px; font-size: 12px; padding: 6px;">
-            <option value="all">All</option>
-            <option value="us">US</option>
-            <option value="remote">Remote</option>
-            <option value="nonus">Non-US</option>
-          </select>
-          <div class="ms" id="stateMultiSelect" style="min-width: 100px;">
-            <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 6px 8px;">
-              <span id="stateBtnText" style="font-size: 12px;">States...</span>
-              <span class="count" id="stateBtnCount" style="font-size: 11px;">0</span>
-            </button>
-            <div class="msMenu" id="stateMenu">
-              <input class="msSearch" id="stateSearch" placeholder="Search..." />
-              <div id="stateList"></div>
-              <div class="msFooter">
-                <button type="button" id="stateClear" class="ghost">Clear</button>
-                <button type="button" id="stateClose">Done</button>
-              </div>
+        <!-- Date Range -->
+        <select id="dateRangeFilter" class="column-filter" style="width: 120px; font-size: 12px; padding: 6px;">
+          <option value="7">Last 7 days</option>
+          <option value="14" selected>Last 2 weeks</option>
+          <option value="30">Last month</option>
+          <option value="90">Last 3 months</option>
+          <option value="all">All time</option>
+        </select>
+        
+        <!-- Location Category -->
+        <select id="locationCategoryFilter" class="column-filter" style="width: 90px; font-size: 12px; padding: 6px;">
+          <option value="all">All Loc</option>
+          <option value="us" selected>US Only</option>
+          <option value="remote">Remote</option>
+          <option value="nonus">Non-US</option>
+        </select>
+        
+        <!-- States Multi-select -->
+        <div class="ms" id="stateMultiSelect" style="min-width: 100px;">
+          <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 6px 8px;">
+            <span id="stateBtnText" style="font-size: 12px;">States...</span>
+            <span class="count" id="stateBtnCount" style="font-size: 11px;">0</span>
+          </button>
+          <div class="msMenu" id="stateMenu">
+            <input class="msSearch" id="stateSearch" placeholder="Search..." />
+            <div id="stateList"></div>
+            <div class="msFooter">
+              <button type="button" id="stateClear" class="ghost">Clear</button>
+              <button type="button" id="stateClose">Done</button>
             </div>
           </div>
         </div>
+        
+        <!-- Search -->
+        <div style="flex: 1; min-width: 200px;">
+          <input type="text" id="globalSearchFilter" placeholder="🔍 Search company, title..." style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 12px;">
+        </div>
+        
+        <!-- ATS Filter -->
+        <select id="pipelineFilterAtsQuick" class="column-filter" style="width: 100px; font-size: 12px; padding: 6px;">
+          <option value="">All ATS</option>
+          <option value="greenhouse">Greenhouse</option>
+          <option value="lever">Lever</option>
+          <option value="smartrecruiters">SmartRecr.</option>
+          <option value="workday">Workday</option>
+          <option value="ashby">Ashby</option>
+          <option value="manual">📌 Manual</option>
+        </select>
+        
+        <!-- Clear All -->
+        <button id="clearFiltersBtn" class="ghost" style="padding: 6px 10px; font-size: 11px; color: var(--muted);" title="Clear all filters">✕ Clear</button>
+        
+        <!-- Add Job Button -->
+        <button id="addJobBtn" class="ghost" style="padding: 6px 12px; background: var(--accent); color: white; margin-left: auto;">+ Add Job</button>
+      </div>
+      
+      <!-- Pagination Row -->
+      <div id="pipelinePagination" style="display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid var(--border);">
         
         <div style="color: var(--muted); font-size: 13px;">
           Showing <span id="paginationStart">0</span>-<span id="paginationEnd">0</span> of <span id="paginationTotal">0</span> jobs
@@ -987,22 +1023,12 @@
               <th style="width: 70px">Actions</th>
             </tr>
             <tr class="filter-row">
-              <th><input type="text" id="pipelineFilterCompany" placeholder="Filter..." class="column-filter"></th>
-              <th><input type="text" id="pipelineFilterIndustry" placeholder="Filter..." class="column-filter"></th>
-              <th><input type="text" id="pipelineFilterTitle" placeholder="Filter..." class="column-filter"></th>
-              <th><input type="text" id="pipelineFilterLocation" placeholder="Filter..." class="column-filter"></th>
+              <th><input type="text" id="pipelineFilterCompany" placeholder="Company..." class="column-filter" style="width: 90%;"></th>
               <th></th>
-              <th>
-                <select id="pipelineFilterAts" class="column-filter">
-                  <option value="">All</option>
-                  <option value="greenhouse">greenhouse</option>
-                  <option value="lever">lever</option>
-                  <option value="workday">workday</option>
-                  <option value="smartrecruiters">smartrecruiters</option>
-                  <option value="ashby">ashby</option>
-                  <option value="manual">📌 manual</option>
-                </select>
-              </th>
+              <th><input type="text" id="pipelineFilterTitle" placeholder="Title..." class="column-filter" style="width: 90%;"></th>
+              <th><input type="text" id="pipelineFilterLocation" placeholder="Location..." class="column-filter" style="width: 90%;"></th>
+              <th></th>
+              <th></th>
               <th>
                 <select id="pipelineFilterStatus" class="column-filter">
                   <option value="all">All</option>
@@ -1011,10 +1037,6 @@
                   <option value="Ready">Ready</option>
                   <option value="Applied">Applied</option>
                   <option value="Interview">Interview</option>
-                  <option value="Offer">Offer</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Withdrawn">Withdrawn</option>
-                  <option value="Closed">Closed</option>
                 </select>
               </th>
               <th></th>
@@ -1434,7 +1456,12 @@
       
       // Defaults: all locations visible when toggles are off
       let selectedStates = [];
-      let locationCategory = "all"; // all, us, remote, nonus
+      let locationCategory = "us"; // all, us, remote, nonus - default to US
+      
+      // Quick Filters
+      let activeQuickFilter = "new-week"; // new-week, to-apply, applied, all
+      let dateRangeDays = 14; // 7, 14, 30, 90, or 'all'
+      let globalSearchText = "";
       // Job status cache: job_key -> status
       let STATUS_MAP = {};
 
@@ -1697,7 +1724,53 @@
         const status = document.getElementById("pipelineFilterStatus")?.value || "all";
         let filtered = jobs;
 
-        // Location filter by category
+        // 1. Quick Filter (status-based presets)
+        if (activeQuickFilter === "new-week") {
+          // New jobs only + force 7 days date range
+          filtered = filtered.filter(j => {
+            const st = (j.application_status || j.status || "new").toLowerCase();
+            return st === "new";
+          });
+          // Override date range to 7 days for "new this week"
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          filtered = filtered.filter(j => {
+            const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
+            return jobDate >= weekAgo;
+          });
+        } else if (activeQuickFilter === "to-apply") {
+          filtered = filtered.filter(j => {
+            const st = (j.application_status || j.status || "new").toLowerCase();
+            return ["new", "selected", "ready"].includes(st);
+          });
+          // Apply date range filter for "to-apply"
+          if (dateRangeDays !== "all") {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateRangeDays));
+            filtered = filtered.filter(j => {
+              const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
+              return jobDate >= cutoffDate;
+            });
+          }
+        } else if (activeQuickFilter === "applied") {
+          filtered = filtered.filter(j => {
+            const st = (j.application_status || j.status || "new").toLowerCase();
+            return ["applied", "interview", "offer"].includes(st);
+          });
+          // No date filter for applied - show all
+        } else {
+          // "all" - apply date range filter
+          if (dateRangeDays !== "all") {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateRangeDays));
+            filtered = filtered.filter(j => {
+              const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
+              return jobDate >= cutoffDate;
+            });
+          }
+        }
+
+        // 3. Location filter by category
         filtered = filtered.filter((job) => {
           const ln = job.location_norm || {};
           const isUS = isUSHeuristic(job);
@@ -1713,19 +1786,17 @@
         });
         debugCounts.afterLocation = filtered.length;
 
-        // States filter (only if states selected)
+        // 4. States filter (only if states selected)
         const hasStateFilter = selectedStates.length > 0;
         if (hasStateFilter) {
           filtered = filtered.filter((job) => {
             const ln = job.location_norm;
             const isUS = isUSHeuristic(job);
             
-            // If Non-US job and Include Non-US is on, skip state filter
             if (!isUS && locationCategory === "nonus") {
               return true;
             }
             
-            // Remote USA jobs pass state filter (they can work from any state)
             const remoteScope = ln?.remote_scope?.toLowerCase() || '';
             if (ln?.remote && ['usa', 'us', 'global', ''].includes(remoteScope)) {
               return true;
@@ -1736,7 +1807,24 @@
         }
         debugCounts.afterState = filtered.length;
 
-        // Status filter
+        // 5. Global Search filter
+        if (globalSearchText) {
+          const search = globalSearchText.toLowerCase();
+          filtered = filtered.filter(j => {
+            const company = (j.company || "").toLowerCase();
+            const title = (j.title || "").toLowerCase();
+            const location = (j.location || "").toLowerCase();
+            return company.includes(search) || title.includes(search) || location.includes(search);
+          });
+        }
+
+        // 6. ATS filter (quick)
+        const atsQuick = document.getElementById("pipelineFilterAtsQuick")?.value || "";
+        if (atsQuick) {
+          filtered = filtered.filter(j => atsQuick === "manual" ? j.source === "onboard" : j.ats === atsQuick);
+        }
+
+        // 7. Status filter (from old dropdown, keep for compatibility)
         filtered = filtered.filter((job) => {
           if (status === "all") return true;
           const st = job.application_status || job.status || "New";
@@ -1744,17 +1832,11 @@
         });
         debugCounts.afterStatus = filtered.length;
 
-        // Pipeline column filters (additional inline filters)
+        // 8. Pipeline column filters (additional inline filters)
         if (pipelineFilters.company) {
           filtered = filtered.filter(j => 
             (j.company || "").toLowerCase().includes(pipelineFilters.company.toLowerCase())
           );
-        }
-        if (pipelineFilters.industry) {
-          filtered = filtered.filter(j => {
-            const tags = (j.company_data?.tags || []).join(" ").toLowerCase();
-            return tags.includes(pipelineFilters.industry.toLowerCase());
-          });
         }
         if (pipelineFilters.title) {
           filtered = filtered.filter(j => 
@@ -3985,24 +4067,107 @@
         renderJobs(pipelineFilteredJobs);
       });
 
+      // Quick Filter Buttons
+      document.querySelectorAll(".quick-filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          // Update active state
+          document.querySelectorAll(".quick-filter-btn").forEach(b => {
+            b.style.background = "var(--panel2)";
+            b.style.color = "var(--text)";
+            b.classList.remove("active");
+          });
+          btn.style.background = "var(--accent)";
+          btn.style.color = "white";
+          btn.classList.add("active");
+          
+          // Set filter
+          activeQuickFilter = btn.dataset.filter;
+          
+          // Apply filters and re-render
+          pipelinePage = 1;
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(filtered);
+          updateStatus(filtered);
+        });
+      });
+      
+      // Date Range Filter
+      document.getElementById("dateRangeFilter")?.addEventListener("change", (e) => {
+        dateRangeDays = e.target.value;
+        pipelinePage = 1;
+        const filtered = applyFilters(ALL_JOBS);
+        renderJobs(filtered);
+        updateStatus(filtered);
+      });
+      
+      // Global Search Filter
+      let searchTimeout = null;
+      document.getElementById("globalSearchFilter")?.addEventListener("input", (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          globalSearchText = e.target.value;
+          pipelinePage = 1;
+          const filtered = applyFilters(ALL_JOBS);
+          renderJobs(filtered);
+          updateStatus(filtered);
+        }, 300); // Debounce 300ms
+      });
+      
+      // ATS Quick Filter
+      document.getElementById("pipelineFilterAtsQuick")?.addEventListener("change", () => {
+        pipelinePage = 1;
+        const filtered = applyFilters(ALL_JOBS);
+        renderJobs(filtered);
+        updateStatus(filtered);
+      });
+      
       // Clear all filters button
       document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+        // Reset Quick Filter to "new-week"
+        activeQuickFilter = "new-week";
+        document.querySelectorAll(".quick-filter-btn").forEach(b => {
+          b.style.background = b.dataset.filter === "new-week" ? "var(--accent)" : "var(--panel2)";
+          b.style.color = b.dataset.filter === "new-week" ? "white" : "var(--text)";
+        });
+        
+        // Reset Date Range
+        dateRangeDays = 14;
+        document.getElementById("dateRangeFilter").value = "14";
+        
+        // Reset Global Search
+        globalSearchText = "";
+        document.getElementById("globalSearchFilter").value = "";
+        
+        // Reset ATS
+        document.getElementById("pipelineFilterAtsQuick").value = "";
+        
         // Reset all column filters in table
         document.querySelectorAll("#jobsTable .column-filter").forEach(el => {
-          if (el.tagName === "SELECT") el.value = "all";
+          if (el.tagName === "SELECT") el.value = el.id === "pipelineFilterStatus" ? "all" : "";
           else if (el.tagName === "INPUT") el.value = "";
         });
-        // Reset location category
-        document.getElementById("locationCategoryFilter").value = "all";
+        
+        // Reset location category to US
+        locationCategory = "us";
+        document.getElementById("locationCategoryFilter").value = "us";
+        
         // Reset state multi-select
-        selectedStates.clear();
+        selectedStates = [];
         updateStateButtonText();
+        
         // Reset sort
         currentSortColumn = null;
         currentSortDirection = "asc";
         document.querySelectorAll(".sortIcon").forEach(icon => icon.textContent = "\u2B0D");
+        
+        // Reset pipelineFilters object
+        Object.keys(pipelineFilters).forEach(k => pipelineFilters[k] = "");
+        
         // Re-apply filters
-        applyFilters();
+        pipelinePage = 1;
+        const filtered = applyFilters(ALL_JOBS);
+        renderJobs(filtered);
+        updateStatus(filtered);
       });
 
       // ==================== ANSWERS TAB ====================
