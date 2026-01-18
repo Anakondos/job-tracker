@@ -14,6 +14,8 @@ import json
 import time
 import shutil
 import tempfile
+import subprocess
+import socket
 from pathlib import Path
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
@@ -104,9 +106,73 @@ class BrowserManager:
         
         return self
     
+    def _is_cdp_available(self) -> bool:
+        """Check if Chrome is listening on CDP port."""
+        try:
+            host = self.config.cdp_url.replace("http://", "").replace("https://", "")
+            hostname, port = host.split(":")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            result = sock.connect_ex((hostname, int(port)))
+            sock.close()
+            return result == 0
+        except:
+            return False
+    
+    def _start_chrome_with_debug(self) -> bool:
+        """Start Chrome with remote debugging enabled."""
+        port = self.config.cdp_url.split(":")[-1]
+        
+        # Check if Chrome is already running
+        if self._is_cdp_available():
+            print("   ✅ Chrome already running with CDP")
+            return True
+        
+        print(f"🚀 Starting Chrome with remote debugging on port {port}...")
+        
+        # macOS Chrome path
+        chrome_path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        
+        if not os.path.exists(chrome_path):
+            print("   ❌ Chrome not found at default location")
+            return False
+        
+        # Start Chrome with debugging - use default profile to keep logins
+        try:
+            subprocess.Popen(
+                [
+                    chrome_path,
+                    f"--remote-debugging-port={port}",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            
+            # Wait for Chrome to start
+            for i in range(10):
+                time.sleep(1)
+                if self._is_cdp_available():
+                    print(f"   ✅ Chrome started successfully")
+                    return True
+                print(f"   ⏳ Waiting for Chrome... ({i+1}/10)")
+            
+            print("   ❌ Chrome didn't start in time")
+            return False
+            
+        except Exception as e:
+            print(f"   ❌ Failed to start Chrome: {e}")
+            return False
+    
     def _start_cdp(self):
-        """Connect to running Chrome via CDP."""
+        """Connect to running Chrome via CDP, auto-start if needed."""
         print(f"🔌 Connecting to Chrome via CDP at {self.config.cdp_url}...")
+        
+        # Auto-start Chrome if not running
+        if not self._is_cdp_available():
+            if not self._start_chrome_with_debug():
+                raise RuntimeError("Could not start Chrome with debugging")
         
         try:
             self.browser = self.playwright.chromium.connect_over_cdp(
@@ -137,8 +203,6 @@ class BrowserManager:
             
         except Exception as e:
             print(f"   ❌ CDP connection failed: {e}")
-            print(f"\n   💡 Start Chrome with debugging enabled:")
-            print(f"   /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222")
             raise
     
     def _start_persistent(self):
