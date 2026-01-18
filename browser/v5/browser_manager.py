@@ -144,26 +144,13 @@ class BrowserManager:
             # But requires closing regular Chrome first
             chrome_running = self._is_chrome_running()
             if chrome_running:
-                print("   ⚠️  Regular Chrome is running.")
-                print("   ❓ Close Chrome to use your profile with logins? (y/n): ", end="")
-                try:
-                    answer = input().strip().lower()
-                    if answer == 'y':
-                        print("   🔄 Closing Chrome...")
-                        subprocess.run(["pkill", "-f", "Google Chrome"], capture_output=True)
-                        time.sleep(2)
-                    else:
-                        print("   ℹ️  Using separate debug profile instead")
-                        self.config.use_default_profile = False
-                except:
-                    print("   ℹ️  Using separate debug profile")
-                    self.config.use_default_profile = False
+                print("   ⚠️  Regular Chrome is running. Closing it to use your profile...")
+                # Use osascript for graceful quit on macOS
+                subprocess.run(["osascript", "-e", 'quit app "Google Chrome"'], capture_output=True)
+                time.sleep(4)  # Wait for Chrome to fully close
             
-            if self.config.use_default_profile:
-                profile_path = None  # Use default Chrome profile
-                print("   📁 Using your main Chrome profile (with logins)")
-            else:
-                profile_path = os.path.expanduser("~/.chrome-debug-profile")
+            profile_path = None  # Use default Chrome profile
+            print("   📁 Using your main Chrome profile (with logins)")
         else:
             # Use separate debug profile
             profile_path = os.path.expanduser("~/.chrome-debug-profile")

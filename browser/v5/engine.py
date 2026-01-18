@@ -698,7 +698,7 @@ class FormFillerV5:
         }
     }
     
-    def __init__(self, browser_mode: BrowserMode = BrowserMode.CDP):
+    def __init__(self, browser_mode: BrowserMode = BrowserMode.PERSISTENT):
         self.browser_mode = browser_mode
         self.profile = Profile()
         self.learned_db = LearnedDB()
