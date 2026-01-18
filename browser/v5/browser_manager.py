@@ -41,6 +41,7 @@ class BrowserConfig:
     viewport_width: int = 1400
     viewport_height: int = 900
     slow_mo: int = 50  # ms between actions
+    use_default_profile: bool = False  # Use main Chrome profile (requires closing Chrome first)
 
 
 # Default Chrome profile path on macOS
@@ -137,20 +138,52 @@ class BrowserManager:
             print("   ❌ Chrome not found at default location")
             return False
         
-        # Use separate user-data-dir to allow running alongside regular Chrome
-        # This profile will share cookies with main Chrome profile
-        debug_profile = os.path.expanduser("~/.chrome-debug-profile")
+        # Decide which profile to use
+        if self.config.use_default_profile:
+            # Use main Chrome profile - has all your logins!
+            # But requires closing regular Chrome first
+            chrome_running = self._is_chrome_running()
+            if chrome_running:
+                print("   ⚠️  Regular Chrome is running.")
+                print("   ❓ Close Chrome to use your profile with logins? (y/n): ", end="")
+                try:
+                    answer = input().strip().lower()
+                    if answer == 'y':
+                        print("   🔄 Closing Chrome...")
+                        subprocess.run(["pkill", "-f", "Google Chrome"], capture_output=True)
+                        time.sleep(2)
+                    else:
+                        print("   ℹ️  Using separate debug profile instead")
+                        self.config.use_default_profile = False
+                except:
+                    print("   ℹ️  Using separate debug profile")
+                    self.config.use_default_profile = False
+            
+            if self.config.use_default_profile:
+                profile_path = None  # Use default Chrome profile
+                print("   📁 Using your main Chrome profile (with logins)")
+            else:
+                profile_path = os.path.expanduser("~/.chrome-debug-profile")
+        else:
+            # Use separate debug profile
+            profile_path = os.path.expanduser("~/.chrome-debug-profile")
+        
+        # Build Chrome args
+        chrome_args = [
+            chrome_path,
+            f"--remote-debugging-port={port}",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ]
+        
+        if profile_path:
+            chrome_args.append(f"--user-data-dir={profile_path}")
+            print(f"   📁 Profile: {profile_path}")
         
         # Start Chrome with debugging
         try:
             subprocess.Popen(
-                [
-                    chrome_path,
-                    f"--remote-debugging-port={port}",
-                    f"--user-data-dir={debug_profile}",
-                    "--no-first-run",
-                    "--no-default-browser-check",
-                ],
+                chrome_args,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
@@ -160,8 +193,8 @@ class BrowserManager:
                 time.sleep(1)
                 if self._is_cdp_available():
                     print(f"   ✅ Chrome started successfully")
-                    print(f"   📁 Profile: {debug_profile}")
-                    print(f"   💡 Note: This is a separate profile. Log in to sites if needed.")
+                    if profile_path and not self.config.use_default_profile:
+                        print(f"   💡 Note: Separate profile. Log in to sites if needed.")
                     return True
                 print(f"   ⏳ Waiting for Chrome... ({i+1}/15)")
             
@@ -170,6 +203,14 @@ class BrowserManager:
             
         except Exception as e:
             print(f"   ❌ Failed to start Chrome: {e}")
+            return False
+    
+    def _is_chrome_running(self) -> bool:
+        """Check if any Chrome process is running."""
+        try:
+            result = subprocess.run(["pgrep", "-f", "Google Chrome"], capture_output=True)
+            return result.returncode == 0
+        except:
             return False
     
     def _start_cdp(self):
