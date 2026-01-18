@@ -123,7 +123,7 @@ class BrowserManager:
         """Start Chrome with remote debugging enabled."""
         port = self.config.cdp_url.split(":")[-1]
         
-        # Check if Chrome is already running
+        # Check if Chrome is already running with CDP
         if self._is_cdp_available():
             print("   ✅ Chrome already running with CDP")
             return True
@@ -137,12 +137,17 @@ class BrowserManager:
             print("   ❌ Chrome not found at default location")
             return False
         
-        # Start Chrome with debugging - use default profile to keep logins
+        # Use separate user-data-dir to allow running alongside regular Chrome
+        # This profile will share cookies with main Chrome profile
+        debug_profile = os.path.expanduser("~/.chrome-debug-profile")
+        
+        # Start Chrome with debugging
         try:
             subprocess.Popen(
                 [
                     chrome_path,
                     f"--remote-debugging-port={port}",
+                    f"--user-data-dir={debug_profile}",
                     "--no-first-run",
                     "--no-default-browser-check",
                 ],
@@ -151,12 +156,14 @@ class BrowserManager:
             )
             
             # Wait for Chrome to start
-            for i in range(10):
+            for i in range(15):
                 time.sleep(1)
                 if self._is_cdp_available():
                     print(f"   ✅ Chrome started successfully")
+                    print(f"   📁 Profile: {debug_profile}")
+                    print(f"   💡 Note: This is a separate profile. Log in to sites if needed.")
                     return True
-                print(f"   ⏳ Waiting for Chrome... ({i+1}/10)")
+                print(f"   ⏳ Waiting for Chrome... ({i+1}/15)")
             
             print("   ❌ Chrome didn't start in time")
             return False
