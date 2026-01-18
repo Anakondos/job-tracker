@@ -38,7 +38,8 @@ DATA_DIR = V5_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
 PROFILE_PATH = BROWSER_DIR / "profiles" / "anton_tpm.json"
-LEARNED_DB_PATH = DATA_DIR / "learned_answers.json"
+# Use shared learned database with V3.5
+LEARNED_DB_PATH = BROWSER_DIR / "learned_database.json"
 FIELD_PATTERNS_PATH = DATA_DIR / "field_patterns.json"
 
 
@@ -408,7 +409,15 @@ class LearnedDB:
     def _load(self) -> dict:
         if self.path.exists():
             with open(self.path) as f:
-                return json.load(f)
+                data = json.load(f)
+            # Support V3.5 format (field_answers) and V5 format (answers)
+            if "field_answers" in data and "answers" not in data:
+                # Convert V3.5 format to V5
+                return {
+                    "answers": data.get("field_answers", {}),
+                    "dropdown_choices": data.get("dropdown_choices", {})
+                }
+            return data
         return {"answers": {}, "dropdown_choices": {}}
     
     def save(self):
