@@ -11,6 +11,13 @@
 
 ## 2026-01-19
 
+### [10:28] Fix /stats endpoint - use pipeline data
+- **Что сделано:** `/stats` теперь читает из pipeline (`jobs_new.json`) вместо старого cache
+- **Файл:** `main.py` (строки 1558-1585)
+- **Коммит:** `32b1503`
+- **Результат:** `is_stale: false`, warning больше не показывается
+- **Статус:** ✅ Работает
+
 ### [10:25] Microservices Architecture Init
 - **Что сделано:** Созданы папки `static/js/` и `static/css/` для новых модулей
 - **Файлы:** `static/js/.gitkeep`, `static/css/.gitkeep`
