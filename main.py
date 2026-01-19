@@ -1557,40 +1557,31 @@ async def refresh_stream(profile: str = Query("all")):
 
 @app.get("/stats")
 def get_funnel_stats():
-    """Get funnel stats (Total -> Role -> US -> My Area) from cache."""
-    from datetime import datetime, timezone, timedelta
+    """Get funnel stats from pipeline data (always fresh, daemon updates it)."""
+    from datetime import datetime, timezone
+    from storage.pipeline_storage import load_new_jobs
     
-    stats = load_stats()
-    if stats:
-        # Check cache age
-        updated_at = stats.get("updated_at")
-        is_stale = False
-        age_hours = 0
-        
-        if updated_at:
-            try:
-                last_updated = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
-                now = datetime.now(timezone.utc)
-                age = now - last_updated
-                age_hours = age.total_seconds() / 3600
-                is_stale = age > timedelta(hours=6)
-            except:
-                pass
-        
-        stats["is_stale"] = is_stale
-        stats["age_hours"] = round(age_hours, 1)
-        return stats
-    else:
-        return {
-            "total": 0,
-            "role": 0,
-            "us": 0,
-            "my_area": 0,
-            "updated_at": None,
-            "is_stale": True,
-            "age_hours": 0,
-            "message": "Stats not computed yet. Run /jobs?refresh=true first."
-        }
+    # Load pipeline jobs (актуальные данные от daemon)
+    jobs = load_new_jobs()
+    
+    # Pipeline already contains only relevant roles
+    total = len(jobs)
+    
+    # Filter by US location
+    us_jobs = [j for j in jobs if _is_us_location(j.get("location", ""))]
+    
+    # Filter by my area (local states + remote USA)
+    my_area_jobs = [j for j in us_jobs if j.get("geo_bucket") in ["local", "nc_other", "neighbor", "remote_usa"]]
+    
+    return {
+        "total": total,
+        "role": total,  # Pipeline уже отфильтрован по ролям
+        "us": len(us_jobs),
+        "my_area": len(my_area_jobs),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "is_stale": False,  # Pipeline всегда актуален (daemon обновляет)
+        "age_hours": 0
+    }
 
 
 
