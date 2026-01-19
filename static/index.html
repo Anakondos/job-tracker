@@ -755,9 +755,6 @@
           </div>
           <div class="status-geo" id="statusGeo"></div>
         </div>
-        <div id="staleWarning" style="display: none; background: #78350f; color: #fbbf24; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin-top: 6px;">
-          ⚠️ Data is <span id="staleAge">0</span>h old — click <strong>Refresh from ATS</strong> to update
-        </div>
         <div id="daemonStatus" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px; cursor: pointer;" onclick="toggleRefreshLog()" title="Click to see refresh log">
           <span id="daemonIndicator" style="width: 8px; height: 8px; border-radius: 50%; background: #6b7280;"></span>
           <span id="daemonText">Auto-refresh: Loading...</span>
@@ -2589,19 +2586,6 @@
           alert(
             "Failed to load jobs. Check terminal logs (uvicorn) and /jobs endpoint."
           );
-        }
-      }
-
-      // Show/hide stale data warning
-      function updateStaleWarning() {
-        const warning = document.getElementById("staleWarning");
-        const ageSpan = document.getElementById("staleAge");
-        
-        if (CACHED_STATS && CACHED_STATS.is_stale) {
-          ageSpan.textContent = Math.round(CACHED_STATS.age_hours);
-          warning.style.display = "block";
-        } else {
-          warning.style.display = "none";
         }
       }
 
