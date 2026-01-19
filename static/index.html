@@ -3983,7 +3983,7 @@
         pipelineFilters.company = e.target.value;
         applyPipelineColumnFilters();
       });
-      document.getElementById("pipelineFilterIndustry").addEventListener("input", (e) => {
+      document.getElementById("pipelineFilterIndustry")?.addEventListener("input", (e) => {
         pipelineFilters.industry = e.target.value;
         applyPipelineColumnFilters();
       });
@@ -3996,7 +3996,7 @@
         applyPipelineColumnFilters();
       });
 
-      document.getElementById("pipelineFilterAts").addEventListener("change", (e) => {
+      document.getElementById("pipelineFilterAts")?.addEventListener("change", (e) => {
         pipelineFilters.ats = e.target.value;
         applyPipelineColumnFilters();
       });
