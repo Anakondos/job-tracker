@@ -889,8 +889,8 @@
       <div id="quickFilters" style="display: flex; gap: 8px; align-items: center; margin: 12px 0; padding: 12px; background: var(--panel); border-radius: 8px; flex-wrap: wrap;">
         <!-- Quick Filter Buttons -->
         <div style="display: flex; gap: 6px; margin-right: 16px;">
-          <button class="quick-filter-btn active" data-filter="new-week" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">🔥 New this week</button>
-          <button class="quick-filter-btn" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
+          <button class="quick-filter-btn" data-filter="new-week" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">🔥 New this week</button>
+          <button class="quick-filter-btn active" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
           <button class="quick-filter-btn" data-filter="applied" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📤 Applied</button>
           <button class="quick-filter-btn" data-filter="all" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">All</button>
         </div>
@@ -898,10 +898,10 @@
         <!-- Date Range -->
         <select id="dateRangeFilter" class="column-filter" style="width: 120px; font-size: 12px; padding: 6px;">
           <option value="7">Last 7 days</option>
-          <option value="14" selected>Last 2 weeks</option>
+          <option value="14">Last 2 weeks</option>
           <option value="30">Last month</option>
           <option value="90">Last 3 months</option>
-          <option value="all">All time</option>
+          <option value="all" selected>All time</option>
         </select>
         
         <!-- Location Category -->
@@ -1459,8 +1459,8 @@
       let locationCategory = "us"; // all, us, remote, nonus - default to US
       
       // Quick Filters
-      let activeQuickFilter = "new-week"; // new-week, to-apply, applied, all
-      let dateRangeDays = 14; // 7, 14, 30, 90, or 'all'
+      let activeQuickFilter = "to-apply"; // new-week, to-apply, applied, all
+      let dateRangeDays = "all"; // 7, 14, 30, 90, or 'all'
       let globalSearchText = "";
       // Job status cache: job_key -> status
       let STATUS_MAP = {};
