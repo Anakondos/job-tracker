@@ -409,7 +409,7 @@ async def background_refresh_daemon():
                 companies = []
             
             # Filter to enabled companies only
-            companies = [c for c in companies if c.get("disabled") != True]
+            companies = [c for c in companies if c.get("enabled", True)]
             
             # Sort by last_checked (oldest first)
             companies.sort(key=lambda c: c.get("last_checked") or "1970-01-01")
