@@ -11,6 +11,13 @@
 
 ## 2026-01-19
 
+### [10:45] Fix daemon company filter
+- **Что сделано:** Daemon теперь фильтрует по `enabled: True` вместо `disabled != True`
+- **Файл:** `main.py` (строка 412)
+- **Коммит:** `3682d2d`
+- **Результат:** 79 компаний вместо 93 (14 disabled пропускаются)
+- **Статус:** ✅ Работает
+
 ### [10:28] Fix /stats endpoint - use pipeline data
 - **Что сделано:** `/stats` теперь читает из pipeline (`jobs_new.json`) вместо старого cache
 - **Файл:** `main.py` (строки 1558-1585)
