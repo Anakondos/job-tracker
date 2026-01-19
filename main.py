@@ -267,7 +267,8 @@ DAEMON_STATUS = {
     "jobs_added_this_cycle": 0,
     "jobs_added_total": 0,
     "last_cycle_jobs_added": 0,
-    "companies_refreshed_this_cycle": 0
+    "companies_refreshed_this_cycle": 0,
+    "refresh_log": []  # List of {company, status, jobs_count, time, error}
 }
 
 async def refresh_company_async(company: dict) -> dict:
@@ -418,6 +419,7 @@ async def background_refresh_daemon():
             DAEMON_STATUS["last_cycle_jobs_added"] = DAEMON_STATUS["jobs_added_this_cycle"]
             DAEMON_STATUS["jobs_added_this_cycle"] = 0
             DAEMON_STATUS["companies_refreshed_this_cycle"] = 0
+            DAEMON_STATUS["refresh_log"] = []  # Clear log for new cycle
             
             print(f"[Daemon] Starting cycle #{DAEMON_STATUS['cycle_count']} with {len(companies)} companies")
             
@@ -457,6 +459,23 @@ async def background_refresh_daemon():
                     if jobs_added > 0:
                         DAEMON_STATUS["jobs_added_this_cycle"] += jobs_added
                         DAEMON_STATUS["jobs_added_total"] += jobs_added
+                    
+                    # Add to refresh log
+                    log_entry = {
+                        "company": company_name,
+                        "ats": company.get("ats", ""),
+                        "ok": result["ok"],
+                        "jobs": result.get("jobs", 0),
+                        "jobs_added": jobs_added,
+                        "error": result.get("error"),
+                        "time": datetime.now(timezone.utc).isoformat(),
+                        "index": DAEMON_STATUS["companies_refreshed_this_cycle"],
+                        "total": len(companies)
+                    }
+                    DAEMON_STATUS["refresh_log"].append(log_entry)
+                    # Keep only last 100 entries
+                    if len(DAEMON_STATUS["refresh_log"]) > 100:
+                        DAEMON_STATUS["refresh_log"] = DAEMON_STATUS["refresh_log"][-100:]
                     
                     if result["ok"]:
                         added_str = f" (+{jobs_added} new)" if jobs_added > 0 else ""

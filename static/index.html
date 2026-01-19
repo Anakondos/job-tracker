@@ -747,7 +747,7 @@
   </head>
   <body>
     <header>
-      <div class="header-left">
+      <div class="header-left" style="position: relative;">
         <h1>Job Tracker <span id="envBadge" class="env-badge"></span></h1>
         <div class="status-bar" id="statusBar">
           <div class="status-pipeline" id="statusPipeline">
@@ -758,9 +758,18 @@
         <div id="staleWarning" style="display: none; background: #78350f; color: #fbbf24; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin-top: 6px;">
           ⚠️ Data is <span id="staleAge">0</span>h old — click <strong>Refresh from ATS</strong> to update
         </div>
-        <div id="daemonStatus" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px;">
+        <div id="daemonStatus" style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px; cursor: pointer;" onclick="toggleRefreshLog()" title="Click to see refresh log">
           <span id="daemonIndicator" style="width: 8px; height: 8px; border-radius: 50%; background: #6b7280;"></span>
           <span id="daemonText">Auto-refresh: Loading...</span>
+          <span style="font-size: 10px; opacity: 0.6;">▼</span>
+        </div>
+        <!-- Refresh Log Panel -->
+        <div id="refreshLogPanel" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 300px; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 100; margin-top: 4px;">
+          <div style="padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--panel);">
+            <span style="font-weight: 500; font-size: 13px;">🔄 Refresh Progress</span>
+            <span id="refreshLogSummary" style="font-size: 12px; color: var(--muted);">0/0 companies</span>
+          </div>
+          <div id="refreshLogList" style="padding: 4px 0; font-size: 12px; font-family: monospace;"></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2597,6 +2606,73 @@
       }
 
       // Daemon status polling
+      let refreshLogVisible = false;
+      
+      function toggleRefreshLog() {
+        const panel = document.getElementById("refreshLogPanel");
+        refreshLogVisible = !refreshLogVisible;
+        panel.style.display = refreshLogVisible ? "block" : "none";
+        if (refreshLogVisible) {
+          updateRefreshLog();
+        }
+      }
+      
+      function updateRefreshLog() {
+        // Will be populated by updateDaemonStatus
+      }
+      
+      function renderRefreshLog(log, total, current) {
+        const list = document.getElementById("refreshLogList");
+        const summary = document.getElementById("refreshLogSummary");
+        
+        if (!list) return;
+        
+        summary.textContent = `${log.length}/${total} companies`;
+        
+        if (log.length === 0) {
+          list.innerHTML = '<div style="padding: 12px; color: var(--muted); text-align: center;">Waiting for refresh to start...</div>';
+          return;
+        }
+        
+        // Show current company being processed at top if any
+        let html = '';
+        if (current) {
+          html += `<div style="padding: 6px 12px; background: rgba(245, 158, 11, 0.2); border-left: 3px solid #f59e0b;">
+            🔄 <strong>${current}</strong> — processing...
+          </div>`;
+        }
+        
+        // Show log entries in reverse order (newest first)
+        const reversedLog = [...log].reverse();
+        for (const entry of reversedLog) {
+          const icon = entry.ok ? '✅' : '❌';
+          const jobsText = entry.ok ? `${entry.jobs} jobs` : entry.error || 'error';
+          const addedText = entry.jobs_added > 0 ? ` <span style="color: #22c55e;">(+${entry.jobs_added} new)</span>` : '';
+          const atsColor = getAtsColor(entry.ats);
+          
+          html += `<div style="padding: 4px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+            <span style="width: 20px;">${icon}</span>
+            <span style="min-width: 35px; color: var(--muted);">${entry.index}/${entry.total}</span>
+            <span style="min-width: 120px; font-weight: 500;">${entry.company}</span>
+            <span style="padding: 1px 6px; border-radius: 3px; font-size: 10px; background: ${atsColor};">${entry.ats}</span>
+            <span style="color: ${entry.ok ? 'var(--text)' : '#ef4444'};">${jobsText}${addedText}</span>
+          </div>`;
+        }
+        
+        list.innerHTML = html;
+      }
+      
+      function getAtsColor(ats) {
+        const colors = {
+          'greenhouse': 'rgba(34, 197, 94, 0.3)',
+          'lever': 'rgba(59, 130, 246, 0.3)',
+          'workday': 'rgba(249, 115, 22, 0.3)',
+          'ashby': 'rgba(168, 85, 247, 0.3)',
+          'smartrecruiters': 'rgba(236, 72, 153, 0.3)'
+        };
+        return colors[ats] || 'rgba(255,255,255,0.1)';
+      }
+      
       async function updateDaemonStatus() {
         const indicator = document.getElementById("daemonIndicator");
         const text = document.getElementById("daemonText");
@@ -2629,6 +2705,11 @@
           } else {
             indicator.style.background = "#6b7280";  // gray - disabled
             text.textContent = `⏸️ Auto-refresh: OFF`;
+          }
+          
+          // Update refresh log if visible
+          if (refreshLogVisible && status.refresh_log) {
+            renderRefreshLog(status.refresh_log, status.companies_in_cycle, status.current_company);
           }
         } catch (e) {
           indicator.style.background = "#ef4444";  // red - error
