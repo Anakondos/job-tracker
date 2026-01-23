@@ -78,3 +78,23 @@ static/
 - **UI:** Quick Filters работают (To Apply, New this week, Applied, All)
 - **Daemon:** Автообновление работает, лог по клику на статус
 - **Data:** Pipeline 1077 jobs, 93 компании
+
+## 2026-01-23 19:15 - Fix storage unification (jobs.json → jobs_new.json)
+
+### Problem
+- `/onboard` endpoint saved to `jobs.json` via `job_storage.py`
+- UI and `/stats` read from `jobs_new.json` via `pipeline_storage.py`
+- TEKsystems job added via onboard was invisible in UI
+
+### Solution
+- Changed `storage/job_storage.py` to use `jobs_new.json` instead of `jobs.json`
+- Applied to both PROD and DEV
+- Migrated TEKsystems job from `jobs.json` to `jobs_new.json`
+
+### Files changed
+- `storage/job_storage.py` (PROD + DEV): `JOBS_FILE = DATA_DIR / "jobs_new.json"`
+
+### Result
+- All storage operations now unified on `jobs_new.json`
+- TEKsystems job now visible in UI ✅
+- Total pipeline: 1078 jobs

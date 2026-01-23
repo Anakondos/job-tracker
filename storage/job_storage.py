@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Set
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-JOBS_FILE = DATA_DIR / "jobs.json"
+JOBS_FILE = DATA_DIR / "jobs_new.json"  # Unified with pipeline
 
 # Статусы
 STATUS_NEW = "new"
