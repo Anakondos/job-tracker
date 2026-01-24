@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import os
+
+# Load .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 import asyncio
 from datetime import datetime, timezone, timedelta
 import json
@@ -2457,14 +2462,12 @@ def onboard_job(payload: OnboardRequest):
     
     job["source"] = "onboard"
     
-    # 5. Add to pipeline if relevant role
+    # 5. Add to pipeline - always add manual jobs (user explicitly added them)
     added_to_pipeline = False
-    if job.get("role_family") in MY_ROLE_FAMILIES and not job.get("role_excluded"):
-        # Check if already exists
-        existing = get_job_by_id(job["id"])
-        if not existing:
-            add_job(job)
-            added_to_pipeline = True
+    existing = get_job_by_id(job["id"])
+    if not existing:
+        add_job(job)
+        added_to_pipeline = True
     
     return {
         "ok": True,
@@ -3221,7 +3224,12 @@ async def analyze_job_endpoint(payload: AnalyzeJobRequest):
             "saas", "b2b", "b2c", "enterprise", "platform", "infrastructure",
             "machine learning", "ml", "ai", "artificial intelligence",
             "payments", "fintech", "banking", "financial services",
-            "security", "compliance", "gdpr", "sox", "pci"
+            "security", "compliance", "gdpr", "sox", "pci",
+            # Sales/Account Management (for non-PM roles)
+            "sales", "account management", "client management", "customer success",
+            "relationship building", "revenue", "quota", "pipeline",
+            "crm", "salesforce", "hubspot", "negotiation", "closing",
+            "territory", "prospecting", "lead generation", "business development"
         ],
         "soft_skills": [
             "leadership", "communication", "collaboration", "problem-solving",
@@ -3247,7 +3255,19 @@ async def analyze_job_endpoint(payload: AnalyzeJobRequest):
         "saas", "b2b", "enterprise", "platform", "stakeholder",
         "leadership", "communication", "collaboration", "strategic thinking",
         "prd", "requirements", "technical specifications", "api",
-        "fintech", "payments", "banking"
+        "fintech", "payments", "banking", "financial services",
+        # Extended skills from CV
+        "gcp", "azure", "cloud", "microservices", "terraform",
+        "ci/cd", "devops", "release management", "deployment",
+        "regulatory", "compliance", "mifid", "sox", "gdpr",
+        "uat", "testing", "quality", "integration",
+        "machine learning", "ml", "ai", "data", "analytics",
+        "tableau", "looker", "reporting", "metrics",
+        "safe", "agile", "scrum", "kanban", "pi planning",
+        "product strategy", "product vision", "product roadmap",
+        "user stories", "acceptance criteria", "backlog management",
+        "cross-functional", "influence", "negotiation", "executive",
+        "client", "customer", "vendor", "partnership"
     }
     
     for category, keywords in skill_keywords.items():
@@ -3330,6 +3350,146 @@ async def analyze_job_endpoint(payload: AnalyzeJobRequest):
     }
 
 
+# ============= COMPREHENSIVE APPLICATION PREPARATION =============
+
+class PrepareApplicationRequest(BaseModel):
+    job_title: str
+    company: str
+    job_url: str
+    job_description: str
+    role_family: str = "product"
+    force_regenerate: bool = False  # If True, regenerate even if files exist
+
+
+class CheckExistingRequest(BaseModel):
+    job_title: str
+    company: str
+
+
+@app.post("/check-existing-application")
+async def check_existing_application(payload: CheckExistingRequest):
+    """
+    Check if application files already exist for this job.
+    Returns paths to existing CV and Cover Letter if found.
+    """
+    print(f"[CheckExisting] Checking: {payload.company} - {payload.job_title}")
+    from pathlib import Path
+    import re
+    
+    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    applications_path = gold_cv_path / "Applications"
+    
+    # Normalize company and position - remove special chars, replace spaces with underscores
+    safe_company = re.sub(r'[^\w\s]', '', payload.company).strip().replace(' ', '_')
+    safe_position = re.sub(r'[^\w\s]', '', payload.job_title).strip().replace(' ', '_')[:40]
+    
+    # For matching, also create a simplified version (just alphanumeric)
+    match_company = re.sub(r'[^a-zA-Z0-9]', '', payload.company.lower())
+    match_position = re.sub(r'[^a-zA-Z0-9]', '', payload.job_title.lower())[:30]
+    
+    # Look for existing application folders
+    existing_folders = []
+    if applications_path.exists():
+        for folder in applications_path.iterdir():
+            # Normalize folder name for matching
+            folder_normalized = re.sub(r'[^a-zA-Z0-9]', '', folder.name.lower())
+            
+            if folder.is_dir() and match_company in folder_normalized:
+                # Check if it matches position too
+                if match_position[:20] in folder_normalized or len(match_position) < 10:
+                    existing_folders.append(folder)
+                    print(f"[CheckExisting] Found matching folder: {folder.name}")
+    
+    if not existing_folders:
+        return {"exists": False}
+    
+    # Get most recent folder
+    existing_folders.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+    latest_folder = existing_folders[0]
+    
+    # Find CV and Cover Letter in folder
+    cv_file = None
+    cl_file = None
+    
+    for f in latest_folder.iterdir():
+        if f.is_file():
+            if f.name.startswith("CV_") and f.suffix == ".docx":
+                cv_file = f
+            elif f.name.startswith("Cover_Letter_") and f.suffix == ".txt":
+                cl_file = f
+    
+    if not cv_file and not cl_file:
+        return {"exists": False}
+    
+    # Read cover letter content for preview
+    cl_preview = None
+    if cl_file:
+        try:
+            cl_content = cl_file.read_text()
+            cl_preview = cl_content[:500] + "..." if len(cl_content) > 500 else cl_content
+        except:
+            cl_preview = "Could not read cover letter"
+    
+    return {
+        "exists": True,
+        "folder": str(latest_folder),
+        "folder_name": latest_folder.name,
+        "cv_path": str(cv_file) if cv_file else None,
+        "cv_filename": cv_file.name if cv_file else None,
+        "cover_letter_path": str(cl_file) if cl_file else None,
+        "cover_letter_filename": cl_file.name if cl_file else None,
+        "cover_letter_preview": cl_preview,
+        "created_at": datetime.fromtimestamp(latest_folder.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+    }
+
+
+@app.post("/prepare-application")
+async def prepare_application_endpoint(payload: PrepareApplicationRequest):
+    """
+    Comprehensive application preparation using Claude API.
+    
+    1. Deep JD analysis
+    2. CV decision (base vs optimize)
+    3. Cover letter generation
+    4. Returns paths to all documents
+    """
+    from api.prepare_application import prepare_application
+    
+    result = prepare_application(
+        job_title=payload.job_title,
+        company=payload.company,
+        job_url=payload.job_url,
+        jd=payload.job_description,
+        role_family=payload.role_family
+    )
+    
+    return result.to_dict()
+
+
+@app.get("/open-file/{file_type}")
+async def open_file_endpoint(file_type: str, path: str):
+    """
+    Open file in default application.
+    file_type: cv, cover_letter, folder
+    """
+    import subprocess
+    from pathlib import Path
+    
+    file_path = Path(path)
+    
+    if not file_path.exists():
+        return {"ok": False, "error": "File not found"}
+    
+    try:
+        if file_type == "folder":
+            subprocess.run(["open", str(file_path)], check=True)
+        else:
+            subprocess.run(["open", str(file_path)], check=True)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # ============= CV PREVIEW & TAILORING =============
 
 class CVPreviewRequest(BaseModel):
@@ -3338,6 +3498,7 @@ class CVPreviewRequest(BaseModel):
     role_family: str = "product"
     keywords_to_add: list = []
     matched_keywords: list = []
+    cv_path: str = None  # Optional: path to specific CV (e.g., AI-optimized)
 
 @app.post("/cv/preview")
 async def cv_preview_endpoint(payload: CVPreviewRequest):
@@ -3353,14 +3514,22 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
     
     gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
     
-    # Select CV based on role
-    role_cv_map = {
-        "product": "CV_Anton_Kondakov_Product Manager.docx",
-        "tpm_program": "CV_Anton_Kondakov_TPM.docx",
-        "project": "CV_Anton_Kondakov_Project Manager.docx",
-    }
-    cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
-    cv_path = gold_cv_path / cv_filename
+    # Use provided cv_path if specified, otherwise select by role
+    print(f"DEBUG cv/preview: payload.cv_path = {payload.cv_path}")
+    if payload.cv_path and Path(payload.cv_path).exists():
+        cv_path = Path(payload.cv_path)
+        cv_filename = cv_path.name
+        print(f"DEBUG cv/preview: Using provided CV: {cv_path}")
+    else:
+        # Select CV based on role
+        role_cv_map = {
+            "product": "CV_Anton_Kondakov_Product Manager.docx",
+            "tpm_program": "CV_Anton_Kondakov_TPM.docx",
+            "project": "CV_Anton_Kondakov_Project Manager.docx",
+        }
+        cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
+        cv_path = gold_cv_path / cv_filename
+        print(f"DEBUG cv/preview: Using role-based CV: {cv_path}")
     
     if not cv_path.exists():
         return {"ok": False, "error": f"CV not found: {cv_filename}"}
@@ -3551,3 +3720,348 @@ async def cv_tailor_endpoint(payload: CVTailorRequest):
         "folder": str(app_folder),
         "keywords_added": keywords_to_add
     }
+
+
+class CVOptimizeRequest(BaseModel):
+    job_title: str
+    company: str
+    job_description: str
+    role_family: str = "product"
+
+
+@app.post("/cv/optimize-ai")
+async def cv_optimize_ai_endpoint(payload: CVOptimizeRequest):
+    """
+    Use Claude API to analyze JD and optimize CV.
+    Extracts key requirements and tailors CV accordingly.
+    """
+    import os
+    import re
+    from pathlib import Path
+    
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return {"ok": False, "error": "ANTHROPIC_API_KEY not set"}
+    
+    jd = payload.job_description
+    if not jd or len(jd) < 50:
+        return {"ok": False, "error": "Job description too short for analysis"}
+    
+    # Call Claude API to analyze JD
+    try:
+        import requests
+        
+        prompt = f"""Analyze this job description and extract:
+1. Top 10 most important technical skills/tools required
+2. Top 5 soft skills emphasized
+3. Key experience requirements (years, domains)
+4. Any specific keywords that should be in the CV
+
+Job Title: {payload.job_title}
+Company: {payload.company}
+
+Job Description:
+{jd[:4000]}
+
+Respond in JSON format:
+{{
+  "technical_skills": ["skill1", "skill2", ...],
+  "soft_skills": ["skill1", ...],
+  "experience_requirements": ["req1", ...],
+  "keywords_to_add": ["keyword1", ...],
+  "cv_recommendations": ["recommendation1", ...]
+}}"""
+        
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json={
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 1000,
+                "messages": [{"role": "user", "content": prompt}]
+            },
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            return {"ok": False, "error": f"Claude API error: {response.status_code}"}
+        
+        result = response.json()
+        ai_text = result.get("content", [{}])[0].get("text", "{}")
+        
+        # Parse JSON from response
+        import json
+        # Extract JSON from potential markdown
+        json_match = re.search(r'\{[\s\S]*\}', ai_text)
+        if json_match:
+            analysis = json.loads(json_match.group())
+        else:
+            analysis = {"error": "Could not parse AI response"}
+        
+        # Now tailor CV with extracted keywords
+        keywords = analysis.get("keywords_to_add", []) + analysis.get("technical_skills", [])[:5]
+        keywords = list(set(keywords))[:10]  # Dedupe and limit
+        
+        if keywords:
+            # Call existing tailor endpoint logic
+            from docx import Document
+            
+            gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+            apps_path = gold_cv_path / "Applications"
+            
+            role_cv_map = {
+                "product": "CV_Anton_Kondakov_Product Manager.docx",
+                "tpm_program": "CV_Anton_Kondakov_TPM.docx",
+                "project": "CV_Anton_Kondakov_Project Manager.docx",
+            }
+            cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
+            cv_path = gold_cv_path / cv_filename
+            
+            if not cv_path.exists():
+                return {"ok": False, "error": f"Base CV not found: {cv_filename}"}
+            
+            # Create folder
+            safe_company = re.sub(r'[^\w\s-]', '', payload.company).strip().replace(' ', '_')
+            safe_position = re.sub(r'[^\w\s-]', '', payload.job_title).strip().replace(' ', '_')[:50]
+            folder_name = f"{safe_company}_{safe_position}_AI"
+            app_folder = apps_path / folder_name
+            app_folder.mkdir(parents=True, exist_ok=True)
+            
+            # Load and modify CV
+            doc = Document(cv_path)
+            
+            # Add keywords to Technical section
+            for i, para in enumerate(doc.paragraphs):
+                if "COMPETENCIES" in para.text.upper() or "SKILLS" in para.text.upper():
+                    for j in range(i+1, min(i+15, len(doc.paragraphs))):
+                        next_para = doc.paragraphs[j]
+                        if "technical" in next_para.text.lower() or "acumen" in next_para.text.lower():
+                            current = next_para.text.rstrip('.')
+                            added_kw = ', '.join(keywords[:5])
+                            next_para.clear()
+                            next_para.add_run(f"{current} [+Added: {added_kw}]")
+                            break
+                    break
+            
+            # Save
+            output_filename = f"CV_Anton_Kondakov_{safe_company}_AI_Optimized.docx"
+            output_path = app_folder / output_filename
+            doc.save(output_path)
+            
+            return {
+                "ok": True,
+                "cv_path": str(output_path),
+                "cv_name": output_filename,
+                "keywords_added": keywords[:5],
+                "analysis": analysis,
+                "folder": str(app_folder)
+            }
+        else:
+            return {
+                "ok": True,
+                "cv_path": None,
+                "cv_name": "No optimization needed",
+                "keywords_added": [],
+                "analysis": analysis
+            }
+            
+    except Exception as e:
+        import traceback
+        return {"ok": False, "error": str(e), "traceback": traceback.format_exc()}
+
+
+# ============= V5 FORM FILLER ENDPOINT =============
+
+
+# ============= V5 FORM FILLER ENDPOINT =============
+
+@app.post("/apply/v5")
+def apply_v5_endpoint(payload: ApplyRequest):
+    """
+    Apply to job using V5 Form Filler with Claude AI.
+    Auto-starts Chrome with debug port if not running.
+    """
+    import subprocess
+    import sys
+    
+    job_url = payload.job_url
+    profile_name = payload.profile
+    
+    # Check profile exists
+    profile_path = Path(f"browser/profiles/{profile_name}.json")
+    if not profile_path.exists():
+        return {"ok": False, "error": f"Profile '{profile_name}' not found"}
+    
+    # Start Chrome with debug port using our helper
+    cwd = Path(__file__).parent.resolve()
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, str(cwd / "browser/start_chrome_debug.py")],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        if "❌" in result.stdout:
+            return {"ok": False, "error": "Failed to start Chrome with debug port"}
+            
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "Chrome start timeout"}
+    except Exception as e:
+        return {"ok": False, "error": f"Chrome start error: {e}"}
+    
+    # Prepare V5 script
+    script_content = f'''
+import sys
+sys.path.insert(0, '{cwd}')
+import os
+os.chdir('{cwd}')
+
+# Tee output to log file
+import io
+class TeeWriter:
+    def __init__(self, *writers):
+        self.writers = writers
+    def write(self, text):
+        for w in self.writers:
+            w.write(text)
+            w.flush()
+    def flush(self):
+        for w in self.writers:
+            w.flush()
+
+log_file = open('/tmp/v5_apply.log', 'w')
+sys.stdout = TeeWriter(sys.__stdout__, log_file)
+sys.stderr = TeeWriter(sys.__stderr__, log_file)
+
+from browser.v5.engine import FormFillerV5, FillMode
+from browser.v5.browser_manager import BrowserMode
+import time
+
+job_url = "{job_url}"
+
+print("="*60)
+print("V5 Form Filler")
+print(f"URL: {{job_url}}")
+print("="*60)
+
+try:
+    # Initialize V5 with CDP (connects to existing Chrome)
+    filler = FormFillerV5(browser_mode=BrowserMode.CDP)
+    
+    # Run in interactive mode
+    result = filler.fill(job_url, mode=FillMode.INTERACTIVE)
+    
+    print("\\n" + "="*60)
+    print(f"Filled: {{result.filled_fields}}/{{result.total_fields}}")
+    print(f"Verified: {{result.verified_fields}}")
+    if result.errors > 0:
+        print(f"Errors: {{result.errors}}")
+    print("="*60)
+    
+    # Keep browser open for review
+    print("\\nBrowser stays open. Close manually when done.")
+    input("Press Enter to close...")
+    
+except Exception as e:
+    print(f"Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+    input("Press Enter to close...")
+'''
+    
+    # Write and run script
+    script_file = Path("/tmp/v5_apply_script.py")
+    script_file.write_text(script_content)
+    
+    log_file = Path("/tmp/v5_apply.log")
+    
+    # Run in new Terminal window (so user can see output)
+    apple_script = f'''
+    tell application "Terminal"
+        activate
+        do script "cd {cwd} && {sys.executable} {script_file}"
+    end tell
+    '''
+    
+    try:
+        subprocess.run(['osascript', '-e', apple_script], capture_output=True)
+    except:
+        # Fallback: run in background
+        subprocess.Popen(
+            [sys.executable, str(script_file)],
+            stdout=open(log_file, "w"),
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd)
+        )
+    
+    return {
+        "ok": True,
+        "message": "V5 Form Filler started in Terminal",
+        "log_file": str(log_file),
+        "job_url": job_url
+    }
+
+
+@app.get("/apply/v5/log")
+def get_v5_log():
+    """Get V5 apply log content."""
+    log_path = Path("/tmp/v5_apply.log")
+    if not log_path.exists():
+        return {"ok": False, "log": "No log file"}
+    
+    try:
+        return {"ok": True, "log": log_path.read_text()}
+    except Exception as e:
+        return {"ok": False, "log": f"Error: {e}"}
+
+
+@app.get("/chrome/status")
+def chrome_debug_status():
+    """Check if Chrome is running with debug port."""
+    import socket
+    
+    def check_port(port):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                return s.connect_ex(('localhost', port)) == 0
+        except:
+            return False
+    
+    running = check_port(9222)
+    return {
+        "running": running,
+        "port": 9222,
+        "message": "Chrome debug ready" if running else "Chrome not running on debug port"
+    }
+
+
+@app.post("/chrome/start")
+def start_chrome_debug_endpoint():
+    """Start Chrome with debug port."""
+    import subprocess
+    import sys
+    
+    cwd = Path(__file__).parent.resolve()
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, str(cwd / "browser/start_chrome_debug.py")],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        if "✅" in result.stdout:
+            return {"ok": True, "message": result.stdout.strip()}
+        else:
+            return {"ok": False, "error": result.stdout.strip()}
+            
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

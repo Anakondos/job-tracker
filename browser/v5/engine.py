@@ -26,7 +26,7 @@ from enum import Enum
 from playwright.sync_api import Page, ElementHandle
 
 from .browser_manager import BrowserManager, BrowserMode
-
+from .form_logger import FormLogger
 
 # ═══════════════════════════════════════════════════════════════════════════
 # PATHS
@@ -206,12 +206,23 @@ class Profile:
         "email": "personal.email",
         "phone": "personal.phone",
         "city": "personal.city",
+        "beverly hills": "personal.city",  # Common city placeholder
+        "new york": "personal.city",
+        "los angeles": "personal.city",
+        "san francisco": "personal.city",
         "state": "personal.state",
         "country": "personal.country",
         "zip": "personal.zip_code",
         "postal": "personal.zip_code",
+        "90210": "personal.zip_code",  # Common ZIP placeholder
+        "12345": "personal.zip_code",
+        "00000": "personal.zip_code",
         "street": "personal.street_address",
         "address": "personal.street_address",
+        "address line": "personal.street_address",
+        "main st": "personal.street_address",  # Common placeholder pattern
+        "your address": "personal.street_address",
+        "home address": "personal.street_address",
         "linkedin": "links.linkedin",
         "github": "links.github",
         # Work experience
@@ -264,6 +275,27 @@ class Profile:
         "current role": "Yes",
         "currently work here": "Yes",
         "currently work": "Yes",
+        "i currently work": "Yes",
+        # Additional from V35
+        "willing to relocate": "Yes",
+        "background check": "Yes",
+        "drug test": "Yes",
+        "non-compete": "No",
+        "non-disclosure": "Yes",
+    }
+    
+    # Text field defaults (for common questions)
+    TEXT_DEFAULTS = {
+        "years of experience": "15",
+        "years experience": "15",
+        "how many years": "15",
+        "how did you hear": "LinkedIn",
+        "how did you find": "LinkedIn",
+        "where did you hear": "LinkedIn",
+        "salary": "150000",
+        "desired salary": "150000",
+        "expected salary": "150000",
+        "compensation": "150000",
     }
     
     # Demographic defaults
@@ -318,6 +350,14 @@ class Profile:
         """Find demographic default answer."""
         ll = label.lower()
         for pattern, answer in self.DEMOGRAPHIC_DEFAULTS.items():
+            if pattern in ll:
+                return answer
+        return None
+    
+    def find_text_default(self, label: str) -> Optional[str]:
+        """Find text default for common questions like years of experience."""
+        ll = label.lower()
+        for pattern, answer in self.TEXT_DEFAULTS.items():
             if pattern in ll:
                 return answer
         return None
@@ -704,6 +744,7 @@ class FormFillerV5:
         self.learned_db = LearnedDB()
         self.ai = AIHelper()
         self.ollama = OllamaHelper()
+        self.logger = FormLogger()
         
         self.browser: Optional[BrowserManager] = None
         self.page: Optional[Page] = None
@@ -736,6 +777,7 @@ class FormFillerV5:
     def fill(self, url: str, mode: FillMode = FillMode.INTERACTIVE) -> FillReport:
         """
         Fill form with specified mode.
+        Includes re-scan logic for dynamic forms (fields that appear after selection).
         """
         with BrowserManager(mode=self.browser_mode) as browser:
             self.browser = browser
@@ -744,7 +786,15 @@ class FormFillerV5:
             browser.goto(url)
             browser.wait_for_stable()
             
-            # Scan, resolve, fill
+            # Try to find and click Apply button if on job description page
+            self._find_and_click_apply_button()
+            
+            # Handle login page if needed
+            if self._handle_login_page():
+                # After login, wait and rescan
+                browser.wait_for_stable()
+            
+            # Initial scan, resolve, fill
             self._scan_fields()
             self._resolve_all_answers()
             
@@ -754,8 +804,35 @@ class FormFillerV5:
             # Fill repeatable sections first (work experience, education)
             self.fill_all_repeatable_sections()
             
-            # Then fill remaining fields
-            self._fill_all_fields(mode)
+            # Fill fields with re-scan for dynamic forms
+            # Loop until no new fields appear
+            max_iterations = 5
+            for iteration in range(max_iterations):
+                fields_before = len(self.fields)
+                
+                # Fill current fields
+                self._fill_all_fields(mode)
+                
+                # Wait for potential new fields to appear
+                time.sleep(0.5)
+                browser.wait_for_stable()
+                
+                # Re-scan for new fields
+                new_fields = self._scan_for_new_fields()
+                
+                if new_fields:
+                    print(f"\n🔄 Found {len(new_fields)} new fields after filling")
+                    for f in new_fields:
+                        print(f"   + {f.label[:40]}")
+                    
+                    # Resolve answers for new fields
+                    for f in new_fields:
+                        self._resolve_answer(f)
+                    
+                    # Continue loop to fill new fields
+                else:
+                    # No new fields, we're done
+                    break
             
             # Blur all fields to trigger validation
             self._blur_all_fields()
@@ -772,6 +849,231 @@ class FormFillerV5:
             
             return self._generate_report(url)
     
+    def _scan_for_new_fields(self) -> List[FormField]:
+        """
+        Scan for fields that appeared after initial scan.
+        Returns list of new fields not seen before.
+        """
+        new_fields = []
+        elements = self.page.query_selector_all("input, select, textarea")
+        
+        for el in elements:
+            field = self._detect_field(el)
+            if field and field.selector not in self._seen_selectors:
+                self._seen_selectors.add(field.selector)
+                self.fields.append(field)
+                new_fields.append(field)
+        
+        return new_fields
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # LAYER 0: FIND AND CLICK APPLY BUTTON
+    # ─────────────────────────────────────────────────────────────────────
+    
+    def _find_and_click_apply_button(self):
+        """
+        Find and click Apply button on job description pages.
+        Many ATS (iCIMS, Workday, etc.) show job description first,
+        then require clicking Apply to open the form.
+        Supports both main page and iframes.
+        """
+        import time
+        
+        # Check if we're on a job description page (no form fields visible)
+        initial_fields = self.page.query_selector_all("input[type='text'], input[type='email'], select, textarea")
+        visible_fields = [f for f in initial_fields if f.is_visible()]
+        
+        if len(visible_fields) > 3:
+            print("\n✅ Already on application form")
+            return
+        
+        print("\n🔎 Looking for Apply button...")
+        
+        apply_selectors = [
+            "a.iCIMS_ApplyButton",
+            "a[title='Apply for this job online']",
+            "a.iCIMS_Action_Button.iCIMS_ApplyButton",
+            "a.iCIMS_PrimaryButton",
+            "a#apply_button",
+            "a.postings-btn",
+            "button[data-automation-id='jobPostingApplyButton']",
+            "a:has-text('Apply')",
+            "button:has-text('Apply')",
+            "a:has-text('Apply Now')",
+            "a:has-text('Apply for this job')",
+            "a[class*='apply']",
+            "button[class*='apply']",
+        ]
+        
+        # First try main page
+        if self._try_click_apply_in_context(self.page, apply_selectors, "main page"):
+            return
+        
+        # Then try each iframe
+        frames = self.page.frames
+        print(f"   📝 Checking {len(frames)} frames for Apply button...")
+        
+        for i, frame in enumerate(frames):
+            if frame == self.page.main_frame:
+                continue
+            
+            frame_url = frame.url[:50] if frame.url else "(empty)"
+            if self._try_click_apply_in_context(frame, apply_selectors, f"frame {i}: {frame_url}"):
+                return
+        
+        print("   ⚠️ No Apply button found, proceeding with current page")
+    
+    def _try_click_apply_in_context(self, context, selectors, context_name):
+        """Try to find and click Apply button in a given context (page or frame)."""
+        import time
+        
+        for selector in selectors:
+            try:
+                btn = context.query_selector(selector)
+                if btn and btn.is_visible():
+                    btn_text = btn.inner_text().strip()[:50]
+                    print(f"   ✅ Found Apply button in {context_name}: '{btn_text}'")
+                    btn.click()
+                    print(f"   🖱️ Clicked Apply button")
+                    time.sleep(2)
+                    self.browser.wait_for_stable()
+                    print(f"   📄 Current URL: {self.page.url[:80]}...")
+                    return True
+            except:
+                continue
+        
+        # Try text-based search
+        try:
+            all_clickables = context.query_selector_all("a, button")
+            for el in all_clickables:
+                try:
+                    if not el.is_visible():
+                        continue
+                    text = el.inner_text().strip().lower()
+                    if any(kw in text for kw in ['apply', 'submit application', 'start application']):
+                        if 'applied' not in text and "don't apply" not in text:
+                            print(f"   ✅ Found Apply button in {context_name} (text): '{text[:50]}'")
+                            el.click()
+                            print(f"   🖱️ Clicked Apply button")
+                            time.sleep(2)
+                            self.browser.wait_for_stable()
+                            return True
+                except:
+                    continue
+        except:
+            pass
+        
+        return False
+
+    def _handle_login_page(self):
+        """
+        Handle login/authentication pages.
+        Supports: Google OAuth, LinkedIn OAuth, Email login.
+        """
+        import time
+        
+        # Check if we're on a login page
+        url = self.page.url.lower()
+        if 'login' not in url and 'signin' not in url and 'auth' not in url:
+            return False
+        
+        print("\n🔐 Login page detected...")
+        
+        # First try to find Google/LinkedIn login buttons (preferred)
+        for frame in self.page.frames:
+            try:
+                # Look for Google login button
+                google_btn = frame.query_selector(
+                    "a[href*='google'], button[data-provider='google'], "
+                    "a:has-text('Google'), button:has-text('Google'), "
+                    "a:has-text('Sign in with Google'), button:has-text('Sign in with Google'), "
+                    "a[class*='google'], button[class*='google'], "
+                    "div[data-provider='google']"
+                )
+                if google_btn and google_btn.is_visible():
+                    print("   🔵 Found Google login button")
+                    print("   👉 Clicking Google login...")
+                    google_btn.click()
+                    time.sleep(3)
+                    self.browser.wait_for_stable()
+                    
+                    # Wait for Google OAuth popup or redirect
+                    print("   👉 Please complete Google sign-in in the browser...")
+                    print("   Press ENTER when logged in...")
+                    try:
+                        input()
+                    except:
+                        time.sleep(30)
+                    
+                    self.browser.wait_for_stable()
+                    return True
+                
+                # Look for LinkedIn login button
+                linkedin_btn = frame.query_selector(
+                    "a[href*='linkedin'], button[data-provider='linkedin'], "
+                    "a:has-text('LinkedIn'), button:has-text('LinkedIn'), "
+                    "a[class*='linkedin'], button[class*='linkedin']"
+                )
+                if linkedin_btn and linkedin_btn.is_visible():
+                    print("   🔵 Found LinkedIn login button")
+                    print("   👉 Clicking LinkedIn login...")
+                    linkedin_btn.click()
+                    time.sleep(3)
+                    self.browser.wait_for_stable()
+                    
+                    print("   👉 Please complete LinkedIn sign-in...")
+                    print("   Press ENTER when logged in...")
+                    try:
+                        input()
+                    except:
+                        time.sleep(30)
+                    
+                    self.browser.wait_for_stable()
+                    return True
+            except:
+                continue
+        
+        # Fallback: email login
+        email_value = self.profile.get('personal.email') or ''
+        if not email_value or email_value == 'YOUR_EMAIL':
+            print("   ⚠️ No email in profile. Please set 'email' in your profile.")
+            return False
+        
+        for frame in self.page.frames:
+            try:
+                email_input = frame.query_selector("input[type='email'], input[name*='email'], input[name*='loginName']")
+                if email_input and email_input.is_visible():
+                    print(f"   📧 Found email field, entering: {email_value}")
+                    email_input.fill(email_value)
+                    time.sleep(0.5)
+                    
+                    # Look for submit button
+                    submit_btn = frame.query_selector("input[type='submit'], button[type='submit'], button:has-text('Continue'), button:has-text('Next')")
+                    if submit_btn and submit_btn.is_visible():
+                        print("   👉 Clicking submit...")
+                        submit_btn.click()
+                        time.sleep(2)
+                        self.browser.wait_for_stable()
+                    
+                    # Check for captcha
+                    captcha = frame.query_selector("[class*='captcha'], [class*='hcaptcha'], [class*='recaptcha'], iframe[src*='captcha']")
+                    if captcha:
+                        print("\n   🧩 CAPTCHA detected!")
+                        print("   👉 Please solve the captcha in the browser...")
+                        print("   Press ENTER when done...")
+                        try:
+                            input()
+                        except:
+                            time.sleep(30)
+                        
+                        self.browser.wait_for_stable()
+                    
+                    return True
+            except:
+                continue
+        
+        return False
+
     # ─────────────────────────────────────────────────────────────────────
     # LAYER 1: DETECTION
     # ─────────────────────────────────────────────────────────────────────
@@ -862,22 +1164,100 @@ class FormFillerV5:
             return None
     
     def _find_label(self, el: ElementHandle, el_id: str) -> str:
-        """Find label text for field."""
-        label = ""
+        """
+        Find label text for field using multiple strategies.
         
-        # By for attribute
+        Priority:
+        1. Standard label[for] attribute
+        2. aria-label / placeholder
+        3. Context Discovery (traverse DOM for nearby text)
+        4. Name/ID as fallback
+        """
+        label = ""
+        el_name = el.get_attribute("name") or ""
+        
+        # Strategy 1: By for attribute
         if el_id:
             label_el = self.page.query_selector(f"label[for='{el_id}']")
             if label_el:
                 label = label_el.inner_text().strip()
         
-        # Fallback to aria/placeholder
+        # Strategy 2: aria/placeholder
         if not label:
             label = el.get_attribute("aria-label") or \
-                    el.get_attribute("placeholder") or \
-                    el.get_attribute("name") or el_id
+                    el.get_attribute("placeholder") or ""
+        
+        # Strategy 3: Context Discovery (for Shadow DOM)
+        if not label or len(label) < 5:
+            try:
+                context = self._discover_field_context(el_id)
+                if context:
+                    label = context
+            except Exception as e:
+                pass  # Fallback to other methods
+        
+        # Strategy 4: Name/ID fallback
+        if not label:
+            label = el_name or el_id or ""
+        
+        # Append name attribute if different (helps with mapping)
+        if el_name and el_name.lower() not in label.lower():
+            label = f"{label} [{el_name}]"
         
         return label
+    
+    def _discover_field_context(self, field_id: str) -> str:
+        """Use Context Discovery to find label from surrounding DOM."""
+        if not field_id:
+            return ""
+        
+        result = self.page.evaluate('''(fieldId) => {
+            function findInShadow(root, selector) {
+                let el = root.querySelector(selector);
+                if (el) return el;
+                const shadows = root.querySelectorAll('*');
+                for (const s of shadows) {
+                    if (s.shadowRoot) {
+                        el = findInShadow(s.shadowRoot, selector);
+                        if (el) return el;
+                    }
+                }
+                return null;
+            }
+            
+            const input = findInShadow(document, '#' + fieldId);
+            if (!input) return '';
+            
+            const context = [];
+            let container = input;
+            
+            for (let i = 0; i < 10 && container; i++) {
+                container = container.parentElement || 
+                           (container.getRootNode && container.getRootNode().host);
+                
+                if (!container || !container.querySelectorAll) continue;
+                
+                const textEls = container.querySelectorAll(
+                    'label, legend, p, span, h3, h4, div'
+                );
+                
+                for (const el of textEls) {
+                    if (el.contains(input)) continue;
+                    const txt = el.textContent.trim();
+                    if (txt && txt.length > 3 && txt.length < 150) {
+                        if (!context.some(c => c.includes(txt) || txt.includes(c))) {
+                            context.push(txt);
+                        }
+                    }
+                }
+                
+                if (context.length >= 1) break;
+            }
+            
+            return context[0] || '';
+        }''', field_id)
+        
+        return result or ""
     
     def _get_value(self, el: ElementHandle, tag: str, input_type: str) -> str:
         """Get current field value."""
@@ -1121,7 +1501,7 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             else:
                 field.status = FillStatus.NEEDS_INPUT
                 field.error_message = "Cover letter not found for this role"
-        elif is_resume or "attach" in label_lower:
+        elif is_resume or "attach" in label_lower or "upload" in label_lower or "browse" in label_lower:
             # Resume/CV field (including generic "Attach")
             if cv_path and cv_path.exists():
                 field.answer = str(cv_path)

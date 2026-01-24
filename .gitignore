@@ -32,3 +32,6 @@ cache
 .venv
 start.sh
 start.sh
+
+# API keys (never commit)
+browser/v5/config/api_keys.json

@@ -20,6 +20,8 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, List, Set
+from utils.location_utils import normalize_job_location
+
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 JOBS_FILE = DATA_DIR / "jobs_new.json"  # Unified with pipeline
@@ -127,6 +129,9 @@ def add_job(job: dict, status: str = STATUS_NEW) -> bool:
     if any(j.get("id") == job_id for j in jobs):
         return False
     
+    # Normalize location (from title if needed)
+    job = normalize_job_location(job)
+    
     now = _now_iso()
     job_record = {
         **job,
@@ -162,6 +167,9 @@ def add_jobs_bulk(new_jobs: List[dict], status: str = STATUS_NEW) -> int:
         job_id = job.get("id")
         if not job_id or job_id in existing_ids:
             continue
+        
+        # Normalize location
+        job = normalize_job_location(job)
         
         job_record = {
             **job,

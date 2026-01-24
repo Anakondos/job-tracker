@@ -899,9 +899,9 @@
         <!-- Quick Filter Buttons -->
         <div style="display: flex; gap: 6px; margin-right: 16px;">
           <button class="quick-filter-btn" data-filter="new-week" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">🔥 New this week</button>
-          <button class="quick-filter-btn active" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
+          <button class="quick-filter-btn" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
           <button class="quick-filter-btn" data-filter="applied" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📤 Applied</button>
-          <button class="quick-filter-btn" data-filter="all" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">All</button>
+          <button class="quick-filter-btn active" data-filter="all" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">All</button>
         </div>
         
         <!-- Date Range -->
@@ -915,8 +915,8 @@
         
         <!-- Location Category -->
         <select id="locationCategoryFilter" class="column-filter" style="width: 90px; font-size: 12px; padding: 6px;">
-          <option value="all">All Loc</option>
-          <option value="us" selected>US Only</option>
+          <option value="all" selected>All Loc</option>
+          <option value="us">US Only</option>
           <option value="remote">Remote</option>
           <option value="nonus">Non-US</option>
         </select>
@@ -1226,87 +1226,161 @@
     </div>
 
 
-    <!-- Job Analysis Modal - Fullscreen -->
-    <div id="jobAnalysisModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:200;">
-      <div class="modal-content" style="background:var(--card); position:absolute; top:20px; left:20px; right:20px; bottom:20px; border-radius:12px; padding:24px; overflow:hidden; display:flex; flex-direction:column;">
-        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-shrink:0;">
-          <h3 style="margin:0;">🔍 Job Analysis</h3>
-          <button class="modal-close" onclick="closeAnalysisModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted);">×</button>
-        </div>
-        <div class="modal-body" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
-          <div style="margin-bottom: 16px;">
-            <strong id="analysisCompanyName"></strong> - <span id="analysisPositionName"></span>
+    <!-- Application Preparation Modal - NEW VERSION -->
+    <div id="jobAnalysisModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:200; overflow:auto;">
+      <div class="modal-content" style="background:var(--card); position:absolute; top:20px; left:20px; right:20px; bottom:20px; border-radius:12px; overflow:hidden; display:flex; max-width: 900px; margin: 0 auto;">
+        
+        <!-- Left Panel: Analysis -->
+        <div style="flex: 1; min-width: 300px; padding: 20px; border-right: 1px solid var(--border); overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0;">📋 Application Preparation</h3>
+            <button onclick="closeAnalysisModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--muted);">×</button>
           </div>
           
-          <!-- Tabs -->
-          <div style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border);">
-            <button id="tabAnalysis" onclick="showAnalysisTab('analysis')" style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px 6px 0 0; cursor: pointer;">📊 Analysis</button>
-            <button id="tabCvPreview" onclick="showAnalysisTab('cv')" style="padding: 8px 16px; background: var(--bg); color: var(--text); border: none; border-radius: 6px 6px 0 0; cursor: pointer;">📄 CV Preview</button>
+          <!-- Job Info -->
+          <div style="margin-bottom: 20px; padding: 16px; background: var(--bg); border-radius: 8px;">
+            <div style="font-size: 18px; font-weight: 600;" id="analysisCompanyName">Company</div>
+            <div style="font-size: 14px; color: var(--muted);" id="analysisPositionName">Position</div>
           </div>
           
-          <!-- Analysis Tab -->
-          <div id="analysisTabContent" style="flex:1; overflow-y:auto;">
-            <!-- Match Score -->
-            <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+          <!-- Loading State -->
+          <div id="prepareLoading" style="text-align: center; padding: 40px;">
+            <div style="font-size: 24px; margin-bottom: 16px;">⏳</div>
+            <div style="color: var(--muted);">Analyzing job with AI...</div>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">This may take 10-15 seconds</div>
+          </div>
+          
+          <!-- Existing Files Choice -->
+          <div id="existingFilesChoice" style="display: none; padding: 20px; background: var(--bg); border-radius: 8px; border: 2px solid #8b5cf6;">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">✅ Found existing application files!</div>
+            <div style="margin-bottom: 16px; font-size: 14px;">
+              <div id="existingFolderInfo" style="cursor: pointer; color: var(--muted);" onclick="openExistingFolder()"></div>
+              <div id="existingCvInfo" style="margin-top: 8px; cursor: pointer;" onclick="openExistingCv()"></div>
+              <div id="existingClInfo" style="margin-top: 4px; cursor: pointer;" onclick="openExistingCl()"></div>
+              <div id="existingDateInfo" style="margin-top: 8px; font-style: italic; color: var(--muted);"></div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <button onclick="openExistingFolder()" style="flex: 1; padding: 8px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px;">
+                📂 Open Folder
+              </button>
+              <button id="btnOpenExistingCv" onclick="openExistingCv()" style="flex: 1; padding: 8px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px;">
+                📄 Open CV
+              </button>
+              <button id="btnOpenExistingCl" onclick="openExistingCl()" style="flex: 1; padding: 8px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px;">
+                📝 Open Letter
+              </button>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <button id="btnUseExisting" onclick="useExistingFiles()" style="flex: 1; padding: 12px; background: #8b5cf6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                ✅ Use Existing Files
+              </button>
+              <button id="btnRegenerate" onclick="regenerateFiles()" style="flex: 1; padding: 12px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 14px;">
+                🔄 Regenerate with AI
+              </button>
+            </div>
+          </div>
+          
+          <!-- Results (hidden initially) -->
+          <div id="prepareResults" style="display: none;">
+            
+            <!-- Match Score Card -->
+            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
               <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-                <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Match Score</div>
-                <div id="analysisMatchScore" style="font-size: 32px; font-weight: bold;">--</div>
+                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Match Score</div>
+                <div id="prepMatchScore" style="font-size: 28px; font-weight: bold; color: #10b981;">--</div>
               </div>
               <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-                <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Response Chance</div>
-                <div id="analysisResponseChance" style="font-size: 18px; font-weight: 500;">--</div>
+                <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Fit Level</div>
+                <div id="prepFitLevel" style="font-size: 16px; font-weight: 500;">--</div>
               </div>
-              <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-                <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">CV Selected</div>
-                <div id="analysisCvFile" style="font-size: 12px;">--</div>
-              </div>
+            </div>
+            
+            <!-- AI Summary -->
+            <div style="margin-bottom: 16px; padding: 12px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-radius: 8px;">
+              <div style="font-size: 11px; color: #a5b4fc; margin-bottom: 6px;">🧠 AI Analysis</div>
+              <div id="prepSummary" style="font-size: 13px; color: #e0e7ff; line-height: 1.5;"></div>
+            </div>
+            
+            <!-- Matching Experience -->
+            <div id="prepMatchingSection" style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: #10b981; font-weight: 500; margin-bottom: 8px;">✅ Your Matching Experience</div>
+              <div id="prepMatching" style="font-size: 12px;"></div>
+            </div>
+            
+            <!-- Gaps -->
+            <div id="prepGapsSection" style="margin-bottom: 16px; display: none;">
+              <div style="font-size: 12px; color: #f59e0b; font-weight: 500; margin-bottom: 8px;">⚠️ Potential Gaps</div>
+              <div id="prepGaps" style="font-size: 12px;"></div>
             </div>
             
             <!-- Red Flags -->
-            <div id="analysisRedFlags" style="margin-bottom: 16px; display: none;">
-              <div style="font-size: 12px; color: #ef4444; font-weight: 500; margin-bottom: 8px;">⚠️ Red Flags</div>
-              <div id="analysisRedFlagsList" style="padding: 12px; background: rgba(239,68,68,0.1); border-radius: 8px; border-left: 3px solid #ef4444;"></div>
+            <div id="prepRedFlagsSection" style="margin-bottom: 16px; display: none;">
+              <div style="font-size: 12px; color: #ef4444; font-weight: 500; margin-bottom: 8px;">🚨 Red Flags</div>
+              <div id="prepRedFlags" style="font-size: 12px;"></div>
             </div>
             
-            <!-- ATS Tips -->
-            <div style="margin-bottom: 16px;">
-              <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">📋 ATS Optimization Tips</div>
-              <div id="analysisAtsTips" style="padding: 12px; background: var(--bg); border-radius: 8px;"></div>
+            <!-- CV Decision -->
+            <div style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 8px;">
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 6px;">📄 CV Decision</div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="prepCvBadge" style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;">BASE</span>
+                <span id="prepCvReason" style="font-size: 12px; color: var(--muted);"></span>
+              </div>
+              <div id="prepKeywordsAdded" style="margin-top: 8px; font-size: 11px; display: none;">
+                <span style="color: #10b981;">Keywords added:</span> <span id="prepKeywordsList"></span>
+              </div>
             </div>
-            
-            <!-- Keywords to Add -->
-            <div style="margin-bottom: 16px;">
-              <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">🔑 Keywords to Add to CV <span style="color: #eab308;">(will be highlighted in yellow)</span></div>
-              <div id="analysisKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+          </div>
+        </div>
+        
+        <!-- Right Panel: Documents -->
+        <div id="rightPanelDocs" style="width: 280px; flex-shrink: 0; padding: 16px; background: var(--bg); display: flex; flex-direction: column; overflow-y: auto;">
+          <h4 style="margin: 0 0 20px 0;">📁 Documents</h4>
+          
+          <!-- CV Card -->
+          <div style="margin-bottom: 16px; padding: 16px; background: var(--card); border-radius: 8px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+              <div>
+                <div style="font-size: 12px; color: var(--muted);">📄 CV</div>
+                <div id="prepCvFilename" style="font-size: 13px; font-weight: 500; margin-top: 4px;">--</div>
+              </div>
+              <span id="prepCvStatus" style="padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 10px;">Ready</span>
             </div>
-            
-            <!-- Found Keywords -->
-            <div style="margin-bottom: 20px;">
-              <div style="font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px;">✅ Your Matching Keywords <span style="color: #10b981;">(highlighted in green)</span></div>
-              <div id="analysisFoundKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btnOpenCv" onclick="openPreparedFile('cv')" style="flex: 1; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;" disabled>📂 Open</button>
+              <button id="btnOpenCvFolder" onclick="openPreparedFile('folder')" style="flex: 1; padding: 8px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 11px;" disabled>📁 Folder</button>
             </div>
           </div>
           
-          <!-- CV Preview Tab -->
-          <div id="cvPreviewTabContent" style="display: none; flex:1; overflow:hidden; display:flex; flex-direction:column;">
-            <div style="margin-bottom: 12px; padding: 12px; background: var(--bg); border-radius: 8px; flex-shrink:0;">
-              <div style="display: flex; gap: 16px; font-size: 13px; align-items:center;">
-                <span><span style="background: #bbf7d0; padding: 2px 8px; border-radius: 3px; color: #166534; font-weight:500;">Green</span> = Matched keywords (already in your CV)</span>
-                <span><span style="background: #fde047; padding: 2px 8px; border-radius: 3px; color: #854d0e; font-weight:500;">Yellow</span> = Keywords to be added</span>
+          <!-- Cover Letter Card -->
+          <div style="margin-bottom: 16px; padding: 16px; background: var(--card); border-radius: 8px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+              <div>
+                <div style="font-size: 12px; color: var(--muted);">📝 Cover Letter</div>
+                <div id="prepClFilename" style="font-size: 13px; font-weight: 500; margin-top: 4px;">--</div>
               </div>
+              <span id="prepClStatus" style="padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 10px;">Ready</span>
             </div>
-            <div id="cvPreviewContent" style="flex:1; overflow-y: auto; padding: 24px; background: #ffffff; border-radius: 8px; border: 1px solid var(--border); color: #1f2937; font-size: 13px; line-height: 1.6;">
-              <div style="text-align: center; color: #6b7280; padding: 40px;">Click "Preview CV" to load...</div>
-            </div>
+            <button id="btnOpenCl" onclick="openPreparedFile('cover_letter')" style="width: 100%; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;" disabled>📂 Open Cover Letter</button>
+          </div>
+          
+          <!-- Cover Letter Preview -->
+          <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Cover Letter Preview</div>
+            <div id="prepClPreview" style="flex: 1; padding: 12px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); overflow-y: auto; font-size: 12px; line-height: 1.6; white-space: pre-wrap;">Generating...</div>
           </div>
           
           <!-- Actions -->
-          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 16px; flex-shrink:0;">
-            <button onclick="closeAnalysisModal()" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 20px; cursor: pointer;">Cancel</button>
-            <button id="previewCvBtn" onclick="loadCvPreview()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer;">👁️ Preview CV</button>
-            <button id="analysisProceedBtn" onclick="proceedWithApplication()" style="background: #16a34a; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer; font-weight: 500;">✅ Accept & Apply</button>
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <button id="btnStartApplication" onclick="startApplication()" style="width: 100%; padding: 14px; background: #16a34a; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;" disabled>
+              🚀 Start Application
+            </button>
+            <div style="text-align: center; margin-top: 8px;">
+              <button onclick="closeAnalysisModal()" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px;">Cancel</button>
+            </div>
           </div>
         </div>
+        
       </div>
     </div>
 
@@ -1468,7 +1542,7 @@
       let locationCategory = "us"; // all, us, remote, nonus - default to US
       
       // Quick Filters
-      let activeQuickFilter = "to-apply"; // new-week, to-apply, applied, all
+      let activeQuickFilter = "all"; // new-week, to-apply, applied, all
       let dateRangeDays = "all"; // 7, 14, 30, 90, or 'all'
       let globalSearchText = "";
       // Job status cache: job_key -> status
@@ -2047,13 +2121,10 @@
           ${st === 'Selected'
             ? `<button class="prepareBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`
             : ''}
-          ${st === 'Ready' && (job.ats || '').toLowerCase() === 'greenhouse'
+          ${st === 'Ready' && ['greenhouse', 'universal', 'icims', 'lever', 'workday'].includes((job.ats || '').toLowerCase())
             ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply Now</button>`
             : ''}
-          ${(job.ats || '').toLowerCase() === 'greenhouse' && !['Selected', 'Ready', 'Applied', 'Interview', 'Offer', 'Rejected', 'Withdrawn', 'Closed'].includes(st)
-            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" data-company="${escapeAttr(job.company || '')}" data-rolefamily="${escapeAttr(job.role_family || 'product')}" title="Analyze & Apply">📝 Apply</button>`
-            : ''}
-          ${['workday', 'manual'].includes((job.ats || '').toLowerCase()) && !['Selected', 'Ready', 'Applied', 'Interview', 'Offer', 'Rejected', 'Withdrawn', 'Closed'].includes(st)
+          ${['greenhouse', 'universal', 'icims', 'lever', 'workday', 'manual'].includes((job.ats || '').toLowerCase()) && !['Selected', 'Ready', 'Applied', 'Interview', 'Offer', 'Rejected', 'Withdrawn', 'Closed'].includes(st)
             ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" data-company="${escapeAttr(job.company || '')}" data-rolefamily="${escapeAttr(job.role_family || 'product')}" title="Analyze & Apply">📝 Apply</button>`
             : ''}
           ${showAddButton && !inPipeline 
@@ -2323,10 +2394,30 @@
               if (!jobUrl) return;
               
               e.target.disabled = true;
-              e.target.textContent = "🔍 Analyzing...";
+              e.target.textContent = "🔍 Checking...";
               
               try {
-                // 1. Fetch JD first
+                // 1. Check existing files FIRST (fast!)
+                const checkRes = await fetch('/check-existing-application', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ job_title: jobTitle, company: company })
+                });
+                const existingData = await checkRes.json();
+                
+                e.target.textContent = "📝 Apply";
+                e.target.disabled = false;
+                
+                if (existingData.exists) {
+                  // Show modal with existing files immediately
+                  showPrepareModalWithExisting(company, jobTitle, jobUrl, roleFamily, job, existingData);
+                  return;
+                }
+                
+                // 2. No existing files - need to fetch JD
+                e.target.disabled = true;
+                e.target.textContent = "🔍 Loading JD...";
+                
                 let jd = '';
                 const jdRes = await fetch('/fetch-job-description', {
                   method: 'POST',
@@ -2336,29 +2427,15 @@
                 const jdData = await jdRes.json();
                 if (jdData.ok) jd = jdData.description || '';
                 
-                // 2. Analyze JD
-                const analyzeRes = await fetch('/analyze-job', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    job_description: jd,
-                    job_title: jobTitle,
-                    company: company,
-                    role_family: roleFamily
-                  })
-                });
-                const analysisData = await analyzeRes.json();
-                analysisData.jd = jd;  // Store JD for later use
-                
                 e.target.textContent = "📝 Apply";
                 e.target.disabled = false;
                 
-                // 3. Show analysis modal
-                showAnalysisModal(company, jobTitle, analysisData, job);
+                // 3. Show modal for new application
+                showPrepareModalNew(company, jobTitle, jobUrl, jd, roleFamily, job);
                 
               } catch (err) {
-                console.error("Analysis error:", err);
-                alert("Error analyzing job: " + err.message);
+                console.error("Error:", err);
+                alert("Error: " + err.message);
                 e.target.textContent = "📝 Apply";
                 e.target.disabled = false;
               }
@@ -2766,6 +2843,10 @@
 
           const data = await res.json();
           console.log("got pipeline jobs:", data.count);
+          
+          // Debug: check for manual jobs
+          const manualJobs = (data.jobs || []).filter(j => j.source === 'onboard');
+          console.log("manual (onboard) jobs:", manualJobs.length, manualJobs.map(j => j.company));
           
           // Store pipeline jobs
           ALL_JOBS_RAW = enrichJobsLocationNorm(data.jobs || []);
@@ -3213,158 +3294,608 @@
       }
 
 
-      // === Job Analysis Modal ===
-      let currentAnalysisData = null;
-      let cvPreviewLoaded = false;
+      // === Application Preparation Modal (NEW) ===
+      let currentPrepData = null;
+      let prepareResult = null;
       
-      function showAnalysisTab(tab) {
-        const analysisTab = document.getElementById('analysisTabContent');
-        const cvTab = document.getElementById('cvPreviewTabContent');
-        const tabAnalysisBtn = document.getElementById('tabAnalysis');
-        const tabCvBtn = document.getElementById('tabCvPreview');
+      function closeAnalysisModal() {
+        document.getElementById('jobAnalysisModal').style.display = 'none';
+        currentPrepData = null;
+        prepareResult = null;
+      }
+      
+      // Show modal with existing files (fast path - no API calls needed)
+      function showPrepareModalWithExisting(company, position, jobUrl, roleFamily, jobData, existingData) {
+        console.log('[PrepareModal] Fast path - existing files found');
+        currentPrepData = { company, position, jobUrl, jd: '', roleFamily, jobData };
+        window._pendingExistingData = existingData;
         
-        if (tab === 'analysis') {
-          analysisTab.style.display = 'block';
-          cvTab.style.display = 'none';
-          tabAnalysisBtn.style.background = 'var(--accent)';
-          tabAnalysisBtn.style.color = 'white';
-          tabCvBtn.style.background = 'var(--bg)';
-          tabCvBtn.style.color = 'var(--text)';
-        } else {
-          analysisTab.style.display = 'none';
-          cvTab.style.display = 'flex';
-          cvTab.style.flexDirection = 'column';
-          tabAnalysisBtn.style.background = 'var(--bg)';
-          tabAnalysisBtn.style.color = 'var(--text)';
-          tabCvBtn.style.background = 'var(--accent)';
-          tabCvBtn.style.color = 'white';
+        // Show modal
+        document.getElementById('analysisCompanyName').textContent = company;
+        document.getElementById('analysisPositionName').textContent = position;
+        document.getElementById('prepareLoading').style.display = 'none';
+        document.getElementById('prepareResults').style.display = 'none';
+        document.getElementById('existingFilesChoice').style.display = 'block';
+        document.getElementById('rightPanelDocs').style.opacity = '0.3';
+        document.getElementById('rightPanelDocs').style.pointerEvents = 'none';
+        document.getElementById('jobAnalysisModal').style.display = 'flex';
+        
+        // Populate info
+        document.getElementById('existingFolderInfo').textContent = '📁 Folder: ' + existingData.folder_name;
+        document.getElementById('existingCvInfo').textContent = '📄 CV: ' + (existingData.cv_filename || 'Will use Base CV');
+        document.getElementById('existingClInfo').textContent = '📝 Cover Letter: ' + (existingData.cover_letter_filename || 'Not found');
+        document.getElementById('existingDateInfo').textContent = '📅 Created: ' + existingData.created_at;
+      }
+      
+      // Show modal for new application (need to generate)
+      function showPrepareModalNew(company, position, jobUrl, jd, roleFamily, jobData) {
+        console.log('[PrepareModal] New application - will generate');
+        currentPrepData = { company, position, jobUrl, jd, roleFamily, jobData };
+        
+        // Show modal with loading
+        document.getElementById('analysisCompanyName').textContent = company;
+        document.getElementById('analysisPositionName').textContent = position;
+        document.getElementById('prepareLoading').style.display = 'block';
+        document.getElementById('prepareResults').style.display = 'none';
+        document.getElementById('existingFilesChoice').style.display = 'none';
+        document.getElementById('rightPanelDocs').style.opacity = '1';
+        document.getElementById('rightPanelDocs').style.pointerEvents = 'auto';
+        document.getElementById('jobAnalysisModal').style.display = 'flex';
+        
+        // Reset right panel
+        document.getElementById('prepCvFilename').textContent = 'Generating...';
+        document.getElementById('prepClFilename').textContent = 'Generating...';
+        document.getElementById('prepClPreview').textContent = 'Generating with AI...';
+        document.getElementById('btnOpenCv').disabled = true;
+        document.getElementById('btnOpenCvFolder').disabled = true;
+        document.getElementById('btnOpenCl').disabled = true;
+        document.getElementById('btnStartApplication').disabled = true;
+        
+        // Start generation
+        generateNewApplication();
+      }
+      
+      async function showPrepareModal(company, position, jobUrl, jd, roleFamily, jobData) {
+        console.log('[PrepareModal] Starting:', { company, position, jobUrl: jobUrl?.substring(0, 50), jdLength: jd?.length, roleFamily });
+        currentPrepData = { company, position, jobUrl, jd, roleFamily, jobData };
+        
+        // Show modal with loading state
+        document.getElementById('analysisCompanyName').textContent = company;
+        document.getElementById('analysisPositionName').textContent = position;
+        document.getElementById('prepareLoading').style.display = 'block';
+        document.getElementById('prepareResults').style.display = 'none';
+        document.getElementById('existingFilesChoice').style.display = 'none';
+        document.getElementById('jobAnalysisModal').style.display = 'flex';
+        
+        // Reset right panel
+        document.getElementById('prepCvFilename').textContent = 'Checking...';
+        document.getElementById('prepClFilename').textContent = 'Checking...';
+        document.getElementById('prepClPreview').textContent = 'Checking for existing files...';
+        document.getElementById('btnOpenCv').disabled = true;
+        document.getElementById('btnOpenCvFolder').disabled = true;
+        document.getElementById('btnOpenCl').disabled = true;
+        document.getElementById('btnStartApplication').disabled = true;
+        
+        try {
+          // First check if files already exist
+          console.log('[PrepareModal] Checking existing files...');
+          const checkRes = await fetch('/check-existing-application', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_title: position, company: company })
+          });
+          const existingData = await checkRes.json();
           
-          // Auto-load CV preview if not loaded
-          if (!cvPreviewLoaded) {
-            loadCvPreview();
+          if (existingData.exists) {
+            console.log('[PrepareModal] Found existing files:', existingData);
+            // Show choice UI instead of confirm dialog
+            document.getElementById('prepareLoading').style.display = 'none';
+            document.getElementById('existingFilesChoice').style.display = 'block';
+            document.getElementById('rightPanelDocs').style.opacity = '0.3';
+            document.getElementById('rightPanelDocs').style.pointerEvents = 'none';
+            
+            // Populate info
+            document.getElementById('existingFolderInfo').textContent = '📁 Folder: ' + existingData.folder_name;
+            document.getElementById('existingCvInfo').textContent = '📄 CV: ' + (existingData.cv_filename || 'Will use Base CV');
+            document.getElementById('existingClInfo').textContent = '📝 Cover Letter: ' + (existingData.cover_letter_filename || 'Not found');
+            document.getElementById('existingDateInfo').textContent = '📅 Created: ' + existingData.created_at;
+            
+            // Store for later use
+            window._pendingExistingData = existingData;
+            return; // Wait for user choice
+          }
+          
+          // No existing files - proceed with AI generation
+          await generateNewApplication();
+          
+        } catch (err) {
+          document.getElementById('prepareLoading').innerHTML = 
+            '<div style="color: #ef4444;">❌ Error: ' + err.message + '</div>';
+        }
+      }
+      
+      // Handler for "Use Existing Files" button
+      // Open existing folder
+      async function openExistingFolder() {
+        const data = window._pendingExistingData;
+        if (!data?.folder) return;
+        try {
+          await fetch(`/open-file/folder?path=${encodeURIComponent(data.folder)}`);
+        } catch (e) {
+          console.error('Failed to open folder:', e);
+        }
+      }
+      
+      // Open existing CV
+      async function openExistingCv() {
+        const data = window._pendingExistingData;
+        if (data?.cv_path) {
+          try {
+            await fetch(`/open-file/cv?path=${encodeURIComponent(data.cv_path)}`);
+          } catch (e) {
+            console.error('Failed to open CV:', e);
+          }
+        } else {
+          // Open base CV
+          const roleFamily = currentPrepData?.roleFamily || 'product';
+          const roleCvMap = {
+            'product': 'CV_Anton_Kondakov_Product Manager.docx',
+            'tpm_program': 'CV_Anton_Kondakov_TPM.docx',
+            'project': 'CV_Anton_Kondakov_Project Manager.docx',
+            'other': 'CV_Anton_Kondakov_Product Manager.docx'
+          };
+          const baseCvPath = '/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/' + (roleCvMap[roleFamily] || roleCvMap['product']);
+          try {
+            await fetch(`/open-file/cv?path=${encodeURIComponent(baseCvPath)}`);
+          } catch (e) {
+            console.error('Failed to open base CV:', e);
           }
         }
       }
       
-      async function loadCvPreview() {
-        if (!currentAnalysisData) return;
+      // Open existing cover letter
+      async function openExistingCl() {
+        const data = window._pendingExistingData;
+        if (!data?.cover_letter_path) {
+          alert('No cover letter found');
+          return;
+        }
+        try {
+          await fetch(`/open-file/cover_letter?path=${encodeURIComponent(data.cover_letter_path)}`);
+        } catch (e) {
+          console.error('Failed to open cover letter:', e);
+        }
+      }
+      
+      function useExistingFiles() {
+        const existingData = window._pendingExistingData;
+        if (!existingData) return;
         
-        const btn = document.getElementById('previewCvBtn');
-        btn.disabled = true;
-        btn.textContent = '⏳ Loading...';
+        document.getElementById('existingFilesChoice').style.display = 'none';
+        document.getElementById('prepareResults').style.display = 'block';
+        document.getElementById('rightPanelDocs').style.opacity = '1';
+        document.getElementById('rightPanelDocs').style.pointerEvents = 'auto';
+        displayExistingFiles(existingData);
+      }
+      
+      // Handler for "Regenerate" button
+      async function regenerateFiles() {
+        document.getElementById('existingFilesChoice').style.display = 'none';
+        document.getElementById('rightPanelDocs').style.opacity = '1';
+        document.getElementById('rightPanelDocs').style.pointerEvents = 'auto';
+        await generateNewApplication();
+      }
+      
+      // Generate new application with AI
+      async function generateNewApplication() {
+        const { company, position, jobUrl, jd, roleFamily } = currentPrepData || {};
         
-        const { company, position, analysisData, jobData } = currentAnalysisData;
-        const roleFamily = jobData.role_family || 'product';
-        
-        // Get matched keywords (flat list)
-        const matchedKw = [
-          ...(analysisData.found_keywords?.hard_skills || []),
-          ...(analysisData.found_keywords?.soft_skills || [])
-        ];
-        
-        console.log('CV Preview request:', {
-          keywords_to_add: analysisData.keywords_to_add,
-          matched_keywords: matchedKw,
-          role_family: roleFamily
-        });
+        document.getElementById('prepareLoading').style.display = 'block';
+        document.getElementById('prepareLoading').innerHTML = `
+          <div style="font-size: 24px; margin-bottom: 16px;">⏳</div>
+          <div style="color: var(--muted);">Analyzing job with AI...</div>
+          <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">This may take 10-15 seconds</div>
+        `;
         
         try {
-          const res = await fetch('/cv/preview', {
+          const res = await fetch('/prepare-application', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               job_title: position,
               company: company,
+              job_url: jobUrl,
+              job_description: jd,
               role_family: roleFamily,
-              keywords_to_add: analysisData.keywords_to_add || [],
-              matched_keywords: matchedKw
+              force_regenerate: true
             })
           });
           
           const data = await res.json();
-          console.log('CV Preview response stats:', data.stats);
+          prepareResult = data;
           
-          if (data.ok) {
-            document.getElementById('cvPreviewContent').innerHTML = data.html;
-            cvPreviewLoaded = true;
-            
-            // Switch to CV tab
-            showAnalysisTab('cv');
-          } else {
-            document.getElementById('cvPreviewContent').innerHTML = 
-              '<div style="color: #ef4444; padding: 20px;">Error loading CV: ' + (data.error || 'Unknown error') + '</div>';
+          if (!data.ok) {
+            document.getElementById('prepareLoading').innerHTML = 
+              '<div style="color: #ef4444;">❌ Error: ' + (data.error || 'Unknown error') + '</div>';
+            return;
+          }
+          
+          // Hide loading, show results
+          document.getElementById('prepareLoading').style.display = 'none';
+          document.getElementById('prepareResults').style.display = 'block';
+          
+          // Populate results
+          displayPrepareResults(data);
+          
+        } catch (err) {
+          document.getElementById('prepareLoading').innerHTML = 
+            '<div style="color: #ef4444;">❌ Error: ' + err.message + '</div>';
+        }
+      }
+      
+      function displayPrepareResults(data) {
+        // Match Score
+        const scoreEl = document.getElementById('prepMatchScore');
+        scoreEl.textContent = data.match_score + '%';
+        scoreEl.style.color = data.match_score >= 75 ? '#10b981' : data.match_score >= 60 ? '#f59e0b' : '#ef4444';
+        
+        // Fit Level
+        const fitEl = document.getElementById('prepFitLevel');
+        const fitColors = { excellent: '#10b981', good: '#22c55e', moderate: '#f59e0b', low: '#ef4444' };
+        fitEl.textContent = (data.fit_level || 'unknown').charAt(0).toUpperCase() + (data.fit_level || '').slice(1);
+        fitEl.style.color = fitColors[data.fit_level] || 'var(--text)';
+        
+        // AI Summary
+        document.getElementById('prepSummary').textContent = data.analysis_summary || 'Analysis complete.';
+        
+        // Matching Experience
+        const matchingEl = document.getElementById('prepMatching');
+        if (data.matching_experience && data.matching_experience.length > 0) {
+          matchingEl.innerHTML = data.matching_experience.map(e => 
+            '<div style="margin-bottom: 4px;">• ' + e + '</div>'
+          ).join('');
+        } else {
+          document.getElementById('prepMatchingSection').style.display = 'none';
+        }
+        
+        // Gaps
+        const gapsSection = document.getElementById('prepGapsSection');
+        const gapsEl = document.getElementById('prepGaps');
+        if (data.gaps && data.gaps.length > 0) {
+          gapsSection.style.display = 'block';
+          gapsEl.innerHTML = data.gaps.map(g => 
+            '<div style="margin-bottom: 4px;">• ' + g + '</div>'
+          ).join('');
+        }
+        
+        // Red Flags
+        const redFlagsSection = document.getElementById('prepRedFlagsSection');
+        const redFlagsEl = document.getElementById('prepRedFlags');
+        if (data.red_flags && data.red_flags.length > 0) {
+          redFlagsSection.style.display = 'block';
+          redFlagsEl.innerHTML = data.red_flags.map(f => 
+            '<div style="margin-bottom: 4px;">• ' + f + '</div>'
+          ).join('');
+        }
+        
+        // CV Decision
+        const cvBadge = document.getElementById('prepCvBadge');
+        if (data.cv_decision === 'optimize') {
+          cvBadge.textContent = 'OPTIMIZED';
+          cvBadge.style.background = '#8b5cf6';
+          cvBadge.style.color = 'white';
+        } else {
+          cvBadge.textContent = 'BASE';
+          cvBadge.style.background = '#3b82f6';
+          cvBadge.style.color = 'white';
+        }
+        document.getElementById('prepCvReason').textContent = data.cv_reason || '';
+        
+        // Keywords Added
+        if (data.keywords_added && data.keywords_added.length > 0) {
+          document.getElementById('prepKeywordsAdded').style.display = 'block';
+          document.getElementById('prepKeywordsList').textContent = data.keywords_added.join(', ');
+        }
+        
+        // Right Panel - Documents
+        document.getElementById('prepCvFilename').textContent = data.cv_filename || 'No CV';
+        document.getElementById('prepClFilename').textContent = data.cover_letter_filename || 'No Cover Letter';
+        document.getElementById('prepClPreview').textContent = data.cover_letter_preview || 'No cover letter generated.';
+        
+        // Enable buttons
+        if (data.cv_path) {
+          document.getElementById('btnOpenCv').disabled = false;
+        }
+        if (data.application_folder) {
+          document.getElementById('btnOpenCvFolder').disabled = false;
+        }
+        if (data.cover_letter_path) {
+          document.getElementById('btnOpenCl').disabled = false;
+        }
+        
+        // Enable Start Application button
+        document.getElementById('btnStartApplication').disabled = false;
+      }
+      
+      function displayExistingFiles(data) {
+        // Set prepareResult for openPreparedFile to work
+        prepareResult = {
+          cv_path: data.cv_path,
+          cv_filename: data.cv_filename,
+          cover_letter_path: data.cover_letter_path,
+          cover_letter_filename: data.cover_letter_filename,
+          application_folder: data.folder,
+          application_url: currentPrepData?.jobUrl || ''
+        };
+        
+        // If no CV in existing folder, use base CV
+        if (!data.cv_path) {
+          const roleFamily = currentPrepData?.roleFamily || 'product';
+          const roleCvMap = {
+            'product': 'CV_Anton_Kondakov_Product Manager.docx',
+            'tpm_program': 'CV_Anton_Kondakov_TPM.docx',
+            'project': 'CV_Anton_Kondakov_Project Manager.docx',
+            'other': 'CV_Anton_Kondakov_Product Manager.docx'
+          };
+          const baseCvName = roleCvMap[roleFamily] || roleCvMap['product'];
+          const baseCvPath = '/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/' + baseCvName;
+          prepareResult.cv_path = baseCvPath;
+          prepareResult.cv_filename = baseCvName + ' (Base)';
+        }
+        
+        // Update left panel with "Using existing" message
+        document.getElementById('prepMatchScore').textContent = '--';
+        document.getElementById('prepMatchScore').style.color = 'var(--muted)';
+        document.getElementById('prepFitLevel').textContent = 'Existing';
+        document.getElementById('prepFitLevel').style.color = '#8b5cf6';
+        document.getElementById('prepSummary').textContent = '\u2705 Using previously generated application files. Click "Start Application" to proceed or open files to review.';
+        
+        // Hide analysis sections
+        document.getElementById('prepMatchingSection').style.display = 'none';
+        document.getElementById('prepGapsSection').style.display = 'none';
+        document.getElementById('prepRedFlagsSection').style.display = 'none';
+        
+        // CV Decision
+        const cvBadge = document.getElementById('prepCvBadge');
+        cvBadge.textContent = data.cv_path ? 'EXISTING' : 'BASE';
+        cvBadge.style.background = data.cv_path ? '#8b5cf6' : '#3b82f6';
+        cvBadge.style.color = 'white';
+        document.getElementById('prepCvReason').textContent = data.cv_path ? 'Using files from ' + data.created_at : 'Using base CV (no optimized CV found)';
+        document.getElementById('prepKeywordsAdded').style.display = 'none';
+        
+        // Right Panel - Documents
+        document.getElementById('prepCvFilename').textContent = prepareResult.cv_filename || 'Not found';
+        document.getElementById('prepClFilename').textContent = data.cover_letter_filename || 'Not found';
+        document.getElementById('prepClPreview').textContent = data.cover_letter_preview || (data.cover_letter_path ? 'Click "Open Cover Letter" to view.' : 'No cover letter found.');
+        
+        // Enable buttons
+        if (prepareResult.cv_path) {
+          document.getElementById('btnOpenCv').disabled = false;
+        }
+        if (data.folder) {
+          document.getElementById('btnOpenCvFolder').disabled = false;
+        }
+        if (data.cover_letter_path) {
+          document.getElementById('btnOpenCl').disabled = false;
+        }
+        
+        // Enable Start Application button
+        document.getElementById('btnStartApplication').disabled = false;
+      }
+      
+      async function openPreparedFile(fileType) {
+        if (!prepareResult) return;
+        
+        let path = '';
+        if (fileType === 'cv') path = prepareResult.cv_path;
+        else if (fileType === 'cover_letter') path = prepareResult.cover_letter_path;
+        else if (fileType === 'folder') path = prepareResult.application_folder;
+        
+        if (!path) {
+          alert('File not found');
+          return;
+        }
+        
+        try {
+          const res = await fetch('/open-file/' + fileType + '?path=' + encodeURIComponent(path));
+          const data = await res.json();
+          if (!data.ok) {
+            alert('Error opening file: ' + data.error);
           }
         } catch (err) {
-          console.error('CV preview error:', err);
-          document.getElementById('cvPreviewContent').innerHTML = 
-            '<div style="color: #ef4444; padding: 20px;">Error: ' + err.message + '</div>';
+          alert('Error: ' + err.message);
+        }
+      }
+      
+      async function startApplication() {
+        if (!prepareResult) {
+          alert('No application data. Please try again.');
+          return;
+        }
+        
+        // Save data before closing modal
+        const jobUrl = currentPrepData?.jobUrl || prepareResult.application_url || '';
+        const company = currentPrepData?.company || '';
+        const position = currentPrepData?.position || '';
+        const applicationUrl = prepareResult.application_url || jobUrl;
+        const cvFilename = prepareResult.cv_filename || 'Ready';
+        const clFilename = prepareResult.cover_letter_filename || 'Ready';
+        
+        // Close modal
+        closeAnalysisModal();
+        
+        // Start V5 form filler
+        try {
+          const res = await fetch('/apply/v5', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              job_url: applicationUrl,
+              profile: 'anton_kondakov'
+            })
+          });
+          
+          const data = await res.json();
+          
+          if (data.ok) {
+            alert('🚀 Application started!\n\n' +
+              '✅ CV: ' + cvFilename + '\n' +
+              '✅ Cover Letter: ' + clFilename + '\n\n' +
+              'Check the browser window.');
+          } else {
+            alert('Error starting application: ' + data.error);
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      }
+      
+      // Legacy function mapping for compatibility
+      function showAnalysisModal(company, position, analysisData, jobData) {
+        // Redirect to new prepare modal
+        showPrepareModal(
+          company, 
+          position, 
+          jobData.job_url || '', 
+          analysisData.jd || '', 
+          jobData.role_family || 'product',
+          jobData
+        );
+      }
+      
+      // === CV Management Functions (Legacy - kept for compatibility) ===
+      let availableCvs = [];
+      let selectedCvPath = null;
+      
+      async function loadAvailableCvs() {
+        try {
+          const res = await fetch('/available-cvs');
+          const data = await res.json();
+          availableCvs = data.cvs || [];
+          
+          const select = document.getElementById('analysisCvSelect'); if (!select) return;
+          select.innerHTML = '<option value="auto">🤖 Auto-select by role</option>';
+          
+          availableCvs.forEach(cv => {
+            const opt = document.createElement('option');
+            opt.value = cv.path;
+            opt.textContent = cv.name;
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          console.error('Failed to load CVs:', e);
+        }
+      }
+      
+      function useExistingCv() {
+        const select = document.getElementById('analysisCvSelect'); if (!select) return;
+        selectedCvPath = select.value === 'auto' ? null : select.value;
+        
+        const statusEl = document.getElementById('cvOptionStatus');
+        if (selectedCvPath) {
+          const cvName = availableCvs.find(c => c.path === selectedCvPath)?.name || 'Selected';
+          statusEl.innerHTML = '✅ Will use: <strong>' + cvName + '</strong>';
+          document.getElementById('analysisCvFile').textContent = cvName;
+        } else {
+          statusEl.innerHTML = '🤖 CV will be auto-selected based on job role';
+        }
+        
+        // Highlight button
+        document.getElementById('btnUseExistingCv').style.background = 'var(--accent)';
+        document.getElementById('btnOptimizeCv').style.background = 'transparent';
+      }
+      
+      async function optimizeCvWithAI() {
+        if (!currentAnalysisData) return;
+        
+        const statusEl = document.getElementById('cvOptionStatus');
+        const btn = document.getElementById('btnOptimizeCv');
+        
+        btn.disabled = true;
+        btn.textContent = '⏳ Optimizing...';
+        statusEl.innerHTML = '🧠 Analyzing job and optimizing CV with AI...';
+        
+        try {
+          const { company, position, analysisData, jobData } = currentAnalysisData;
+          const jd = analysisData.jd || '';
+          const roleFamily = jobData.role_family || 'product';
+          
+          const res = await fetch('/cv/optimize-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              job_title: position,
+              company: company,
+              job_description: jd,
+              role_family: roleFamily
+            })
+          });
+          
+          const data = await res.json();
+          
+          if (data.ok) {
+            selectedCvPath = data.cv_path;
+            statusEl.innerHTML = '✅ AI-optimized CV created: <strong>' + data.cv_name + '</strong>';
+            document.getElementById('analysisCvFile').textContent = data.cv_name;
+            
+            // Update keywords display with AI analysis results
+            if (data.keywords_added?.length > 0) {
+              statusEl.innerHTML += '<br>🔑 Keywords added: ' + data.keywords_added.join(', ');
+              
+              // Update the Keywords to Add section to show "None - covered by AI"
+              document.getElementById('analysisKeywords').innerHTML = 
+                '<span style="color:#10b981; font-size:12px;">✅ AI added: ' + 
+                data.keywords_added.map(k => '<span style="background:#d1fae5; color:#065f46; padding:2px 6px; border-radius:4px; margin:2px;">' + k + '</span>').join('') + 
+                '</span>';
+            }
+            
+            // Update Match Score if AI analysis provided it
+            if (data.analysis?.technical_skills?.length > 0) {
+              // Show AI-found skills as matching keywords
+              const aiSkills = data.analysis.technical_skills.slice(0, 10);
+              document.getElementById('analysisFoundKeywords').innerHTML = 
+                aiSkills.map(k => '<span style="background:#d1fae5; color:#065f46; padding:2px 8px; border-radius:4px; font-size:12px;">' + k + '</span>').join('');
+              
+              // Update match score to reflect AI optimization
+              const scoreEl = document.getElementById('analysisMatchScore');
+              scoreEl.textContent = '95%';
+              scoreEl.style.color = '#10b981';
+              
+              // Update response chance
+              document.getElementById('analysisResponseChance').textContent = 'High (80-95%)';
+              document.getElementById('analysisResponseChance').style.color = '#10b981';
+            }
+            
+            // Highlight button
+            document.getElementById('btnOptimizeCv').style.background = '#8b5cf6';
+            document.getElementById('btnOptimizeCv').style.color = 'white';
+            document.getElementById('btnUseExistingCv').style.background = 'transparent';
+          } else {
+            statusEl.innerHTML = '❌ Error: ' + (data.error || 'Failed to optimize');
+          }
+        } catch (e) {
+          statusEl.innerHTML = '❌ Error: ' + e.message;
         } finally {
           btn.disabled = false;
-          btn.textContent = '👁️ Preview CV';
+          btn.textContent = '🧠 AI Optimize CV';
         }
       }
       
-      function showAnalysisModal(company, position, analysisData, jobData) {
-        currentAnalysisData = { company, position, analysisData, jobData };
-        cvPreviewLoaded = false;  // Reset CV preview state
+      function handleCvUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
         
-        // Reset to Analysis tab
-        showAnalysisTab('analysis');
-        document.getElementById('cvPreviewContent').innerHTML = 
-          '<div style="text-align: center; color: var(--muted); padding: 40px;">Click "Preview CV" to load...</div>';
+        const statusEl = document.getElementById('cvOptionStatus');
+        statusEl.innerHTML = '📁 Uploaded: <strong>' + file.name + '</strong> (will be used for this application)';
+        document.getElementById('analysisCvFile').textContent = file.name;
         
-        document.getElementById('analysisCompanyName').textContent = company;
-        document.getElementById('analysisPositionName').textContent = position;
-        
-        // Match score with color
-        const score = analysisData.match_score || 0;
-        const scoreEl = document.getElementById('analysisMatchScore');
-        scoreEl.textContent = score + '%';
-        scoreEl.style.color = score >= 70 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
-        
-        // Response chance
-        const responseEl = document.getElementById('analysisResponseChance');
-        responseEl.textContent = analysisData.response_chance || '--';
-        responseEl.style.color = analysisData.response_color || 'var(--text)';
-        
-        // CV file
-        document.getElementById('analysisCvFile').textContent = analysisData.cv_file || '--';
-        
-        // Red flags
-        const redFlagsDiv = document.getElementById('analysisRedFlags');
-        const redFlagsList = document.getElementById('analysisRedFlagsList');
-        if (analysisData.red_flags && analysisData.red_flags.length > 0) {
-          redFlagsDiv.style.display = 'block';
-          redFlagsList.innerHTML = analysisData.red_flags.map(f => '<div>' + f + '</div>').join('');
-        } else {
-          redFlagsDiv.style.display = 'none';
-        }
-        
-        // ATS tips
-        const atsTips = analysisData.ats_tips || [];
-        document.getElementById('analysisAtsTips').innerHTML = atsTips.length > 0 
-          ? atsTips.map(t => '<div style="margin-bottom:4px;">' + t + '</div>').join('') 
-          : '<div style="color:var(--muted);">No specific tips</div>';
-        
-        // Keywords to add (missing)
-        const missingKw = analysisData.keywords_to_add || [];
-        document.getElementById('analysisKeywords').innerHTML = missingKw.length > 0
-          ? missingKw.map(k => '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:4px; font-size:12px;">' + k + '</span>').join('')
-          : '<span style="color:var(--muted); font-size:12px;">None - great match!</span>';
-        
-        // Found keywords
-        const foundKw = [...(analysisData.found_keywords?.hard_skills || []), ...(analysisData.found_keywords?.soft_skills || [])];
-        document.getElementById('analysisFoundKeywords').innerHTML = foundKw.length > 0
-          ? foundKw.slice(0, 15).map(k => '<span style="background:#d1fae5; color:#065f46; padding:2px 8px; border-radius:4px; font-size:12px;">' + k + '</span>').join('')
-          : '<span style="color:var(--muted); font-size:12px;">--</span>';
-        
-        document.getElementById('jobAnalysisModal').style.display = 'flex';
+        // Store file for later use
+        window.uploadedCvFile = file;
+        selectedCvPath = 'uploaded:' + file.name;
       }
       
-      function closeAnalysisModal() {
-        document.getElementById('jobAnalysisModal').style.display = 'none';
-        currentAnalysisData = null;
-      }
+      // Load CVs on page load
+      loadAvailableCvs();
       
       async function proceedWithApplication() {
         if (!currentAnalysisData) return;
@@ -3421,9 +3952,11 @@
           
           closeAnalysisModal();
           
-          // 4. Start auto-fill
+          // 4. Start auto-fill with V5 (universal form filler)
           btn.textContent = '🚀 Opening form...';
-          const applyRes = await fetch('/apply/greenhouse', {
+          const applyEndpoint = '/apply/v5';
+          
+          const applyRes = await fetch(applyEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ job_url: jobUrl, profile: 'anton_tpm' })
@@ -3775,9 +4308,12 @@
       }
       
       // Filter jobs to only relevant role categories (primary + adjacent)
+      // BUT always include manually added jobs (source: onboard)
       function filterRelevantRoles(jobs) {
         const relevantCategories = ['primary', 'adjacent'];
-        return jobs.filter(j => relevantCategories.includes(j.role_category));
+        return jobs.filter(j => 
+          j.source === 'onboard' || relevantCategories.includes(j.role_category)
+        );
       }
       
       async function backgroundRefresh() {
