@@ -786,6 +786,9 @@ class FormFillerV5:
             browser.goto(url)
             browser.wait_for_stable()
             
+            # Wait for iframes to load (Greenhouse, Lever forms are in iframes)
+            self._wait_for_iframes()
+            
             # Try to find and click Apply button if on job description page
             self._find_and_click_apply_button()
             
@@ -869,6 +872,36 @@ class FormFillerV5:
     # ─────────────────────────────────────────────────────────────────────
     # LAYER 0: FIND AND CLICK APPLY BUTTON
     # ─────────────────────────────────────────────────────────────────────
+    
+    def _wait_for_iframes(self, timeout=8):
+        """
+        Wait for iframes to load (Greenhouse, Lever, etc.).
+        Many ATS embed their forms in iframes that load async.
+        """
+        import time
+        
+        start = time.time()
+        initial_frames = len(self.page.frames)
+        
+        # Wait up to timeout seconds for more frames to appear
+        while time.time() - start < timeout:
+            current_frames = len(self.page.frames)
+            
+            # Check if we have Greenhouse or Lever iframe
+            for frame in self.page.frames:
+                if frame.url and any(ats in frame.url for ats in ['greenhouse', 'lever', 'workday', 'icims']):
+                    print(f"   \u2705 Found ATS iframe: {frame.url[:50]}")
+                    time.sleep(1)  # Extra wait for iframe content
+                    return
+            
+            # If frames increased, wait a bit more
+            if current_frames > initial_frames:
+                time.sleep(1)
+                continue
+            
+            time.sleep(0.5)
+        
+        print(f"   \ud83d\udcc4 {len(self.page.frames)} frames loaded")
     
     def _find_and_click_apply_button(self):
         """
@@ -1079,18 +1112,48 @@ class FormFillerV5:
     # ─────────────────────────────────────────────────────────────────────
     
     def _scan_fields(self):
-        """Scan all form fields on page."""
+        """Scan all form fields on page and all iframes."""
         print("\n🔍 Scanning form fields...")
         self.fields = []
         self._seen_selectors = set()
+        self._active_frame = self.page  # Track which frame has the form
         
+        # Scan main page first
         elements = self.page.query_selector_all("input, select, textarea")
+        main_count = self._scan_elements(elements, "main")
         
+        # Scan all iframes (important for Greenhouse, Lever embedded forms)
+        frames = self.page.frames
+        if len(frames) > 1:
+            print(f"   📄 Checking {len(frames)} frames...")
+            
+            for i, frame in enumerate(frames):
+                if frame == self.page.main_frame:
+                    continue  # Already scanned
+                
+                try:
+                    frame_url = frame.url[:40] if frame.url else "(empty)"
+                    elements = frame.query_selector_all("input, select, textarea")
+                    count = self._scan_elements(elements, f"frame[{i}]")
+                    
+                    if count > 0:
+                        print(f"      ✅ Frame {i} ({frame_url}): {count} fields")
+                        # Remember which frame has the form
+                        if count > main_count:
+                            self._active_frame = frame
+                except:
+                    continue
+    
+    def _scan_elements(self, elements, source):
+        """Scan elements from a specific source (main or frame)."""
+        count = 0
         for el in elements:
             field = self._detect_field(el)
             if field and field.selector not in self._seen_selectors:
                 self._seen_selectors.add(field.selector)
                 self.fields.append(field)
+                count += 1
+        return count
         
         # Print summary by type
         type_counts = {}
@@ -1531,9 +1594,16 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 field.status = FillStatus.SKIPPED
     
     def _fill_field(self, field: FormField) -> bool:
-        """Fill single field."""
+        """Fill single field. Uses _active_frame to support iframes."""
         try:
-            el = self.page.query_selector(field.selector)
+            # Use active frame (main page or iframe with form)
+            context = getattr(self, '_active_frame', self.page)
+            el = context.query_selector(field.selector)
+            
+            # Fallback: try main page if not found in active frame
+            if not el:
+                el = self.page.query_selector(field.selector)
+            
             if not el:
                 field.status = FillStatus.ERROR
                 field.error_message = "Element not found"
@@ -1572,11 +1642,24 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             return False
     
     def _fill_text(self, el: ElementHandle, field: FormField) -> bool:
-        """Fill text/email/phone field."""
-        el.fill(field.answer)
-        # Blur to trigger validation
-        el.evaluate("e => e.blur()")
-        return True
+        """Fill text/email/phone field. Uses keyboard for React compatibility."""
+        try:
+            # Try standard fill first
+            el.fill(field.answer)
+            el.evaluate("e => e.blur()")
+            return True
+        except:
+            pass
+        
+        # Fallback: click and type (for React forms)
+        try:
+            el.click(click_count=3)  # Select all
+            time.sleep(0.1)
+            self.page.keyboard.type(field.answer, delay=5)
+            el.evaluate("e => e.blur()")
+            return True
+        except:
+            return False
     
     def _fill_select(self, el: ElementHandle, field: FormField) -> bool:
         """Fill native select."""

@@ -4065,3 +4065,64 @@ def start_chrome_debug_endpoint():
             
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Vision-based Form Filler
+# ─────────────────────────────────────────────────────────────────────
+
+@app.post("/apply/vision")
+async def apply_vision(payload: dict):
+    """
+    Fill job application using Claude Vision API.
+    Analyzes form screenshots and fills fields intelligently.
+    """
+    job_url = payload.get("job_url", "")
+    if not job_url:
+        return {"ok": False, "error": "job_url required"}
+    
+    # Run in background terminal
+    script = f'''
+import asyncio
+import sys
+sys.path.insert(0, '/Users/antonkondakov/projects/job-tracker-dev')
+
+from browser.v5.vision_filler import VisionFormFiller
+from playwright.async_api import async_playwright
+
+async def main():
+    filler = VisionFormFiller()
+    
+    async with async_playwright() as p:
+        browser = await p.chromium.connect_over_cdp("http://localhost:9222")
+        ctx = browser.contexts[0]
+        
+        print("Creating new page...")
+        page = await ctx.new_page()
+        await page.goto("{job_url}", wait_until="domcontentloaded", timeout=30000)
+        await asyncio.sleep(6)
+        
+        await page.bring_to_front()
+        print(f"Page loaded: {{await page.title()}}")
+        
+        print("\\nAnalyzing form with Claude Vision...")
+        analysis = await filler.analyze_form(page, num_screenshots=3)
+        print(analysis)
+        
+        input("\\nPress Enter to continue or Ctrl+C to cancel...")
+
+asyncio.run(main())
+'''
+    
+    # Save and run script
+    script_path = "/tmp/vision_apply.py"
+    with open(script_path, "w") as f:
+        f.write(script)
+    
+    import subprocess
+    subprocess.Popen([
+        "osascript", "-e",
+        f'tell application "Terminal" to do script "cd /Users/antonkondakov/projects/job-tracker-dev && source .venv/bin/activate && python {script_path}"'
+    ])
+    
+    return {"ok": True, "message": "Vision Form Filler started in Terminal"}
