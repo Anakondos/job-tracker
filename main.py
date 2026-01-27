@@ -16,8 +16,9 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-# Environment: PROD or DEV
-ENV = os.getenv("JOB_TRACKER_ENV", "PROD")
+# Environment: PROD or DEV (auto-detect from folder name)
+_current_dir = Path(__file__).parent.name
+ENV = os.getenv("JOB_TRACKER_ENV", "DEV" if "dev" in _current_dir.lower() else "PROD")
 
 from fastapi import FastAPI, Query
 from fastapi.responses import StreamingResponse
