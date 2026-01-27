@@ -2008,6 +2008,67 @@ def pipeline_get_job_endpoint(job_id: str):
         return {"ok": False, "error": "Job not found"}
 
 
+@app.get("/job/find-by-url")
+def find_job_by_url_endpoint(url: str = Query(..., description="Job URL to search")):
+    """
+    Search for a job by URL in all storages (pipeline, cache, etc.)
+    Returns job if found, or not_found status.
+    """
+    url = url.strip()
+    if not url:
+        return {"ok": False, "error": "URL is required"}
+    
+    # Normalize URL for comparison
+    from urllib.parse import urlparse, parse_qs
+    parsed = urlparse(url)
+    
+    # Extract job ID from URL based on ATS patterns
+    job_id = None
+    qs = parse_qs(parsed.query)
+    
+    # Greenhouse: gh_jid parameter, token parameter, or /jobs/NUMBER
+    if "gh_jid" in url:
+        job_id = qs.get("gh_jid", [None])[0]
+    elif "token" in qs:
+        # Greenhouse embed format: ?token=7404427&for=coinbase
+        job_id = qs.get("token", [None])[0]
+    elif "/jobs/" in parsed.path:
+        # Extract number from path like /jobs/12345
+        import re
+        match = re.search(r'/jobs/(\d+)', parsed.path)
+        if match:
+            job_id = match.group(1)
+    
+    # Lever: last segment of path
+    if "lever.co" in parsed.netloc:
+        job_id = parsed.path.rstrip('/').split('/')[-1]
+    
+    # SmartRecruiters: last segment
+    if "smartrecruiters.com" in parsed.netloc:
+        job_id = parsed.path.rstrip('/').split('/')[-1]
+    
+    # Search in all jobs
+    all_jobs = get_all_jobs()
+    
+    for job in all_jobs:
+        job_url = job.get("job_url", "") or job.get("url", "")
+        ats_job_id = str(job.get("ats_job_id", ""))
+        
+        # Skip jobs without URL
+        if not job_url:
+            continue
+        
+        # Match by exact URL
+        if url in job_url or job_url in url:
+            return {"ok": True, "found": True, "job": job}
+        
+        # Match by job ID
+        if job_id and ats_job_id == job_id:
+            return {"ok": True, "found": True, "job": job}
+    
+    return {"ok": True, "found": False, "message": "Job not found in database"}
+
+
 @app.get("/pipeline/attention")
 def pipeline_attention_endpoint():
     """Get jobs that need attention (Closed, etc.)"""

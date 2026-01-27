@@ -830,7 +830,7 @@ class FormFillerV5:
                     
                     # Resolve answers for new fields
                     for f in new_fields:
-                        self._resolve_answer(f)
+                        self._resolve_field_answer(f)
                     
                     # Continue loop to fill new fields
                 else:
@@ -1669,64 +1669,111 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         return True
     
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
-        """Fill autocomplete/combobox - smart strategy based on option count."""
-        el.click()
-        time.sleep(0.3)
+        """
+        Fill autocomplete/combobox using aria-controls method.
         
-        try:
-            self.page.wait_for_selector('.select__menu', timeout=1500)
-            options = self.page.query_selector_all('.select__option')
-            
-            # Strategy: few options = search visually, many options = type to filter
-            if len(options) <= 10:
-                # Few options - find and click matching one
-                answer_lower = field.answer.lower().replace('-', ' ').replace('_', ' ')
+        Key principles (from manual testing):
+        1. Use aria-controls to find the CORRECT listbox (not global selectors)
+        2. Press Escape before clicking to close any open dropdowns
+        3. scroll_into_view_if_needed before clicking
+        4. For Location fields - wait 2 seconds for API response
+        """
+        # Get the frame context (for iframe support)
+        frame = el.owner_frame() or self.page
+        
+        # Close any open dropdowns first
+        self.page.keyboard.press('Escape')
+        time.sleep(0.1)
+        
+        # Scroll into view
+        el.scroll_into_view_if_needed()
+        time.sleep(0.1)
+        
+        # Click to open dropdown
+        el.click()
+        time.sleep(0.4)
+        
+        # Use aria-controls to find the CORRECT listbox
+        controls_id = el.get_attribute('aria-controls')
+        options = []
+        
+        if controls_id:
+            listbox = frame.query_selector(f'#{controls_id}')
+            if listbox:
+                options = listbox.query_selector_all('[role="option"]')
+        
+        # Fallback to global selectors if aria-controls didn't work
+        if not options:
+            try:
+                frame.wait_for_selector('[role="listbox"], .select__menu', timeout=1500)
+                options = frame.query_selector_all('[role="option"], .select__option')
+            except:
+                pass
+        
+        answer_lower = field.answer.lower().strip()
+        
+        # Strategy based on option count
+        if options and len(options) <= 15:
+            # Few options - find best match and click
+            for opt in options:
+                opt_text = opt.inner_text().strip()
+                opt_lower = opt_text.lower()
                 
-                for opt in options:
-                    opt_text = opt.inner_text().strip()
-                    opt_lower = opt_text.lower().replace('-', ' ').replace('_', ' ')
-                    
-                    if answer_lower in opt_lower or opt_lower in answer_lower:
-                        opt.click()
-                        time.sleep(0.2)
-                        return True
-                    
-                    # Word overlap
-                    if len(set(answer_lower.split()) & set(opt_lower.split())) >= 2:
-                        opt.click()
-                        time.sleep(0.2)
-                        return True
+                # Exact or substring match
+                if answer_lower in opt_lower or opt_lower in answer_lower:
+                    opt.click()
+                    time.sleep(0.2)
+                    return True
                 
-                # No match - click first
-                if options:
-                    options[0].click()
+                # Word overlap (for multi-word answers)
+                answer_words = set(answer_lower.replace('-', ' ').split())
+                opt_words = set(opt_lower.replace('-', ' ').split())
+                if len(answer_words & opt_words) >= 1:
+                    opt.click()
                     time.sleep(0.2)
                     return True
             
-            else:
-                # Many options - type to filter first
-                self.page.keyboard.press('Escape')
-                time.sleep(0.1)
-                el.click()
+            # No match - click first option
+            if options:
+                options[0].click()
                 time.sleep(0.2)
-                el.type(field.answer[:25], delay=15)
-                time.sleep(0.4)
-                
-                # Click first filtered option
-                options = self.page.query_selector_all('.select__option')
-                if options:
-                    options[0].click()
-                    time.sleep(0.2)
-                    return True
-                
-                # Fallback
-                self.page.keyboard.press('ArrowDown')
-                self.page.keyboard.press('Enter')
-                
-        except Exception as e:
-            self.page.keyboard.press('ArrowDown')
+                return True
+        
+        elif options and len(options) > 15:
+            # Many options - type to filter
+            self.page.keyboard.press('Escape')
             time.sleep(0.1)
-            self.page.keyboard.press('Enter')
+            el.click()
+            time.sleep(0.2)
+            
+            # Type to filter (use keyboard.type for React compatibility)
+            self.page.keyboard.type(field.answer[:30], delay=20)
+            
+            # Check if this is a Location field - needs extra wait for API
+            is_location = 'location' in field.label.lower() or 'city' in field.label.lower()
+            wait_time = 2.0 if is_location else 0.5
+            time.sleep(wait_time)
+            
+            # Re-check options using aria-controls
+            if controls_id:
+                listbox = frame.query_selector(f'#{controls_id}')
+                if listbox:
+                    options = listbox.query_selector_all('[role="option"]')
+            
+            if options:
+                options[0].click()
+                time.sleep(0.2)
+                return True
+            
+            # Fallback: keyboard navigation
+            self.page.keyboard.press('ArrowDown')
+            self.page.keyboard.press('Tab')  # Tab instead of Enter (safer)
+        
+        else:
+            # No options found - type and tab out
+            self.page.keyboard.type(field.answer[:30], delay=20)
+            time.sleep(0.3)
+            self.page.keyboard.press('Tab')
         
         time.sleep(0.2)
         return True
@@ -1920,28 +1967,43 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 if tag == 'select':
                     el.select_option(label=str(value))
                 elif role == 'combobox' or aria in ('true', 'listbox'):
-                    # For autocomplete: type to filter, then find best match
-                    el.click()
-                    time.sleep(0.2)
+                    # For autocomplete: use aria-controls method
+                    frame = el.owner_frame() or self.page
                     
-                    # Type more text for better filtering
+                    # Close any open dropdowns
+                    self.page.keyboard.press('Escape')
+                    time.sleep(0.1)
+                    
+                    el.scroll_into_view_if_needed()
+                    el.click()
+                    time.sleep(0.3)
+                    
+                    # Type to filter
                     search_text = str(value)[:40]
                     el.fill('')
-                    el.type(search_text, delay=10)
-                    time.sleep(0.4)
+                    self.page.keyboard.type(search_text, delay=15)
+                    time.sleep(0.5)
                     
-                    # Find best matching option (not just first)
-                    opts = self.page.query_selector_all('.select__option')
+                    # Use aria-controls to find correct listbox
+                    controls_id = el.get_attribute('aria-controls')
+                    opts = []
+                    if controls_id:
+                        listbox = frame.query_selector(f'#{controls_id}')
+                        if listbox:
+                            opts = listbox.query_selector_all('[role="option"]')
+                    
+                    # Fallback to global selectors
+                    if not opts:
+                        opts = frame.query_selector_all('[role="option"], .select__option')
+                    
                     value_lower = str(value).lower()
                     best_match = None
                     
                     for opt in opts:
                         opt_text = opt.inner_text().strip().lower()
-                        # Exact or very close match
                         if value_lower in opt_text or opt_text in value_lower:
                             best_match = opt
                             break
-                        # Word overlap
                         value_words = set(value_lower.split()[:3])
                         opt_words = set(opt_text.split()[:3])
                         if len(value_words & opt_words) >= 2:
@@ -1953,22 +2015,25 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                     elif opts:
                         opts[0].click()
                     else:
-                        # No matches - try "Other" option for school fields
+                        # No matches - try "Other" for school fields
                         if 'school' in field_name.lower():
                             self.page.keyboard.press('Escape')
                             time.sleep(0.1)
                             el.fill('')
-                            el.type('0 - Other', delay=10)
-                            time.sleep(0.3)
-                            other_opts = self.page.query_selector_all('.select__option')
-                            if other_opts:
-                                other_opts[0].click()
+                            self.page.keyboard.type('0 - Other', delay=15)
+                            time.sleep(0.5)
+                            if controls_id:
+                                listbox = frame.query_selector(f'#{controls_id}')
+                                if listbox:
+                                    other_opts = listbox.query_selector_all('[role="option"]')
+                                    if other_opts:
+                                        other_opts[0].click()
+                                    else:
+                                        self.page.keyboard.press('Tab')
                             else:
-                                self.page.keyboard.press('ArrowDown')
-                                self.page.keyboard.press('Enter')
+                                self.page.keyboard.press('Tab')
                         else:
-                            self.page.keyboard.press('ArrowDown')
-                            self.page.keyboard.press('Enter')
+                            self.page.keyboard.press('Tab')
                     time.sleep(0.2)
                 elif el_type == 'checkbox':
                     if value == 'checked' and not el.is_checked():
