@@ -7,16 +7,23 @@
     "location": "Raleigh, NC",
     "country": "United States"
   },
-  
   "links": {
     "linkedin": "https://www.linkedin.com/in/antonkondakov/"
   },
-  
   "files": {
-    "resume_path": "/Users/antonkondakov/projects/job-tracker-dev/browser/profiles/Anton_Kondakov_Resume.pdf",
-    "cover_letter_path": null
+    "base_path": "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV",
+    "default_role": "TPM",
+    "by_role": {
+      "TPM": {
+        "cv": "CV_Anton_Kondakov_Product Manager.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_ProductM.docx"
+      },
+      "Product Manager": {
+        "cv": "CV_Anton_Kondakov_Product Manager.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_ProductM.docx"
+      }
+    }
   },
-  
   "work_experience": [
     {
       "company": "YOUR_CURRENT_COMPANY",
@@ -28,7 +35,6 @@
       "current": true
     }
   ],
-  
   "education": [
     {
       "school": "YOUR_UNIVERSITY",
@@ -36,7 +42,6 @@
       "discipline": "YOUR_FIELD"
     }
   ],
-  
   "common_answers": {
     "18_or_older": "Yes",
     "authorized_to_work": "Yes",
@@ -46,12 +51,17 @@
     "government_official": "No",
     "ai_tools_comfortable": "Yes"
   },
-  
   "demographics": {
     "gender": "Decline",
-    "hispanic_latino": "Decline", 
+    "hispanic_latino": "Decline",
     "race_ethnicity": "Decline",
     "veteran_status": "I am not",
     "disability_status": "I don't wish"
+  },
+  "resume": {
+    "path": "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/CV_Anton_Kondakov_Product Manager.pdf"
+  },
+  "cover_letter": {
+    "path": "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Cover_Letter_Anton_Kondakov_ProductM.docx"
   }
 }

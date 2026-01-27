@@ -1623,6 +1623,8 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 success = self._fill_autocomplete(el, field)
             elif field.field_type == FieldType.CHECKBOX:
                 success = self._fill_checkbox(el, field)
+            elif field.field_type == FieldType.PHONE:
+                success = self._fill_phone(el, field)
             else:
                 success = self._fill_text(el, field)
             
@@ -1661,6 +1663,22 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         except:
             return False
     
+    def _fill_phone(self, el: ElementHandle, field: FormField) -> bool:
+        """
+        Fill phone field with delay for intl-tel-input compatibility.
+        Greenhouse uses intl-tel-input which needs slower typing.
+        """
+        try:
+            el.click()
+            time.sleep(0.2)
+            # Use slower delay (30ms) for phone input formatting
+            self.page.keyboard.type(field.answer, delay=30)
+            time.sleep(0.2)
+            el.evaluate("e => e.blur()")
+            return True
+        except:
+            return False
+    
     def _fill_select(self, el: ElementHandle, field: FormField) -> bool:
         """Fill native select."""
         el.select_option(label=field.answer)
@@ -1681,6 +1699,9 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         # Get the frame context (for iframe support)
         frame = el.owner_frame() or self.page
         
+        # Check if this is a Location field (needs special handling)
+        is_location = 'location' in field.label.lower() or 'city' in field.label.lower()
+        
         # Close any open dropdowns first
         self.page.keyboard.press('Escape')
         time.sleep(0.1)
@@ -1688,6 +1709,28 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         # Scroll into view
         el.scroll_into_view_if_needed()
         time.sleep(0.1)
+        
+        # For Location: type first, then wait for API
+        if is_location:
+            el.click()
+            time.sleep(0.3)
+            self.page.keyboard.type(field.answer[:30], delay=30)
+            time.sleep(2.0)  # Wait for API response
+            
+            # Get options via aria-controls
+            controls_id = el.get_attribute('aria-controls')
+            if controls_id:
+                listbox = frame.query_selector(f'#{controls_id}')
+                if listbox:
+                    options = listbox.query_selector_all('[role="option"]')
+                    if options:
+                        options[0].click()
+                        time.sleep(0.2)
+                        return True
+            
+            # Fallback: just click away to confirm text
+            self.page.keyboard.press('Tab')
+            return True
         
         # Click to open dropdown
         el.click()
@@ -2095,7 +2138,13 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         for i in range(1, len(entries)):
             print(f"\n   ➕ Adding {section_name} entry {i+1}...")
             if self.click_add_another(section_name):
-                time.sleep(0.3)
+                time.sleep(1.0)  # Wait for React to render new fields
+                # Scroll to new section to ensure visibility
+                new_selector = list(config['field_patterns'].keys())[0].replace('{N}', str(i))
+                new_el = self.page.query_selector(f'#{new_selector}')
+                if new_el:
+                    new_el.scroll_into_view_if_needed()
+                    time.sleep(0.3)
                 self.fill_section_entry(section_name, entry_index=i, form_index=i)
             else:
                 print(f"   ❌ Could not add entry {i+1}")
