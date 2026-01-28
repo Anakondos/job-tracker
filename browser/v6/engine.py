@@ -536,6 +536,7 @@ class FormFillerV6:
                 edu.get('school_fallback', '0 - Other'),
                 'School'
             )
+            time.sleep(0.3)  # Wait for school dropdown to close
             self.fill_dropdown(f'#degree--{i}', edu['degree'], 'Degree')
             self.fill_dropdown(f'#discipline--{i}', edu['discipline'], 'Discipline')
         
