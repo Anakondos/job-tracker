@@ -177,6 +177,128 @@
         border-bottom: 1px solid var(--border);
         margin-bottom: 16px;
       }
+      
+      /* Pipeline table */
+      #jobsTable td, #jobsTable th {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 8px 12px !important;
+      }
+      #jobsTable th:first-child, #jobsTable td:first-child {
+        text-align: center;
+        overflow: visible;
+      }
+      #jobsTable input[type="checkbox"] {
+        width: 14px !important;
+        height: 14px !important;
+        min-width: 14px !important;
+        max-width: 14px !important;
+        margin: 6px !important;
+        padding: 0 !important;
+        display: inline-block !important;
+        cursor: pointer;
+      }
+      /* ID column - first column */
+      #jobsTable td:nth-child(1), #jobsTable th:nth-child(1) {
+        width: 75px !important;
+        max-width: 75px !important;
+        padding-left: 12px !important;
+      }
+      #pipelineFilterJobId {
+        width: 50px !important;
+        max-width: 50px !important;
+        min-width: 50px !important;
+      }
+      #pipelineFilterCompany {
+        width: 110px !important;
+        max-width: 110px !important;
+        min-width: 110px !important;
+      }
+      #pipelineFilterTitle {
+        width: 180px !important;
+        max-width: 180px !important;
+        min-width: 180px !important;
+      }
+      #pipelineFilterLocation {
+        width: 100px !important;
+        max-width: 100px !important;
+        min-width: 100px !important;
+      }
+      #pipelineFilterUpdated {
+        width: 90px !important;
+        max-width: 90px !important;
+        min-width: 90px !important;
+      }
+      #pipelineFilterAts {
+        width: 70px !important;
+        max-width: 70px !important;
+        min-width: 70px !important;
+      }
+      #pipelineFilterStatus {
+        width: 65px !important;
+        max-width: 65px !important;
+        min-width: 65px !important;
+      }
+      #pipelineFilterFolder {
+        width: 30px !important;
+        max-width: 30px !important;
+        min-width: 30px !important;
+      }
+      /* Checkbox column - second column */
+      #jobsTable td:nth-child(2), #jobsTable th:nth-child(2) {
+        width: 40px !important;
+        max-width: 40px !important;
+        text-align: center;
+        padding: 8px 4px !important;
+      }
+      /* Company column - third column */
+      #jobsTable td:nth-child(3), #jobsTable th:nth-child(3) {
+        width: 120px !important;
+        max-width: 120px !important;
+      }
+      /* Title column - fourth column */
+      #jobsTable td:nth-child(4), #jobsTable th:nth-child(4) {
+        width: auto !important;
+        max-width: none !important;
+      }
+      /* Location column - fifth column */
+      #jobsTable td:nth-child(5), #jobsTable th:nth-child(5) {
+        width: 130px !important;
+        max-width: 130px !important;
+      }
+      /* Updated column - sixth column */
+      #jobsTable td:nth-child(6), #jobsTable th:nth-child(6) {
+        width: 110px !important;
+        max-width: 110px !important;
+      }
+      /* ATS column - seventh column */
+      #jobsTable td:nth-child(7), #jobsTable th:nth-child(7) {
+        width: 80px !important;
+        max-width: 80px !important;
+      }
+      /* Status column - eighth column */
+      #jobsTable td:nth-child(8), #jobsTable th:nth-child(8) {
+        width: 85px !important;
+        max-width: 85px !important;
+        overflow: visible !important;
+      }
+      /* Folder column - ninth column */
+      #jobsTable td:nth-child(9), #jobsTable th:nth-child(9) {
+        width: 35px !important;
+        max-width: 35px !important;
+        text-align: center;
+        overflow: visible !important;
+        text-overflow: clip !important;
+      }
+      /* Actions column - tenth column */
+      #jobsTable td:nth-child(10), #jobsTable th:nth-child(10) {
+        width: 90px !important;
+        max-width: 90px !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+      }
+      
       .summary-item {
         text-align: center;
       }
@@ -529,10 +651,10 @@
 
       /* Status select inside table */
       .statusSelect {
-        min-width: 120px;
-        padding: 7px 8px;
-        border-radius: 10px;
-        font-size: 12px;
+        min-width: 80px;
+        padding: 5px 6px;
+        border-radius: 8px !important;
+        font-size: 11px;
       }
       
       .addToPipelineBtn {
@@ -960,6 +1082,38 @@
         <button id="addJobBtn" class="ghost" style="padding: 6px 12px; background: var(--accent); color: white; margin-left: auto;">+ Add Job</button>
       </div>
       
+      <!-- Bulk Actions Toolbar -->
+      <div id="bulkActionsBar" style="display: none; align-items: center; gap: 12px; margin: 8px 0; padding: 10px 16px; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); border-radius: 8px; border: 1px solid #3b5998;">
+        <span id="selectedCount" style="font-weight: 600; color: #93c5fd;">0 selected</span>
+        <div style="height: 20px; width: 1px; background: #4b6a9b;"></div>
+        
+        <!-- Engine Selection -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 12px; color: #93c5fd;">Engine:</span>
+          <select id="fillerEngineSelect" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #4b6a9b; background: #1e3a5f; color: white; font-size: 12px;">
+            <option value="v6" selected>V6 (AI + Simple)</option>
+            <option value="v5">V5 (Full Features)</option>
+          </select>
+        </div>
+        
+        <div style="height: 20px; width: 1px; background: #4b6a9b;"></div>
+        
+        <!-- Actions -->
+        <button id="bulkApplyBtn" style="padding: 6px 14px; border-radius: 6px; border: none; background: #16a34a; color: white; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+          🚀 <span>Apply Selected</span>
+        </button>
+        
+        <button id="bulkOpenUrlsBtn" style="padding: 6px 14px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+          🔗 <span>Open URLs</span>
+        </button>
+        
+        <div style="flex: 1;"></div>
+        
+        <button id="bulkClearBtn" style="padding: 4px 10px; border-radius: 4px; border: 1px solid #4b6a9b; background: transparent; color: #93c5fd; cursor: pointer; font-size: 12px;">
+          ✕ Clear Selection
+        </button>
+      </div>
+      
       <!-- Pagination Row -->
       <div id="pipelinePagination" style="display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid var(--border);">
         
@@ -980,75 +1134,69 @@
       </div>
 
       <div class="tableWrap">
-        <div style="overflow-x: auto;"><table id="jobsTable" style="min-width: 950px;">
+        <div style="overflow-x: auto;"><table id="jobsTable">
           <thead>
             <tr>
-              <th
-                class="sortable"
-                style="width: 100px"
-                onclick="sortTable('company')"
-              >
+              <th>ID</th>
+              <th style="text-align: center;">✓</th>
+              <th class="sortable" onclick="sortTable('company')">
                 Company <span class="sortIcon" id="sortIcon-company">⬍</span>
-              </th>
-              <th
-                class="sortable"
-                style="width: 70px"
-                onclick="sortTable('industry')"
-              >
-                Industry <span class="sortIcon" id="sortIcon-industry">⬍</span>
               </th>
               <th class="sortable" onclick="sortTable('title')">
                 Title <span class="sortIcon" id="sortIcon-title">⬍</span>
               </th>
-              <th
-                class="sortable"
-                style="width: 110px"
-                onclick="sortTable('location')"
-              >
+              <th class="sortable" onclick="sortTable('location')">
                 Location <span class="sortIcon" id="sortIcon-location">⬍</span>
               </th>
-              <th
-                class="sortable"
-                style="width: 70px"
-                onclick="sortTable('updated')"
-              >
+              <th class="sortable" onclick="sortTable('updated')">
                 Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
               </th>
-              <th
-                class="sortable"
-                style="width: 70px"
-                onclick="sortTable('ats')"
-              >
+              <th class="sortable" onclick="sortTable('ats')">
                 ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
               </th>
-              <th
-                class="sortable"
-                style="width: 100px"
-                onclick="sortTable('status')"
-              >
+              <th class="sortable" onclick="sortTable('status')">
                 Status <span class="sortIcon" id="sortIcon-status">⬍</span>
               </th>
-              <th style="width: 20px; text-align: center; padding: 2px;" title="Documents folder">📁</th>
-              <th style="width: 70px">Actions</th>
+              <th>📁</th>
+              <th>Actions</th>
             </tr>
             <tr class="filter-row">
-              <th><input type="text" id="pipelineFilterCompany" placeholder="Company..." class="column-filter" style="width: 90%;"></th>
-              <th></th>
-              <th><input type="text" id="pipelineFilterTitle" placeholder="Title..." class="column-filter" style="width: 90%;"></th>
-              <th><input type="text" id="pipelineFilterLocation" placeholder="Location..." class="column-filter" style="width: 90%;"></th>
-              <th></th>
-              <th></th>
+              <th><input type="text" id="pipelineFilterJobId" placeholder="..." class="column-filter" style="width: 60px;"></th>
+              <th style="text-align: center;">
+                <input type="checkbox" id="selectAllJobs" title="Select all">
+              </th>
+              <th><input type="text" id="pipelineFilterCompany" placeholder="..." class="column-filter" style="width: 100%;"></th>
+              <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
+              <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
+              <th><input type="text" id="pipelineFilterUpdated" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th>
-                <select id="pipelineFilterStatus" class="column-filter">
-                  <option value="all">All</option>
-                  <option value="New">New</option>
-                  <option value="Selected">Selected</option>
-                  <option value="Ready">Ready</option>
-                  <option value="Applied">Applied</option>
-                  <option value="Interview">Interview</option>
+                <select id="pipelineFilterAts" class="column-filter" style="width: 100%;">
+                  <option value="">-</option>
+                  <option value="greenhouse">GH</option>
+                  <option value="lever">Lever</option>
+                  <option value="workday">WD</option>
+                  <option value="smartrecruiters">SR</option>
+                  <option value="ashby">Ashby</option>
+                  <option value="manual">📌</option>
                 </select>
               </th>
-              <th></th>
+              <th>
+                <select id="pipelineFilterStatus" class="column-filter" style="width: 100%;">
+                  <option value="all">-</option>
+                  <option value="New">New</option>
+                  <option value="Selected">Sel</option>
+                  <option value="Ready">Rdy</option>
+                  <option value="Applied">App</option>
+                  <option value="Interview">Int</option>
+                </select>
+              </th>
+              <th>
+                <select id="pipelineFilterFolder" class="column-filter" style="width: 100%;">
+                  <option value="all">-</option>
+                  <option value="yes">✓</option>
+                  <option value="no">✗</option>
+                </select>
+              </th>
               <th></th>
             </tr>
           </thead>
@@ -1372,6 +1520,19 @@
           
           <!-- Actions -->
           <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <!-- Engine Selection -->
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: 6px;">
+              <span style="font-size: 13px; color: var(--muted);">Form Filler:</span>
+              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="radio" name="fillerEngine" value="v6" checked style="accent-color: #16a34a;">
+                <span style="font-size: 13px;">V6 (AI + Simple)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="radio" name="fillerEngine" value="v5" style="accent-color: #3b82f6;">
+                <span style="font-size: 13px;">V5 (Full Features)</span>
+              </label>
+            </div>
+            
             <button id="btnStartApplication" onclick="startApplication()" style="width: 100%; padding: 14px; background: #16a34a; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;" disabled>
               🚀 Start Application
             </button>
@@ -1934,6 +2095,28 @@
         if (pipelineFilters.ats) {
           filtered = filtered.filter(j => pipelineFilters.ats === "manual" ? j.source === "onboard" : j.ats === pipelineFilters.ats);
         }
+        if (pipelineFilters.updated) {
+          const search = pipelineFilters.updated.toLowerCase();
+          filtered = filtered.filter(j => {
+            const updated = (j.updated_at || j.first_seen || "").toLowerCase();
+            return updated.includes(search);
+          });
+        }
+        if (pipelineFilters.jobId) {
+          const searchId = pipelineFilters.jobId.toLowerCase();
+          filtered = filtered.filter(j => {
+            const atsJobId = (j.ats_job_id || "").toString().toLowerCase();
+            const jobId = (j.id || "").toString().toLowerCase();
+            return atsJobId.includes(searchId) || jobId.includes(searchId);
+          });
+        }
+        
+        // Filter by folder
+        if (pipelineFilters.folder === "yes") {
+          filtered = filtered.filter(j => j.folder_path);
+        } else if (pipelineFilters.folder === "no") {
+          filtered = filtered.filter(j => !j.folder_path);
+        }
 
         return filtered;
       }
@@ -2085,8 +2268,11 @@
           const sourceIcon = isOnboarded ? '<span title="User added via onboarding" style="margin-left: 4px;">📌</span>' : '';
           
           row.innerHTML = `
+        <td style="font-size: 10px; font-family: monospace; color: var(--muted); cursor: pointer;" title="Click to copy: ${escapeAttr(job.ats_job_id || job.id || '')}" onclick="navigator.clipboard.writeText('${escapeAttr(job.ats_job_id || job.id || '')}'); this.style.color='#22c55e'; setTimeout(() => this.style.color='var(--muted)', 500);">${escapeHtml((job.ats_job_id || job.id || '').toString().slice(-8))}</td>
+        <td style="text-align: center;">
+          <input type="checkbox" class="jobCheckbox" data-jobkey="${escapeAttr(jobKey)}" data-url="${escapeAttr(url)}" data-company="${escapeAttr(job.company || '')}" data-title="${escapeAttr(job.title || '')}" data-ats="${escapeAttr(job.ats || '')}" data-status="${escapeAttr(st)}">
+        </td>
         <td>${escapeHtml(job.company || "")}</td>
-        <td class="muted" style="font-size: 11px;">${escapeHtml(tagsStr)}</td>
         <td><a href="${escapeAttr(
           url
         )}" target="_blank" rel="noopener">${escapeHtml(
@@ -2123,12 +2309,6 @@
         <td>
           ${st === 'Selected'
             ? `<button class="prepareBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`
-            : ''}
-          ${st === 'Ready' && ['greenhouse', 'universal', 'icims', 'lever', 'workday'].includes((job.ats || '').toLowerCase())
-            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" title="Auto-fill application form" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply Now</button>`
-            : ''}
-          ${['greenhouse', 'universal', 'icims', 'lever', 'workday', 'manual'].includes((job.ats || '').toLowerCase()) && !['Selected', 'Ready', 'Applied', 'Interview', 'Offer', 'Rejected', 'Withdrawn', 'Closed'].includes(st)
-            ? `<button class="applyBtn" data-joburl="${escapeAttr(url)}" data-jobtitle="${escapeAttr(job.title || '')}" data-company="${escapeAttr(job.company || '')}" data-rolefamily="${escapeAttr(job.role_family || 'product')}" title="Analyze & Apply">📝 Apply</button>`
             : ''}
           ${showAddButton && !inPipeline 
             ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
@@ -3052,7 +3232,10 @@
         industry: "",
         title: "",
         location: "",
-        ats: ""
+        ats: "",
+        jobId: "",
+        updated: "",
+        folder: "all"
       };
       
       // Review column filters state
@@ -3716,11 +3899,197 @@
         }
       }
       
+      // ═══════════════════════════════════════════════════════════════════
+      // BULK ACTIONS - Selection & Apply
+      // ═══════════════════════════════════════════════════════════════════
+      
+      let selectedJobs = new Map(); // jobKey -> {url, company, title, ats, status}
+      
+      function updateBulkActionsBar() {
+        const bar = document.getElementById('bulkActionsBar');
+        const count = document.getElementById('selectedCount');
+        const n = selectedJobs.size;
+        
+        if (n > 0) {
+          bar.style.display = 'flex';
+          count.textContent = n + ' selected';
+        } else {
+          bar.style.display = 'none';
+        }
+        
+        // Update Select All checkbox state
+        const selectAll = document.getElementById('selectAllJobs');
+        const allCheckboxes = document.querySelectorAll('.jobCheckbox');
+        const checkedCount = document.querySelectorAll('.jobCheckbox:checked').length;
+        
+        if (allCheckboxes.length > 0 && checkedCount === allCheckboxes.length) {
+          selectAll.checked = true;
+          selectAll.indeterminate = false;
+        } else if (checkedCount > 0) {
+          selectAll.checked = false;
+          selectAll.indeterminate = true;
+        } else {
+          selectAll.checked = false;
+          selectAll.indeterminate = false;
+        }
+      }
+      
+      function handleJobCheckboxChange(e) {
+        const cb = e.target;
+        const jobKey = cb.dataset.jobkey;
+        
+        if (cb.checked) {
+          selectedJobs.set(jobKey, {
+            url: cb.dataset.url,
+            company: cb.dataset.company,
+            title: cb.dataset.title,
+            ats: cb.dataset.ats,
+            status: cb.dataset.status
+          });
+        } else {
+          selectedJobs.delete(jobKey);
+        }
+        
+        updateBulkActionsBar();
+      }
+      
+      function handleSelectAllChange(e) {
+        const checked = e.target.checked;
+        const checkboxes = document.querySelectorAll('.jobCheckbox');
+        
+        checkboxes.forEach(cb => {
+          cb.checked = checked;
+          const jobKey = cb.dataset.jobkey;
+          
+          if (checked) {
+            selectedJobs.set(jobKey, {
+              url: cb.dataset.url,
+              company: cb.dataset.company,
+              title: cb.dataset.title,
+              ats: cb.dataset.ats,
+              status: cb.dataset.status
+            });
+          } else {
+            selectedJobs.delete(jobKey);
+          }
+        });
+        
+        updateBulkActionsBar();
+      }
+      
+      function clearSelection() {
+        selectedJobs.clear();
+        document.querySelectorAll('.jobCheckbox').forEach(cb => cb.checked = false);
+        document.getElementById('selectAllJobs').checked = false;
+        updateBulkActionsBar();
+      }
+      
+      async function bulkApply() {
+        if (selectedJobs.size === 0) {
+          alert('No jobs selected');
+          return;
+        }
+        
+        const engine = document.getElementById('fillerEngineSelect').value;
+        const jobs = Array.from(selectedJobs.values());
+        
+        // Filter to supported ATS
+        const supportedAts = ['greenhouse', 'lever', 'ashby', 'workday', 'smartrecruiters', 'manual', ''];
+        const supportedJobs = jobs.filter(j => supportedAts.includes((j.ats || '').toLowerCase()));
+        
+        if (supportedJobs.length === 0) {
+          alert('No supported ATS jobs selected.');
+          return;
+        }
+        
+        // For now, open first job
+        const firstJob = supportedJobs[0];
+        
+        const confirmMsg = `Apply to "${firstJob.company} - ${firstJob.title}" using ${engine.toUpperCase()}?` +
+          (supportedJobs.length > 1 ? `\n\n(${supportedJobs.length - 1} more jobs selected - batch mode coming soon)` : '');
+        
+        if (!confirm(confirmMsg)) return;
+        
+        try {
+          const endpoint = engine === 'v6' ? '/apply/v6' : '/apply/v5';
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              job_url: firstJob.url,
+              profile: 'anton_kondakov'
+            })
+          });
+          
+          const data = await res.json();
+          
+          if (data.ok) {
+            alert(`🚀 ${engine.toUpperCase()} Form Filler started!\n\nJob: ${firstJob.company} - ${firstJob.title}\n\nCheck the Terminal window.`);
+            clearSelection();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      }
+      
+      function bulkOpenUrls() {
+        if (selectedJobs.size === 0) {
+          alert('No jobs selected');
+          return;
+        }
+        
+        const jobs = Array.from(selectedJobs.values());
+        
+        if (jobs.length > 10) {
+          if (!confirm(`Open ${jobs.length} URLs in new tabs?`)) return;
+        }
+        
+        jobs.forEach(j => {
+          window.open(j.url, '_blank');
+        });
+      }
+      
+      // Initialize bulk actions listeners
+      (function initBulkActions() {
+        // Select All checkbox
+        document.getElementById('selectAllJobs')?.addEventListener('change', handleSelectAllChange);
+        
+        // Bulk action buttons
+        document.getElementById('bulkApplyBtn')?.addEventListener('click', bulkApply);
+        document.getElementById('bulkOpenUrlsBtn')?.addEventListener('click', bulkOpenUrls);
+        document.getElementById('bulkClearBtn')?.addEventListener('click', clearSelection);
+        
+        // Prepare button - open prepare modal for first selected
+        document.getElementById('bulkPrepareBtn')?.addEventListener('click', () => {
+          if (selectedJobs.size === 0) {
+            alert('No jobs selected');
+            return;
+          }
+          const first = Array.from(selectedJobs.values())[0];
+          showPrepareModal(first.company, first.title, first.url, '', 'product', {});
+        });
+        
+        // Delegate checkbox changes on table
+        document.getElementById('jobsTable')?.addEventListener('change', (e) => {
+          if (e.target.classList.contains('jobCheckbox')) {
+            handleJobCheckboxChange(e);
+          }
+        });
+      })();
+      
+      // ═══════════════════════════════════════════════════════════════════
+      
       async function startApplication() {
         if (!prepareResult) {
           alert('No application data. Please try again.');
           return;
         }
+        
+        // Get selected engine
+        const engineRadio = document.querySelector('input[name="fillerEngine"]:checked');
+        const engine = engineRadio ? engineRadio.value : 'v6';
         
         // Save data before closing modal
         const jobUrl = currentPrepData?.jobUrl || prepareResult.application_url || '';
@@ -3733,9 +4102,10 @@
         // Close modal
         closeAnalysisModal();
         
-        // Start V5 form filler
+        // Start form filler with selected engine
         try {
-          const res = await fetch('/apply/v5', {
+          const endpoint = engine === 'v6' ? '/apply/v6' : '/apply/v5';
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3747,10 +4117,10 @@
           const data = await res.json();
           
           if (data.ok) {
-            alert('🚀 Application started!\n\n' +
+            alert(`🚀 ${engine.toUpperCase()} Form Filler started!\n\n` +
               '✅ CV: ' + cvFilename + '\n' +
               '✅ Cover Letter: ' + clFilename + '\n\n' +
-              'Check the browser window.');
+              'Check the Terminal window.');
           } else {
             alert('Error starting application: ' + data.error);
           }
@@ -4634,9 +5004,24 @@
         pipelineFilters.location = e.target.value;
         applyPipelineColumnFilters();
       });
+      
+      document.getElementById("pipelineFilterJobId")?.addEventListener("input", (e) => {
+        pipelineFilters.jobId = e.target.value;
+        applyPipelineColumnFilters();
+      });
 
       document.getElementById("pipelineFilterAts")?.addEventListener("change", (e) => {
         pipelineFilters.ats = e.target.value;
+        applyPipelineColumnFilters();
+      });
+      
+      document.getElementById("pipelineFilterUpdated")?.addEventListener("input", (e) => {
+        pipelineFilters.updated = e.target.value;
+        applyPipelineColumnFilters();
+      });
+      
+      document.getElementById("pipelineFilterFolder")?.addEventListener("change", (e) => {
+        pipelineFilters.folder = e.target.value;
         applyPipelineColumnFilters();
       });
       

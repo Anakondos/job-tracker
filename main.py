@@ -1974,6 +1974,18 @@ def pipeline_all_endpoint(
                 filtered.append(j)
         all_jobs = filtered
     
+    # Normalize folder_path to use ~/ for portability
+    import os
+    home = os.path.expanduser("~")
+    for j in all_jobs:
+        fp = j.get("folder_path", "")
+        if fp:
+            # Replace any /Users/xxx/ with ~/
+            if fp.startswith("/Users/"):
+                parts = fp.split("/")
+                if len(parts) > 2:
+                    j["folder_path"] = "~/" + "/".join(parts[3:])
+    
     stats = get_job_stats()
     return {
         "count": len(all_jobs), 
@@ -2104,6 +2116,27 @@ def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
     job = job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path)
     
     if job:
+        # Auto-parse JD when status changes to Selected and JD not yet parsed
+        if normalized_status == "Selected" and not job.get("jd_summary"):
+            try:
+                from parsers.jd_parser import parse_and_store_jd, has_jd
+                job_url = job.get("job_url") or job.get("url") or ""
+                if job_url and not has_jd(payload.job_id):
+                    print(f"[Pipeline] Auto-parsing JD for {job.get('company')} - {job.get('title')}")
+                    result = parse_and_store_jd(
+                        job_id=payload.job_id,
+                        url=job_url,
+                        title=job.get("title", ""),
+                        company=job.get("company", ""),
+                        ats=job.get("ats", "greenhouse")
+                    )
+                    if result.get("ok") and result.get("summary"):
+                        job["jd_summary"] = result["summary"]
+                        # Save updated job
+                        job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path, jd_summary=result["summary"])
+            except Exception as e:
+                print(f"[Pipeline] JD parsing failed: {e}")
+        
         return {"ok": True, "job": job}
     else:
         return {"ok": False, "error": "Job not found"}
@@ -2117,6 +2150,72 @@ def pipeline_get_job_endpoint(job_id: str):
         return {"ok": True, "job": job}
     else:
         return {"ok": False, "error": "Job not found"}
+
+
+class ParseJDRequest(BaseModel):
+    job_id: str
+    url: str
+    title: str
+    company: str
+    ats: str = "greenhouse"
+
+
+@app.post("/jd/parse")
+def parse_jd_endpoint(payload: ParseJDRequest):
+    """
+    Parse job description from URL and extract structured summary.
+    Saves full text to data/jd/{job_id}.txt and returns summary.
+    """
+    try:
+        from parsers.jd_parser import parse_and_store_jd
+        
+        result = parse_and_store_jd(
+            job_id=payload.job_id,
+            url=payload.url,
+            title=payload.title,
+            company=payload.company,
+            ats=payload.ats
+        )
+        
+        if result.get("ok"):
+            # Update job in storage with jd_summary
+            job = get_job_by_id(payload.job_id)
+            if job:
+                # Use storage function to save jd_summary
+                from storage.job_storage import update_jd_summary
+                update_jd_summary(payload.job_id, result["summary"])
+            
+            return {
+                "ok": True,
+                "summary": result["summary"],
+                "jd_preview": result.get("jd_text", "")[:500] + "..."
+            }
+        else:
+            return {"ok": False, "error": result.get("error", "Unknown error")}
+            
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/jd/{job_id}")
+def get_jd_endpoint(job_id: str):
+    """Get stored JD for a job"""
+    try:
+        from parsers.jd_parser import get_stored_jd, has_jd
+        
+        if not has_jd(job_id):
+            return {"ok": False, "error": "JD not found"}
+        
+        jd_text = get_stored_jd(job_id)
+        job = get_job_by_id(job_id)
+        
+        return {
+            "ok": True,
+            "jd_text": jd_text,
+            "summary": job.get("jd_summary") if job else None
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 @app.get("/job/find-by-url")
@@ -3316,10 +3415,15 @@ finally:
 def open_folder(payload: dict):
     """Open folder in Finder (macOS)"""
     import subprocess
+    import os
     folder_path = payload.get("path", "")
     
+    # Expand ~ to home directory
+    if folder_path.startswith("~/"):
+        folder_path = os.path.expanduser(folder_path)
+    
     if not folder_path or not Path(folder_path).exists():
-        return {"error": "Folder not found"}
+        return {"error": f"Folder not found: {folder_path}"}
     
     try:
         subprocess.run(["open", folder_path], check=True)
@@ -3646,12 +3750,17 @@ async def open_file_endpoint(file_type: str, path: str):
     file_type: cv, cover_letter, folder
     """
     import subprocess
+    import os
     from pathlib import Path
+    
+    # Expand ~ to home directory
+    if path.startswith("~/"):
+        path = os.path.expanduser(path)
     
     file_path = Path(path)
     
     if not file_path.exists():
-        return {"ok": False, "error": "File not found"}
+        return {"ok": False, "error": f"File not found: {path}"}
     
     try:
         if file_type == "folder":
@@ -4185,6 +4294,149 @@ except Exception as e:
 def get_v5_log():
     """Get V5 apply log content."""
     log_path = Path("/tmp/v5_apply.log")
+    if not log_path.exists():
+        return {"ok": False, "log": "No log file"}
+    
+    try:
+        return {"ok": True, "log": log_path.read_text()}
+    except Exception as e:
+        return {"ok": False, "log": f"Error: {e}"}
+
+
+# ============= V6 FORM FILLER ENDPOINT =============
+
+@app.post("/apply/v6")
+def apply_v6_endpoint(payload: ApplyRequest):
+    """
+    Apply to job using V6 Form Filler with Claude AI.
+    Simpler engine, focused on Greenhouse forms.
+    """
+    import subprocess
+    import sys
+    
+    job_url = payload.job_url
+    profile_name = payload.profile
+    
+    # Start Chrome with debug port using our helper
+    cwd = Path(__file__).parent.resolve()
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, str(cwd / "browser/start_chrome_debug.py")],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        if "❌" in result.stdout:
+            return {"ok": False, "error": "Failed to start Chrome with debug port"}
+            
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "Chrome start timeout"}
+    except Exception as e:
+        return {"ok": False, "error": f"Chrome start error: {e}"}
+    
+    # Prepare V6 script
+    script_content = f'''
+import sys
+sys.path.insert(0, '{cwd}')
+import os
+os.chdir('{cwd}')
+
+# Tee output to log file
+import io
+class TeeWriter:
+    def __init__(self, *writers):
+        self.writers = writers
+    def write(self, text):
+        for w in self.writers:
+            w.write(text)
+            w.flush()
+    def flush(self):
+        for w in self.writers:
+            w.flush()
+
+log_file = open('/tmp/v6_apply.log', 'w')
+sys.stdout = TeeWriter(sys.__stdout__, log_file)
+sys.stderr = TeeWriter(sys.__stderr__, log_file)
+
+from browser.v6.engine import FormFillerV6
+import time
+
+job_url = "{job_url}"
+
+print("="*60)
+print("V6 Form Filler (AI-Powered)")
+print(f"URL: {{job_url}}")
+print("="*60)
+
+try:
+    # Initialize V6 and connect to Chrome
+    filler = FormFillerV6()
+    filler.connect()
+    
+    if not filler.find_frame():
+        print("❌ No form found on current page")
+        print("Make sure you have the job application form open in Chrome")
+        input("Press Enter to close...")
+    else:
+        # Fill the form
+        filler.fill_greenhouse()
+        
+        print("\\n" + "="*60)
+        print("✅ Form filling complete!")
+        print("="*60)
+        
+        # Verify
+        filler.verify_form()
+        
+        print("\\nBrowser stays open. Review and submit manually.")
+        input("Press Enter to close...")
+    
+except Exception as e:
+    print(f"Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+    input("Press Enter to close...")
+'''
+    
+    # Write and run script
+    script_file = Path("/tmp/v6_apply_script.py")
+    script_file.write_text(script_content)
+    
+    log_file = Path("/tmp/v6_apply.log")
+    
+    # Run in new Terminal window
+    apple_script = f'''
+    tell application "Terminal"
+        activate
+        do script "cd {cwd} && {sys.executable} {script_file}"
+    end tell
+    '''
+    
+    try:
+        subprocess.run(['osascript', '-e', apple_script], capture_output=True)
+    except:
+        # Fallback: run in background
+        subprocess.Popen(
+            [sys.executable, str(script_file)],
+            stdout=open(log_file, "w"),
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd)
+        )
+    
+    return {
+        "ok": True,
+        "message": "V6 Form Filler started in Terminal",
+        "log_file": str(log_file),
+        "job_url": job_url
+    }
+
+
+@app.get("/apply/v6/log")
+def get_v6_log():
+    """Get V6 apply log content."""
+    log_path = Path("/tmp/v6_apply.log")
     if not log_path.exists():
         return {"ok": False, "log": "No log file"}
     

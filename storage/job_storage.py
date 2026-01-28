@@ -191,7 +191,7 @@ def add_jobs_bulk(new_jobs: List[dict], status: str = STATUS_NEW) -> int:
     return added
 
 
-def update_status(job_id: str, new_status: str, notes: str = "", folder_path: str = "") -> Optional[dict]:
+def update_status(job_id: str, new_status: str, notes: str = "", folder_path: str = "", jd_summary: dict = None) -> Optional[dict]:
     """
     Update job status.
     Returns updated job or None if not found.
@@ -211,6 +211,8 @@ def update_status(job_id: str, new_status: str, notes: str = "", folder_path: st
                 job["folder_path"] = folder_path
             if notes:
                 job["notes"] = notes
+            if jd_summary:
+                job["jd_summary"] = jd_summary
             
             # Clear attention flag unless closing
             if new_status != STATUS_CLOSED:
@@ -220,6 +222,24 @@ def update_status(job_id: str, new_status: str, notes: str = "", folder_path: st
             return job
     
     return None
+
+
+def update_jd_summary(job_id: str, jd_summary: dict) -> bool:
+    """
+    Update job's jd_summary field.
+    Returns True if successful.
+    """
+    jobs = _load_jobs()
+    now = _now_iso()
+    
+    for job in jobs:
+        if job.get("id") == job_id:
+            job["jd_summary"] = jd_summary
+            job["updated_at"] = now
+            _save_jobs(jobs)
+            return True
+    
+    return False
 
 
 def update_last_seen(job_id: str, is_active: bool = True) -> bool:
