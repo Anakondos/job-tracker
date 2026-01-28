@@ -6,6 +6,7 @@ Principles:
 2. Each field type has ONE proven method
 3. Learn from user corrections
 4. Universal - works on any form, remembers specifics
+5. AI fallback for unknown questions
 """
 
 from playwright.sync_api import sync_playwright, Page, Frame, ElementHandle
@@ -15,6 +16,12 @@ from enum import Enum
 import json
 import time
 import os
+
+# AI Helper
+try:
+    from .ai_helper import AIHelper
+except ImportError:
+    AIHelper = None
 
 # ─────────────────────────────────────────────────────────────────────
 # CONFIG
@@ -142,13 +149,20 @@ class AnswerDB:
 # ─────────────────────────────────────────────────────────────────────
 
 class FormFillerV6:
-    """Simple, sequential form filler"""
+    """Simple, sequential form filler with AI fallback"""
     
     def __init__(self):
         self.page: Optional[Page] = None
         self.frame: Optional[Frame] = None
         self.profile = Profile.load(PROFILE_PATH)
         self.answers_db = AnswerDB(ANSWERS_DB_PATH)
+        
+        # AI Helper
+        self.ai = AIHelper() if AIHelper else None
+        if self.ai and self.ai.available:
+            print("🤖 AI Helper: enabled")
+        else:
+            print("⚠️ AI Helper: disabled")
     
     def connect(self, port: int = 9222):
         """Connect to Chrome via CDP"""
@@ -171,6 +185,9 @@ class FormFillerV6:
     
     def find_frame(self) -> bool:
         """Find application iframe (Greenhouse, Lever, etc.)"""
+        # Wait for page to load
+        time.sleep(2)
+        
         # Method 1: Find by URL
         for f in self.page.frames:
             if any(ats in f.url for ats in ['greenhouse', 'lever', 'ashby', 'workday']):
@@ -194,6 +211,7 @@ class FormFillerV6:
                 return True
         
         # No iframe - use main page
+        print(f"⚠️ No ATS iframe found, using main page")
         self.frame = self.page.main_frame
         return True
     
@@ -657,6 +675,10 @@ class FormFillerV6:
             if not qid:
                 continue
             
+            # Skip label/description elements (only process main question fields)
+            if qid.endswith('-label') or qid.endswith('-description'):
+                continue
+            
             # Skip if already filled or is LinkedIn
             val = q.get_attribute('value') or ''
             if val and val not in ('', 'Select...'):
@@ -691,6 +713,34 @@ class FormFillerV6:
                     answer = '1234 Main St, Wake Forest, NC 27587'
                 elif 'website' in label_lower or 'portfolio' in label_lower:
                     answer = ''  # Skip optional website
+            
+            # AI FALLBACK - if no pattern matched and AI is available
+            if not answer and self.ai and self.ai.available:
+                # Get options if it's a dropdown
+                options = []
+                role = q.get_attribute('role')
+                if role == 'combobox' or q.get_attribute('aria-haspopup'):
+                    controls_id = q.get_attribute('aria-controls')
+                    if controls_id:
+                        # Click to open and get options
+                        self.page.keyboard.press('Escape')
+                        time.sleep(0.1)
+                        q.click()
+                        time.sleep(0.3)
+                        listbox = self.frame.query_selector(f'#{controls_id}')
+                        if listbox:
+                            opt_els = listbox.query_selector_all('[role="option"]')
+                            options = [o.inner_text().strip() for o in opt_els[:20]]
+                        self.page.keyboard.press('Escape')
+                        time.sleep(0.1)
+                
+                # Ask AI
+                profile_context = f"Anton Kondakov, Senior TPM/PM, authorized to work in US, no sponsorship needed"
+                ai_answer = self.ai.get_answer(label, options=options if options else None, profile_context=profile_context)
+                
+                if ai_answer:
+                    answer = ai_answer
+                    print(f"   🤖 AI: '{label[:25]}' → '{answer[:25]}'")
             
             if answer:
                 # Check if it's a dropdown (has aria-controls)
