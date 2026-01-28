@@ -171,10 +171,26 @@ class FormFillerV6:
     
     def find_frame(self) -> bool:
         """Find application iframe (Greenhouse, Lever, etc.)"""
+        # Method 1: Find by URL
         for f in self.page.frames:
             if any(ats in f.url for ats in ['greenhouse', 'lever', 'ashby', 'workday']):
                 self.frame = f
-                print(f"✅ Found ATS iframe")
+                print(f"✅ Found ATS iframe (by URL)")
+                return True
+        
+        # Method 2: Find by form content (for iframes with empty URL)
+        for f in self.page.frames:
+            if f.query_selector('#first_name') and f.query_selector('#last_name'):
+                self.frame = f
+                print(f"✅ Found ATS iframe (by form fields)")
+                # Scroll to form if it's far down the page
+                fn = f.query_selector('#first_name')
+                if fn:
+                    box = fn.bounding_box()
+                    if box and box['y'] > 1000:
+                        print(f"   Scrolling to form (y={int(box['y'])})...")
+                        self.page.evaluate(f"window.scrollTo(0, {int(box['y']) - 200})")
+                        time.sleep(0.5)
                 return True
         
         # No iframe - use main page
