@@ -467,6 +467,7 @@ class FormFillerV6:
         print("\n[1] BASIC INFO")
         self.fill_text('#first_name', self.profile.first_name, 'First Name')
         self.fill_text('#last_name', self.profile.last_name, 'Last Name')
+        self.fill_text('#preferred_name', self.profile.first_name, 'Preferred Name')  # Same as first name
         self.fill_text('#email', self.profile.email, 'Email')
         
         # ─────────────────────────────────────────────────────────────
@@ -606,26 +607,49 @@ class FormFillerV6:
         # Default answers based on common question patterns
         # Order matters! More specific patterns first
         defaults = [
+            # Government/Compliance
             ('current government official', 'No'),
             ('government official', 'No'),
             ('relative of a government', 'No'),
             ('conflict of interest', 'No'),
-            ('referred', 'No'),
+            
+            # Employment history
+            ('previously worked', 'No'),
             ('previously employed', 'No'),
+            ('currently an employee', 'No'),
             ('employed by', 'No'),
+            ('referred', 'No'),
+            
+            # Work authorization  
+            ('eligible to work', 'Yes'),
             ('require sponsorship', 'No'),
+            ('need.*sponsor', 'No'),
             ('sponsor', 'No'),
             ('visa', 'No'),
-            ('at least 18', 'Yes'),
-            ('18 years', 'Yes'),
             ('legally authorized', 'Yes'),
             ('authorized to work', 'Yes'),
+            
+            # Age/Basic
+            ('at least 18', 'Yes'),
+            ('18 years', 'Yes'),
+            
+            # Technical/Experience questions
+            ('minimum of', 'Yes'),  # "Do you hold a minimum of X years"
+            ('technical product', 'Yes'),  # Technical PM experience
+            ('years of experience', 'Yes'),
+            
+            # Source
             ('hear about', 'LinkedIn'),
             ('how did you', 'LinkedIn'),
+            
+            # Privacy/Consent
             ('privacy', 'Confirmed'),
             ('confirm receipt', 'Confirmed'),
             ('ai tool', 'Yes'),
             ('understand that', 'Yes'),
+            
+            # Language preference
+            ('preferred la', 'English'),  # Preferred Language
         ]
         
         for q in questions:
@@ -659,6 +683,15 @@ class FormFillerV6:
                     answer = default_answer
                     break
             
+            # Special cases not covered by patterns
+            if not answer:
+                if 'current company' in label_lower:
+                    answer = 'DXC Technology'  # Current employer
+                elif 'home address' in label_lower or 'address' in label_lower and 'zip' in label_lower:
+                    answer = '1234 Main St, Wake Forest, NC 27587'
+                elif 'website' in label_lower or 'portfolio' in label_lower:
+                    answer = ''  # Skip optional website
+            
             if answer:
                 # Check if it's a dropdown (has aria-controls)
                 role = q.get_attribute('role')
@@ -669,34 +702,86 @@ class FormFillerV6:
                     self.fill_text(f'#{qid}', answer, label[:30])
     
     def _final_check(self):
-        """Check form status"""
+        """Scan ALL fields and report status"""
         print("\n" + "=" * 60)
-        print("FINAL CHECK")
+        print("FINAL FORM SCAN")
         print("=" * 60)
         
-        # Invalid fields
-        invalid = self.frame.query_selector_all('[aria-invalid="true"]')
-        print(f"\n❗ Invalid fields: {len(invalid)}")
+        # Scan ALL input fields
+        inputs = self.frame.query_selector_all('input:not([type="hidden"]):not([type="submit"]), select, textarea, [role="combobox"]')
         
-        if invalid:
-            for el in invalid[:5]:
-                eid = el.get_attribute('id')
-                print(f"    🔴 {eid}")
+        filled = []
+        empty_required = []
+        empty_optional = []
         
-        # Filled dropdowns
-        filled = self.frame.query_selector_all('.select__single-value')
-        print(f"✅ Dropdowns filled: {len(filled)}")
+        for el in inputs:
+            eid = el.get_attribute('id') or ''
+            etype = el.get_attribute('type') or ''
+            
+            # Skip utility fields
+            if eid.startswith('iti-') or eid.startswith('g-recaptcha') or etype == 'file':
+                continue
+            
+            # Get label
+            label = ""
+            if eid:
+                label_el = self.frame.query_selector(f'label[for="{eid}"]')
+                if label_el:
+                    label = label_el.inner_text().strip()[:35]
+            
+            # Check if required
+            required = el.get_attribute('aria-required') == 'true'
+            
+            # Get value
+            val = el.get_attribute('value') or el.input_value() if hasattr(el, 'input_value') else ''
+            if not val:
+                try:
+                    val = el.input_value()
+                except:
+                    pass
+            
+            # For dropdowns, check single-value
+            if not val:
+                sv = el.evaluate('''e => {
+                    let sv = e.closest('.select__control')?.parentElement?.querySelector('.select__single-value');
+                    return sv ? sv.innerText : '';
+                }''')
+                val = sv or ''
+            
+            if val and val not in ('Select...', ''):
+                filled.append((eid, label, val[:20]))
+            elif required:
+                empty_required.append((eid, label))
+            else:
+                empty_optional.append((eid, label))
+        
+        # Report
+        print(f"\n✅ Filled: {len(filled)}")
+        
+        if empty_required:
+            print(f"\n🔴 EMPTY REQUIRED ({len(empty_required)}):")
+            for eid, label in empty_required:
+                print(f"    ⚠️ {eid[:25]:<25} | {label}")
+        
+        if empty_optional:
+            print(f"\n⬜ Empty optional ({len(empty_optional)}):")
+            for eid, label in empty_optional[:5]:
+                print(f"    - {eid[:25]:<25} | {label}")
+            if len(empty_optional) > 5:
+                print(f"    ... and {len(empty_optional) - 5} more")
         
         # Files
         file_names = self.frame.query_selector_all('.file-upload__filename, [class*="filename"]')
-        print(f"📎 Files attached: {len(file_names)}")
+        print(f"\n📎 Files: {len(file_names)}")
         for fn in file_names:
             print(f"    - {fn.inner_text()[:40]}")
         
-        if len(invalid) == 0:
-            print("\n🎉 FORM READY TO SUBMIT!")
+        # Summary
+        print("\n" + "=" * 60)
+        if not empty_required:
+            print("🎉 ALL REQUIRED FIELDS FILLED!")
         else:
-            print("\n⚠️ Fix invalid fields before submitting")
+            print(f"⚠️ {len(empty_required)} required fields need attention")
 
 
 # ─────────────────────────────────────────────────────────────────────
