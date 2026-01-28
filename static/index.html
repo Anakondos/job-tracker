@@ -2784,7 +2784,13 @@
             text.textContent = `⏳ Auto-refresh: Starting...`;
           } else {
             indicator.style.background = "#6b7280";  // gray - disabled
-            text.textContent = `⏸️ Auto-refresh: OFF`;
+            // Show if locked by another machine
+            if (status.locked_by) {
+              text.textContent = `🔒 Daemon locked by: ${status.locked_by}`;
+              indicator.style.background = "#f59e0b";  // amber - locked by other
+            } else {
+              text.textContent = `⏸️ Auto-refresh: OFF`;
+            }
           }
           
           // Update refresh log if visible
@@ -4321,6 +4327,19 @@
       
       async function backgroundRefresh() {
         if (isRefreshing) return;
+        
+        // Check if daemon is locked by another machine
+        try {
+          const statusRes = await fetch("/daemon/status");
+          const status = await statusRes.json();
+          if (status.locked_by) {
+            alert(`⚠️ Daemon is locked by another machine:\n\n${status.locked_by}\n\nWait for it to finish or disable daemon there first.`);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to check daemon status", e);
+        }
+        
         isRefreshing = true;
         
         const btn = document.getElementById("refreshBtn");
