@@ -13,8 +13,9 @@ from pathlib import Path
 
 CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 DEBUG_PORT = 9222
-CHROME_USER_DATA = str(Path.home() / "Library/Application Support/Google/Chrome")
-PROFILE = "Default"  # anakondos@gmail.com
+# Use separate profile for automation - won't conflict with main Chrome
+CHROME_USER_DATA = str(Path.home() / ".chrome-automation-profile")
+PROFILE = "Default"
 
 
 def is_port_open(port: int) -> bool:
@@ -36,13 +37,11 @@ def kill_chrome():
         pass
 
 
-def start_chrome_debug(kill_existing: bool = True) -> dict:
+def start_chrome_debug(kill_existing: bool = False) -> dict:
     """
-    Start Chrome with debug port.
+    Start Chrome with debug port in separate profile.
+    Won't affect your main Chrome browser.
     
-    Args:
-        kill_existing: If True, kill existing Chrome before starting
-        
     Returns:
         {"ok": bool, "message": str, "already_running": bool}
     """
@@ -51,14 +50,11 @@ def start_chrome_debug(kill_existing: bool = True) -> dict:
     if is_port_open(DEBUG_PORT):
         return {
             "ok": True,
-            "message": f"Chrome already running with debug on port {DEBUG_PORT}",
+            "message": f"Chrome automation already running on port {DEBUG_PORT}",
             "already_running": True
         }
     
-    # Kill existing Chrome if requested
-    if kill_existing:
-        kill_chrome()
-        time.sleep(1)
+    # No need to kill - we use separate profile
     
     # Start Chrome with debug port
     try:

@@ -49,7 +49,8 @@ class Profile:
     last_name: str = "Kondakov"
     email: str = "anton.kondakov.PM@gmail.com"
     phone: str = "9105360602"
-    location: str = "Wake Forest"
+    location: str = "Wake Forest, NC"
+    address: str = "2000 Sweet Samson Street, Wake Forest, NC 27587"
     linkedin: str = "https://linkedin.com/in/antonkondakov"
     
     # Work Experience
@@ -183,15 +184,35 @@ class FormFillerV6:
                 break
         
         if not self.page:
-            self.page = self.context.pages[0]
+            if self.context.pages:
+                self.page = self.context.pages[0]
+            else:
+                # No pages - create one
+                self.page = self.context.new_page()
         
         print(f"✅ Connected to Chrome")
-        print(f"   URL: {self.page.url[:60]}")
+        print(f"   URL: {self.page.url[:60] if self.page.url else 'new page'}")
     
     def find_frame(self) -> bool:
         """Find application iframe (Greenhouse, Lever, etc.)"""
-        # Wait for page to load
-        time.sleep(2)
+        
+        # Method 0: Find Greenhouse iframe by ID (most reliable)
+        grnhse = self.page.query_selector('#grnhse_iframe')
+        if grnhse:
+            # Scroll iframe into view first!
+            grnhse.scroll_into_view_if_needed()
+            time.sleep(0.3)
+            
+            content_frame = grnhse.content_frame()
+            if content_frame:
+                self.frame = content_frame
+                # Wait for form to actually load inside iframe
+                try:
+                    self.frame.wait_for_selector('#first_name', state='visible', timeout=15000)
+                    print(f"✅ Found Greenhouse iframe (by ID)")
+                    return True
+                except:
+                    print(f"⚠️ Iframe found but form not loaded yet")
         
         # Method 1: Find by URL
         for f in self.page.frames:
@@ -231,11 +252,15 @@ class FormFillerV6:
             print(f"    ⚠️ {name}: not found")
             return False
         
-        el.scroll_into_view_if_needed()
-        el.fill(value)
-        el.evaluate('e => e.blur()')
-        print(f"    ✅ {name}: {value[:25]}")
-        return True
+        try:
+            el.scroll_into_view_if_needed(timeout=3000)
+            el.fill(value)
+            el.evaluate('e => e.blur()')
+            print(f"    ✅ {name}: {value[:25]}")
+            return True
+        except Exception as e:
+            print(f"    ⚠️ {name}: {str(e)[:40]}")
+            return False
     
     def fill_phone(self, selector: str, value: str, name: str = "Phone") -> bool:
         """Fill phone using keyboard.type() with delay"""
@@ -244,13 +269,17 @@ class FormFillerV6:
             print(f"    ⚠️ {name}: not found")
             return False
         
-        el.scroll_into_view_if_needed()
-        el.click()
-        time.sleep(0.2)
-        self.page.keyboard.type(value, delay=30)
-        el.evaluate('e => e.blur()')
-        print(f"    ✅ {name}: {value}")
-        return True
+        try:
+            el.scroll_into_view_if_needed(timeout=3000)
+            el.click()
+            time.sleep(0.2)
+            self.page.keyboard.type(value, delay=30)
+            el.evaluate('e => e.blur()')
+            print(f"    ✅ {name}: {value}")
+            return True
+        except Exception as e:
+            print(f"    ⚠️ {name}: {str(e)[:40]}")
+            return False
     
     def fill_dropdown(self, selector: str, answer: str, name: str = "") -> bool:
         """
@@ -335,11 +364,11 @@ class FormFillerV6:
         time.sleep(0.3)
         
         # Type location
-        self.page.keyboard.type(value, delay=30)
+        self.page.keyboard.type(value, delay=50)
         
         # CRITICAL: Wait for API
         print(f"    ⏳ Waiting for location API...")
-        time.sleep(2)
+        time.sleep(2.5)
         
         # Get options via aria-controls
         controls_id = el.get_attribute('aria-controls')
@@ -353,6 +382,18 @@ class FormFillerV6:
                     time.sleep(0.2)
                     print(f"    ✅ {name}: {selected}")
                     return True
+        
+        # Try arrow down + enter as fallback
+        self.page.keyboard.press('ArrowDown')
+        time.sleep(0.3)
+        self.page.keyboard.press('Enter')
+        time.sleep(0.2)
+        
+        # Check if value was selected
+        new_value = el.input_value() if el.input_value else ""
+        if new_value and new_value != value:
+            print(f"    ✅ {name}: {new_value[:40]}")
+            return True
         
         # No options - just blur
         el.evaluate('e => e.blur()')
@@ -680,8 +721,8 @@ class FormFillerV6:
             if not qid:
                 continue
             
-            # Skip label/description elements (only process main question fields)
-            if qid.endswith('-label') or qid.endswith('-description'):
+            # Skip label/description/error elements (only process main question fields)
+            if qid.endswith('-label') or qid.endswith('-description') or qid.endswith('-error'):
                 continue
             
             # Skip if already filled or is LinkedIn
@@ -711,16 +752,28 @@ class FormFillerV6:
                     break
             
             # Special cases not covered by patterns
-            if not answer:
+            if answer is None:
                 if 'current company' in label_lower:
                     answer = 'DXC Technology'  # Current employer
-                elif 'home address' in label_lower or 'address' in label_lower and 'zip' in label_lower:
-                    answer = '1234 Main St, Wake Forest, NC 27587'
+                elif 'home address' in label_lower or ('address' in label_lower and 'zip' in label_lower):
+                    answer = self.profile.address  # Full address from profile
                 elif 'website' in label_lower or 'portfolio' in label_lower:
-                    answer = ''  # Skip optional website
+                    answer = 'SKIP'  # Skip optional website
+                elif 'preferred' in label_lower and ('last name' in label_lower or 'surname' in label_lower):
+                    answer = 'SKIP'  # Skip - we don't have preferred last name
+                elif 'b2b saas' in label_lower or ('enterprise' in label_lower and 'saas' in label_lower):
+                    answer = 'Yes'  # B2B SaaS experience
+                elif 'cybersecurity' in label_lower:
+                    answer = 'No'  # No direct cybersecurity experience
+                elif 'employment type' in label_lower and 'previous' in label_lower:
+                    answer = 'SKIP'  # Skip conditional question
+            
+            # Skip if explicitly marked
+            if answer == 'SKIP':
+                continue
             
             # AI FALLBACK - if no pattern matched and AI is available
-            if not answer and self.ai and self.ai.available:
+            if answer is None and self.ai and self.ai.available:
                 # Get options if it's a dropdown
                 options = []
                 role = q.get_attribute('role')

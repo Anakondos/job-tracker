@@ -68,19 +68,20 @@ class AIHelper:
         try:
             if options:
                 # Dropdown - select from options
-                prompt = f"""Job application question: {question}
+                prompt = f"""Job application question: "{question}"
 
-Available options:
+Available options (you MUST choose one of these EXACTLY):
 {chr(10).join(f'- {opt}' for opt in options)}
 
-Applicant: {profile_context}
+Applicant context: {profile_context}
 
-Select the BEST option. Return ONLY the exact option text, nothing else."""
+IMPORTANT: Return ONLY the exact option text from the list above. 
+Do NOT explain, do NOT add anything. Just the option text."""
             else:
                 # Text field
-                prompt = f"""Job application question: {question}
+                prompt = f"""Job application question: "{question}"
 
-Applicant: {profile_context}
+Applicant context: {profile_context}
 
 Provide a brief, professional answer (1-2 sentences max).
 Return ONLY the answer text, nothing else."""

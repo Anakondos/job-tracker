@@ -4317,22 +4317,17 @@ def apply_v6_endpoint(payload: ApplyRequest):
     job_url = payload.job_url
     profile_name = payload.profile
     
-    # Start Chrome with debug port using our helper
+    # Start Chrome with debug port (uses separate profile, won't affect main browser)
     cwd = Path(__file__).parent.resolve()
     
     try:
-        result = subprocess.run(
-            [sys.executable, str(cwd / "browser/start_chrome_debug.py")],
-            capture_output=True,
-            text=True,
-            timeout=15
-        )
+        from browser.start_chrome_debug import start_chrome_debug
         
-        if "❌" in result.stdout:
-            return {"ok": False, "error": "Failed to start Chrome with debug port"}
+        result = start_chrome_debug()
+        
+        if not result["ok"]:
+            return {"ok": False, "error": result.get("message", "Failed to start Chrome")}
             
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "error": "Chrome start timeout"}
     except Exception as e:
         return {"ok": False, "error": f"Chrome start error: {e}"}
     
@@ -4375,6 +4370,17 @@ try:
     filler = FormFillerV6()
     filler.connect()
     
+    # Navigate to job URL first!
+    print(f"📍 Opening: {{job_url[:60]}}...")
+    filler.page.goto(job_url, wait_until="domcontentloaded", timeout=20000)
+    
+    # Wait for Greenhouse iframe to appear
+    print("⏳ Waiting for form to load...")
+    try:
+        filler.page.wait_for_selector('#grnhse_iframe', timeout=10000)
+    except:
+        pass
+    
     if not filler.find_frame():
         print("❌ No form found on current page")
         print("Make sure you have the job application form open in Chrome")
@@ -4386,9 +4392,6 @@ try:
         print("\\n" + "="*60)
         print("✅ Form filling complete!")
         print("="*60)
-        
-        # Verify
-        filler.verify_form()
         
         print("\\nBrowser stays open. Review and submit manually.")
         input("Press Enter to close...")
@@ -4406,11 +4409,14 @@ except Exception as e:
     
     log_file = Path("/tmp/v6_apply.log")
     
-    # Run in new Terminal window
+    # Open new terminal but don't steal focus and don't close old ones
+    escaped_cwd = str(cwd).replace(' ', '\\\\ ')
     apple_script = f'''
     tell application "Terminal"
-        activate
-        do script "cd {cwd} && {sys.executable} {script_file}"
+        do script "cd {escaped_cwd} && {sys.executable} {script_file}"
+        delay 0.3
+        set current settings of front window to settings set "Basic"
+        set font size of front window to 13
     end tell
     '''
     
@@ -4444,6 +4450,86 @@ def get_v6_log():
         return {"ok": True, "log": log_path.read_text()}
     except Exception as e:
         return {"ok": False, "log": f"Error: {e}"}
+
+
+# ============= V7 AGENT FORM FILLER ENDPOINT =============
+
+@app.post("/apply/v7")
+def apply_v7(payload: ApplyPayload):
+    """
+    V7 Agent Form Filler - Uses Claude Vision to fill forms like a human.
+    """
+    job_url = payload.job_url
+    cwd = Path(__file__).parent.resolve()
+    
+    # Start Chrome with debug port
+    try:
+        from browser.start_chrome_debug import start_chrome_debug
+        result = start_chrome_debug()
+        if not result["ok"]:
+            return {"ok": False, "error": result.get("message", "Failed to start Chrome")}
+    except Exception as e:
+        return {"ok": False, "error": f"Chrome start error: {e}"}
+    
+    # Create V7 script
+    script_content = f'''
+import sys
+sys.path.insert(0, '{cwd}')
+
+from browser.v7.agent import FormFillerAgent
+
+job_url = "{job_url}"
+
+print("=" * 60)
+print("V7 AGENT Form Filler")
+print(f"URL: {{job_url}}")
+print("=" * 60)
+
+agent = FormFillerAgent()
+
+try:
+    agent.connect()
+    agent.fill_form(job_url)
+except KeyboardInterrupt:
+    print("\\n⚠️ Interrupted")
+except Exception as e:
+    print(f"\\n❌ Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+finally:
+    input("\\nPress Enter to close...")
+    agent.close()
+'''
+    
+    script_file = Path("/tmp/v7_agent_script.py")
+    script_file.write_text(script_content)
+    
+    # Run in Terminal
+    escaped_cwd = str(cwd).replace(' ', '\\\\ ')
+    apple_script = f'''
+    tell application "Terminal"
+        do script "cd {escaped_cwd} && {sys.executable} {script_file}"
+        delay 0.3
+        set current settings of front window to settings set "Basic"
+        set font size of front window to 13
+    end tell
+    '''
+    
+    try:
+        subprocess.run(['osascript', '-e', apple_script], capture_output=True)
+    except:
+        subprocess.Popen(
+            [sys.executable, str(script_file)],
+            stdout=open("/tmp/v7_agent.log", "w"),
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd)
+        )
+    
+    return {
+        "ok": True,
+        "message": "V7 Agent started in Terminal",
+        "job_url": job_url
+    }
 
 
 @app.get("/chrome/status")
