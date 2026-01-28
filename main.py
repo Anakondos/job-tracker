@@ -3,15 +3,45 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+
+# Load .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+import asyncio
+from datetime import datetime, timezone, timedelta
 import json
 from collections import Counter
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-# Environment: PROD or DEV
-ENV = os.getenv("JOB_TRACKER_ENV", "PROD")
+# ========== UNIVERSAL PATHS (work on any machine via iCloud) ==========
+def get_icloud_path() -> Path:
+    """Get iCloud Drive path for current user."""
+    return Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
+
+def get_ai_projects_path() -> Path:
+    """Get AI_projects folder path."""
+    return get_icloud_path() / "Dev" / "AI_projects"
+
+def get_gold_cv_path() -> Path:
+    """Get Gold CV folder path."""
+    return get_ai_projects_path() / "Gold CV"
+
+def get_applications_path() -> Path:
+    """Get Applications folder for cover letters."""
+    return get_gold_cv_path() / "Applications"
+
+# Pre-compute paths
+ICLOUD_PATH = get_icloud_path()
+AI_PROJECTS_PATH = get_ai_projects_path()
+GOLD_CV_PATH = get_gold_cv_path()
+APPLICATIONS_PATH = get_applications_path()
+
+# Environment: PROD or DEV (auto-detect from folder name)
+_current_dir = Path(__file__).parent.name
+ENV = os.getenv("JOB_TRACKER_ENV", "DEV" if "dev" in _current_dir.lower() else "PROD")
 
 from fastapi import FastAPI, Query
 from fastapi.responses import StreamingResponse
@@ -31,6 +61,17 @@ from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info, load_stats
 from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
+
+# ATS parser mapping
+ATS_PARSERS = {
+    "greenhouse": lambda url: fetch_greenhouse("", url),
+    "lever": lambda url: fetch_lever("", url),
+    "smartrecruiters": lambda url: fetch_smartrecruiters("", url),
+    "ashby": fetch_ashby_jobs,
+    "workday": lambda url: fetch_workday_v2("", url),
+    "atlassian": lambda url: fetch_atlassian("", url),
+}
+
 from storage.job_storage import (
     get_all_jobs, get_jobs_by_status, get_jobs_by_statuses,
     get_active_jobs, get_archive_jobs, get_all_job_ids,
@@ -236,6 +277,362 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ========== BACKGROUND REFRESH DAEMON ==========
+
+# Lock file path (in data/ folder, synced via iCloud)
+DAEMON_LOCK_FILE = Path("data/daemon.lock")
+
+def get_machine_id() -> str:
+    """Get unique machine identifier (hostname + username)"""
+    import socket
+    import getpass
+    return f"{getpass.getuser()}@{socket.gethostname()}"
+
+def check_daemon_lock() -> dict | None:
+    """Check if daemon is locked by another machine. Returns lock info or None."""
+    if not DAEMON_LOCK_FILE.exists():
+        return None
+    try:
+        lock_data = json.loads(DAEMON_LOCK_FILE.read_text())
+        # Check if lock is stale (older than 10 minutes)
+        lock_time = datetime.fromisoformat(lock_data.get("timestamp", "1970-01-01"))
+        if datetime.now(timezone.utc) - lock_time > timedelta(minutes=10):
+            # Stale lock - can be overwritten
+            return None
+        return lock_data
+    except:
+        return None
+
+def acquire_daemon_lock() -> tuple[bool, str]:
+    """Try to acquire daemon lock. Returns (success, message)."""
+    machine_id = get_machine_id()
+    existing_lock = check_daemon_lock()
+    
+    if existing_lock:
+        lock_machine = existing_lock.get("machine", "unknown")
+        if lock_machine != machine_id:
+            return False, f"Daemon already running on {lock_machine}"
+    
+    # Create/update lock
+    lock_data = {
+        "machine": machine_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "pid": os.getpid()
+    }
+    DAEMON_LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
+    return True, "Lock acquired"
+
+def release_daemon_lock():
+    """Release daemon lock if we own it."""
+    machine_id = get_machine_id()
+    existing_lock = check_daemon_lock()
+    
+    if existing_lock and existing_lock.get("machine") == machine_id:
+        try:
+            DAEMON_LOCK_FILE.unlink()
+        except:
+            pass
+
+def update_daemon_lock():
+    """Update lock timestamp (heartbeat)."""
+    machine_id = get_machine_id()
+    existing_lock = check_daemon_lock()
+    
+    if existing_lock and existing_lock.get("machine") == machine_id:
+        lock_data = {
+            "machine": machine_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "pid": os.getpid()
+        }
+        DAEMON_LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
+
+# Daemon status (global)
+# NOTE: Daemon disabled by default to avoid conflicts when running on multiple machines via iCloud
+DAEMON_STATUS = {
+    "enabled": False,  # Changed to False - enable manually via UI or API
+    "running": False,
+    "locked_by": None,  # Which machine has the lock
+    "current_company": None,
+    "last_company": None,
+    "last_updated": None,
+    "next_company": None,
+    "companies_in_cycle": 0,
+    "current_index": 0,
+    "batch_size": 3,
+    "pause_seconds": 45,
+    "cycle_count": 0,
+    "jobs_added_this_cycle": 0,
+    "jobs_added_total": 0,
+    "last_cycle_jobs_added": 0,
+    "companies_refreshed_this_cycle": 0,
+    "refresh_log": []  # List of {company, status, jobs_count, time, error}
+}
+
+async def refresh_company_async(company: dict) -> dict:
+    """Parse a single company (runs in thread pool to not block async)"""
+    import concurrent.futures
+    
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        result = await loop.run_in_executor(pool, refresh_company_sync, company)
+    return result
+
+def refresh_company_sync(company: dict) -> dict:
+    """Synchronous company refresh (called from thread pool)"""
+    company_id = company.get("id", company.get("name", "unknown"))
+    ats = company.get("ats", "unknown")
+    board_url = company.get("board_url", "")
+    
+    result = {
+        "company": company_id,
+        "ok": False,
+        "jobs": 0,
+        "jobs_added": 0,
+        "error": None
+    }
+    
+    try:
+        fetcher = ATS_PARSERS.get(ats)
+        if not fetcher:
+            result["error"] = f"Unknown ATS: {ats}"
+            return result
+        
+        jobs = fetcher(board_url)
+        result["jobs"] = len(jobs) if jobs else 0
+        result["ok"] = True
+        
+        # Update company status in storage
+        from company_storage import update_company_status
+        update_company_status(company_id, ok=True, jobs_count=len(jobs) if jobs else 0)
+        
+        # Update cache with new jobs and track added count
+        added = update_cache_for_company(company_id, jobs or [])
+        result["jobs_added"] = added or 0
+        
+    except Exception as e:
+        result["error"] = str(e)
+        from company_storage import update_company_status
+        update_company_status(company_id, ok=False, error=str(e))
+    
+    return result
+
+def update_cache_for_company(company_id: str, new_jobs: list) -> int:
+    """Update jobs_all.json cache for a specific company. Returns count of new jobs added to pipeline."""
+    from utils.cache_manager import get_cache_path
+    from utils.role_classifier import classify_role
+    from utils.normalize import normalize_location
+    
+    cache_path = get_cache_path("all")
+    if not cache_path.exists():
+        return
+    
+    try:
+        with open(cache_path, "r") as f:
+            cache_data = json.load(f)
+        
+        all_jobs = cache_data.get("jobs", [])
+        
+        # Remove old jobs from this company
+        all_jobs = [j for j in all_jobs if j.get("company_id") != company_id]
+        
+        # Normalize and classify new jobs
+        for job in new_jobs:
+            job["company_id"] = company_id
+            if "location_norm" not in job:
+                job["location_norm"] = normalize_location(job.get("location", ""))
+            if "role_category" not in job:
+                role_info = classify_role(job.get("title", ""))
+                job["role_category"] = role_info.get("category", "unknown")
+                job["role_id"] = role_info.get("role_id")
+        
+        # Add new jobs
+        all_jobs.extend(new_jobs)
+        
+        # Save back
+        cache_data["jobs"] = all_jobs
+        cache_data["jobs_count"] = len(all_jobs)
+        cache_data["last_updated"] = datetime.now(timezone.utc).isoformat()
+        
+        with open(cache_path, "w") as f:
+            json.dump(cache_data, f)
+        
+        # Also update pipeline (jobs.json) with relevant jobs
+        added = update_pipeline_for_company(company_id, new_jobs)
+        return added
+        
+    except Exception as e:
+        print(f"[Daemon] Cache update error for {company_id}: {e}")
+        return 0
+
+def update_pipeline_for_company(company_id: str, new_jobs: list) -> int:
+    """Update pipeline jobs.json with new relevant jobs from company. Returns count added."""
+    from storage.job_storage import get_all_jobs, add_job
+    
+    # Get existing pipeline jobs
+    existing = get_all_jobs()
+    existing_urls = {j.get("job_url") or j.get("url") for j in existing}
+    
+    # Add new relevant jobs (primary/adjacent only)
+    added = 0
+    for job in new_jobs:
+        if job.get("role_category") in ["primary", "adjacent"]:
+            job_url = job.get("job_url") or job.get("url")
+            if job_url and job_url not in existing_urls:
+                if add_job(job):
+                    added += 1
+    
+    return added
+    
+    if added > 0:
+        print(f"[Daemon] Added {added} new jobs to pipeline from {company_id}")
+
+async def background_refresh_daemon():
+    """Background task that continuously refreshes companies"""
+    global DAEMON_STATUS
+    
+    # Wait for app to fully start
+    await asyncio.sleep(5)
+    
+    print("[Daemon] Background refresh daemon started")
+    DAEMON_STATUS["running"] = True
+    
+    while DAEMON_STATUS["enabled"]:
+        # Update lock heartbeat every iteration
+        update_daemon_lock()
+        
+        try:
+            # Load all companies from JSON
+            companies_path = Path("data/companies.json")
+            if companies_path.exists():
+                companies = json.loads(companies_path.read_text())
+            else:
+                companies = []
+            
+            # Filter to enabled companies only
+            companies = [c for c in companies if c.get("enabled", True)]
+            
+            # Sort by last_checked (oldest first)
+            companies.sort(key=lambda c: c.get("last_checked") or "1970-01-01")
+            
+            DAEMON_STATUS["companies_in_cycle"] = len(companies)
+            DAEMON_STATUS["cycle_count"] += 1
+            DAEMON_STATUS["last_cycle_jobs_added"] = DAEMON_STATUS["jobs_added_this_cycle"]
+            DAEMON_STATUS["jobs_added_this_cycle"] = 0
+            DAEMON_STATUS["companies_refreshed_this_cycle"] = 0
+            DAEMON_STATUS["refresh_log"] = []  # Clear log for new cycle
+            
+            print(f"[Daemon] Starting cycle #{DAEMON_STATUS['cycle_count']} with {len(companies)} companies")
+            
+            # Process in batches
+            batch_size = DAEMON_STATUS["batch_size"]
+            for i in range(0, len(companies), batch_size):
+                if not DAEMON_STATUS["enabled"]:
+                    break
+                
+                batch = companies[i:i+batch_size]
+                DAEMON_STATUS["current_index"] = i
+                
+                for company in batch:
+                    if not DAEMON_STATUS["enabled"]:
+                        break
+                    
+                    company_name = company.get("name", company.get("id", "unknown"))
+                    DAEMON_STATUS["current_company"] = company_name
+                    
+                    # Set next company
+                    next_idx = companies.index(company) + 1
+                    if next_idx < len(companies):
+                        DAEMON_STATUS["next_company"] = companies[next_idx].get("name")
+                    else:
+                        DAEMON_STATUS["next_company"] = companies[0].get("name") if companies else None
+                    
+                    print(f"[Daemon] Refreshing: {company_name}")
+                    
+                    result = await refresh_company_async(company)
+                    
+                    DAEMON_STATUS["last_company"] = company_name
+                    DAEMON_STATUS["last_updated"] = datetime.now(timezone.utc).isoformat()
+                    DAEMON_STATUS["companies_refreshed_this_cycle"] += 1
+                    
+                    # Track jobs added
+                    jobs_added = result.get("jobs_added", 0)
+                    if jobs_added > 0:
+                        DAEMON_STATUS["jobs_added_this_cycle"] += jobs_added
+                        DAEMON_STATUS["jobs_added_total"] += jobs_added
+                    
+                    # Add to refresh log
+                    log_entry = {
+                        "company": company_name,
+                        "ats": company.get("ats", ""),
+                        "ok": result["ok"],
+                        "jobs": result.get("jobs", 0),
+                        "jobs_added": jobs_added,
+                        "error": result.get("error"),
+                        "time": datetime.now(timezone.utc).isoformat(),
+                        "index": DAEMON_STATUS["companies_refreshed_this_cycle"],
+                        "total": len(companies)
+                    }
+                    DAEMON_STATUS["refresh_log"].append(log_entry)
+                    # Keep only last 100 entries
+                    if len(DAEMON_STATUS["refresh_log"]) > 100:
+                        DAEMON_STATUS["refresh_log"] = DAEMON_STATUS["refresh_log"][-100:]
+                    
+                    if result["ok"]:
+                        added_str = f" (+{jobs_added} new)" if jobs_added > 0 else ""
+                        print(f"[Daemon] ✓ {company_name}: {result['jobs']} jobs{added_str}")
+                    else:
+                        print(f"[Daemon] ✗ {company_name}: {result['error']}")
+                
+                DAEMON_STATUS["current_company"] = None
+                
+                # Pause between batches
+                if DAEMON_STATUS["enabled"] and i + batch_size < len(companies):
+                    await asyncio.sleep(DAEMON_STATUS["pause_seconds"])
+            
+            # Pause before next cycle (5 minutes)
+            print(f"[Daemon] Cycle #{DAEMON_STATUS['cycle_count']} complete. Waiting 5 minutes...")
+            await asyncio.sleep(300)
+            
+        except Exception as e:
+            print(f"[Daemon] Error: {e}")
+            await asyncio.sleep(60)  # Wait on error
+    
+    DAEMON_STATUS["running"] = False
+    release_daemon_lock()  # Release lock when stopping
+    print("[Daemon] Background refresh daemon stopped")
+
+# Start daemon on app startup
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(background_refresh_daemon())
+
+@app.get("/daemon/status")
+def get_daemon_status():
+    """Get background refresh daemon status"""
+    # Check lock status
+    lock = check_daemon_lock()
+    DAEMON_STATUS["locked_by"] = lock.get("machine") if lock else None
+    return DAEMON_STATUS
+
+@app.post("/daemon/toggle")
+def toggle_daemon(enabled: bool = Query(...)):
+    """Enable or disable background refresh daemon"""
+    global DAEMON_STATUS
+    
+    if enabled:
+        # Try to acquire lock before enabling
+        success, message = acquire_daemon_lock()
+        if not success:
+            return {"ok": False, "error": message}
+        DAEMON_STATUS["locked_by"] = get_machine_id()
+    else:
+        # Release lock when disabling
+        release_daemon_lock()
+        DAEMON_STATUS["locked_by"] = None
+    
+    DAEMON_STATUS["enabled"] = enabled
+    return {"ok": True, "enabled": enabled}
 
 
 @app.get("/")
@@ -449,7 +846,7 @@ async def get_jobs(
     """
     # NEW: Check cache first (unless refresh=True)
     cache_key = profile
-    cached = None if refresh else load_cache(cache_key)
+    cached = None if refresh else load_cache(cache_key, ignore_ttl=True)
     
     if cached:
         print(f"✅ Using cached data ({cached['jobs_count']} jobs)")
@@ -733,7 +1130,7 @@ def get_companies(
     all_pipeline_jobs = get_active_jobs()
     
     # Load cache to get total jobs per company (all jobs from ATS)
-    cache_data = load_cache(profile)  # Cache key is just 'all', not 'jobs_all'
+    cache_data = load_cache(profile, ignore_ttl=True)  # Cache key is just 'all', not 'jobs_all'
     cache_jobs = cache_data.get("jobs", []) if cache_data else []
     
     # Build total_jobs per company from cache
@@ -963,7 +1360,7 @@ def refresh_single_company(company_id: str, profile: str = Query("all")):
         jobs = _fetch_for_company(profile, cfg)
         
         # Update cache - load existing, replace this company's jobs, save
-        cached = load_cache(profile) or {"jobs": []}
+        cached = load_cache(profile, ignore_ttl=True) or {"jobs": []}
         other_jobs = [j for j in cached.get("jobs", []) if j.get("company") != company_name]
         all_jobs = other_jobs + jobs
         save_cache(profile, all_jobs)
@@ -1066,7 +1463,7 @@ async def refresh_single_company_stream(company_id: str, profile: str = Query("a
             jobs_count = len(jobs)
             
             # Update cache
-            cached = load_cache(profile) or {"jobs": []}
+            cached = load_cache(profile, ignore_ttl=True) or {"jobs": []}
             other_jobs = [j for j in cached.get("jobs", []) if j.get("company") != company_name]
             all_jobs = other_jobs + jobs
             save_cache(profile, all_jobs)
@@ -1277,22 +1674,192 @@ async def refresh_stream(profile: str = Query("all")):
 
 @app.get("/stats")
 def get_funnel_stats():
-    """Get funnel stats (Total -> Role -> US -> My Area) from cache."""
-    stats = load_stats()
-    if stats:
-        return stats
-    else:
-        return {
-            "total": 0,
-            "role": 0,
-            "us": 0,
-            "my_area": 0,
-            "updated_at": None,
-            "message": "Stats not computed yet. Run /jobs?refresh=true first."
-        }
+    """Get funnel stats from pipeline data (always fresh, daemon updates it)."""
+    from datetime import datetime, timezone
+    from storage.pipeline_storage import load_new_jobs
+    
+    # Load pipeline jobs (актуальные данные от daemon)
+    jobs = load_new_jobs()
+    
+    # Pipeline already contains only relevant roles
+    total = len(jobs)
+    
+    # Filter by US location
+    us_jobs = [j for j in jobs if _is_us_location(j.get("location", ""))]
+    
+    # Filter by my area (local states + remote USA)
+    my_area_jobs = [j for j in us_jobs if j.get("geo_bucket") in ["local", "nc_other", "neighbor", "remote_usa"]]
+    
+    return {
+        "total": total,
+        "role": total,  # Pipeline уже отфильтрован по ролям
+        "us": len(us_jobs),
+        "my_area": len(my_area_jobs),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "is_stale": False,  # Pipeline всегда актуален (daemon обновляет)
+        "age_hours": 0
+    }
 
+
+
+@app.get("/stats/by-date")
+def get_stats_by_date(days: int = Query(14, ge=1, le=60)):
+    """Get job statistics grouped by first_seen date from pipeline (unique new jobs only)."""
+    from collections import defaultdict
+    from datetime import datetime, timedelta
+    
+    # Load from pipeline (unique jobs only, not cache)
+    from storage.job_storage import get_all_jobs
+    pipeline_jobs = get_all_jobs()
+    if not pipeline_jobs:
+        return {"error": "Pipeline not loaded", "dates": []}
+    
+    # Group by first_seen date (when job was first added to pipeline)
+    by_date = defaultdict(lambda: {
+        "total": 0,
+        "primary": 0,
+        "adjacent": 0,
+        "unknown": 0,
+        "excluded": 0,
+        "us": 0,
+        "remote": 0,
+        "nc": 0,
+        "neighbor": 0,
+        "nonus": 0
+    })
+    
+    neighbor_states = {"VA", "SC", "GA", "TN"}
+    
+    for job in pipeline_jobs:
+        # Use first_seen date (when job was first discovered/added)
+        first_seen = job.get("first_seen", "")
+        if first_seen:
+            date_str = str(first_seen)[:10]
+        else:
+            date_str = "unknown"
+        
+        stats = by_date[date_str]
+        stats["total"] += 1
+        
+        # Category
+        cat = job.get("role_category", "unknown")
+        if cat in stats:
+            stats[cat] += 1
+        
+        # Location
+        ln = job.get("location_norm", {}) or {}
+        state = (ln.get("state") or "").upper()
+        is_remote = ln.get("remote", False)
+        remote_scope = (ln.get("remote_scope") or "").upper()
+        
+        if is_remote and remote_scope == "USA":
+            stats["remote"] += 1
+            stats["us"] += 1
+        elif state == "NC":
+            stats["nc"] += 1
+            stats["us"] += 1
+        elif state in neighbor_states:
+            stats["neighbor"] += 1
+            stats["us"] += 1
+        elif state:
+            stats["us"] += 1
+        elif job.get("location"):
+            stats["nonus"] += 1
+    
+    # Sort by date descending, limit to days
+    sorted_dates = sorted(by_date.items(), key=lambda x: x[0], reverse=True)
+    
+    # Filter to recent days only
+    result = []
+    for date_str, stats in sorted_dates[:days]:
+        if date_str == "unknown":
+            continue
+        result.append({
+            "date": date_str,
+            **stats
+        })
+    
+    # Get last refresh from cache for display
+    cached = load_cache("all", ignore_ttl=True)
+    last_refresh = cached.get("last_updated") if cached else None
+    
+    return {
+        "dates": result,
+        "last_refresh": last_refresh,
+        "source": "pipeline"
+    }
 
 # ============= PIPELINE ENDPOINTS =============
+
+
+@app.get("/cache/browse")
+def browse_cache_jobs(
+    date: str = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    category: str = Query(None, description="Filter by role_category"),
+    location: str = Query(None, description="Filter by location (us/nc/neighbor/remote)"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=10, le=500)
+):
+    """Browse ALL cached jobs with filters (not just pipeline)"""
+    from datetime import datetime
+    
+    cached = load_cache("all", ignore_ttl=True)
+    if not cached:
+        return {"error": "Cache not loaded", "jobs": [], "total": 0}
+    
+    all_jobs = cached.get("jobs", [])
+    neighbor_states = {"VA", "SC", "GA", "TN"}
+    
+    # Apply date filter
+    if date:
+        def match_date(j):
+            updated = j.get("updated_at", "")
+            if isinstance(updated, int):
+                if updated > 10000000000:
+                    updated = updated / 1000
+                return datetime.fromtimestamp(updated).strftime("%Y-%m-%d") == date
+            return str(updated)[:10] == date
+        all_jobs = [j for j in all_jobs if match_date(j)]
+    
+    # Apply category filter
+    if category:
+        all_jobs = [j for j in all_jobs if j.get("role_category") == category]
+    
+    # Apply location filter
+    if location:
+        filtered = []
+        for j in all_jobs:
+            ln = j.get("location_norm", {}) or {}
+            state = (ln.get("state") or "").upper()
+            is_remote = ln.get("remote", False)
+            
+            if location == "us" and (state or is_remote):
+                filtered.append(j)
+            elif location == "nc" and state == "NC":
+                filtered.append(j)
+            elif location == "neighbor" and state in neighbor_states:
+                filtered.append(j)
+            elif location == "remote" and is_remote:
+                filtered.append(j)
+        all_jobs = filtered
+    
+    # Check which are in pipeline
+    pipeline_ids = get_all_job_ids()
+    for j in all_jobs:
+        j["in_pipeline"] = j.get("id") in pipeline_ids
+    
+    # Pagination
+    total = len(all_jobs)
+    start = (page - 1) * limit
+    end = start + limit
+    
+    return {
+        "jobs": all_jobs[start:end],
+        "total": total,
+        "page": page,
+        "has_prev": page > 1,
+        "has_next": end < total
+    }
 
 @app.get("/pipeline/stats")
 def pipeline_stats_endpoint():
@@ -1302,6 +1869,7 @@ def pipeline_stats_endpoint():
 
 @app.get("/jobs/review")
 def get_review_jobs(
+    date: str = Query(None, description="Filter by date (YYYY-MM-DD)"),
     category: str = Query("unknown", description="unknown / excluded / all"),
     search: str = Query("", description="Search in title, company, location"),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
@@ -1313,12 +1881,16 @@ def get_review_jobs(
     """
     # Load from cache
     cache_key = "all"
-    cached = load_cache(cache_key)
+    cached = load_cache(cache_key, ignore_ttl=True)
     
     if not cached:
         return {"error": "Cache not loaded. Run /jobs?refresh=true first.", "jobs": [], "total": 0}
     
     all_jobs = cached.get("jobs", [])
+
+    # Apply date filter
+    if date:
+        all_jobs = [j for j in all_jobs if str(j.get("updated_at", ""))[:10] == date]
     
     # Filter by role_category (unknown or excluded)
     def get_category(job):
@@ -1367,15 +1939,60 @@ def get_review_jobs(
 
 
 @app.get("/pipeline/all")
-def pipeline_all_endpoint():
-    """Get ALL jobs from storage"""
+def pipeline_all_endpoint(
+    date: str = Query(None, description="Filter by first_seen date (YYYY-MM-DD)"),
+    category: str = Query(None, description="Filter by role_category (primary/adjacent)"),
+    location: str = Query(None, description="Filter by location (us/nc/neighbor/remote)")
+):
+    """Get ALL jobs from storage with optional filters"""
     all_jobs = get_all_jobs()
+    
+    # Apply date filter (by first_seen - when job was added to pipeline)
+    if date:
+        all_jobs = [j for j in all_jobs if str(j.get("first_seen", ""))[:10] == date]
+    
+    # Apply category filter
+    if category:
+        all_jobs = [j for j in all_jobs if j.get("role_category") == category]
+    
+    # Apply location filter
+    if location:
+        neighbor_states = {"VA", "SC", "GA", "TN"}
+        filtered = []
+        for j in all_jobs:
+            ln = j.get("location_norm", {}) or {}
+            state = (ln.get("state") or "").upper()
+            is_remote = ln.get("remote", False)
+            
+            if location == "us" and (state or is_remote):
+                filtered.append(j)
+            elif location == "nc" and state == "NC":
+                filtered.append(j)
+            elif location == "neighbor" and state in neighbor_states:
+                filtered.append(j)
+            elif location == "remote" and is_remote:
+                filtered.append(j)
+        all_jobs = filtered
+    
+    # Normalize folder_path to use ~/ for portability
+    import os
+    home = os.path.expanduser("~")
+    for j in all_jobs:
+        fp = j.get("folder_path", "")
+        if fp:
+            # Replace any /Users/xxx/ with ~/
+            if fp.startswith("/Users/"):
+                parts = fp.split("/")
+                if len(parts) > 2:
+                    j["folder_path"] = "~/" + "/".join(parts[3:])
+    
     stats = get_job_stats()
     return {
         "count": len(all_jobs), 
         "jobs": all_jobs,
         "breakdown": stats["status_breakdown"]
     }
+
 
 
 @app.get("/pipeline/new")
@@ -1470,6 +2087,7 @@ class PipelineStatusUpdate(BaseModel):
     job_id: str
     status: str
     notes: str = ""
+    folder_path: str = ""
 
 
 @app.post("/pipeline/status")
@@ -1478,15 +2096,47 @@ def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
     Update job status in pipeline.
     Valid statuses: New, Selected, Ready, Applied, Interview, Offer, Rejected, Withdrawn, Closed
     """
-    valid_statuses = [STATUS_NEW, "Selected", "Ready", STATUS_APPLIED, STATUS_INTERVIEW, 
-                      STATUS_OFFER, STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED]
+    # Accept both capitalized and lowercase status values
+    status_map = {
+        "new": "new", "New": "new",
+        "selected": "Selected", "Selected": "Selected",
+        "ready": "Ready", "Ready": "Ready",
+        "applied": "applied", "Applied": "applied",
+        "interview": "interview", "Interview": "interview",
+        "offer": "offer", "Offer": "offer",
+        "rejected": "rejected", "Rejected": "rejected",
+        "withdrawn": "withdrawn", "Withdrawn": "withdrawn",
+        "closed": "closed", "Closed": "closed",
+    }
     
-    if payload.status not in valid_statuses:
-        return {"ok": False, "error": f"Invalid status. Valid: {valid_statuses}"}
+    normalized_status = status_map.get(payload.status)
+    if not normalized_status:
+        return {"ok": False, "error": f"Invalid status: {payload.status}"}
     
-    job = job_update_status(payload.job_id, payload.status, payload.notes)
+    job = job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path)
     
     if job:
+        # Auto-parse JD when status changes to Selected and JD not yet parsed
+        if normalized_status == "Selected" and not job.get("jd_summary"):
+            try:
+                from parsers.jd_parser import parse_and_store_jd, has_jd
+                job_url = job.get("job_url") or job.get("url") or ""
+                if job_url and not has_jd(payload.job_id):
+                    print(f"[Pipeline] Auto-parsing JD for {job.get('company')} - {job.get('title')}")
+                    result = parse_and_store_jd(
+                        job_id=payload.job_id,
+                        url=job_url,
+                        title=job.get("title", ""),
+                        company=job.get("company", ""),
+                        ats=job.get("ats", "greenhouse")
+                    )
+                    if result.get("ok") and result.get("summary"):
+                        job["jd_summary"] = result["summary"]
+                        # Save updated job
+                        job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path, jd_summary=result["summary"])
+            except Exception as e:
+                print(f"[Pipeline] JD parsing failed: {e}")
+        
         return {"ok": True, "job": job}
     else:
         return {"ok": False, "error": "Job not found"}
@@ -1500,6 +2150,133 @@ def pipeline_get_job_endpoint(job_id: str):
         return {"ok": True, "job": job}
     else:
         return {"ok": False, "error": "Job not found"}
+
+
+class ParseJDRequest(BaseModel):
+    job_id: str
+    url: str
+    title: str
+    company: str
+    ats: str = "greenhouse"
+
+
+@app.post("/jd/parse")
+def parse_jd_endpoint(payload: ParseJDRequest):
+    """
+    Parse job description from URL and extract structured summary.
+    Saves full text to data/jd/{job_id}.txt and returns summary.
+    """
+    try:
+        from parsers.jd_parser import parse_and_store_jd
+        
+        result = parse_and_store_jd(
+            job_id=payload.job_id,
+            url=payload.url,
+            title=payload.title,
+            company=payload.company,
+            ats=payload.ats
+        )
+        
+        if result.get("ok"):
+            # Update job in storage with jd_summary
+            job = get_job_by_id(payload.job_id)
+            if job:
+                # Use storage function to save jd_summary
+                from storage.job_storage import update_jd_summary
+                update_jd_summary(payload.job_id, result["summary"])
+            
+            return {
+                "ok": True,
+                "summary": result["summary"],
+                "jd_preview": result.get("jd_text", "")[:500] + "..."
+            }
+        else:
+            return {"ok": False, "error": result.get("error", "Unknown error")}
+            
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/jd/{job_id}")
+def get_jd_endpoint(job_id: str):
+    """Get stored JD for a job"""
+    try:
+        from parsers.jd_parser import get_stored_jd, has_jd
+        
+        if not has_jd(job_id):
+            return {"ok": False, "error": "JD not found"}
+        
+        jd_text = get_stored_jd(job_id)
+        job = get_job_by_id(job_id)
+        
+        return {
+            "ok": True,
+            "jd_text": jd_text,
+            "summary": job.get("jd_summary") if job else None
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/job/find-by-url")
+def find_job_by_url_endpoint(url: str = Query(..., description="Job URL to search")):
+    """
+    Search for a job by URL in all storages (pipeline, cache, etc.)
+    Returns job if found, or not_found status.
+    """
+    url = url.strip()
+    if not url:
+        return {"ok": False, "error": "URL is required"}
+    
+    # Normalize URL for comparison
+    from urllib.parse import urlparse, parse_qs
+    parsed = urlparse(url)
+    
+    # Extract job ID from URL based on ATS patterns
+    job_id = None
+    qs = parse_qs(parsed.query)
+    
+    # Greenhouse: gh_jid parameter, token parameter, or /jobs/NUMBER
+    if "gh_jid" in url:
+        job_id = qs.get("gh_jid", [None])[0]
+    elif "token" in qs:
+        # Greenhouse embed format: ?token=7404427&for=coinbase
+        job_id = qs.get("token", [None])[0]
+    elif "/jobs/" in parsed.path:
+        # Extract number from path like /jobs/12345
+        import re
+        match = re.search(r'/jobs/(\d+)', parsed.path)
+        if match:
+            job_id = match.group(1)
+    
+    # Lever: last segment of path
+    if "lever.co" in parsed.netloc:
+        job_id = parsed.path.rstrip('/').split('/')[-1]
+    
+    # SmartRecruiters: last segment
+    if "smartrecruiters.com" in parsed.netloc:
+        job_id = parsed.path.rstrip('/').split('/')[-1]
+    
+    # Search in all jobs
+    all_jobs = get_all_jobs()
+    
+    for job in all_jobs:
+        job_url = job.get("job_url", "") or job.get("url", "")
+        ats_job_id = str(job.get("ats_job_id", ""))
+        
+        # Skip jobs without URL
+        if not job_url:
+            continue
+        
+        # Match by exact URL
+        if url in job_url or job_url in url:
+            return {"ok": True, "found": True, "job": job}
+        
+        # Match by job ID
+        if job_id and ats_job_id == job_id:
+            return {"ok": True, "found": True, "job": job}
+    
+    return {"ok": True, "found": False, "message": "Job not found in database"}
 
 
 @app.get("/pipeline/attention")
@@ -1592,11 +2369,11 @@ def detect_ats_from_url(url: str) -> dict:
         company = parts[0] if parts else ""
         
         # Extract job ID from path (usually ends with _JOBID)
-        job_id_match = re.search(r"_([A-Z0-9]+)$", path)
+        job_id_match = re.search(r"_([A-Z0-9]+-?[0-9]*)$", path)
         job_id = job_id_match.group(1) if job_id_match else ""
         
         # Extract site name from path
-        site_match = re.search(r"myworkdayjobs\.com/(?:en-US/)?([^/]+)", url)
+        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", url)
         site = site_match.group(1) if site_match else company
         
         return {
@@ -1651,13 +2428,41 @@ def detect_ats_from_url(url: str) -> dict:
                 "job_id": job_id
             }
     
+    # iCIMS: external-company.icims.com/jobs/12345/title/job
+    if "icims.com" in host:
+        # Extract company from subdomain: external-firstcitizens.icims.com -> firstcitizens
+        subdomain = host.split(".")[0]  # external-firstcitizens
+        company_slug = subdomain.replace("external-", "").replace("careers-", "")
+        
+        # Extract job ID from path: /jobs/32378/title/job
+        job_id_match = re.match(r"/jobs/(\d+)", path)
+        job_id = job_id_match.group(1) if job_id_match else ""
+        
+        # Extract title from path
+        title_match = re.match(r"/jobs/\d+/([^/]+)/job", path)
+        title_slug = title_match.group(1) if title_match else ""
+        
+        return {
+            "ats": "icims",
+            "company": company_slug.replace("-", " ").title(),
+            "company_slug": company_slug,
+            "board_url": f"https://{subdomain}.icims.com/jobs",
+            "job_id": job_id,
+            "title_slug": title_slug,
+            "job_url": url
+        }
+    
     # Unknown ATS - use universal parser
-    # Extract company from domain
-    company = host.replace("www.", "").replace("jobs.", "").split(".")[0]
+    # Extract company from domain (skip common prefixes like apply, careers, jobs)
+    parts = host.replace("www.", "").split(".")
+    skip_prefixes = {"apply", "careers", "jobs", "job", "hire", "recruiting", "talent"}
+    company = parts[0]
+    if company.lower() in skip_prefixes and len(parts) > 1:
+        company = parts[1]
     return {
         "ats": "universal",
         "company": company.title(),
-        "company_slug": company,
+        "company_slug": company.lower(),
         "board_url": f"https://{host}",
         "job_url": url
     }
@@ -1696,22 +2501,42 @@ def fetch_single_job(ats_info: dict) -> dict:
         job_id = ats_info.get("job_id")
         board_url = ats_info.get("board_url")
         
+        # Use job_id directly for search - don't strip the number part
+        # R-105810 should stay R-105810, not become R
+        clean_job_id = job_id or ""
+        
         # Extract site from board_url
-        site_match = re.search(r"myworkdayjobs\.com/([^/]+)", board_url)
+        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url)
         site = site_match.group(1) if site_match else company_slug
         
         search_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
         try:
             resp = requests.post(
                 search_url,
-                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": job_id},
+                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": clean_job_id},
                 headers={"Content-Type": "application/json"},
                 timeout=15
             )
             if resp.status_code == 200:
                 data = resp.json()
                 postings = data.get("jobPostings", [])
-                if postings:
+                
+                # Find exact match by job ID in externalPath
+                matched_job = None
+                for posting in postings:
+                    ext_path = posting.get("externalPath", "")
+                    if job_id in ext_path or clean_job_id in ext_path:
+                        matched_job = posting
+                        break
+                
+                if matched_job:
+                    return {
+                        "title": matched_job.get("title", ""),
+                        "location": matched_job.get("locationsText", ""),
+                        "url": f"https://{company_slug}.wd1.myworkdayjobs.com{matched_job.get('externalPath', '')}",
+                        "ats_job_id": job_id,
+                    }
+                elif postings:
                     job = postings[0]
                     return {
                         "title": job.get("title", ""),
@@ -1725,6 +2550,24 @@ def fetch_single_job(ats_info: dict) -> dict:
                 return {"error": f"Workday API returned {resp.status_code}"}
         except Exception as e:
             return {"error": str(e)}
+    
+    elif ats == "icims":
+        # iCIMS - extract from URL/title slug since no public API
+        job_url = ats_info.get("job_url", "")
+        job_id = ats_info.get("job_id", "")
+        title_slug = ats_info.get("title_slug", "")
+        
+        # Decode title from URL slug
+        title = title_slug.replace("-", " ").title() if title_slug else ""
+        # Clean up common URL encoding
+        title = title.replace("%26", "&").replace("%2f", "/")
+        
+        return {
+            "title": title,
+            "location": "",  # Would need to scrape page for location
+            "url": job_url,
+            "ats_job_id": job_id,
+        }
     
     elif ats == "lever":
         api_url = ats_info.get("job_api_url")
@@ -1891,14 +2734,12 @@ def onboard_job(payload: OnboardRequest):
     
     job["source"] = "onboard"
     
-    # 5. Add to pipeline if relevant role
+    # 5. Add to pipeline - always add manual jobs (user explicitly added them)
     added_to_pipeline = False
-    if job.get("role_family") in MY_ROLE_FAMILIES and not job.get("role_excluded"):
-        # Check if already exists
-        existing = get_job_by_id(job["id"])
-        if not existing:
-            add_job(job)
-            added_to_pipeline = True
+    existing = get_job_by_id(job["id"])
+    if not existing:
+        add_job(job)
+        added_to_pipeline = True
     
     return {
         "ok": True,
@@ -1937,7 +2778,7 @@ class ApplyRequest(BaseModel):
 @app.post("/apply/greenhouse")
 def apply_greenhouse_endpoint(payload: ApplyRequest):
     """
-    Open Greenhouse job application and auto-fill form.
+    Open Greenhouse job application and auto-fill form using SmartFillerV35.
     """
     import subprocess
     import sys
@@ -1957,8 +2798,8 @@ def apply_greenhouse_endpoint(payload: ApplyRequest):
     cwd = os.path.dirname(os.path.abspath(__file__))
     if "Mobile Documents" in cwd:
         cwd = cwd.replace(
-            "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects",
-            "/Users/antonkondakov/icloud-projects"
+            str(AI_PROJECTS_PATH),
+            str(ICLOUD_PATH)
         )
     
     # Write script to file to avoid shell escaping issues
@@ -1970,108 +2811,30 @@ sys.path.insert(0, '{cwd}')
 import os
 os.chdir('{cwd}')
 
-from browser import BrowserClient, ProfileManager
-from pathlib import Path
-import time
+from browser.smart_filler_v35 import SmartFillerV35
 import re
 
-PROFILE_PATH = "browser/profiles/{profile_name}.json"
-profile = ProfileManager(Path(PROFILE_PATH))
-browser = BrowserClient()
-browser.start()
+job_url = "{job_url}"
 
 # Convert company career page URL to direct Greenhouse form URL
-job_url = "{job_url}"
 if 'gh_jid=' in job_url and 'job-boards.greenhouse.io' not in job_url:
-    # Extract gh_jid and company from URL like coinbase.com/careers/positions/123?gh_jid=456
-    match = re.search(r'gh_jid=(\d+)', job_url)
+    match = re.search(r'gh_jid=(\\d+)', job_url)
     if match:
         gh_jid = match.group(1)
-        # Try to get company name from URL
-        company_match = re.search(r'https?://(?:www\.)?([^/]+)\.com', job_url)
+        company_match = re.search(r'https?://(?:www\\.)?([^/]+)\\.com', job_url)
         company = company_match.group(1) if company_match else 'company'
-        # Use direct Greenhouse embed URL
         job_url = "https://job-boards.greenhouse.io/embed/job_app?token=" + gh_jid + "&for=" + company + "&gh_jid=" + gh_jid
         print("Converted to direct Greenhouse URL: " + job_url)
 
 try:
-    browser.open_job_page(job_url)
-    time.sleep(2)  # Brief wait for form load
+    filler = SmartFillerV35(headless=False)
+    filler.run(job_url, interactive=False)
     
-    # Check if we're on a form page or need to click Apply
-    page_url = browser.page.url
-    try:
-        
-        # Try multiple selectors for Apply button
-        apply_selectors = [
-            "span:has-text('Apply') >> visible=true",
-            "a:has-text('Apply')",
-            "button:has-text('Apply')",
-            "div:has-text('Apply') >> visible=true",
-            "a:has-text('Apply Now')",
-            "button:has-text('Apply Now')",
-            "a:has-text('Apply for this job')",
-            "[data-qa='apply-button']",
-            ".apply-button",
-            "#apply-button",
-        ]
-        
-        apply_btn = None
-        for sel in apply_selectors:
-            try:
-                elements = browser.page.query_selector_all(sel)
-                for el in elements:
-                    # Skip if it's in footer or very small
-                    if el.is_visible():
-                        box = el.bounding_box()
-                        if box and box['height'] > 20 and box['y'] < 2000:  # Not in footer
-                            apply_btn = el
-                            print("Found Apply button with selector: " + sel)
-                            break
-                if apply_btn:
-                    break
-            except:
-                pass
-        
-        # If still not found, scroll and try again
-        if not apply_btn:
-            browser.page.evaluate("window.scrollBy(0, 300)")
-            time.sleep(0.5)
-            for sel in apply_selectors[:3]:  # Try first 3 selectors again
-                try:
-                    apply_btn = browser.page.query_selector(sel)
-                    if apply_btn and apply_btn.is_visible():
-                        print("Found Apply button after scroll: " + sel)
-                        break
-                    apply_btn = None
-                except:
-                    pass
-        
-        if apply_btn:
-            print("Clicking Apply button...")
-            apply_btn.scroll_into_view_if_needed()
-            time.sleep(0.5)
-            apply_btn.click()
-            time.sleep(3)  # Wait for form to load
-            
-            # Check if redirected to Greenhouse
-            current_url = browser.page.url
-            if 'greenhouse' in current_url or 'boards.greenhouse.io' in current_url:
-                print("Redirected to Greenhouse: " + current_url)
-            else:
-                # Maybe form appeared on same page - wait a bit more
-                time.sleep(2)
-        else:
-            print("No Apply button found - assuming already on form")
-    except Exception as e:
-        print("Apply button click skipped: " + str(e))
-    
-    # Fill form
-    result = browser.fill_greenhouse_complete(profile)
-    print(f"Filled {{result['total']}} fields")
+    print("\\n" + "="*60)
     print("Browser will stay open for 60 seconds for review...")
+    print("="*60)
     
-    # Keep open for review, then close
+    import time
     time.sleep(60)
 except KeyboardInterrupt:
     pass
@@ -2079,28 +2842,35 @@ except Exception as e:
     print(f"Error: {{e}}")
     import traceback
     traceback.print_exc()
-    time.sleep(10)  # Keep open to see error
+    import time
+    time.sleep(10)
 finally:
-    browser.close()
+    if 'filler' in dir() and filler:
+        filler.stop()
     print("Browser closed")
 ''')
     
-    log_file = open('/tmp/greenhouse_apply.log', 'w')
-    subprocess.Popen(
+    # Run script in background
+    log_file = "/tmp/apply_greenhouse.log"
+    with open(log_file, "w") as log:
+        log.write(f"Starting apply for: {job_url}\n")
+        log.write(f"Profile: {profile_name}\n")
+        log.write("="*60 + "\n")
+    
+    # Start subprocess
+    process = subprocess.Popen(
         [sys.executable, script_file],
-        stdout=log_file,
-        stderr=log_file,
-        start_new_session=True
+        stdout=open(log_file, "a"),
+        stderr=subprocess.STDOUT,
+        cwd=cwd
     )
     
     return {
-        "ok": True, 
-        "message": f"Opening browser for {job_url}...",
-        "profile": profile_name
+        "ok": True,
+        "message": "Application form opened with SmartFiller V3.5",
+        "pid": process.pid,
+        "log_file": log_file
     }
-
-
-# ==================== ANSWER LIBRARY ====================
 
 @app.get("/answers")
 def get_answer_library():
@@ -2136,111 +2906,119 @@ def get_answer(category: str, key: str):
 
 
 @app.post("/generate-cover-letter")
-def generate_cover_letter(payload: dict):
+def generate_cover_letter_endpoint(payload: dict):
     """
-    Generate a personalized cover letter.
-    Expects: {company, position, job_description?, highlights?}
+    Generate a personalized cover letter from DOCX template.
+    Expects: {company, position, job_description?, role_family?}
+    Returns: {ok, cover_letter, file_path}
     """
-    company = payload.get("company", "[Company]")
-    position = payload.get("position", "[Position]")
+    from docx import Document
+    import shutil
+    
+    company = payload.get("company", "Company")
+    position = payload.get("position", "Position")
     job_description = payload.get("job_description", "")
+    role_family = payload.get("role_family", "product")  # product, tpm_program, project
     
-    # Load answer library
-    path = Path("data/answer_library.json")
-    if not path.exists():
-        return {"error": "Answer library not found"}
-    with open(path) as f:
-        library = json.load(f)
+    # Map role_family to template
+    cv_dir = GOLD_CV_PATH
+    template_map = {
+        "product": "Cover_Letter_Anton_Kondakov_ProductM.docx",
+        "tpm_program": "Cover_Letter_Anton_Kondakov_Delivery Lead.docx",
+        "project": "Cover_Letter_Anton_Kondakov_Project Manager.docx",
+        "scrum": "Cover_Letter_Anton_Kondakov_Scrum Master.docx",
+        "po": "Cover_Letter_Anton_Kondakov_PO.docx",
+    }
     
-    template = library.get("cover_letter_template", {})
-    personal = library.get("personal", {})
+    template_name = template_map.get(role_family, template_map["product"])
+    template_path = cv_dir / template_name
     
-    # Try AI-generated bullet points
-    bullets = []
+    if not template_path.exists():
+        return {"error": f"Template not found: {template_name}"}
+    
+    # Generate company mission using AI
+    company_mission = ""
     try:
-        from utils.ollama_ai import generate_cover_letter_points, is_ollama_available
-        if is_ollama_available() and job_description:
-            cv_highlights = f"""
-            - 15+ years TPM/Program Manager experience
-            - Led teams of 50+ engineers across global time zones
-            - GCP cloud migration: $1.2M savings, 25% uptime improvement
-            - Deutsche Bank, UBS, DXC Technology experience
-            - SAFe POPM certified, Scrum Master
-            """
-            bullets = generate_cover_letter_points(position, company, job_description, cv_highlights)
+        from utils.ollama_ai import generate_company_mission, is_ollama_available
+        if is_ollama_available():
+            company_mission = generate_company_mission(company, job_description, position)
+            print(f"Generated mission: {company_mission}")
     except Exception as e:
-        print(f"AI cover letter error: {e}")
+        print(f"AI mission generation error: {e}")
+        company_mission = f"I'm excited about the opportunity to contribute to {company}'s continued success."
     
-    # Fallback bullets
-    if not bullets:
-        bullets = [
-            "15+ years leading complex technology programs for Fortune 500 companies",
-            "Proven track record delivering cloud migrations with $1.2M+ cost savings",
-            "Experience managing cross-functional teams of 50+ engineers across global time zones"
-        ]
+    # Load and modify template
+    doc = Document(str(template_path))
     
-    # Build cover letter
-    opening = template.get("opening", "").replace("[POSITION]", position).replace("[COMPANY]", company)
-    closing = template.get("closing", "").replace("[COMPANY]", company)
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if "[COMPANY NAME]" in run.text:
+                run.text = run.text.replace("[COMPANY NAME]", company)
+            if "[POSITION TITLE]" in run.text:
+                run.text = run.text.replace("[POSITION TITLE]", position)
+            if "[COMPANY MISSION]" in run.text:
+                run.text = run.text.replace("[COMPANY MISSION]", company_mission)
     
-    bullet_text = "\n".join([f"• {b}" for b in bullets])
-    body = f"My experience directly addresses your key requirements:\n\n{bullet_text}"
+    # Create Applications folder
+    applications_dir = cv_dir / "Applications"
+    applications_dir.mkdir(exist_ok=True)
     
-    cover_letter = f"""{personal.get('full_name', 'Anton Kondakov')}
-{personal.get('phone', '')} | {personal.get('email', '')} | {personal.get('linkedin', '')}
-{personal.get('location', '')}
-
-Dear Hiring Manager,
-
-{opening}
-
-{body}
-
-{closing}
-
-Sincerely,
-{personal.get('full_name', 'Anton Kondakov')}
-"""
+    # Create company folder
+    safe_company = company.replace(" ", "_").replace("/", "_").replace("\\", "_")
+    safe_position = position.replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
+    job_folder = applications_dir / f"{safe_company}_{safe_position}"
+    job_folder.mkdir(exist_ok=True)
+    
+    # Save cover letter
+    output_filename = f"Cover_Letter_{safe_company}_{safe_position}.docx"
+    output_path = job_folder / output_filename
+    doc.save(str(output_path))
+    
+    # Also extract text for preview
+    cover_letter_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
     
     return {
         "ok": True,
-        "cover_letter": cover_letter,
-        "bullets": bullets,
-        "company": company,
-        "position": position
+        "cover_letter": cover_letter_text,
+        "file_path": str(output_path),
+        "folder_path": str(job_folder),
+        "company_mission": company_mission,
+        "template_used": template_name
     }
-
 
 @app.post("/save-cover-letter")
 def save_cover_letter(payload: dict):
     """
-    Save cover letter to file.
-    Expects: {company, position, content}
-    Returns: {ok, file_path}
+    Copy selected CV to the job application folder.
+    Expects: {company, position, cv_filename}
+    Returns: {ok, folder_path}
     """
-    company = payload.get("company", "Unknown").replace(" ", "_").replace("/", "_")
-    position = payload.get("position", "Position").replace(" ", "_").replace("/", "_")
-    content = payload.get("content", "")
+    import shutil
     
-    if not content:
-        return {"error": "No content provided"}
+    company = payload.get("company", "Unknown").replace(" ", "_").replace("/", "_").replace("\\", "_")
+    position = payload.get("position", "Position").replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
+    cv_filename = payload.get("cv_filename", "")
     
-    # Create cover letters folder
-    cover_letters_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/cover_letters")
-    cover_letters_dir.mkdir(exist_ok=True)
+    cv_dir = GOLD_CV_PATH
+    applications_dir = cv_dir / "Applications"
+    job_folder = applications_dir / f"{company}_{position}"
     
-    # Save as text file (can convert to PDF later)
-    filename = f"{company}_{position}_Cover_Letter.txt"
-    file_path = cover_letters_dir / filename
+    # Ensure folder exists
+    job_folder.mkdir(parents=True, exist_ok=True)
     
-    with open(file_path, "w") as f:
-        f.write(content)
+    # Copy CV if specified
+    if cv_filename:
+        cv_source = cv_dir / cv_filename
+        if cv_source.exists():
+            cv_dest = job_folder / cv_filename
+            shutil.copy2(cv_source, cv_dest)
+            print(f"Copied CV: {cv_filename} -> {job_folder}")
     
     return {
         "ok": True,
-        "file_path": str(file_path),
-        "filename": filename
+        "folder_path": str(job_folder)
     }
+
 
 
 @app.get("/available-cvs")
@@ -2248,7 +3026,7 @@ def get_available_cvs():
     """
     Get list of available CV files.
     """
-    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    cv_dir = GOLD_CV_PATH
     cvs = []
     
     for f in cv_dir.glob("*.pdf"):
@@ -2272,7 +3050,7 @@ def select_cv_for_job(payload: dict):
     job_title = payload.get("job_title", "")
     
     # Get available CVs
-    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    cv_dir = GOLD_CV_PATH
     available_cvs = [str(f) for f in cv_dir.glob("*.pdf")]
     
     if not available_cvs:
@@ -2327,17 +3105,175 @@ def get_apply_log():
 def fetch_job_description(payload: dict):
     """
     Fetch job description from URL.
+    Supports: Workday API, Greenhouse API, and scraping fallback.
     Expects: {url}
     Returns: {ok, description}
     """
     import requests
     from bs4 import BeautifulSoup
+    import re
+    import html
     
     url = payload.get("url", "")
     if not url:
         return {"ok": False, "error": "No URL provided"}
     
     try:
+        # ============ WORKDAY API ============
+        if "myworkdayjobs.com" in url:
+            # URL formats:
+            # 1. https://company.wd1.myworkdayjobs.com/en-US/site/job/Location/Title_JOBID
+            # 2. https://company.wd1.myworkdayjobs.com/site/job/Location/Title_JOBID  
+            # 3. https://company.wd1.myworkdayjobs.com/job/Location/Title_JOBID (no site)
+            
+            # Extract company slug
+            company_match = re.match(r'https?://([^\.]+)\.wd\d+\.myworkdayjobs\.com', url)
+            if not company_match:
+                pass  # Will fall through to scraping
+            else:
+                company_slug = company_match.group(1)
+                
+                # Try to extract site and job path
+                # Pattern with site: /site/job/path or /en-US/site/job/path
+                site_job_match = re.search(r'myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)/job/(.+)', url)
+                # Pattern without site: /job/path
+                direct_job_match = re.search(r'myworkdayjobs\.com/job/(.+)', url)
+                
+                if site_job_match:
+                    site = site_job_match.group(1)
+                    job_path = site_job_match.group(2)
+                elif direct_job_match:
+                    # No site in URL - try common site names
+                    job_path = direct_job_match.group(1)
+                    site = f"{company_slug}_careers"  # Common pattern
+                else:
+                    site = None
+                    job_path = None
+                
+                if site and job_path:
+                    api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                    
+                    try:
+                        resp = requests.get(api_url, timeout=15)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            jp = data.get("jobPostingInfo", {})
+                            desc_html = jp.get("jobDescription", "")
+                            if desc_html:
+                                soup = BeautifulSoup(desc_html, "html.parser")
+                                text = soup.get_text(separator="\n", strip=True)
+                                text = html.unescape(text)
+                                lines = [l.strip() for l in text.split("\n") if l.strip()]
+                                text = "\n".join(lines)[:5000]
+                                return {"ok": True, "description": text, "source": "workday_api", "title": jp.get("title")}
+                    except Exception as e:
+                        print(f"Workday API error for {api_url}: {e}")
+                    
+                    # If first site didn't work, try without _careers suffix
+                    if "_careers" in site:
+                        alt_site = company_slug
+                        api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{alt_site}/job/{job_path}"
+                        try:
+                            resp = requests.get(api_url, timeout=15)
+                            if resp.status_code == 200:
+                                data = resp.json()
+                                jp = data.get("jobPostingInfo", {})
+                                desc_html = jp.get("jobDescription", "")
+                                if desc_html:
+                                    soup = BeautifulSoup(desc_html, "html.parser")
+                                    text = soup.get_text(separator="\n", strip=True)
+                                    text = html.unescape(text)
+                                    lines = [l.strip() for l in text.split("\n") if l.strip()]
+                                    text = "\n".join(lines)[:5000]
+                                    return {"ok": True, "description": text, "source": "workday_api", "title": jp.get("title")}
+                        except Exception as e:
+                            print(f"Workday API error (alt site) for {api_url}: {e}")
+        
+        # ============ GREENHOUSE API ============
+        # Try to extract Greenhouse job ID from URL
+        gh_job_id = None
+        gh_board = None
+        
+        # Pattern 1: gh_jid parameter
+        gh_match = re.search(r'gh_jid=(\d+)', url)
+        if gh_match:
+            gh_job_id = gh_match.group(1)
+        
+        # Pattern 2: /jobs/12345 in path
+        if not gh_job_id:
+            job_match = re.search(r'/jobs/(\d+)', url)
+            if job_match:
+                gh_job_id = job_match.group(1)
+        
+        # Try to get board name from URL or pipeline data
+        # Common patterns: boards.greenhouse.io/BOARD, company.ai/careers
+        if 'greenhouse.io' in url:
+            board_match = re.search(r'greenhouse\.io/([^/]+)', url)
+            if board_match:
+                gh_board = board_match.group(1)
+        
+        # If we have job ID, try Greenhouse API
+        if gh_job_id:
+            # Try to find board from our companies data
+            if not gh_board:
+                # Look up in companies.json
+                companies_path = Path("data/companies.json")
+                if companies_path.exists():
+                    companies = json.loads(companies_path.read_text())
+                    for comp in companies:
+                        if comp.get("ats") == "greenhouse" and comp.get("board_url"):
+                            board_url = comp.get("board_url", "")
+                            if board_url:
+                                # Extract board name
+                                match = re.search(r'greenhouse\.io/([^/]+)', board_url)
+                                if match:
+                                    test_board = match.group(1)
+                                    # Try this board
+                                    api_url = f"https://boards-api.greenhouse.io/v1/boards/{test_board}/jobs/{gh_job_id}"
+                                    try:
+                                        resp = requests.get(api_url, timeout=5)
+                                        if resp.status_code == 200:
+                                            gh_board = test_board
+                                            break
+                                    except:
+                                        pass
+            
+            # Common board names to try
+            boards_to_try = [gh_board] if gh_board else []
+            
+            # Extract potential board from URL domain
+            domain_match = re.search(r'https?://([^/\.]+)', url)
+            if domain_match:
+                potential_board = domain_match.group(1).replace('-', '').lower()
+                if potential_board not in boards_to_try:
+                    boards_to_try.append(potential_board)
+            
+            # Try some common variations
+            for board in boards_to_try:
+                if not board:
+                    continue
+                api_url = f"https://boards-api.greenhouse.io/v1/boards/{board}/jobs/{gh_job_id}"
+                try:
+                    resp = requests.get(api_url, timeout=10)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = data.get("content", "")
+                        if content:
+                            # Unescape HTML entities first (Greenhouse returns double-escaped)
+                            content = html.unescape(content)
+                            # Parse HTML content
+                            soup = BeautifulSoup(content, "html.parser")
+                            text = soup.get_text(separator="\n", strip=True)
+                            # Clean up
+                            lines = [l.strip() for l in text.split("\n") if l.strip()]
+                            text = "\n".join(lines)
+                            # Limit length
+                            text = text[:5000]
+                            return {"ok": True, "description": text, "source": "greenhouse_api"}
+                except Exception as e:
+                    pass
+        
+        # Fallback: try direct scraping
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
@@ -2369,15 +3305,13 @@ def fetch_job_description(payload: dict):
                     break
         
         # Clean up - remove excessive whitespace, limit length
-        if description:
+        if description and len(description) > 50:
             lines = [line.strip() for line in description.split("\n") if line.strip()]
             description = "\n".join(lines[:100])  # Limit to ~100 lines
-            description = description[:3000]  # Limit to 3000 chars
+            description = description[:5000]  # Limit to 5000 chars
+            return {"ok": True, "description": description, "source": "scraping"}
         
-        if description:
-            return {"ok": True, "description": description}
-        else:
-            return {"ok": False, "error": "Could not extract job description"}
+        return {"ok": False, "error": "Could not extract job description"}
             
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -2406,8 +3340,8 @@ def apply_with_vision(payload: ApplyRequest):
     cwd = os.path.dirname(os.path.abspath(__file__))
     if "Mobile Documents" in cwd:
         cwd = cwd.replace(
-            "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects",
-            "/Users/antonkondakov/icloud-projects"
+            str(AI_PROJECTS_PATH),
+            str(ICLOUD_PATH)
         )
     
     script = f'''import sys
@@ -2475,3 +3409,1231 @@ finally:
         "log_file": log_file,
         "screenshots_dir": "/tmp/vision_agent"
     }
+
+
+@app.post("/open-folder")
+def open_folder(payload: dict):
+    """Open folder in Finder (macOS)"""
+    import subprocess
+    import os
+    folder_path = payload.get("path", "")
+    
+    # Expand ~ to home directory
+    if folder_path.startswith("~/"):
+        folder_path = os.path.expanduser(folder_path)
+    
+    if not folder_path or not Path(folder_path).exists():
+        return {"error": f"Folder not found: {folder_path}"}
+    
+    try:
+        subprocess.run(["open", folder_path], check=True)
+        return {"ok": True}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/applications")
+def list_applications():
+    """List all prepared job applications"""
+    applications_dir = APPLICATIONS_PATH
+    
+    if not applications_dir.exists():
+        return {"applications": []}
+    
+    apps = []
+    for folder in sorted(applications_dir.iterdir(), reverse=True):
+        if folder.is_dir() and not folder.name.startswith("."):
+            files = [f.name for f in folder.iterdir() if f.is_file()]
+            apps.append({
+                "name": folder.name,
+                "path": str(folder),
+                "files": files,
+                "created": folder.stat().st_mtime
+            })
+    
+    return {"applications": apps}
+
+
+
+# ============= JOB ANALYSIS ENDPOINT =============
+
+class AnalyzeJobRequest(BaseModel):
+    job_description: str
+    job_title: str
+    company: str
+    role_family: str = "product"
+
+@app.post("/analyze-job")
+async def analyze_job_endpoint(payload: AnalyzeJobRequest):
+    """
+    Analyze job description against candidate profile.
+    Returns match score, missing keywords, ATS tips.
+    """
+    import re
+    from pathlib import Path
+    
+    # Load candidate profile (Gold CV)
+    gold_cv_path = GOLD_CV_PATH
+    
+    # Select CV based on role
+    role_cv_map = {
+        "product": "CV_Anton_Kondakov_Product Manager.pdf",
+        "tpm_program": "CV_Anton_Kondakov_TPM_CV.pdf",
+        "project": "CV_Anton_Kondakov_Project Manager.pdf",
+    }
+    cv_file = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.pdf")
+    
+    jd = payload.job_description.lower()
+    title = payload.job_title.lower()
+    
+    # Extract keywords from JD
+    # Common PM/TPM keywords
+    skill_keywords = {
+        "hard_skills": [
+            "agile", "scrum", "kanban", "jira", "confluence", "sql", "python", "api", 
+            "aws", "azure", "gcp", "kubernetes", "docker", "ci/cd", "devops",
+            "data analysis", "analytics", "tableau", "looker", "amplitude",
+            "a/b testing", "product analytics", "roadmap", "okr", "kpi",
+            "user research", "ux", "figma", "prototyping", "wireframes",
+            "technical specifications", "prd", "requirements", "stakeholder",
+            "cross-functional", "program management", "project management",
+            "release management", "sprint planning", "backlog", "prioritization",
+            "saas", "b2b", "b2c", "enterprise", "platform", "infrastructure",
+            "machine learning", "ml", "ai", "artificial intelligence",
+            "payments", "fintech", "banking", "financial services",
+            "security", "compliance", "gdpr", "sox", "pci",
+            # Sales/Account Management (for non-PM roles)
+            "sales", "account management", "client management", "customer success",
+            "relationship building", "revenue", "quota", "pipeline",
+            "crm", "salesforce", "hubspot", "negotiation", "closing",
+            "territory", "prospecting", "lead generation", "business development"
+        ],
+        "soft_skills": [
+            "leadership", "communication", "collaboration", "problem-solving",
+            "strategic thinking", "decision-making", "influence", "negotiation",
+            "mentoring", "coaching", "presentation", "executive"
+        ],
+        "experience": [
+            "5+ years", "7+ years", "10+ years", "senior", "staff", "principal",
+            "director", "lead", "manager", "head of"
+        ]
+    }
+    
+    # Find keywords in JD
+    found_keywords = {"hard_skills": [], "soft_skills": [], "experience": []}
+    missing_keywords = {"hard_skills": [], "soft_skills": [], "experience": []}
+    
+    # My profile keywords (from CV)
+    my_keywords = {
+        "agile", "scrum", "kanban", "jira", "confluence", "sql", "python",
+        "aws", "data analysis", "analytics", "roadmap", "okr", "kpi",
+        "cross-functional", "program management", "project management",
+        "release management", "sprint planning", "backlog", "prioritization",
+        "saas", "b2b", "enterprise", "platform", "stakeholder",
+        "leadership", "communication", "collaboration", "strategic thinking",
+        "prd", "requirements", "technical specifications", "api",
+        "fintech", "payments", "banking", "financial services",
+        # Extended skills from CV
+        "gcp", "azure", "cloud", "microservices", "terraform",
+        "ci/cd", "devops", "release management", "deployment",
+        "regulatory", "compliance", "mifid", "sox", "gdpr",
+        "uat", "testing", "quality", "integration",
+        "machine learning", "ml", "ai", "data", "analytics",
+        "tableau", "looker", "reporting", "metrics",
+        "safe", "agile", "scrum", "kanban", "pi planning",
+        "product strategy", "product vision", "product roadmap",
+        "user stories", "acceptance criteria", "backlog management",
+        "cross-functional", "influence", "negotiation", "executive",
+        "client", "customer", "vendor", "partnership"
+    }
+    
+    for category, keywords in skill_keywords.items():
+        for kw in keywords:
+            if kw in jd:
+                found_keywords[category].append(kw)
+                if kw.lower() not in my_keywords:
+                    missing_keywords[category].append(kw)
+    
+    # Calculate match score
+    total_found = len(found_keywords["hard_skills"]) + len(found_keywords["soft_skills"])
+    total_missing = len(missing_keywords["hard_skills"]) + len(missing_keywords["soft_skills"])
+    
+    if total_found + total_missing > 0:
+        match_score = int((total_found - total_missing * 0.5) / (total_found + total_missing) * 100)
+        match_score = max(0, min(100, match_score + 50))  # Normalize to 0-100
+    else:
+        match_score = 70  # Default
+    
+    # ATS tips
+    ats_tips = []
+    
+    # Check for exact title match
+    if "product manager" in title and "product" in payload.role_family:
+        ats_tips.append("✅ Title matches your target role")
+    elif "program manager" in title and "tpm" in payload.role_family:
+        ats_tips.append("✅ Title matches your target role")
+    else:
+        ats_tips.append("⚠️ Consider tailoring CV title to match job title")
+    
+    # Check years of experience
+    exp_match = re.search(r'(\d+)\+?\s*years?', jd)
+    if exp_match:
+        years_required = int(exp_match.group(1))
+        if years_required <= 12:  # Assuming 12+ years experience
+            ats_tips.append(f"✅ You meet the {years_required}+ years requirement")
+        else:
+            ats_tips.append(f"⚠️ Position requires {years_required}+ years")
+    
+    # Check for missing critical keywords
+    critical_missing = [kw for kw in missing_keywords["hard_skills"] if kw in ["machine learning", "ml", "ai", "kubernetes", "docker"]]
+    if critical_missing:
+        ats_tips.append(f"⚠️ Add if applicable: {', '.join(critical_missing[:3])}")
+    
+    if missing_keywords["hard_skills"]:
+        top_missing = missing_keywords["hard_skills"][:5]
+        ats_tips.append(f"💡 Consider adding: {', '.join(top_missing)}")
+    
+    # Red flags
+    red_flags = []
+    if "clearance" in jd or "security clearance" in jd:
+        red_flags.append("🚨 Requires security clearance")
+    if "relocation" in jd and "not" not in jd:
+        red_flags.append("⚠️ May require relocation")
+    if "visa" in jd and "sponsor" not in jd:
+        red_flags.append("⚠️ Check visa sponsorship policy")
+    
+    # Response chance estimate
+    if match_score >= 80:
+        response_chance = "High (70-90%)"
+        response_color = "#10b981"
+    elif match_score >= 60:
+        response_chance = "Medium (40-60%)"
+        response_color = "#f59e0b"
+    else:
+        response_chance = "Low (10-30%)"
+        response_color = "#ef4444"
+    
+    return {
+        "ok": True,
+        "match_score": match_score,
+        "response_chance": response_chance,
+        "response_color": response_color,
+        "found_keywords": found_keywords,
+        "missing_keywords": missing_keywords,
+        "ats_tips": ats_tips,
+        "red_flags": red_flags,
+        "cv_file": cv_file,
+        "keywords_to_add": missing_keywords["hard_skills"][:5]
+    }
+
+
+# ============= COMPREHENSIVE APPLICATION PREPARATION =============
+
+class PrepareApplicationRequest(BaseModel):
+    job_title: str
+    company: str
+    job_url: str
+    job_description: str
+    role_family: str = "product"
+    force_regenerate: bool = False  # If True, regenerate even if files exist
+
+
+class CheckExistingRequest(BaseModel):
+    job_title: str
+    company: str
+
+
+@app.post("/check-existing-application")
+async def check_existing_application(payload: CheckExistingRequest):
+    """
+    Check if application files already exist for this job.
+    Returns paths to existing CV and Cover Letter if found.
+    """
+    print(f"[CheckExisting] Checking: {payload.company} - {payload.job_title}")
+    from pathlib import Path
+    import re
+    
+    gold_cv_path = GOLD_CV_PATH
+    applications_path = gold_cv_path / "Applications"
+    
+    # Normalize company and position - remove special chars, replace spaces with underscores
+    safe_company = re.sub(r'[^\w\s]', '', payload.company).strip().replace(' ', '_')
+    safe_position = re.sub(r'[^\w\s]', '', payload.job_title).strip().replace(' ', '_')[:40]
+    
+    # For matching, also create a simplified version (just alphanumeric)
+    match_company = re.sub(r'[^a-zA-Z0-9]', '', payload.company.lower())
+    match_position = re.sub(r'[^a-zA-Z0-9]', '', payload.job_title.lower())[:30]
+    
+    # Look for existing application folders
+    existing_folders = []
+    if applications_path.exists():
+        for folder in applications_path.iterdir():
+            # Normalize folder name for matching
+            folder_normalized = re.sub(r'[^a-zA-Z0-9]', '', folder.name.lower())
+            
+            if folder.is_dir() and match_company in folder_normalized:
+                # Check if it matches position too
+                if match_position[:20] in folder_normalized or len(match_position) < 10:
+                    existing_folders.append(folder)
+                    print(f"[CheckExisting] Found matching folder: {folder.name}")
+    
+    if not existing_folders:
+        return {"exists": False}
+    
+    # Get most recent folder
+    existing_folders.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+    latest_folder = existing_folders[0]
+    
+    # Find CV and Cover Letter in folder
+    cv_file = None
+    cl_file = None
+    
+    for f in latest_folder.iterdir():
+        if f.is_file():
+            if f.name.startswith("CV_") and f.suffix == ".docx":
+                cv_file = f
+            elif f.name.startswith("Cover_Letter_") and f.suffix == ".txt":
+                cl_file = f
+    
+    if not cv_file and not cl_file:
+        return {"exists": False}
+    
+    # Read cover letter content for preview
+    cl_preview = None
+    if cl_file:
+        try:
+            cl_content = cl_file.read_text()
+            cl_preview = cl_content[:500] + "..." if len(cl_content) > 500 else cl_content
+        except:
+            cl_preview = "Could not read cover letter"
+    
+    return {
+        "exists": True,
+        "folder": str(latest_folder),
+        "folder_name": latest_folder.name,
+        "cv_path": str(cv_file) if cv_file else None,
+        "cv_filename": cv_file.name if cv_file else None,
+        "cover_letter_path": str(cl_file) if cl_file else None,
+        "cover_letter_filename": cl_file.name if cl_file else None,
+        "cover_letter_preview": cl_preview,
+        "created_at": datetime.fromtimestamp(latest_folder.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+    }
+
+
+@app.post("/prepare-application")
+async def prepare_application_endpoint(payload: PrepareApplicationRequest):
+    """
+    Comprehensive application preparation using Claude API.
+    
+    1. Deep JD analysis
+    2. CV decision (base vs optimize)
+    3. Cover letter generation
+    4. Returns paths to all documents
+    """
+    from api.prepare_application import prepare_application
+    
+    result = prepare_application(
+        job_title=payload.job_title,
+        company=payload.company,
+        job_url=payload.job_url,
+        jd=payload.job_description,
+        role_family=payload.role_family
+    )
+    
+    return result.to_dict()
+
+
+@app.get("/open-file/{file_type}")
+async def open_file_endpoint(file_type: str, path: str):
+    """
+    Open file in default application.
+    file_type: cv, cover_letter, folder
+    """
+    import subprocess
+    import os
+    from pathlib import Path
+    
+    # Expand ~ to home directory
+    if path.startswith("~/"):
+        path = os.path.expanduser(path)
+    
+    file_path = Path(path)
+    
+    if not file_path.exists():
+        return {"ok": False, "error": f"File not found: {path}"}
+    
+    try:
+        if file_type == "folder":
+            subprocess.run(["open", str(file_path)], check=True)
+        else:
+            subprocess.run(["open", str(file_path)], check=True)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ============= CV PREVIEW & TAILORING =============
+
+class CVPreviewRequest(BaseModel):
+    job_title: str
+    company: str
+    role_family: str = "product"
+    keywords_to_add: list = []
+    matched_keywords: list = []
+    cv_path: str = None  # Optional: path to specific CV (e.g., AI-optimized)
+
+@app.post("/cv/preview")
+async def cv_preview_endpoint(payload: CVPreviewRequest):
+    """
+    Generate CV preview with highlighted keywords.
+    Returns HTML with:
+    - Green highlights: matched keywords (already in CV and JD)
+    - Yellow highlights: injected keywords (added to Skills section)
+    """
+    from docx import Document
+    from pathlib import Path
+    import re
+    
+    gold_cv_path = GOLD_CV_PATH
+    
+    # Use provided cv_path if specified, otherwise select by role
+    print(f"DEBUG cv/preview: payload.cv_path = {payload.cv_path}")
+    if payload.cv_path and Path(payload.cv_path).exists():
+        cv_path = Path(payload.cv_path)
+        cv_filename = cv_path.name
+        print(f"DEBUG cv/preview: Using provided CV: {cv_path}")
+    else:
+        # Select CV based on role
+        role_cv_map = {
+            "product": "CV_Anton_Kondakov_Product Manager.docx",
+            "tpm_program": "CV_Anton_Kondakov_TPM.docx",
+            "project": "CV_Anton_Kondakov_Project Manager.docx",
+        }
+        cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
+        cv_path = gold_cv_path / cv_filename
+        print(f"DEBUG cv/preview: Using role-based CV: {cv_path}")
+    
+    if not cv_path.exists():
+        return {"ok": False, "error": f"CV not found: {cv_filename}"}
+    
+    doc = Document(cv_path)
+    
+    # Build HTML preview
+    html_parts = []
+    html_parts.append('<div class="cv-preview" style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; max-width: 800px;">')
+    
+    matched_kw = set(k.lower() for k in payload.matched_keywords)
+    inject_kw = set(k.lower() for k in payload.keywords_to_add)
+    
+    # Add yellow banner at the TOP if there are keywords to add
+    if inject_kw:
+        html_parts.append('<div style="margin: 0 0 16px 0; padding: 12px; background-color: #fef08a; border-radius: 8px; border-left: 4px solid #eab308;">')
+        html_parts.append('<strong style="color: #854d0e; font-size: 13px;">🔑 Keywords to be added to your CV:</strong><br>')
+        html_parts.append('<div style="margin-top: 8px;">')
+        html_parts.append(', '.join(f'<mark style="background-color: #facc15; padding: 2px 6px; border-radius: 3px; font-weight: 500;">{kw}</mark>' for kw in payload.keywords_to_add))
+        html_parts.append('</div></div>')
+    
+    # Fallback: if no keywords provided, use common PM keywords for highlighting
+    if not matched_kw:
+        matched_kw = {
+            "product strategy", "roadmap", "agile", "scrum", "stakeholder",
+            "cross-functional", "backlog", "user stories", "sprint", "kpi",
+            "okr", "prioritization", "requirements", "delivery", "release",
+            "jira", "confluence", "aws", "sql", "data analysis"
+        }
+    
+    def highlight_text(text: str, is_technical_section: bool = False) -> str:
+        """Highlight matched and injected keywords in text."""
+        result = text
+        
+        # First highlight matched keywords (green) - preserve original case
+        for kw in matched_kw:
+            pattern = re.compile(f'({re.escape(kw)})', re.IGNORECASE)
+            result = pattern.sub(
+                r'<mark style="background-color: #86efac !important; padding: 1px 3px; border-radius: 2px;">\1</mark>',
+                result
+            )
+        
+        # Add injected keywords to Technical section with yellow highlight
+        if is_technical_section and inject_kw:
+            injected_str = ', '.join(f'<mark style="background-color: #facc15 !important; padding: 1px 3px; border-radius: 2px; font-weight: 500;">{kw}</mark>' for kw in payload.keywords_to_add)
+            result += f' <span style="color: #854d0e;">[+Added: {injected_str}]</span>'
+        
+        return result
+    
+    keywords_injected = False
+    
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if not text:
+            continue
+        
+        style = para.style.name if para.style else "Normal"
+        
+        # Check if this is Technical Delivery/Acumen line where we inject keywords
+        # Must start with bullet point marker or "Technical Delivery" / "Technical Acumen"
+        is_technical = (text.startswith("Technical Delivery") or text.startswith("Technical Acumen") or 
+                       (text.startswith("•") and "Technical" in text)) and not keywords_injected
+        highlighted = highlight_text(text, is_technical_section=is_technical)
+        if is_technical and inject_kw:
+            keywords_injected = True
+        
+        # Detect section headers
+        if text.isupper() or style == "Heading 1" or text in ["CORE COMPETENCIES", "PROFESSIONAL EXPERIENCE", "EDUCATION", "CERTIFICATIONS"]:
+            html_parts.append(f'<h3 style="margin: 16px 0 8px 0; color: #1e3a5f; border-bottom: 1px solid #ddd; padding-bottom: 4px;">{text}</h3>')
+                
+        elif style == "List Paragraph":
+            html_parts.append(f'<div style="margin: 4px 0 4px 20px; padding-left: 10px; border-left: 2px solid #e5e7eb;">• {highlighted}</div>')
+        else:
+            # Check if it's a job title/company line
+            if " | " in text or "–" in text:
+                html_parts.append(f'<div style="margin: 12px 0 4px 0; font-weight: 600; color: #374151;">{highlighted}</div>')
+            else:
+                html_parts.append(f'<div style="margin: 4px 0;">{highlighted}</div>')
+    
+    html_parts.append('</div>')
+    
+    # Summary stats
+    stats = {
+        "matched_count": len(matched_kw),
+        "injected_count": len(inject_kw),
+        "cv_file": cv_filename
+    }
+    
+    return {
+        "ok": True,
+        "html": "\n".join(html_parts),
+        "stats": stats,
+        "keywords_matched": list(matched_kw),
+        "keywords_injected": list(inject_kw)
+    }
+
+
+class CVTailorRequest(BaseModel):
+    company: str
+    position: str  # Job title
+    role_family: str = "product"
+    keywords_to_add: list = []
+
+@app.post("/cv/tailor")
+async def cv_tailor_endpoint(payload: CVTailorRequest):
+    """
+    Create tailored CV with injected keywords.
+    Saves to Applications folder.
+    Returns path to new CV.
+    """
+    from docx import Document
+    from docx.shared import RGBColor
+    from pathlib import Path
+    import re
+    
+    gold_cv_path = GOLD_CV_PATH
+    apps_path = gold_cv_path / "Applications"
+    
+    # Select CV based on role
+    role_cv_map = {
+        "product": "CV_Anton_Kondakov_Product Manager.docx",
+        "tpm_program": "CV_Anton_Kondakov_TPM.docx",
+        "project": "CV_Anton_Kondakov_Project Manager.docx",
+    }
+    cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
+    cv_path = gold_cv_path / cv_filename
+    
+    if not cv_path.exists():
+        return {"ok": False, "error": f"CV not found: {cv_filename}"}
+    
+    # Create application folder
+    safe_company = re.sub(r'[^\w\s-]', '', payload.company).strip().replace(' ', '_')
+    safe_position = re.sub(r'[^\w\s-]', '', payload.position).strip().replace(' ', '_')[:50]
+    folder_name = f"{safe_company}_{safe_position}"
+    app_folder = apps_path / folder_name
+    app_folder.mkdir(parents=True, exist_ok=True)
+    
+    # Load and modify CV
+    doc = Document(cv_path)
+    
+    keywords_to_add = payload.keywords_to_add
+    
+    if keywords_to_add:
+        # Find CORE COMPETENCIES section and add keywords
+        for i, para in enumerate(doc.paragraphs):
+            text = para.text.strip().upper()
+            if "COMPETENCIES" in text or "SKILLS" in text:
+                # Find the next list paragraph and add keywords there
+                for j in range(i+1, min(i+10, len(doc.paragraphs))):
+                    next_para = doc.paragraphs[j]
+                    if next_para.style and "List" in next_para.style.name:
+                        # Add keywords to Technical Acumen or create new line
+                        if "technical" in next_para.text.lower() or "tools" in next_para.text.lower():
+                            # Append to existing
+                            current_text = next_para.text
+                            if not current_text.endswith('.'):
+                                current_text += '.'
+                            new_keywords = ', '.join(keywords_to_add)
+                            next_para.clear()
+                            next_para.add_run(f"{current_text} Additional: {new_keywords}.")
+                            break
+                break
+    
+    # Save tailored CV
+    output_filename = f"CV_Anton_Kondakov_{safe_company}_{safe_position}.docx"
+    output_path = app_folder / output_filename
+    doc.save(output_path)
+    
+    # Also try to create PDF (if possible)
+    pdf_path = None
+    try:
+        import subprocess
+        # Try using LibreOffice for conversion (if available)
+        pdf_output = output_path.with_suffix('.pdf')
+        result = subprocess.run([
+            'soffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', str(app_folder), str(output_path)
+        ], capture_output=True, timeout=30)
+        if pdf_output.exists():
+            pdf_path = str(pdf_output)
+    except Exception:
+        pass  # PDF conversion optional
+    
+    return {
+        "ok": True,
+        "cv_path": str(output_path),
+        "pdf_path": pdf_path,
+        "folder": str(app_folder),
+        "keywords_added": keywords_to_add
+    }
+
+
+class CVOptimizeRequest(BaseModel):
+    job_title: str
+    company: str
+    job_description: str
+    role_family: str = "product"
+
+
+@app.post("/cv/optimize-ai")
+async def cv_optimize_ai_endpoint(payload: CVOptimizeRequest):
+    """
+    Use Claude API to analyze JD and optimize CV.
+    Extracts key requirements and tailors CV accordingly.
+    """
+    import os
+    import re
+    from pathlib import Path
+    
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return {"ok": False, "error": "ANTHROPIC_API_KEY not set"}
+    
+    jd = payload.job_description
+    if not jd or len(jd) < 50:
+        return {"ok": False, "error": "Job description too short for analysis"}
+    
+    # Call Claude API to analyze JD
+    try:
+        import requests
+        
+        prompt = f"""Analyze this job description and extract:
+1. Top 10 most important technical skills/tools required
+2. Top 5 soft skills emphasized
+3. Key experience requirements (years, domains)
+4. Any specific keywords that should be in the CV
+
+Job Title: {payload.job_title}
+Company: {payload.company}
+
+Job Description:
+{jd[:4000]}
+
+Respond in JSON format:
+{{
+  "technical_skills": ["skill1", "skill2", ...],
+  "soft_skills": ["skill1", ...],
+  "experience_requirements": ["req1", ...],
+  "keywords_to_add": ["keyword1", ...],
+  "cv_recommendations": ["recommendation1", ...]
+}}"""
+        
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json={
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 1000,
+                "messages": [{"role": "user", "content": prompt}]
+            },
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            return {"ok": False, "error": f"Claude API error: {response.status_code}"}
+        
+        result = response.json()
+        ai_text = result.get("content", [{}])[0].get("text", "{}")
+        
+        # Parse JSON from response
+        import json
+        # Extract JSON from potential markdown
+        json_match = re.search(r'\{[\s\S]*\}', ai_text)
+        if json_match:
+            analysis = json.loads(json_match.group())
+        else:
+            analysis = {"error": "Could not parse AI response"}
+        
+        # Now tailor CV with extracted keywords
+        keywords = analysis.get("keywords_to_add", []) + analysis.get("technical_skills", [])[:5]
+        keywords = list(set(keywords))[:10]  # Dedupe and limit
+        
+        if keywords:
+            # Call existing tailor endpoint logic
+            from docx import Document
+            
+            gold_cv_path = GOLD_CV_PATH
+            apps_path = gold_cv_path / "Applications"
+            
+            role_cv_map = {
+                "product": "CV_Anton_Kondakov_Product Manager.docx",
+                "tpm_program": "CV_Anton_Kondakov_TPM.docx",
+                "project": "CV_Anton_Kondakov_Project Manager.docx",
+            }
+            cv_filename = role_cv_map.get(payload.role_family, "CV_Anton_Kondakov_Product Manager.docx")
+            cv_path = gold_cv_path / cv_filename
+            
+            if not cv_path.exists():
+                return {"ok": False, "error": f"Base CV not found: {cv_filename}"}
+            
+            # Create folder
+            safe_company = re.sub(r'[^\w\s-]', '', payload.company).strip().replace(' ', '_')
+            safe_position = re.sub(r'[^\w\s-]', '', payload.job_title).strip().replace(' ', '_')[:50]
+            folder_name = f"{safe_company}_{safe_position}_AI"
+            app_folder = apps_path / folder_name
+            app_folder.mkdir(parents=True, exist_ok=True)
+            
+            # Load and modify CV
+            doc = Document(cv_path)
+            
+            # Add keywords to Technical section
+            for i, para in enumerate(doc.paragraphs):
+                if "COMPETENCIES" in para.text.upper() or "SKILLS" in para.text.upper():
+                    for j in range(i+1, min(i+15, len(doc.paragraphs))):
+                        next_para = doc.paragraphs[j]
+                        if "technical" in next_para.text.lower() or "acumen" in next_para.text.lower():
+                            current = next_para.text.rstrip('.')
+                            added_kw = ', '.join(keywords[:5])
+                            next_para.clear()
+                            next_para.add_run(f"{current} [+Added: {added_kw}]")
+                            break
+                    break
+            
+            # Save
+            output_filename = f"CV_Anton_Kondakov_{safe_company}_AI_Optimized.docx"
+            output_path = app_folder / output_filename
+            doc.save(output_path)
+            
+            return {
+                "ok": True,
+                "cv_path": str(output_path),
+                "cv_name": output_filename,
+                "keywords_added": keywords[:5],
+                "analysis": analysis,
+                "folder": str(app_folder)
+            }
+        else:
+            return {
+                "ok": True,
+                "cv_path": None,
+                "cv_name": "No optimization needed",
+                "keywords_added": [],
+                "analysis": analysis
+            }
+            
+    except Exception as e:
+        import traceback
+        return {"ok": False, "error": str(e), "traceback": traceback.format_exc()}
+
+
+# ============= V5 FORM FILLER ENDPOINT =============
+
+
+# ============= V5 FORM FILLER ENDPOINT =============
+
+@app.post("/apply/v5")
+def apply_v5_endpoint(payload: ApplyRequest):
+    """
+    Apply to job using V5 Form Filler with Claude AI.
+    Auto-starts Chrome with debug port if not running.
+    """
+    import subprocess
+    import sys
+    
+    job_url = payload.job_url
+    profile_name = payload.profile
+    
+    # Check profile exists
+    profile_path = Path(f"browser/profiles/{profile_name}.json")
+    if not profile_path.exists():
+        return {"ok": False, "error": f"Profile '{profile_name}' not found"}
+    
+    # Start Chrome with debug port using our helper
+    cwd = Path(__file__).parent.resolve()
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, str(cwd / "browser/start_chrome_debug.py")],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        if "❌" in result.stdout:
+            return {"ok": False, "error": "Failed to start Chrome with debug port"}
+            
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "Chrome start timeout"}
+    except Exception as e:
+        return {"ok": False, "error": f"Chrome start error: {e}"}
+    
+    # Prepare V5 script
+    script_content = f'''
+import sys
+sys.path.insert(0, '{cwd}')
+import os
+os.chdir('{cwd}')
+
+# Tee output to log file
+import io
+class TeeWriter:
+    def __init__(self, *writers):
+        self.writers = writers
+    def write(self, text):
+        for w in self.writers:
+            w.write(text)
+            w.flush()
+    def flush(self):
+        for w in self.writers:
+            w.flush()
+
+log_file = open('/tmp/v5_apply.log', 'w')
+sys.stdout = TeeWriter(sys.__stdout__, log_file)
+sys.stderr = TeeWriter(sys.__stderr__, log_file)
+
+from browser.v5.engine import FormFillerV5, FillMode
+from browser.v5.browser_manager import BrowserMode
+import time
+
+job_url = "{job_url}"
+
+print("="*60)
+print("V5 Form Filler")
+print(f"URL: {{job_url}}")
+print("="*60)
+
+try:
+    # Initialize V5 with CDP (connects to existing Chrome)
+    filler = FormFillerV5(browser_mode=BrowserMode.CDP)
+    
+    # Run in interactive mode
+    result = filler.fill(job_url, mode=FillMode.INTERACTIVE)
+    
+    print("\\n" + "="*60)
+    print(f"Filled: {{result.filled_fields}}/{{result.total_fields}}")
+    print(f"Verified: {{result.verified_fields}}")
+    if result.errors > 0:
+        print(f"Errors: {{result.errors}}")
+    print("="*60)
+    
+    # Keep browser open for review
+    print("\\nBrowser stays open. Close manually when done.")
+    input("Press Enter to close...")
+    
+except Exception as e:
+    print(f"Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+    input("Press Enter to close...")
+'''
+    
+    # Write and run script
+    script_file = Path("/tmp/v5_apply_script.py")
+    script_file.write_text(script_content)
+    
+    log_file = Path("/tmp/v5_apply.log")
+    
+    # Run in new Terminal window (so user can see output)
+    apple_script = f'''
+    tell application "Terminal"
+        activate
+        do script "cd {cwd} && {sys.executable} {script_file}"
+    end tell
+    '''
+    
+    try:
+        subprocess.run(['osascript', '-e', apple_script], capture_output=True)
+    except:
+        # Fallback: run in background
+        subprocess.Popen(
+            [sys.executable, str(script_file)],
+            stdout=open(log_file, "w"),
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd)
+        )
+    
+    return {
+        "ok": True,
+        "message": "V5 Form Filler started in Terminal",
+        "log_file": str(log_file),
+        "job_url": job_url
+    }
+
+
+@app.get("/apply/v5/log")
+def get_v5_log():
+    """Get V5 apply log content."""
+    log_path = Path("/tmp/v5_apply.log")
+    if not log_path.exists():
+        return {"ok": False, "log": "No log file"}
+    
+    try:
+        return {"ok": True, "log": log_path.read_text()}
+    except Exception as e:
+        return {"ok": False, "log": f"Error: {e}"}
+
+
+# ============= V6 FORM FILLER ENDPOINT =============
+
+@app.post("/apply/v6")
+def apply_v6_endpoint(payload: ApplyRequest):
+    """
+    Apply to job using V6 Form Filler with Claude AI.
+    Simpler engine, focused on Greenhouse forms.
+    """
+    import subprocess
+    import sys
+    
+    job_url = payload.job_url
+    profile_name = payload.profile
+    
+    # Start Chrome with debug port (uses separate profile, won't affect main browser)
+    cwd = Path(__file__).parent.resolve()
+    
+    try:
+        from browser.start_chrome_debug import start_chrome_debug
+        
+        result = start_chrome_debug()
+        
+        if not result["ok"]:
+            return {"ok": False, "error": result.get("message", "Failed to start Chrome")}
+            
+    except Exception as e:
+        return {"ok": False, "error": f"Chrome start error: {e}"}
+    
+    # Prepare V6 script
+    script_content = f'''
+import sys
+sys.path.insert(0, '{cwd}')
+import os
+os.chdir('{cwd}')
+
+# Tee output to log file
+import io
+class TeeWriter:
+    def __init__(self, *writers):
+        self.writers = writers
+    def write(self, text):
+        for w in self.writers:
+            w.write(text)
+            w.flush()
+    def flush(self):
+        for w in self.writers:
+            w.flush()
+
+log_file = open('/tmp/v6_apply.log', 'w')
+sys.stdout = TeeWriter(sys.__stdout__, log_file)
+sys.stderr = TeeWriter(sys.__stderr__, log_file)
+
+from browser.v6.engine import FormFillerV6
+import time
+
+job_url = "{job_url}"
+
+print("="*60)
+print("V6 Form Filler (AI-Powered)")
+print(f"URL: {{job_url}}")
+print("="*60)
+
+try:
+    # Initialize V6 and connect to Chrome
+    filler = FormFillerV6()
+    filler.connect()
+    
+    # Navigate to job URL first!
+    print(f"📍 Opening: {{job_url[:60]}}...")
+    filler.page.goto(job_url, wait_until="domcontentloaded", timeout=20000)
+    
+    # Wait for Greenhouse iframe to appear
+    print("⏳ Waiting for form to load...")
+    try:
+        filler.page.wait_for_selector('#grnhse_iframe', timeout=10000)
+    except:
+        pass
+    
+    if not filler.find_frame():
+        print("❌ No form found on current page")
+        print("Make sure you have the job application form open in Chrome")
+        input("Press Enter to close...")
+    else:
+        # Fill the form
+        filler.fill_greenhouse()
+        
+        print("\\n" + "="*60)
+        print("✅ Form filling complete!")
+        print("="*60)
+        
+        print("\\nBrowser stays open. Review and submit manually.")
+        input("Press Enter to close...")
+    
+except Exception as e:
+    print(f"Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+    input("Press Enter to close...")
+'''
+    
+    # Write and run script
+    script_file = Path("/tmp/v6_apply_script.py")
+    script_file.write_text(script_content)
+    
+    log_file = Path("/tmp/v6_apply.log")
+    
+    # Open new terminal but don't steal focus and don't close old ones
+    escaped_cwd = str(cwd).replace(' ', '\\\\ ')
+    apple_script = f'''
+    tell application "Terminal"
+        do script "cd {escaped_cwd} && {sys.executable} {script_file}"
+        delay 0.3
+        set current settings of front window to settings set "Basic"
+        set font size of front window to 13
+    end tell
+    '''
+    
+    try:
+        subprocess.run(['osascript', '-e', apple_script], capture_output=True)
+    except:
+        # Fallback: run in background
+        subprocess.Popen(
+            [sys.executable, str(script_file)],
+            stdout=open(log_file, "w"),
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd)
+        )
+    
+    return {
+        "ok": True,
+        "message": "V6 Form Filler started in Terminal",
+        "log_file": str(log_file),
+        "job_url": job_url
+    }
+
+
+@app.get("/apply/v6/log")
+def get_v6_log():
+    """Get V6 apply log content."""
+    log_path = Path("/tmp/v6_apply.log")
+    if not log_path.exists():
+        return {"ok": False, "log": "No log file"}
+    
+    try:
+        return {"ok": True, "log": log_path.read_text()}
+    except Exception as e:
+        return {"ok": False, "log": f"Error: {e}"}
+
+
+# ============= V7 AGENT FORM FILLER ENDPOINT =============
+
+@app.post("/apply/v7")
+def apply_v7(payload: ApplyPayload):
+    """
+    V7 Agent Form Filler - Uses Claude Vision to fill forms like a human.
+    """
+    job_url = payload.job_url
+    cwd = Path(__file__).parent.resolve()
+    
+    # Start Chrome with debug port
+    try:
+        from browser.start_chrome_debug import start_chrome_debug
+        result = start_chrome_debug()
+        if not result["ok"]:
+            return {"ok": False, "error": result.get("message", "Failed to start Chrome")}
+    except Exception as e:
+        return {"ok": False, "error": f"Chrome start error: {e}"}
+    
+    # Create V7 script
+    script_content = f'''
+import sys
+sys.path.insert(0, '{cwd}')
+
+from browser.v7.agent import FormFillerAgent
+
+job_url = "{job_url}"
+
+print("=" * 60)
+print("V7 AGENT Form Filler")
+print(f"URL: {{job_url}}")
+print("=" * 60)
+
+agent = FormFillerAgent()
+
+try:
+    agent.connect()
+    agent.fill_form(job_url)
+except KeyboardInterrupt:
+    print("\\n⚠️ Interrupted")
+except Exception as e:
+    print(f"\\n❌ Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+finally:
+    input("\\nPress Enter to close...")
+    agent.close()
+'''
+    
+    script_file = Path("/tmp/v7_agent_script.py")
+    script_file.write_text(script_content)
+    
+    # Run in Terminal
+    escaped_cwd = str(cwd).replace(' ', '\\\\ ')
+    apple_script = f'''
+    tell application "Terminal"
+        do script "cd {escaped_cwd} && {sys.executable} {script_file}"
+        delay 0.3
+        set current settings of front window to settings set "Basic"
+        set font size of front window to 13
+    end tell
+    '''
+    
+    try:
+        subprocess.run(['osascript', '-e', apple_script], capture_output=True)
+    except:
+        subprocess.Popen(
+            [sys.executable, str(script_file)],
+            stdout=open("/tmp/v7_agent.log", "w"),
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd)
+        )
+    
+    return {
+        "ok": True,
+        "message": "V7 Agent started in Terminal",
+        "job_url": job_url
+    }
+
+
+@app.get("/chrome/status")
+def chrome_debug_status():
+    """Check if Chrome is running with debug port."""
+    import socket
+    
+    def check_port(port):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                return s.connect_ex(('localhost', port)) == 0
+        except:
+            return False
+    
+    running = check_port(9222)
+    return {
+        "running": running,
+        "port": 9222,
+        "message": "Chrome debug ready" if running else "Chrome not running on debug port"
+    }
+
+
+@app.post("/chrome/start")
+def start_chrome_debug_endpoint():
+    """Start Chrome with debug port."""
+    import subprocess
+    import sys
+    
+    cwd = Path(__file__).parent.resolve()
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, str(cwd / "browser/start_chrome_debug.py")],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        if "✅" in result.stdout:
+            return {"ok": True, "message": result.stdout.strip()}
+        else:
+            return {"ok": False, "error": result.stdout.strip()}
+            
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Vision-based Form Filler
+# ─────────────────────────────────────────────────────────────────────
+
+@app.post("/apply/vision")
+async def apply_vision(payload: dict):
+    """
+    Fill job application using Claude Vision API.
+    Analyzes form screenshots and fills fields intelligently.
+    """
+    job_url = payload.get("job_url", "")
+    if not job_url:
+        return {"ok": False, "error": "job_url required"}
+    
+    # Run in background terminal
+    script = f'''
+import asyncio
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
+
+from browser.v5.vision_filler import VisionFormFiller
+from playwright.async_api import async_playwright
+
+async def main():
+    filler = VisionFormFiller()
+    
+    async with async_playwright() as p:
+        browser = await p.chromium.connect_over_cdp("http://localhost:9222")
+        ctx = browser.contexts[0]
+        
+        print("Creating new page...")
+        page = await ctx.new_page()
+        await page.goto("{job_url}", wait_until="domcontentloaded", timeout=30000)
+        await asyncio.sleep(6)
+        
+        await page.bring_to_front()
+        print(f"Page loaded: {{await page.title()}}")
+        
+        print("\\nAnalyzing form with Claude Vision...")
+        analysis = await filler.analyze_form(page, num_screenshots=3)
+        print(analysis)
+        
+        input("\\nPress Enter to continue or Ctrl+C to cancel...")
+
+asyncio.run(main())
+'''
+    
+    # Save and run script
+    script_path = "/tmp/vision_apply.py"
+    with open(script_path, "w") as f:
+        f.write(script)
+    
+    import subprocess
+    subprocess.Popen([
+        "osascript", "-e",
+        f'tell application "Terminal" to do script "cd {str(Path(__file__).parent)} && source .venv/bin/activate && python {script_path}"'
+    ])
+    
+    return {"ok": True, "message": "Vision Form Filler started in Terminal"}

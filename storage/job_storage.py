@@ -20,9 +20,11 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, List, Set
+from utils.location_utils import normalize_job_location
+
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-JOBS_FILE = DATA_DIR / "jobs.json"
+JOBS_FILE = DATA_DIR / "jobs_new.json"  # Unified with pipeline
 
 # Статусы
 STATUS_NEW = "new"
@@ -127,6 +129,9 @@ def add_job(job: dict, status: str = STATUS_NEW) -> bool:
     if any(j.get("id") == job_id for j in jobs):
         return False
     
+    # Normalize location (from title if needed)
+    job = normalize_job_location(job)
+    
     now = _now_iso()
     job_record = {
         **job,
@@ -163,6 +168,9 @@ def add_jobs_bulk(new_jobs: List[dict], status: str = STATUS_NEW) -> int:
         if not job_id or job_id in existing_ids:
             continue
         
+        # Normalize location
+        job = normalize_job_location(job)
+        
         job_record = {
             **job,
             "status": status,
@@ -183,7 +191,7 @@ def add_jobs_bulk(new_jobs: List[dict], status: str = STATUS_NEW) -> int:
     return added
 
 
-def update_status(job_id: str, new_status: str, notes: str = "") -> Optional[dict]:
+def update_status(job_id: str, new_status: str, notes: str = "", folder_path: str = "", jd_summary: dict = None) -> Optional[dict]:
     """
     Update job status.
     Returns updated job or None if not found.
@@ -199,8 +207,12 @@ def update_status(job_id: str, new_status: str, notes: str = "") -> Optional[dic
             job["status_history"].append({"status": new_status, "date": now})
             job["updated_at"] = now
             
+            if folder_path:
+                job["folder_path"] = folder_path
             if notes:
                 job["notes"] = notes
+            if jd_summary:
+                job["jd_summary"] = jd_summary
             
             # Clear attention flag unless closing
             if new_status != STATUS_CLOSED:
@@ -210,6 +222,24 @@ def update_status(job_id: str, new_status: str, notes: str = "") -> Optional[dic
             return job
     
     return None
+
+
+def update_jd_summary(job_id: str, jd_summary: dict) -> bool:
+    """
+    Update job's jd_summary field.
+    Returns True if successful.
+    """
+    jobs = _load_jobs()
+    now = _now_iso()
+    
+    for job in jobs:
+        if job.get("id") == job_id:
+            job["jd_summary"] = jd_summary
+            job["updated_at"] = now
+            _save_jobs(jobs)
+            return True
+    
+    return False
 
 
 def update_last_seen(job_id: str, is_active: bool = True) -> bool:

@@ -20,8 +20,34 @@
   },
   
   "files": {
-    "resume_path": "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Anton_Kondakov_TPM_CV.pdf",
-    "cover_letter_path": null
+    "base_path": "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/",
+    "default_role": "TPM",
+    "by_role": {
+      "TPM": {
+        "cv": "CV_Anton_Kondakov_TPM.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_TPM.dotx"
+      },
+      "Product Manager": {
+        "cv": "CV_Anton_Kondakov_Product Manager.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_ProductM.docx"
+      },
+      "Product Owner": {
+        "cv": "CV_Anton_Kondakov_PO.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_PO.docx"
+      },
+      "Project Manager": {
+        "cv": "CV_Anton_Kondakov_Project Manager.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_Project Manager.docx"
+      },
+      "Scrum Master": {
+        "cv": "CV_Anton_Kondakov_Scrum Master.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_Scrum Master.docx"
+      },
+      "Delivery Lead": {
+        "cv": "CV_Anton_Kondakov_DeliveryLead_CV.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_Delivery Lead.docx"
+      }
+    }
   },
   
   "work_authorization": {

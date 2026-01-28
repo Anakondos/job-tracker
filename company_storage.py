@@ -181,3 +181,32 @@ def hide_job(job_url: str, reason: str = "manual_hide"):
     if job_url not in {r["job_url"] for r in rows}:
         rows.append({"job_url": job_url, "reason": reason, "timestamp": now})
         _save_json_list(HIDE_FILE, rows)
+
+
+def update_company_status(company_id: str, ok: bool = True, jobs_count: int = 0, error: str = None):
+    """
+    Update company status in data/company_status.json
+    """
+    status_path = DATA_DIR / "company_status.json"
+    
+    # Load existing statuses
+    if status_path.exists():
+        with status_path.open("r", encoding="utf-8") as f:
+            try:
+                statuses = json.load(f)
+            except json.JSONDecodeError:
+                statuses = {}
+    else:
+        statuses = {}
+    
+    now = datetime.utcnow().isoformat() + "Z"
+    
+    statuses[company_id] = {
+        "ok": ok,
+        "jobs_count": jobs_count,
+        "error": error,
+        "updated_at": now
+    }
+    
+    with status_path.open("w", encoding="utf-8") as f:
+        json.dump(statuses, f, ensure_ascii=False, indent=2)

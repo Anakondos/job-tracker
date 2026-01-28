@@ -1,0 +1,237 @@
+{
+  "timestamp": "2026-01-23T16:46:27.803499",
+  "url": "https://apply.teksystems.com/v1/s/?opco=TEK&params=XwWi5QNmu4gBO7ECggCgDmBjxOsgSKsRqhwWyZeLL74DxZlrJ9sfR71EyXmR3e%2FVUCgW15mC1mdeywU9dF9iE%2F%2B%2BlCA8WW8%2BQpdGT3Tex%2FmjApXtR589NPJXtpNf88gF&s_id=108&jdg=true&EcvId=85932687323417949460313705865820179856&ecid=undefined&icid=undefined",
+  "title": "Job Application | TEKsystems Careers",
+  "status": "filled",
+  "fields_filled": 22,
+  "radios_selected": 12,
+  "checkboxes_checked": 7,
+  "data": {
+    "fields": [
+      {
+        "id": "",
+        "label": "",
+        "value": "",
+        "type": "text"
+      },
+      {
+        "id": "input-56",
+        "label": "First Name",
+        "value": "ANTON",
+        "type": "text"
+      },
+      {
+        "id": "input-59",
+        "label": "Last Name",
+        "value": "KONDAKOV",
+        "type": "text"
+      },
+      {
+        "id": "input-66",
+        "label": "Phone Number",
+        "value": "9105360602",
+        "type": "tel"
+      },
+      {
+        "id": "input-69",
+        "label": "Email Address",
+        "value": "anton.kondakov.PM@gmail.com",
+        "type": "text"
+      },
+      {
+        "id": "input-73",
+        "label": "123 Main St.",
+        "value": "2000 Sweet Samson St",
+        "type": "text"
+      },
+      {
+        "id": "input-76",
+        "label": "Beverly Hills",
+        "value": "Raleigh",
+        "type": "text"
+      },
+      {
+        "id": "input-85",
+        "label": "90210",
+        "value": "27587",
+        "type": "text"
+      },
+      {
+        "id": "input-113",
+        "label": "input-113",
+        "value": "Senior Delivery Manager / Scrum Center of Excellence Lead",
+        "type": "text"
+      },
+      {
+        "id": "input-119",
+        "label": "input-119",
+        "value": "DXC - London Market",
+        "type": "text"
+      },
+      {
+        "id": "input-139",
+        "label": "input-139",
+        "value": "$150,000.00",
+        "type": "text"
+      },
+      {
+        "id": "",
+        "label": "",
+        "value": "",
+        "type": "text"
+      },
+      {
+        "id": "input-56",
+        "label": "First Name",
+        "value": "ANTON",
+        "type": "text"
+      },
+      {
+        "id": "input-59",
+        "label": "Last Name",
+        "value": "KONDAKOV",
+        "type": "text"
+      },
+      {
+        "id": "input-66",
+        "label": "Phone Number",
+        "value": "9105360602",
+        "type": "tel"
+      },
+      {
+        "id": "input-69",
+        "label": "Email Address",
+        "value": "anton.kondakov.PM@gmail.com",
+        "type": "text"
+      },
+      {
+        "id": "input-73",
+        "label": "123 Main St.",
+        "value": "2000 Sweet Samson St",
+        "type": "text"
+      },
+      {
+        "id": "input-76",
+        "label": "Beverly Hills",
+        "value": "Raleigh",
+        "type": "text"
+      },
+      {
+        "id": "input-85",
+        "label": "90210",
+        "value": "27587",
+        "type": "text"
+      },
+      {
+        "id": "input-113",
+        "label": "input-113",
+        "value": "Senior Delivery Manager / Scrum Center of Excellence Lead",
+        "type": "text"
+      },
+      {
+        "id": "input-119",
+        "label": "input-119",
+        "value": "DXC - London Market",
+        "type": "text"
+      },
+      {
+        "id": "input-139",
+        "label": "input-139",
+        "value": "$150,000.00",
+        "type": "text"
+      }
+    ],
+    "radios": [
+      {
+        "id": "a7D1E000001eS0HUAU-107",
+        "name": "",
+        "label": "Yes"
+      },
+      {
+        "id": "a7DHn000001evouMAA-125",
+        "name": "",
+        "label": "Masters"
+      },
+      {
+        "id": "a7DHn000001evp7MAA-135",
+        "name": "",
+        "label": "10+ years"
+      },
+      {
+        "id": "a7D1E000001eS0BUAU-142",
+        "name": "",
+        "label": "Yes"
+      },
+      {
+        "id": "a7DHn000000ckEVMAY-149",
+        "name": "",
+        "label": "Yes"
+      },
+      {
+        "id": "yes-152",
+        "name": "",
+        "label": "I agree to receive text messages."
+      },
+      {
+        "id": "a7D1E000001eS0HUAU-107",
+        "name": "",
+        "label": "Yes"
+      },
+      {
+        "id": "a7DHn000001evouMAA-125",
+        "name": "",
+        "label": "Masters"
+      },
+      {
+        "id": "a7DHn000001evp7MAA-135",
+        "name": "",
+        "label": "10+ years"
+      },
+      {
+        "id": "a7D1E000001eS0BUAU-142",
+        "name": "",
+        "label": "Yes"
+      },
+      {
+        "id": "a7DHn000000ckEVMAY-149",
+        "name": "",
+        "label": "Yes"
+      },
+      {
+        "id": "yes-152",
+        "name": "",
+        "label": "I agree to receive text messages."
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "ot-group-id-C0002",
+        "label": "Performance Cookies"
+      },
+      {
+        "id": "ot-group-id-C0003",
+        "label": "Functional Cookies"
+      },
+      {
+        "id": "ot-group-id-C0004",
+        "label": "Targeting Cookies"
+      },
+      {
+        "id": "a7DHn000000UPhRMAW-145",
+        "label": "Hybrid"
+      },
+      {
+        "id": "a7DHn000000UPhTMAW-147",
+        "label": "Remote"
+      },
+      {
+        "id": "a7DHn000000UPhRMAW-145",
+        "label": "Hybrid"
+      },
+      {
+        "id": "a7DHn000000UPhTMAW-147",
+        "label": "Remote"
+      }
+    ]
+  }
+}

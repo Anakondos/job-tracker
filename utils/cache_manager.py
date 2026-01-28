@@ -39,7 +39,7 @@ def is_cache_valid(cache_data: Dict) -> bool:
         return False
 
 
-def load_cache(cache_key: str = "all") -> Optional[Dict]:
+def load_cache(cache_key: str = "all", ignore_ttl: bool = False) -> Optional[Dict]:
     cache_path = get_cache_path(cache_key)
     
     if not cache_path.exists():
@@ -49,7 +49,7 @@ def load_cache(cache_key: str = "all") -> Optional[Dict]:
         with cache_path.open("r", encoding="utf-8") as f:
             cache_data = json.load(f)
         
-        if is_cache_valid(cache_data):
+        if ignore_ttl or is_cache_valid(cache_data):
             return cache_data
         else:
             print(f"Cache expired for '{cache_key}'")
