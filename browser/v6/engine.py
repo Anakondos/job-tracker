@@ -27,11 +27,16 @@ except ImportError:
 # CONFIG
 # ─────────────────────────────────────────────────────────────────────
 
-PROFILE_PATH = os.path.expanduser("~/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/job-tracker-dev/data/profile.json")
-ANSWERS_DB_PATH = os.path.expanduser("~/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/job-tracker-dev/data/answer_library.json")
+# Universal paths (work on any machine)
+ICLOUD_PATH = os.path.expanduser("~/Library/Mobile Documents/com~apple~CloudDocs")
+AI_PROJECTS_PATH = os.path.join(ICLOUD_PATH, "Dev", "AI_projects")
+GOLD_CV_PATH = os.path.join(AI_PROJECTS_PATH, "Gold CV")
 
-CV_PATH = "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/CV_Anton_Kondakov_Product Manager.pdf"
-COVER_LETTER_PATH = "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Cover_Letter_Anton_Kondakov_ProductM.docx"
+PROFILE_PATH = os.path.join(AI_PROJECTS_PATH, "job-tracker-dev", "data", "profile.json")
+ANSWERS_DB_PATH = os.path.join(AI_PROJECTS_PATH, "job-tracker-dev", "data", "answer_library.json")
+
+CV_PATH = os.path.join(GOLD_CV_PATH, "CV_Anton_Kondakov_Product Manager.pdf")
+COVER_LETTER_PATH = os.path.join(GOLD_CV_PATH, "Cover_Letter_Anton_Kondakov_ProductM.docx")
 
 # ─────────────────────────────────────────────────────────────────────
 # DATA

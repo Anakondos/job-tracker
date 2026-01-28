@@ -16,6 +16,29 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+# ========== UNIVERSAL PATHS (work on any machine via iCloud) ==========
+def get_icloud_path() -> Path:
+    """Get iCloud Drive path for current user."""
+    return Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
+
+def get_ai_projects_path() -> Path:
+    """Get AI_projects folder path."""
+    return get_icloud_path() / "Dev" / "AI_projects"
+
+def get_gold_cv_path() -> Path:
+    """Get Gold CV folder path."""
+    return get_ai_projects_path() / "Gold CV"
+
+def get_applications_path() -> Path:
+    """Get Applications folder for cover letters."""
+    return get_gold_cv_path() / "Applications"
+
+# Pre-compute paths
+ICLOUD_PATH = get_icloud_path()
+AI_PROJECTS_PATH = get_ai_projects_path()
+GOLD_CV_PATH = get_gold_cv_path()
+APPLICATIONS_PATH = get_applications_path()
+
 # Environment: PROD or DEV (auto-detect from folder name)
 _current_dir = Path(__file__).parent.name
 ENV = os.getenv("JOB_TRACKER_ENV", "DEV" if "dev" in _current_dir.lower() else "PROD")
@@ -258,8 +281,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ========== BACKGROUND REFRESH DAEMON ==========
 
 # Daemon status (global)
+# NOTE: Daemon disabled by default to avoid conflicts when running on multiple machines via iCloud
 DAEMON_STATUS = {
-    "enabled": True,
+    "enabled": False,  # Changed to False - enable manually via UI or API
     "running": False,
     "current_company": None,
     "last_company": None,
@@ -2588,8 +2612,8 @@ def apply_greenhouse_endpoint(payload: ApplyRequest):
     cwd = os.path.dirname(os.path.abspath(__file__))
     if "Mobile Documents" in cwd:
         cwd = cwd.replace(
-            "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects",
-            "/Users/antonkondakov/icloud-projects"
+            str(AI_PROJECTS_PATH),
+            str(ICLOUD_PATH)
         )
     
     # Write script to file to avoid shell escaping issues
@@ -2711,7 +2735,7 @@ def generate_cover_letter_endpoint(payload: dict):
     role_family = payload.get("role_family", "product")  # product, tpm_program, project
     
     # Map role_family to template
-    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    cv_dir = GOLD_CV_PATH
     template_map = {
         "product": "Cover_Letter_Anton_Kondakov_ProductM.docx",
         "tpm_program": "Cover_Letter_Anton_Kondakov_Delivery Lead.docx",
@@ -2789,7 +2813,7 @@ def save_cover_letter(payload: dict):
     position = payload.get("position", "Position").replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
     cv_filename = payload.get("cv_filename", "")
     
-    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    cv_dir = GOLD_CV_PATH
     applications_dir = cv_dir / "Applications"
     job_folder = applications_dir / f"{company}_{position}"
     
@@ -2816,7 +2840,7 @@ def get_available_cvs():
     """
     Get list of available CV files.
     """
-    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    cv_dir = GOLD_CV_PATH
     cvs = []
     
     for f in cv_dir.glob("*.pdf"):
@@ -2840,7 +2864,7 @@ def select_cv_for_job(payload: dict):
     job_title = payload.get("job_title", "")
     
     # Get available CVs
-    cv_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    cv_dir = GOLD_CV_PATH
     available_cvs = [str(f) for f in cv_dir.glob("*.pdf")]
     
     if not available_cvs:
@@ -3130,8 +3154,8 @@ def apply_with_vision(payload: ApplyRequest):
     cwd = os.path.dirname(os.path.abspath(__file__))
     if "Mobile Documents" in cwd:
         cwd = cwd.replace(
-            "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects",
-            "/Users/antonkondakov/icloud-projects"
+            str(AI_PROJECTS_PATH),
+            str(ICLOUD_PATH)
         )
     
     script = f'''import sys
@@ -3220,7 +3244,7 @@ def open_folder(payload: dict):
 @app.get("/applications")
 def list_applications():
     """List all prepared job applications"""
-    applications_dir = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Applications")
+    applications_dir = APPLICATIONS_PATH
     
     if not applications_dir.exists():
         return {"applications": []}
@@ -3258,7 +3282,7 @@ async def analyze_job_endpoint(payload: AnalyzeJobRequest):
     from pathlib import Path
     
     # Load candidate profile (Gold CV)
-    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    gold_cv_path = GOLD_CV_PATH
     
     # Select CV based on role
     role_cv_map = {
@@ -3438,7 +3462,7 @@ async def check_existing_application(payload: CheckExistingRequest):
     from pathlib import Path
     import re
     
-    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    gold_cv_path = GOLD_CV_PATH
     applications_path = gold_cv_path / "Applications"
     
     # Normalize company and position - remove special chars, replace spaces with underscores
@@ -3574,7 +3598,7 @@ async def cv_preview_endpoint(payload: CVPreviewRequest):
     from pathlib import Path
     import re
     
-    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    gold_cv_path = GOLD_CV_PATH
     
     # Use provided cv_path if specified, otherwise select by role
     print(f"DEBUG cv/preview: payload.cv_path = {payload.cv_path}")
@@ -3707,7 +3731,7 @@ async def cv_tailor_endpoint(payload: CVTailorRequest):
     from pathlib import Path
     import re
     
-    gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    gold_cv_path = GOLD_CV_PATH
     apps_path = gold_cv_path / "Applications"
     
     # Select CV based on role
@@ -3872,7 +3896,7 @@ Respond in JSON format:
             # Call existing tailor endpoint logic
             from docx import Document
             
-            gold_cv_path = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+            gold_cv_path = GOLD_CV_PATH
             apps_path = gold_cv_path / "Applications"
             
             role_cv_map = {
@@ -4147,7 +4171,7 @@ async def apply_vision(payload: dict):
     script = f'''
 import asyncio
 import sys
-sys.path.insert(0, '/Users/antonkondakov/projects/job-tracker-dev')
+sys.path.insert(0, str(Path(__file__).parent))
 
 from browser.v5.vision_filler import VisionFormFiller
 from playwright.async_api import async_playwright
@@ -4184,7 +4208,7 @@ asyncio.run(main())
     import subprocess
     subprocess.Popen([
         "osascript", "-e",
-        f'tell application "Terminal" to do script "cd /Users/antonkondakov/projects/job-tracker-dev && source .venv/bin/activate && python {script_path}"'
+        f'tell application "Terminal" to do script "cd {str(Path(__file__).parent)} && source .venv/bin/activate && python {script_path}"'
     ])
     
     return {"ok": True, "message": "Vision Form Filler started in Terminal"}
