@@ -280,11 +280,79 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ========== BACKGROUND REFRESH DAEMON ==========
 
+# Lock file path (in data/ folder, synced via iCloud)
+DAEMON_LOCK_FILE = Path("data/daemon.lock")
+
+def get_machine_id() -> str:
+    """Get unique machine identifier (hostname + username)"""
+    import socket
+    import getpass
+    return f"{getpass.getuser()}@{socket.gethostname()}"
+
+def check_daemon_lock() -> dict | None:
+    """Check if daemon is locked by another machine. Returns lock info or None."""
+    if not DAEMON_LOCK_FILE.exists():
+        return None
+    try:
+        lock_data = json.loads(DAEMON_LOCK_FILE.read_text())
+        # Check if lock is stale (older than 10 minutes)
+        lock_time = datetime.fromisoformat(lock_data.get("timestamp", "1970-01-01"))
+        if datetime.now(timezone.utc) - lock_time > timedelta(minutes=10):
+            # Stale lock - can be overwritten
+            return None
+        return lock_data
+    except:
+        return None
+
+def acquire_daemon_lock() -> tuple[bool, str]:
+    """Try to acquire daemon lock. Returns (success, message)."""
+    machine_id = get_machine_id()
+    existing_lock = check_daemon_lock()
+    
+    if existing_lock:
+        lock_machine = existing_lock.get("machine", "unknown")
+        if lock_machine != machine_id:
+            return False, f"Daemon already running on {lock_machine}"
+    
+    # Create/update lock
+    lock_data = {
+        "machine": machine_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "pid": os.getpid()
+    }
+    DAEMON_LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
+    return True, "Lock acquired"
+
+def release_daemon_lock():
+    """Release daemon lock if we own it."""
+    machine_id = get_machine_id()
+    existing_lock = check_daemon_lock()
+    
+    if existing_lock and existing_lock.get("machine") == machine_id:
+        try:
+            DAEMON_LOCK_FILE.unlink()
+        except:
+            pass
+
+def update_daemon_lock():
+    """Update lock timestamp (heartbeat)."""
+    machine_id = get_machine_id()
+    existing_lock = check_daemon_lock()
+    
+    if existing_lock and existing_lock.get("machine") == machine_id:
+        lock_data = {
+            "machine": machine_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "pid": os.getpid()
+        }
+        DAEMON_LOCK_FILE.write_text(json.dumps(lock_data, indent=2))
+
 # Daemon status (global)
 # NOTE: Daemon disabled by default to avoid conflicts when running on multiple machines via iCloud
 DAEMON_STATUS = {
     "enabled": False,  # Changed to False - enable manually via UI or API
     "running": False,
+    "locked_by": None,  # Which machine has the lock
     "current_company": None,
     "last_company": None,
     "last_updated": None,
@@ -430,6 +498,9 @@ async def background_refresh_daemon():
     DAEMON_STATUS["running"] = True
     
     while DAEMON_STATUS["enabled"]:
+        # Update lock heartbeat every iteration
+        update_daemon_lock()
+        
         try:
             # Load all companies from JSON
             companies_path = Path("data/companies.json")
@@ -528,6 +599,7 @@ async def background_refresh_daemon():
             await asyncio.sleep(60)  # Wait on error
     
     DAEMON_STATUS["running"] = False
+    release_daemon_lock()  # Release lock when stopping
     print("[Daemon] Background refresh daemon stopped")
 
 # Start daemon on app startup
@@ -538,12 +610,27 @@ async def startup_event():
 @app.get("/daemon/status")
 def get_daemon_status():
     """Get background refresh daemon status"""
+    # Check lock status
+    lock = check_daemon_lock()
+    DAEMON_STATUS["locked_by"] = lock.get("machine") if lock else None
     return DAEMON_STATUS
 
 @app.post("/daemon/toggle")
 def toggle_daemon(enabled: bool = Query(...)):
     """Enable or disable background refresh daemon"""
     global DAEMON_STATUS
+    
+    if enabled:
+        # Try to acquire lock before enabling
+        success, message = acquire_daemon_lock()
+        if not success:
+            return {"ok": False, "error": message}
+        DAEMON_STATUS["locked_by"] = get_machine_id()
+    else:
+        # Release lock when disabling
+        release_daemon_lock()
+        DAEMON_STATUS["locked_by"] = None
+    
     DAEMON_STATUS["enabled"] = enabled
     return {"ok": True, "enabled": enabled}
 
