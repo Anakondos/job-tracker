@@ -91,6 +91,48 @@
 
 ---
 
+## 🔄 Daemon Pipeline & Auto-Processing
+
+### Phase 1: Deadline Parsing (Low effort)
+- [ ] **Parse deadline from ATS APIs** — extract `close_date` (Greenhouse), `externalApplyDeadline` (Workday)
+- [ ] **Add deadline column to UI** — show deadline if available
+- [ ] **Sort by deadline** — urgent jobs first
+- [ ] **Deadline alerts** — highlight jobs expiring in 3 days
+
+### Phase 2: Auto JD Fetch (Medium effort)  
+- [ ] **Fetch JD in daemon** — only for NEW + Primary/Adjacent + US/Remote jobs
+- [ ] **Cache JD in pipeline.json** — avoid re-fetching
+- [ ] **Parse deadline from JD text** — regex/AI extraction ("apply by", "deadline", etc.)
+- [ ] **Extract salary from JD** — if mentioned
+
+### Phase 3: Quick Matching (Medium effort)
+- [ ] **Keyword matching** — JD keywords vs profile keywords (no AI)
+- [ ] **Title matching score** — how close to target roles
+- [ ] **Location score** — NC > Neighbor > Remote > Other
+- [ ] **Combined relevance score** — weighted sum of above
+- [ ] **Auto-filter by score** — show "Recommended" badge for score > 80%
+
+### Phase 4: AI Matching (High effort, on-demand)
+- [ ] **AI matching only for Recommended** — limit API calls
+- [ ] **Skills gap analysis** — what's missing vs JD requirements  
+- [ ] **Experience alignment** — years/level match
+- [ ] **Store AI analysis** — cache in job metadata
+- [ ] **Matching explanation** — why this job is/isn't a good fit
+
+### Phase 5: Auto-Prepare Documents (High effort, on-demand)
+- [ ] **Auto-prepare for high-match jobs** — score > 90%
+- [ ] **Queue system** — prepare in background
+- [ ] **Notification** — "3 jobs ready to apply"
+- [ ] **One-click apply** — open job + docs ready
+
+### Optimization Rules
+- Only process: NEW status + Primary/Adjacent roles + US/NC/Remote
+- Rate limit: max 50 JD fetches per daemon cycle
+- AI calls: only for "Selected" or "Recommended" jobs
+- Cache everything: JD, analysis, matching scores
+
+---
+
 ## 🖥️ UI/UX Improvements
 
 ### High Priority

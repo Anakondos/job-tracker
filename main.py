@@ -350,7 +350,7 @@ def update_daemon_lock():
 # Daemon status (global)
 # NOTE: Daemon disabled by default to avoid conflicts when running on multiple machines via iCloud
 DAEMON_STATUS = {
-    "enabled": False,  # Changed to False - enable manually via UI or API
+    "enabled": True,  # Auto-start daemon on server startup
     "running": False,
     "locked_by": None,  # Which machine has the lock
     "current_company": None,
