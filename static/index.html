@@ -1757,9 +1757,6 @@
 
       // keepDirection=true when re-applying sort after re-render
       function sortTable(column, keepDirection = false) {
-        const tbody = document.querySelector("#jobsTable tbody");
-        const rows = Array.from(tbody.querySelectorAll("tr"));
-
         if (!keepDirection) {
           if (CURRENT_SORT.column === column) {
             CURRENT_SORT.asc = !CURRENT_SORT.asc;
@@ -1771,27 +1768,11 @@
           CURRENT_SORT.column = column;
         }
 
-        const asc = !!CURRENT_SORT.asc;
-
-        rows.sort((a, b) => {
-          const av = a.dataset[column] || "";
-          const bv = b.dataset[column] || "";
-
-          if (column === "updated" || column === "added") {
-            const ad = Date.parse(av) || 0;
-            const bd = Date.parse(bv) || 0;
-            return asc ? ad - bd : bd - ad;
-          }
-
-          // stable, case-insensitive
-          const cmp = av.localeCompare(bv, undefined, { sensitivity: "base" });
-          return asc ? cmp : -cmp;
-        });
-
-        // re-append in order
-        for (const r of rows) tbody.appendChild(r);
-
         updateSortIcons();
+        
+        // Re-render with sort applied (sort happens inside renderJobs)
+        pipelinePage = 1; // Reset to first page when sorting
+        renderJobs(pipelineFilteredJobs.length > 0 ? pipelineFilteredJobs : ALL_JOBS);
       }
 
       function applyCurrentSortIfAny() {
@@ -2221,7 +2202,52 @@
       }
 
       function renderJobs(jobs) {
-        // Store filtered jobs for pagination
+        // Apply current sort BEFORE pagination
+        if (CURRENT_SORT.column) {
+          const col = CURRENT_SORT.column;
+          const asc = CURRENT_SORT.asc;
+          jobs = [...jobs].sort((a, b) => {
+            let av, bv;
+            if (col === 'updated') {
+              av = a.updated_at || '';
+              bv = b.updated_at || '';
+            } else if (col === 'added') {
+              av = a.first_seen || a.created_at || '';
+              bv = b.first_seen || b.created_at || '';
+            } else if (col === 'company') {
+              av = (a.company || '').toLowerCase();
+              bv = (b.company || '').toLowerCase();
+            } else if (col === 'title') {
+              av = (a.title || '').toLowerCase();
+              bv = (b.title || '').toLowerCase();
+            } else if (col === 'location') {
+              av = (a.location || '').toLowerCase();
+              bv = (b.location || '').toLowerCase();
+            } else if (col === 'ats') {
+              av = a.source === 'onboard' ? 'manual' : (a.ats || '').toLowerCase();
+              bv = b.source === 'onboard' ? 'manual' : (b.ats || '').toLowerCase();
+            } else if (col === 'status') {
+              av = (a.application_status || a.status || 'new').toLowerCase();
+              bv = (b.application_status || b.status || 'new').toLowerCase();
+            } else {
+              av = '';
+              bv = '';
+            }
+            
+            // Date columns - compare as dates
+            if (col === 'updated' || col === 'added') {
+              const ad = Date.parse(av) || 0;
+              const bd = Date.parse(bv) || 0;
+              return asc ? ad - bd : bd - ad;
+            }
+            
+            // String columns
+            const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
+            return asc ? cmp : -cmp;
+          });
+        }
+        
+        // Store filtered (and sorted) jobs for pagination
         pipelineFilteredJobs = jobs;
         
         // Calculate pagination
