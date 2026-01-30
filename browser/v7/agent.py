@@ -352,6 +352,74 @@ If you need to scroll to see more fields, include scroll action at the end."""
         
         return None
     
+    def check_and_click_apply_button(self) -> bool:
+        """
+        Check if the page shows a job description without a form.
+        If so, find and click the Apply button to reveal the form.
+        Returns True if a button was clicked.
+        """
+        print("\n🔍 Checking if form needs to be opened...")
+        
+        # Common apply button patterns
+        apply_patterns = [
+            "I'm interested",
+            "I'm Interested", 
+            "Im interested",
+            "Apply Now",
+            "Apply for this job",
+            "Apply for this position",
+            "Apply",
+            "Submit Application",
+            "Start Application",
+            "Begin Application",
+        ]
+        
+        # Check if there are visible form inputs (name, email, etc.)
+        form_inputs = self.page.query_selector_all('input[type="text"], input[type="email"], input[name*="name"]')
+        visible_inputs = [inp for inp in form_inputs if inp.is_visible()]
+        
+        if len(visible_inputs) >= 2:
+            print("   ✓ Form already visible (found input fields)")
+            return False
+        
+        # Look for apply button
+        for pattern in apply_patterns:
+            try:
+                # Try button role
+                btn = self.page.get_by_role("button", name=pattern).first
+                if btn and btn.is_visible():
+                    print(f"   → Clicking '{pattern}' button...")
+                    btn.click()
+                    return True
+            except:
+                pass
+            
+            try:
+                # Try link
+                link = self.page.get_by_role("link", name=pattern).first
+                if link and link.is_visible():
+                    print(f"   → Clicking '{pattern}' link...")
+                    link.click()
+                    return True
+            except:
+                pass
+            
+            try:
+                # Try any element with text
+                el = self.page.locator(f"text={pattern}").first
+                if el and el.is_visible():
+                    # Make sure it's clickable (button-like)
+                    tag = el.evaluate("el => el.tagName.toLowerCase()")
+                    if tag in ["button", "a", "span", "div"]:
+                        print(f"   → Clicking '{pattern}' element ({tag})...")
+                        el.click()
+                        return True
+            except:
+                pass
+        
+        print("   ✓ No apply button found (form might be directly visible)")
+        return False
+    
     def fill_form(self, url: str = None):
         """Main loop: analyze screenshot, execute actions, repeat"""
         
@@ -363,6 +431,10 @@ If you need to scroll to see more fields, include scroll action at the end."""
         print("\n" + "=" * 60)
         print("V7 AGENT FORM FILLER")
         print("=" * 60)
+        
+        # Check if we need to click "Apply" button first
+        if self.check_and_click_apply_button():
+            time.sleep(2)  # Wait for form to load
         
         for iteration in range(self.max_iterations):
             print(f"\n[Iteration {iteration + 1}]")

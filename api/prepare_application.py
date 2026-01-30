@@ -243,5 +243,29 @@ def prepare_application(job_title: str, company: str, job_url: str, jd: str, rol
             result.cover_letter_preview = cl_text[:500] + "..." if len(cl_text) > 500 else cl_text
     
     result.application_url = job_url
+    
+    # Save metadata.json with keywords and analysis for future reference
+    if result.application_folder:
+        try:
+            metadata = {
+                "job_title": job_title,
+                "company": company,
+                "job_url": job_url,
+                "role_family": role_family,
+                "match_score": result.match_score,
+                "fit_level": result.fit_level,
+                "cv_decision": result.cv_decision,
+                "cv_reason": result.cv_reason,
+                "keywords_added": result.keywords_added or [],
+                "gaps": result.gaps or [],
+                "red_flags": result.red_flags or [],
+                "created_at": datetime.now().isoformat()
+            }
+            metadata_path = Path(result.application_folder) / "metadata.json"
+            with open(metadata_path, "w") as f:
+                json.dump(metadata, f, indent=2)
+        except Exception as e:
+            print(f"[PrepareApp] Metadata save error: {e}")
+    
     print(f"[PrepareApp] Done: score={result.match_score}")
     return result

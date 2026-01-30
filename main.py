@@ -2382,7 +2382,8 @@ def detect_ats_from_url(url: str) -> dict:
             "company_slug": company,
             "board_url": f"https://{company}.wd1.myworkdayjobs.com/{site}",
             "job_id": job_id,
-            "job_path": path
+            "job_path": path,
+            "job_url": url
         }
     
     # Lever: jobs.lever.co/company/job-uuid
@@ -2496,24 +2497,45 @@ def fetch_single_job(ats_info: dict) -> dict:
             return {"error": str(e)}
     
     elif ats == "workday":
-        # Search by job ID
+        # Use direct job API endpoint
         company_slug = ats_info.get("company_slug")
-        job_id = ats_info.get("job_id")
         board_url = ats_info.get("board_url")
+        job_url = ats_info.get("job_url", "")
         
-        # Use job_id directly for search - don't strip the number part
-        # R-105810 should stay R-105810, not become R
-        clean_job_id = job_id or ""
-        
-        # Extract site from board_url
-        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url)
+        # Extract site and job path from URL
+        # URL format: https://company.wd1.myworkdayjobs.com/site/job/location/title_JOBID
+        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url or job_url)
         site = site_match.group(1) if site_match else company_slug
         
+        # Extract job path from original URL
+        path_match = re.search(r"/job/(.+?)(?:\?|$)", job_url)
+        job_path = path_match.group(1) if path_match else ""
+        
+        if job_path:
+            # Direct API call for specific job
+            api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+            try:
+                resp = requests.get(api_url, headers={"Accept": "application/json"}, timeout=15)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    job_info = data.get("jobPostingInfo", {})
+                    return {
+                        "title": job_info.get("title", ""),
+                        "location": job_info.get("location", ""),
+                        "url": job_url,
+                        "ats_job_id": ats_info.get("job_id", ""),
+                        "description": job_info.get("jobDescription", ""),
+                    }
+            except Exception as e:
+                print(f"[Workday] Direct API error: {e}")
+        
+        # Fallback: search by job ID
+        job_id = ats_info.get("job_id", "")
         search_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
         try:
             resp = requests.post(
                 search_url,
-                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": clean_job_id},
+                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": job_id},
                 headers={"Content-Type": "application/json"},
                 timeout=15
             )
@@ -2522,30 +2544,17 @@ def fetch_single_job(ats_info: dict) -> dict:
                 postings = data.get("jobPostings", [])
                 
                 # Find exact match by job ID in externalPath
-                matched_job = None
                 for posting in postings:
                     ext_path = posting.get("externalPath", "")
-                    if job_id in ext_path or clean_job_id in ext_path:
-                        matched_job = posting
-                        break
+                    if job_id and job_id in ext_path:
+                        return {
+                            "title": posting.get("title", ""),
+                            "location": posting.get("locationsText", ""),
+                            "url": f"https://{company_slug}.wd1.myworkdayjobs.com{ext_path}",
+                            "ats_job_id": job_id,
+                        }
                 
-                if matched_job:
-                    return {
-                        "title": matched_job.get("title", ""),
-                        "location": matched_job.get("locationsText", ""),
-                        "url": f"https://{company_slug}.wd1.myworkdayjobs.com{matched_job.get('externalPath', '')}",
-                        "ats_job_id": job_id,
-                    }
-                elif postings:
-                    job = postings[0]
-                    return {
-                        "title": job.get("title", ""),
-                        "location": job.get("locationsText", ""),
-                        "url": f"https://{company_slug}.wd1.myworkdayjobs.com{job.get('externalPath', '')}",
-                        "ats_job_id": job_id,
-                    }
-                else:
-                    return {"error": f"Job {job_id} not found"}
+                return {"error": f"Job {job_id} not found in search results"}
             else:
                 return {"error": f"Workday API returned {resp.status_code}"}
         except Exception as e:
@@ -2768,6 +2777,185 @@ def onboard_job(payload: OnboardRequest):
     }
 
 
+# ============= ANALYZE JOB BEFORE ADD =============
+
+class AnalyzeJobUrlRequest(BaseModel):
+    url: str
+
+@app.post("/analyze-job-url")
+async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
+    """
+    Analyze a job URL before adding to pipeline.
+    Returns match score and recommendation.
+    """
+    from api.prepare_application import analyze_job_with_ai
+    
+    url = payload.url.strip()
+    
+    # 1. Parse URL to get job data
+    job_data = None
+    ats = None
+    
+    # Try different parsers
+    if "greenhouse" in url.lower() or "boards.greenhouse.io" in url:
+        from parsers.greenhouse import parse_jobs_api
+        ats = "greenhouse"
+        # Extract company from URL
+        if "boards.greenhouse.io" in url:
+            parts = url.split("boards.greenhouse.io/")[1].split("/")
+            company_slug = parts[0]
+            job_data = {"board_url": f"https://boards.greenhouse.io/{company_slug}"}
+    elif "lever.co" in url.lower():
+        ats = "lever"
+    elif "smartrecruiters" in url.lower():
+        ats = "smartrecruiters"
+    elif "myworkdayjobs" in url.lower() or "workday" in url.lower():
+        ats = "workday"
+    elif "ashby" in url.lower():
+        ats = "ashby"
+    else:
+        ats = "universal"
+    
+    # 2. Fetch JD
+    jd = ""
+    title = ""
+    company = ""
+    location = ""
+    
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        
+        # Special handling for Workday - use their API
+        if "myworkdayjobs" in url:
+            # Parse URL: https://company.wd1.myworkdayjobs.com/site/job/location/title_JOBID
+            import re
+            # Extract: company, site, and the job path (location/title_ID)
+            match = re.match(r"https://([^.]+)\.wd\d\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([^/]+)/job/(.+)", url)
+            if match:
+                company_slug = match.group(1)
+                site = match.group(2)
+                job_path = match.group(3).split("?")[0]  # Remove query params
+                
+                # Fetch job details from Workday API - need full path
+                api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                headers = {"Content-Type": "application/json", "Accept": "application/json"}
+                resp = requests.get(api_url, headers=headers, timeout=15)
+                
+                if resp.ok:
+                    data = resp.json()
+                    job_posting = data.get("jobPostingInfo", {})
+                    title = job_posting.get("title", "")
+                    company = job_posting.get("company", company_slug.replace("-", " ").title())
+                    location = job_posting.get("location", "")
+                    jd = job_posting.get("jobDescription", "")
+                    
+                    # Clean HTML from JD
+                    if jd:
+                        soup_jd = BeautifulSoup(jd, "html.parser")
+                        jd = soup_jd.get_text(separator="\n", strip=True)
+        
+        # Standard HTML parsing for other ATS
+        if not jd:
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=15)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            # Extract title
+            title_el = soup.find("h1") or soup.find("title")
+            if title_el and not title:
+                title = title_el.get_text(strip=True)
+            
+            # Extract company from various sources
+            company_el = soup.find(class_=lambda x: x and "company" in x.lower()) if soup else None
+            if company_el and not company:
+                company = company_el.get_text(strip=True)
+            elif "greenhouse" in url and not company:
+                parts = url.split("/")
+                for i, p in enumerate(parts):
+                    if p == "boards.greenhouse.io" and i+1 < len(parts):
+                        company = parts[i+1].replace("-", " ").title()
+                        break
+            
+            # Extract JD text
+            content_selectors = [
+                "#content", ".job-description", ".description", 
+                "[class*='description']", "[class*='content']", "main", "article"
+            ]
+            for sel in content_selectors:
+                el = soup.select_one(sel)
+                if el:
+                    jd = el.get_text(separator="\n", strip=True)
+                    if len(jd) > 200:
+                        break
+            
+            if not jd:
+                jd = soup.get_text(separator="\n", strip=True)[:5000]
+            
+    except Exception as e:
+        print(f"[AnalyzeJobUrl] Fetch error: {e}")
+        return {"ok": False, "error": f"Could not fetch job page: {str(e)}"}
+    
+    if not jd or len(jd) < 100:
+        return {"ok": False, "error": "Could not extract job description"}
+    
+    # 3. Classify role
+    from utils.job_utils import classify_role
+    role = classify_role(title, jd)
+    role_family = role.get("role_family", "other")
+    
+    # 4. Analyze with AI
+    analysis = analyze_job_with_ai(title, company, jd, role_family)
+    
+    if "error" in analysis:
+        # Fallback - still allow adding but with warning
+        analysis = {
+            "match_score": 50,
+            "fit_level": "unknown",
+            "analysis_summary": "Could not analyze. Add manually to review.",
+            "key_requirements": [],
+            "gaps": [],
+            "red_flags": []
+        }
+    
+    # 5. Generate recommendation
+    score = analysis.get("match_score", 50)
+    fit = analysis.get("fit_level", "unknown")
+    
+    if score >= 75:
+        recommendation = "strong_match"
+        rec_text = "✅ Strong match! Recommended to apply."
+    elif score >= 60:
+        recommendation = "good_match"
+        rec_text = "👍 Good match. Worth applying."
+    elif score >= 45:
+        recommendation = "moderate_match"
+        rec_text = "⚠️ Moderate match. Review before adding."
+    else:
+        recommendation = "low_match"
+        rec_text = "❌ Low match. Consider skipping."
+    
+    return {
+        "ok": True,
+        "url": url,
+        "title": title,
+        "company": company,
+        "ats": ats,
+        "role_family": role_family,
+        "analysis": {
+            "match_score": score,
+            "fit_level": fit,
+            "summary": analysis.get("analysis_summary", ""),
+            "key_requirements": analysis.get("key_requirements", []),
+            "matching_experience": analysis.get("matching_experience", []),
+            "gaps": analysis.get("gaps", []),
+            "red_flags": analysis.get("red_flags", [])
+        },
+        "recommendation": recommendation,
+        "recommendation_text": rec_text
+    }
+
+
 # ============= APPLY AUTOMATION ENDPOINTS =============
 
 class ApplyRequest(BaseModel):
@@ -2794,13 +2982,8 @@ def apply_greenhouse_endpoint(payload: ApplyRequest):
     if not profile_path.exists():
         return {"ok": False, "error": f"Profile '{profile_name}' not found"}
     
-    # Use symlink path without spaces for subprocess compatibility
+    # Use absolute path 
     cwd = os.path.dirname(os.path.abspath(__file__))
-    if "Mobile Documents" in cwd:
-        cwd = cwd.replace(
-            str(AI_PROJECTS_PATH),
-            str(ICLOUD_PATH)
-        )
     
     # Write script to file to avoid shell escaping issues
     script_file = "/tmp/greenhouse_apply_script.py"
@@ -3707,6 +3890,16 @@ async def check_existing_application(payload: CheckExistingRequest):
         except:
             cl_preview = "Could not read cover letter"
     
+    # Read metadata.json for keywords and analysis info
+    metadata = {}
+    metadata_file = latest_folder / "metadata.json"
+    if metadata_file.exists():
+        try:
+            import json
+            metadata = json.load(open(metadata_file))
+        except:
+            pass
+    
     return {
         "exists": True,
         "folder": str(latest_folder),
@@ -3716,7 +3909,12 @@ async def check_existing_application(payload: CheckExistingRequest):
         "cover_letter_path": str(cl_file) if cl_file else None,
         "cover_letter_filename": cl_file.name if cl_file else None,
         "cover_letter_preview": cl_preview,
-        "created_at": datetime.fromtimestamp(latest_folder.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+        "created_at": datetime.fromtimestamp(latest_folder.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
+        "keywords_added": metadata.get("keywords_added", []),
+        "match_score": metadata.get("match_score"),
+        "fit_level": metadata.get("fit_level"),
+        "cv_decision": metadata.get("cv_decision"),
+        "cv_reason": metadata.get("cv_reason")
     }
 
 
