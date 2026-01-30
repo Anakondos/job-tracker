@@ -2373,15 +2373,25 @@
           ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder" style="background:none; border:none; cursor:pointer; font-size:16px;">📁</button>` : ''}
         </td>
         <td style="white-space: nowrap;">
-          ${st === 'New'
-            ? `<button class="analyzeBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Analyze job & select" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📝 Apply</button>`
-            : ''}
-          ${st === 'Selected'
-            ? `<button class="prepareBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`
-            : ''}
-          ${st === 'Ready'
-            ? `<button class="applyNowBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" data-ats="${escapeAttr(job.ats || '')}" title="Open job and apply" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply</button>`
-            : ''}
+          ${(() => {
+            // Smart action button based on status
+            const btnData = `data-jobid="${escapeAttr(job.id || '')}" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" data-ats="${escapeAttr(job.ats || '')}"`;
+            const stLower = (st || '').toLowerCase();
+            
+            if (stLower === 'new') {
+              return `<button class="smartActionBtn" ${btnData} data-action="select" title="Parse JD and mark as Selected" style="background:#3b82f6; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">▶️ Select</button>`;
+            } else if (st === 'Selected') {
+              return `<button class="prepareBtn" ${btnData} title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`;
+            } else if (st === 'Ready') {
+              return `<button class="smartActionBtn" ${btnData} data-action="apply" title="Start form filler" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply</button>`;
+            } else if (stLower === 'applied') {
+              return `<span style="color: var(--muted); font-size: 11px;">⏳ Waiting</span>`;
+            } else if (stLower === 'interview') {
+              return `<span style="color: #8b5cf6; font-size: 11px;">📅 Interview</span>`;
+            } else {
+              return '';
+            }
+          })()}
           ${showAddButton && !inPipeline 
             ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
             : ''}
@@ -2531,6 +2541,70 @@
                 } finally {
                   document.getElementById('clDescription').disabled = false;
                 }
+              }
+            });
+          }
+          
+          // Smart action button handler (Select for New, Apply for Ready)
+          const smartBtn = row.querySelector(".smartActionBtn");
+          if (smartBtn) {
+            smartBtn.addEventListener("click", async (e) => {
+              const btn = e.target;
+              const action = btn.dataset.action;
+              const jobId = btn.dataset.jobid;
+              const company = btn.dataset.company;
+              const position = btn.dataset.position;
+              const jobUrl = btn.dataset.joburl;
+              const ats = btn.dataset.ats;
+              
+              const originalText = btn.textContent;
+              btn.disabled = true;
+              
+              try {
+                if (action === 'select') {
+                  btn.textContent = "⏳ Parsing...";
+                  
+                  // Parse JD and change to Selected
+                  const parseRes = await fetch('/jd/parse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, url: jobUrl, title: position, company: company, ats: ats })
+                  });
+                  const parseData = await parseRes.json();
+                  
+                  // Update status to Selected
+                  await fetch('/pipeline/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, status: 'Selected' })
+                  });
+                  
+                  job.status = 'Selected';
+                  job.application_status = 'Selected';
+                  if (parseData.summary) job.jd_summary = parseData.summary;
+                  
+                  btn.textContent = "✅ Done!";
+                  setTimeout(() => {
+                    const filtered = applyFilters(ALL_JOBS);
+                    renderJobs(filtered);
+                  }, 300);
+                  
+                } else if (action === 'apply') {
+                  btn.textContent = "⏳ Starting...";
+                  
+                  // Open job URL for manual apply
+                  window.open(jobUrl, '_blank');
+                  
+                  btn.disabled = false;
+                  btn.textContent = originalText;
+                  
+                  alert(`✅ Opened ${company} - ${position}\n\nDon't forget to mark as "Applied" after submitting!`);
+                }
+              } catch (err) {
+                console.error('Smart action error:', err);
+                alert('Error: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = originalText;
               }
             });
           }
@@ -2694,83 +2768,6 @@
                 e.target.textContent = "📝 Apply";
                 e.target.disabled = false;
               }
-            });
-          }
-          
-          // Analyze button handler (New status) - same as applyBtn
-          const analyzeBtn = row.querySelector(".analyzeBtn");
-          if (analyzeBtn) {
-            analyzeBtn.addEventListener("click", async (e) => {
-              const jobUrl = e.target.dataset.joburl;
-              const jobTitle = e.target.dataset.position;
-              const company = e.target.dataset.company;
-              const roleFamily = job.role_family || 'product';
-              
-              if (!jobUrl) return;
-              
-              e.target.disabled = true;
-              e.target.textContent = "🔍 Checking...";
-              
-              try {
-                // Check existing files FIRST
-                const checkRes = await fetch('/check-existing-application', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ job_title: jobTitle, company: company })
-                });
-                const existingData = await checkRes.json();
-                
-                e.target.textContent = "📝 Apply";
-                e.target.disabled = false;
-                
-                if (existingData.exists) {
-                  showPrepareModalWithExisting(company, jobTitle, jobUrl, roleFamily, job, existingData);
-                  return;
-                }
-                
-                // Fetch JD
-                e.target.disabled = true;
-                e.target.textContent = "🔍 Loading JD...";
-                
-                let jd = '';
-                const jdRes = await fetch('/fetch-job-description', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ url: jobUrl })
-                });
-                const jdData = await jdRes.json();
-                if (jdData.ok) jd = jdData.description || '';
-                
-                e.target.textContent = "📝 Apply";
-                e.target.disabled = false;
-                
-                showPrepareModalNew(company, jobTitle, jobUrl, jd, roleFamily, job);
-                
-              } catch (err) {
-                console.error("Error:", err);
-                alert("Error: " + err.message);
-                e.target.textContent = "📝 Apply";
-                e.target.disabled = false;
-              }
-            });
-          }
-          
-          // Apply Now button handler (Ready status) - open job URL
-          const applyNowBtn = row.querySelector(".applyNowBtn");
-          if (applyNowBtn) {
-            applyNowBtn.addEventListener("click", async (e) => {
-              const jobUrl = e.target.dataset.joburl;
-              const company = e.target.dataset.company;
-              const position = e.target.dataset.position;
-              const ats = e.target.dataset.ats;
-              
-              if (!jobUrl) return;
-              
-              // Open job URL in new tab
-              window.open(jobUrl, '_blank');
-              
-              // Show reminder
-              alert(`✅ Opened ${company} - ${position}\n\nDon't forget to:\n1. Use prepared CV and Cover Letter\n2. Mark as "Applied" after submitting`);
             });
           }
         }
