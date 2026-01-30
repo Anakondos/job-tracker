@@ -1096,8 +1096,10 @@
         <div style="display: flex; align-items: center; gap: 6px;">
           <span style="font-size: 12px; color: #93c5fd;">Engine:</span>
           <select id="fillerEngineSelect" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #4b6a9b; background: #1e3a5f; color: white; font-size: 12px;">
+            <option value="v7">V7 (Agent 🤖)</option>
             <option value="v6" selected>V6 (AI + Simple)</option>
             <option value="v5">V5 (Full Features)</option>
+            <option value="v35">V35 (Legacy)</option>
           </select>
         </div>
         
@@ -1530,6 +1532,10 @@
             <!-- Engine Selection -->
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: 6px;">
               <span style="font-size: 13px; color: var(--muted);">Form Filler:</span>
+              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="radio" name="fillerEngine" value="v7" style="accent-color: #8b5cf6;">
+                <span style="font-size: 13px;">V7 (Agent 🤖)</span>
+              </label>
               <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                 <input type="radio" name="fillerEngine" value="v6" checked style="accent-color: #16a34a;">
                 <span style="font-size: 13px;">V6 (AI + Simple)</span>
