@@ -1638,13 +1638,20 @@
       function formatDateShort(isoDate) {
         if (!isoDate) return "—";
         try {
-          const date = new Date(isoDate);
-          if (isNaN(date.getTime())) return isoDate;
+          // Handle numeric timestamps (milliseconds)
+          let date;
+          if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
+            const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
+            date = new Date(ts);
+          } else {
+            date = new Date(isoDate);
+          }
+          if (isNaN(date.getTime())) return "—";
           const month = date.toLocaleDateString('en-US', { month: 'short' });
           const day = date.getDate();
           return `${month} ${day}`;
         } catch (e) {
-          return isoDate;
+          return "—";
         }
       }
       
@@ -1652,8 +1659,15 @@
         if (!isoDate) return "—";
         
         try {
-          const date = new Date(isoDate);
-          if (isNaN(date.getTime())) return isoDate;
+          // Handle numeric timestamps (milliseconds)
+          let date;
+          if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
+            const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
+            date = new Date(ts);
+          } else {
+            date = new Date(isoDate);
+          }
+          if (isNaN(date.getTime())) return "—";
           
           const now = new Date();
           const diffMs = now - date;
