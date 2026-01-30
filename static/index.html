@@ -1757,9 +1757,6 @@
 
       // keepDirection=true when re-applying sort after re-render
       function sortTable(column, keepDirection = false) {
-        const tbody = document.querySelector("#jobsTable tbody");
-        const rows = Array.from(tbody.querySelectorAll("tr"));
-
         if (!keepDirection) {
           if (CURRENT_SORT.column === column) {
             CURRENT_SORT.asc = !CURRENT_SORT.asc;
@@ -1772,26 +1769,49 @@
         }
 
         const asc = !!CURRENT_SORT.asc;
-
-        rows.sort((a, b) => {
-          const av = a.dataset[column] || "";
-          const bv = b.dataset[column] || "";
-
-          if (column === "updated" || column === "added") {
+        
+        // Sort the data array for proper pagination
+        pipelineFilteredJobs.sort((a, b) => {
+          let av, bv;
+          if (column === 'updated') {
+            av = a.updated_at || '';
+            bv = b.updated_at || '';
+          } else if (column === 'added') {
+            av = a.first_seen || a.created_at || '';
+            bv = b.first_seen || b.created_at || '';
+          } else if (column === 'company') {
+            av = (a.company || '').toLowerCase();
+            bv = (b.company || '').toLowerCase();
+          } else if (column === 'title') {
+            av = (a.title || '').toLowerCase();
+            bv = (b.title || '').toLowerCase();
+          } else if (column === 'location') {
+            av = (a.location || '').toLowerCase();
+            bv = (b.location || '').toLowerCase();
+          } else if (column === 'ats') {
+            av = a.source === 'onboard' ? 'manual' : (a.ats || '').toLowerCase();
+            bv = b.source === 'onboard' ? 'manual' : (b.ats || '').toLowerCase();
+          } else if (column === 'status') {
+            av = (a.application_status || a.status || 'new').toLowerCase();
+            bv = (b.application_status || b.status || 'new').toLowerCase();
+          } else {
+            av = '';
+            bv = '';
+          }
+          
+          if (column === 'updated' || column === 'added') {
             const ad = Date.parse(av) || 0;
             const bd = Date.parse(bv) || 0;
             return asc ? ad - bd : bd - ad;
           }
-
-          // stable, case-insensitive
-          const cmp = av.localeCompare(bv, undefined, { sensitivity: "base" });
+          
+          const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
           return asc ? cmp : -cmp;
         });
 
-        // re-append in order
-        for (const r of rows) tbody.appendChild(r);
-
         updateSortIcons();
+        pipelinePage = 1;
+        renderJobs(pipelineFilteredJobs, true); // skipSort=true to avoid loop
       }
 
       function applyCurrentSortIfAny() {
@@ -2220,7 +2240,7 @@
         }
       }
 
-      function renderJobs(jobs) {
+      function renderJobs(jobs, skipSort = false) {
         // Store filtered jobs for pagination
         pipelineFilteredJobs = jobs;
         
@@ -2654,7 +2674,7 @@
         }
 
         updateStatus(jobs);
-        applyCurrentSortIfAny();
+        if (!skipSort) applyCurrentSortIfAny();
       }
 
       function escapeHtml(s) {
