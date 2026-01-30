@@ -272,7 +272,7 @@
         width: 110px !important;
         max-width: 110px !important;
       }
-      /* Added column - seventh column */
+      /* Added column - seventh column (NEW) */
       #jobsTable td:nth-child(7), #jobsTable th:nth-child(7) {
         width: 70px !important;
         max-width: 70px !important;
@@ -1026,6 +1026,7 @@
         <!-- Quick Filter Buttons -->
         <div style="display: flex; gap: 6px; margin-right: 16px;">
           <button class="quick-filter-btn" data-filter="new-week" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">🔥 New this week</button>
+          <button class="quick-filter-btn" data-filter="recent-manual" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📌 Recent Manual</button>
           <button class="quick-filter-btn" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
           <button class="quick-filter-btn" data-filter="applied" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📤 Applied</button>
           <button class="quick-filter-btn active" data-filter="all" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">All</button>
@@ -1033,6 +1034,8 @@
         
         <!-- Date Range -->
         <select id="dateRangeFilter" class="column-filter" style="width: 120px; font-size: 12px; padding: 6px;">
+          <option value="1">Today</option>
+          <option value="3">Last 3 days</option>
           <option value="7">Last 7 days</option>
           <option value="14">Last 2 weeks</option>
           <option value="30">Last month</option>
@@ -1099,7 +1102,6 @@
             <option value="v7">V7 (Agent 🤖)</option>
             <option value="v6" selected>V6 (AI + Simple)</option>
             <option value="v5">V5 (Full Features)</option>
-            <option value="v35">V35 (Legacy)</option>
           </select>
         </div>
         
@@ -1158,7 +1160,9 @@
               <th class="sortable" onclick="sortTable('updated')">
                 Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
               </th>
-              <th style="width: 90px;" class="sortable" onclick="sortTable('added')">Added <span class="sortIcon" id="sortIcon-added">⬍</span></th>
+              <th class="sortable" onclick="sortTable('added')">
+                Added <span class="sortIcon" id="sortIcon-added">⬍</span>
+              </th>
               <th class="sortable" onclick="sortTable('ats')">
                 ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
               </th>
@@ -1533,10 +1537,6 @@
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: 6px;">
               <span style="font-size: 13px; color: var(--muted);">Form Filler:</span>
               <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                <input type="radio" name="fillerEngine" value="v7" style="accent-color: #8b5cf6;">
-                <span style="font-size: 13px;">V7 (Agent 🤖)</span>
-              </label>
-              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                 <input type="radio" name="fillerEngine" value="v6" checked style="accent-color: #16a34a;">
                 <span style="font-size: 13px;">V6 (AI + Simple)</span>
               </label>
@@ -1559,37 +1559,52 @@
     </div>
 
     <!-- Prepare Result Modal -->
-    <div id="prepareResultModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200;">
-      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:700px; max-height:85vh; overflow-y:auto;">
+    <div id="prepareResultModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; z-index:9999;">
+      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:750px; max-height:90vh; overflow-y:auto; margin: 20px;">
         <div class="modal-header">
           <h3>✅ Application Prepared</h3>
           <button class="modal-close" onclick="closePrepareModal()">×</button>
         </div>
         <div class="modal-body">
-          <div style="margin-bottom: 16px;">
+          <div style="margin-bottom: 16px; font-size: 18px;">
             <strong id="prepareCompanyName"></strong> - <span id="preparePositionName"></span>
           </div>
-          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
-            <div style="flex: 1; padding: 12px; background: var(--card); border-radius: 8px;">
-              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">📄 CV</div>
-              <div id="prepareCvName" style="font-weight: 500;"></div>
+          
+          <!-- JD Summary Section -->
+          <div id="prepareJdSection" style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-radius: 8px;">
+            <div style="font-size: 12px; color: #a5b4fc; margin-bottom: 12px;">📋 Job Requirements</div>
+            <div id="prepareKeywords" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;"></div>
+            <div id="prepareRequirements" style="font-size: 13px; color: #e0e7ff;"></div>
+          </div>
+          
+          <!-- Match Score -->
+          <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+            <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
+              <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Match Score</div>
+              <div id="prepareMatchScore" style="font-size: 28px; font-weight: bold; color: #10b981;">--</div>
             </div>
-            <div style="flex: 1; padding: 12px; background: var(--card); border-radius: 8px;">
-              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">📝 Template</div>
-              <div id="prepareTemplateName" style="font-weight: 500;"></div>
+            <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
+              <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">CV Selected</div>
+              <div id="prepareCvName" style="font-size: 14px; font-weight: 500;"></div>
             </div>
           </div>
+          
+          <!-- What was done -->
           <div style="margin-bottom: 16px;">
-            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">🎯 Company Mission (AI Generated)</div>
-            <div id="prepareMission" style="padding: 12px; background: var(--card); border-radius: 8px; font-style: italic;"></div>
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">🎯 Cover Letter Highlights</div>
+            <div id="prepareMission" style="padding: 12px; background: var(--bg); border-radius: 8px; font-size: 13px; line-height: 1.5;"></div>
           </div>
+          
+          <!-- Folder -->
           <div style="margin-bottom: 16px;">
-            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">📁 Folder</div>
-            <div id="prepareFolderPath" style="padding: 8px; background: var(--card); border-radius: 4px; font-family: monospace; font-size: 11px; word-break: break-all;"></div>
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">📁 Application Folder</div>
+            <div id="prepareFolderPath" style="padding: 8px; background: var(--bg); border-radius: 4px; font-family: monospace; font-size: 11px; word-break: break-all;"></div>
           </div>
+          
           <div style="display: flex; gap: 8px; justify-content: flex-end;">
-            <button onclick="openPrepareFolder()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer;">📁 Open in Finder</button>
-            <button onclick="closePrepareModal()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer;">Close</button>
+            <button onclick="closePrepareModal()" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 20px; cursor: pointer;">Close</button>
+            <button onclick="openPrepareFolder()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer; font-weight: 500;">📁 Open Folder</button>
+            <button id="btnApplyFromModal" onclick="applyFromModal()" style="background: #16a34a; color: white; border: none; border-radius: 6px; padding: 10px 24px; cursor: pointer; font-weight: 600; font-size: 15px;">🚀 Apply Now</button>
           </div>
         </div>
       </div>
@@ -1649,7 +1664,6 @@
       function formatDateShort(isoDate) {
         if (!isoDate) return "—";
         try {
-          // Handle numeric timestamps (milliseconds)
           let date;
           if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
             const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
@@ -1670,7 +1684,7 @@
         if (!isoDate) return "—";
         
         try {
-          // Handle numeric timestamps (milliseconds)
+          // Handle numeric timestamps (milliseconds) - e.g., Lever
           let date;
           if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
             const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
@@ -1678,7 +1692,7 @@
           } else {
             date = new Date(isoDate);
           }
-          if (isNaN(date.getTime())) return "—";
+          if (isNaN(date.getTime())) return isoDate;
           
           const now = new Date();
           const diffMs = now - date;
@@ -1761,7 +1775,7 @@
       };
 
       // ---------- SORT STATE ----------
-      let CURRENT_SORT = { column: 'added', asc: false }; // Default: newest first by Added date
+      let CURRENT_SORT = { column: 'added', asc: false }; // Default: newest first by Added
 
       function setSortIcon(col, icon) {
         const el = document.getElementById(`sortIcon-${col}`);
@@ -1769,7 +1783,7 @@
       }
 
       function resetAllSortIcons() {
-        ["company", "industry", "title", "location", "updated", "ats", "status"].forEach(
+        ["company", "industry", "title", "location", "updated", "added", "ats", "status"].forEach(
           (c) => setSortIcon(c, "⬍")
         );
       }
@@ -1794,16 +1808,23 @@
         }
 
         const asc = !!CURRENT_SORT.asc;
-        
-        // Sort the data array for proper pagination
+
+        // Sort the DATA array, not DOM rows
         pipelineFilteredJobs.sort((a, b) => {
           let av, bv;
+          
           if (column === 'updated') {
             av = a.updated_at || '';
             bv = b.updated_at || '';
+            const ad = Date.parse(av) || 0;
+            const bd = Date.parse(bv) || 0;
+            return asc ? ad - bd : bd - ad;
           } else if (column === 'added') {
             av = a.first_seen || a.created_at || '';
             bv = b.first_seen || b.created_at || '';
+            const ad = Date.parse(av) || 0;
+            const bd = Date.parse(bv) || 0;
+            return asc ? ad - bd : bd - ad;
           } else if (column === 'company') {
             av = (a.company || '').toLowerCase();
             bv = (b.company || '').toLowerCase();
@@ -1814,29 +1835,23 @@
             av = (a.location || '').toLowerCase();
             bv = (b.location || '').toLowerCase();
           } else if (column === 'ats') {
-            av = a.source === 'onboard' ? 'manual' : (a.ats || '').toLowerCase();
-            bv = b.source === 'onboard' ? 'manual' : (b.ats || '').toLowerCase();
+            av = (a.source === 'onboard' ? 'manual' : (a.ats || '')).toLowerCase();
+            bv = (b.source === 'onboard' ? 'manual' : (b.ats || '')).toLowerCase();
           } else if (column === 'status') {
-            av = (a.application_status || a.status || 'new').toLowerCase();
-            bv = (b.application_status || b.status || 'new').toLowerCase();
+            av = (a.application_status || a.status || 'New').toLowerCase();
+            bv = (b.application_status || b.status || 'New').toLowerCase();
           } else {
             av = '';
             bv = '';
           }
           
-          if (column === 'updated' || column === 'added') {
-            const ad = Date.parse(av) || 0;
-            const bd = Date.parse(bv) || 0;
-            return asc ? ad - bd : bd - ad;
-          }
-          
-          const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
+          const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: "base" });
           return asc ? cmp : -cmp;
         });
 
+        // Re-render with sorted data (skipSort=true to avoid infinite loop)
+        renderJobs(pipelineFilteredJobs, true);
         updateSortIcons();
-        pipelinePage = 1;
-        renderJobs(pipelineFilteredJobs, true); // skipSort=true to avoid loop
       }
 
       function applyCurrentSortIfAny() {
@@ -2010,6 +2025,10 @@
         if (ln.states && ln.states.length > 0) {
           return true; // Has US states
         }
+        // Check remote_scope for Remote USA jobs
+        if (ln.remote && (ln.remote_scope === "usa" || ln.remote_scope === "us")) {
+          return true;
+        }
         
         // Fallback to text heuristic
         const l = (job.location || "").toLowerCase();
@@ -2019,7 +2038,10 @@
           l.includes(" us") ||
           l.includes(", us") ||
           l.includes("remote - us") ||
-          l.includes("remote (us)")
+          l.includes("remote (us)") ||
+          l.includes("remote, us") ||
+          l.includes("(remote)") ||
+          l === "remote"  // Simple "Remote" likely means US for US companies
         );
       }
 
@@ -2062,6 +2084,15 @@
             return ["applied", "interview", "offer"].includes(st);
           });
           // No date filter for applied - show all
+        } else if (activeQuickFilter === "recent-manual") {
+          // Show manually added jobs from last 7 days
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          filtered = filtered.filter(j => {
+            const isManual = j.source === 'onboard' || j.source === 'manual' || j.source === 'manual_onboard' || j.ats === 'universal';
+            const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
+            return isManual && jobDate >= weekAgo;
+          });
         } else {
           // "all" - apply date range filter
           if (dateRangeDays !== "all") {
@@ -2074,11 +2105,8 @@
           }
         }
 
-        // 3. Location filter by category (skip for manual jobs)
+        // 3. Location filter by category
         filtered = filtered.filter((job) => {
-          // Always include manually added jobs
-          if (job.source === 'onboard') return true;
-          
           const ln = job.location_norm || {};
           const isUS = isUSHeuristic(job);
           const isRemote = ln.remote === true;
@@ -2093,13 +2121,10 @@
         });
         debugCounts.afterLocation = filtered.length;
 
-        // 4. States filter (only if states selected, skip for manual jobs)
+        // 4. States filter (only if states selected)
         const hasStateFilter = selectedStates.length > 0;
         if (hasStateFilter) {
           filtered = filtered.filter((job) => {
-            // Always include manually added jobs
-            if (job.source === 'onboard') return true;
-            
             const ln = job.location_norm;
             const isUS = isUSHeuristic(job);
             
@@ -2314,7 +2339,7 @@
           // Format date for display (Dec 19, 3d ago)
           const updatedAtStr = formatDateWithAge(updatedAtRaw);
           
-          // Added date (first_seen = when added to pipeline)
+          // Added date (first_seen)
           const addedAtRaw = job.first_seen || job.created_at || "";
           const addedAtStr = addedAtRaw ? formatDateShort(addedAtRaw) : "—";
           
@@ -2323,7 +2348,7 @@
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
           row.dataset.updated = updatedAtRaw.trim(); // Use raw ISO for sorting
-          row.dataset.added = addedAtRaw.trim(); // Use raw ISO for sorting
+          row.dataset.added = (addedAtRaw || "").trim(); // first_seen for Added column
           row.dataset.ats = job.source === "onboard" ? "manual" : (job.ats || "").trim();
           row.dataset.status = (st || "New").trim();
           row.dataset.jobId = job.id || "";
@@ -2334,7 +2359,7 @@
           const roleCategory = job.role_category || (job.role_excluded ? 'excluded' : (job.role_id ? 'primary' : 'unknown'));
           const showAddButton = ['unknown', 'excluded'].includes(roleCategory);
           const inPipeline = job.in_pipeline || job.status; // Job is already in pipeline if has status
-          const isManual = job.source === 'manual' || job.source === 'onboard' || job.source === 'manual_onboard';
+          const isManual = job.source === 'manual';
           const isOnboarded = job.source === 'onboard' || job.source === 'manual_onboard';
           const sourceIcon = isOnboarded ? '<span title="User added via onboarding" style="margin-left: 4px;">📌</span>' : '';
           
@@ -2378,7 +2403,7 @@
         <td style="text-align: center; padding: 2px;">
           ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder" style="background:none; border:none; cursor:pointer; font-size:16px;">📁</button>` : ''}
         </td>
-        <td style="white-space: nowrap;">
+        <td>
           ${(() => {
             // Smart action button based on status
             const btnData = `data-jobid="${escapeAttr(job.id || '')}" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" data-ats="${escapeAttr(job.ats || '')}"`;
@@ -2551,7 +2576,7 @@
             });
           }
           
-          // Smart action button handler (Select for New, Apply for Ready)
+          // Smart Action button handler (Select, Apply)
           const smartBtn = row.querySelector(".smartActionBtn");
           if (smartBtn) {
             smartBtn.addEventListener("click", async (e) => {
@@ -2598,13 +2623,25 @@
                 } else if (action === 'apply') {
                   btn.textContent = "⏳ Starting...";
                   
-                  // Open job URL for manual apply
-                  window.open(jobUrl, '_blank');
+                  // Start form filler
+                  const engineSelect = document.getElementById('engineSelect');
+                  const engine = engineSelect ? engineSelect.value : 'v6';
+                  
+                  const applyRes = await fetch(`/apply/${engine}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_url: jobUrl, profile: 'anton_kondakov' })
+                  });
+                  const applyData = await applyRes.json();
+                  
+                  if (applyData.ok) {
+                    alert(`🚀 Form Filler started!\n\nCheck Terminal window.`);
+                  } else {
+                    throw new Error(applyData.error || 'Failed to start');
+                  }
                   
                   btn.disabled = false;
                   btn.textContent = originalText;
-                  
-                  alert(`✅ Opened ${company} - ${position}\n\nDon't forget to mark as "Applied" after submitting!`);
                 }
               } catch (err) {
                 console.error('Smart action error:', err);
@@ -2614,7 +2651,7 @@
               }
             });
           }
-          
+
           // Prepare button handler (Selected status)
           const prepareBtn = row.querySelector(".prepareBtn");
           if (prepareBtn) {
@@ -2626,12 +2663,51 @@
               const roleFamily = job.role_family || 'product';
               
               e.target.disabled = true;
-              e.target.textContent = "⏳ Preparing...";
+              e.target.textContent = "⏳ Checking...";
               
               try {
-                // 1. Fetch JD
+                // 0. Check if files already exist
+                const checkRes = await fetch('/check-existing-application', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ job_title: position, company: company })
+                });
+                const existingData = await checkRes.json();
+                
+                if (existingData.exists) {
+                  // Files exist - update to Ready and refresh (button will change to Apply)
+                  const jobId = job.id || jobKey;  // Use job.id for storage lookup
+                  await fetch('/pipeline/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, status: 'Ready', folder_path: existingData.folder })
+                  });
+                  
+                  job.status = 'Ready';
+                  job.application_status = 'Ready';
+                  job.folder_path = existingData.folder;
+                  job.job_url = jobUrl;
+                  
+                  e.target.disabled = false;
+                  e.target.textContent = "📦 Prepare";
+                  
+                  // Refresh table - now will show Apply button
+                  const filtered = applyFilters(ALL_JOBS);
+                  renderJobs(filtered);
+                  
+                  // Show info about existing files
+                  alert(`✅ Found existing files!\n\n📁 ${existingData.folder_name}\n📄 CV: ${existingData.cv_filename || 'Base CV'}\n📝 CL: ${existingData.cover_letter_filename || 'N/A'}\n\nStatus changed to Ready. Click 🚀 Apply to start.`);
+                  return;
+                }
+                
+                // No existing files - generate new
+                e.target.textContent = "⏳ Generating...";
+                
+                // 1. Fetch JD (use stored if available)
                 let jd = '';
-                if (jobUrl) {
+                if (job.jd_summary?.summary) {
+                  jd = job.jd_summary.summary;
+                } else if (jobUrl) {
                   const jdRes = await fetch('/fetch-job-description', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2674,12 +2750,16 @@
                 
                 // 5. Update status to Ready with folder path
                 const folderPath = clData.folder_path || '';
+                const jobId = job.id || jobKey;  // Use job.id for storage lookup
                 await fetch('/pipeline/status', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ job_id: jobKey, status: 'Ready', folder_path: folderPath })
+                  body: JSON.stringify({ job_id: jobId, status: 'Ready', folder_path: folderPath })
                 });
-                showPrepareResult(company, position, cvFilename, clData);
+                
+                // Add job_url to job object for Apply button
+                job.job_url = jobUrl;
+                showPrepareResult(company, position, cvFilename, clData, job);
                 
                 // Update local job status and refresh
                 job.status = 'Ready';
@@ -2780,6 +2860,29 @@
 
         updateStatus(jobs);
         if (!skipSort) applyCurrentSortIfAny();
+        
+        // Highlight newly added job if any
+        if (window.highlightJobAfterReload) {
+          const jobIdToHighlight = window.highlightJobAfterReload;
+          window.highlightJobAfterReload = null;
+          
+          setTimeout(() => {
+            const rows = document.querySelectorAll('#jobsTable tbody tr');
+            for (const row of rows) {
+              if (row.dataset.jobId === jobIdToHighlight || row.dataset.atsJobId === jobIdToHighlight) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.style.transition = 'background 0.3s';
+                row.style.background = 'linear-gradient(90deg, rgba(34,197,94,0.4) 0%, rgba(34,197,94,0.1) 100%)';
+                row.style.boxShadow = '0 0 10px rgba(34,197,94,0.5)';
+                setTimeout(() => { 
+                  row.style.background = ''; 
+                  row.style.boxShadow = '';
+                }, 5000);
+                break;
+              }
+            }
+          }, 300);
+        }
       }
 
       function escapeHtml(s) {
@@ -4518,15 +4621,65 @@
       // === Prepare Result Modal ===
       let currentPrepareFolder = "";
       
-      function showPrepareResult(company, position, cvFilename, clData) {
-        console.log("showPrepareResult called:", company, position, clData);
+      function showPrepareResult(company, position, cvFilename, clData, jobData) {
+        console.log("showPrepareResult called:", company, position, clData, jobData);
         document.getElementById("prepareCompanyName").textContent = company;
         document.getElementById("preparePositionName").textContent = position;
-        document.getElementById("prepareCvName").textContent = cvFilename || "Not selected";
-        document.getElementById("prepareTemplateName").textContent = clData.template_used || "Generated";
-        document.getElementById("prepareMission").textContent = clData.company_mission || "";
+        document.getElementById("prepareCvName").textContent = cvFilename || "Base CV";
         document.getElementById("prepareFolderPath").textContent = clData.folder_path || "";
         currentPrepareFolder = clData.folder_path || "";
+        
+        // Store job URL for Apply button
+        window._currentPrepareJobUrl = jobData?.job_url || jobData?.url || '';
+        
+        // Cover Letter highlights - show what was customized
+        const missionEl = document.getElementById("prepareMission");
+        let highlights = [];
+        if (clData.company_mission) {
+          highlights.push(`<strong>Company Focus:</strong> ${clData.company_mission}`);
+        }
+        if (jobData?.jd_summary?.keywords?.length > 0) {
+          highlights.push(`<strong>Key Skills Matched:</strong> ${jobData.jd_summary.keywords.slice(0, 5).join(', ')}`);
+        }
+        if (clData.template_used) {
+          highlights.push(`<strong>Template:</strong> ${clData.template_used}`);
+        }
+        missionEl.innerHTML = highlights.length > 0 
+          ? highlights.join('<br style="margin-bottom: 8px;">') 
+          : "Cover letter generated with AI assistance";
+        
+        // JD Summary section
+        const jdSection = document.getElementById("prepareJdSection");
+        const keywordsEl = document.getElementById("prepareKeywords");
+        const reqEl = document.getElementById("prepareRequirements");
+        const scoreEl = document.getElementById("prepareMatchScore");
+        
+        if (jobData && jobData.jd_summary) {
+          const summary = jobData.jd_summary;
+          jdSection.style.display = "block";
+          
+          // Keywords as tags
+          const keywords = summary.keywords || [];
+          keywordsEl.innerHTML = keywords.slice(0, 8).map(kw => 
+            `<span style="padding: 3px 8px; background: rgba(99, 102, 241, 0.3); color: #a5b4fc; border-radius: 12px; font-size: 11px;">${kw}</span>`
+          ).join('');
+          
+          // Requirements (first 3)
+          const reqs = summary.requirements || [];
+          if (reqs.length > 0) {
+            reqEl.innerHTML = reqs.slice(0, 3).map(r => `• ${r}`).join('<br>');
+          } else {
+            reqEl.innerHTML = summary.summary || '';
+          }
+          
+          // Match score (placeholder - можно потом добавить реальный расчёт)
+          scoreEl.textContent = "75%";
+          scoreEl.style.color = "#10b981";
+        } else {
+          jdSection.style.display = "none";
+          scoreEl.textContent = "--";
+        }
+        
         document.getElementById("prepareResultModal").style.display = "flex";
       }
       
@@ -4544,6 +4697,41 @@
           });
         } catch (e) {
           console.error("Failed to open folder:", e);
+        }
+      }
+      
+      async function applyFromModal() {
+        if (!window._currentPrepareJobUrl) {
+          alert('No job URL available');
+          return;
+        }
+        
+        const btn = document.getElementById('btnApplyFromModal');
+        btn.disabled = true;
+        btn.textContent = '⏳ Starting...';
+        
+        try {
+          const engineSelect = document.getElementById('engineSelect');
+          const engine = engineSelect ? engineSelect.value : 'v6';
+          
+          const res = await fetch(`/apply/${engine}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_url: window._currentPrepareJobUrl, profile: 'anton_kondakov' })
+          });
+          const data = await res.json();
+          
+          if (data.ok) {
+            closePrepareModal();
+            alert('🚀 Form Filler started!\n\nCheck Terminal window.');
+          } else {
+            throw new Error(data.error || 'Failed to start');
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '🚀 Apply Now';
         }
       }
 
@@ -5613,13 +5801,35 @@
           const data = await response.json();
           
           if (data.ok) {
+            const addedJob = data.job;
             addJobStatus.style.background = "rgba(100,200,100,0.2)";
-            addJobStatus.innerHTML = `<strong>✅ Added:</strong> ${data.job?.title || 'Unknown'} at ${data.job?.company || 'Unknown'}`;
-            // Reload jobs
+            addJobStatus.innerHTML = `<strong>✅ Added:</strong> ${addedJob?.title || 'Unknown'} at ${addedJob?.company || 'Unknown'}`;
+            
+            // Store the added job ID to highlight after reload
+            window.highlightJobAfterReload = addedJob?.id || addedJob?.ats_job_id;
+            
+            // Close modal and reload with filters reset to show the new job
             setTimeout(() => {
               addJobModal.style.display = "none";
-              loadJobsFromCache(true);  // Force reload to show new job
-            }, 1500);
+              
+              // Reset filters to "All" to ensure new job is visible
+              document.getElementById("locationCategoryFilter").value = "all";
+              locationCategory = "all";
+              document.getElementById("globalSearch").value = "";
+              globalSearchText = "";
+              
+              // Set quick filter to "all"
+              document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
+              document.querySelector('.quick-filter-btn[data-filter="all"]')?.classList.add('active');
+              activeQuickFilter = "all";
+              
+              // Set sort by Updated descending (newest first) so new job appears on top
+              CURRENT_SORT.column = 'updated';
+              CURRENT_SORT.ascending = false;
+              
+              // Reload jobs
+              loadJobsFromCache(true);
+            }, 1000);
           } else {
             addJobStatus.style.background = "rgba(255,100,100,0.2)";
             addJobStatus.textContent = `Error: ${data.message || 'Failed to add job'}`;
