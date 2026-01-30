@@ -2029,8 +2029,11 @@
           }
         }
 
-        // 3. Location filter by category
+        // 3. Location filter by category (skip for manual jobs)
         filtered = filtered.filter((job) => {
+          // Always include manually added jobs
+          if (job.source === 'onboard') return true;
+          
           const ln = job.location_norm || {};
           const isUS = isUSHeuristic(job);
           const isRemote = ln.remote === true;
@@ -2045,10 +2048,13 @@
         });
         debugCounts.afterLocation = filtered.length;
 
-        // 4. States filter (only if states selected)
+        // 4. States filter (only if states selected, skip for manual jobs)
         const hasStateFilter = selectedStates.length > 0;
         if (hasStateFilter) {
           filtered = filtered.filter((job) => {
+            // Always include manually added jobs
+            if (job.source === 'onboard') return true;
+            
             const ln = job.location_norm;
             const isUS = isUSHeuristic(job);
             
