@@ -2328,7 +2328,7 @@
           const roleCategory = job.role_category || (job.role_excluded ? 'excluded' : (job.role_id ? 'primary' : 'unknown'));
           const showAddButton = ['unknown', 'excluded'].includes(roleCategory);
           const inPipeline = job.in_pipeline || job.status; // Job is already in pipeline if has status
-          const isManual = job.source === 'manual';
+          const isManual = job.source === 'manual' || job.source === 'onboard' || job.source === 'manual_onboard';
           const isOnboarded = job.source === 'onboard' || job.source === 'manual_onboard';
           const sourceIcon = isOnboarded ? '<span title="User added via onboarding" style="margin-left: 4px;">📌</span>' : '';
           
@@ -2372,9 +2372,15 @@
         <td style="text-align: center; padding: 2px;">
           ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder" style="background:none; border:none; cursor:pointer; font-size:16px;">📁</button>` : ''}
         </td>
-        <td>
+        <td style="white-space: nowrap;">
+          ${st === 'New'
+            ? `<button class="analyzeBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Analyze job & select" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📝 Apply</button>`
+            : ''}
           ${st === 'Selected'
             ? `<button class="prepareBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`
+            : ''}
+          ${st === 'Ready'
+            ? `<button class="applyNowBtn" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" data-ats="${escapeAttr(job.ats || '')}" title="Open job and apply" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply</button>`
             : ''}
           ${showAddButton && !inPipeline 
             ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
@@ -2688,6 +2694,83 @@
                 e.target.textContent = "📝 Apply";
                 e.target.disabled = false;
               }
+            });
+          }
+          
+          // Analyze button handler (New status) - same as applyBtn
+          const analyzeBtn = row.querySelector(".analyzeBtn");
+          if (analyzeBtn) {
+            analyzeBtn.addEventListener("click", async (e) => {
+              const jobUrl = e.target.dataset.joburl;
+              const jobTitle = e.target.dataset.position;
+              const company = e.target.dataset.company;
+              const roleFamily = job.role_family || 'product';
+              
+              if (!jobUrl) return;
+              
+              e.target.disabled = true;
+              e.target.textContent = "🔍 Checking...";
+              
+              try {
+                // Check existing files FIRST
+                const checkRes = await fetch('/check-existing-application', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ job_title: jobTitle, company: company })
+                });
+                const existingData = await checkRes.json();
+                
+                e.target.textContent = "📝 Apply";
+                e.target.disabled = false;
+                
+                if (existingData.exists) {
+                  showPrepareModalWithExisting(company, jobTitle, jobUrl, roleFamily, job, existingData);
+                  return;
+                }
+                
+                // Fetch JD
+                e.target.disabled = true;
+                e.target.textContent = "🔍 Loading JD...";
+                
+                let jd = '';
+                const jdRes = await fetch('/fetch-job-description', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ url: jobUrl })
+                });
+                const jdData = await jdRes.json();
+                if (jdData.ok) jd = jdData.description || '';
+                
+                e.target.textContent = "📝 Apply";
+                e.target.disabled = false;
+                
+                showPrepareModalNew(company, jobTitle, jobUrl, jd, roleFamily, job);
+                
+              } catch (err) {
+                console.error("Error:", err);
+                alert("Error: " + err.message);
+                e.target.textContent = "📝 Apply";
+                e.target.disabled = false;
+              }
+            });
+          }
+          
+          // Apply Now button handler (Ready status) - open job URL
+          const applyNowBtn = row.querySelector(".applyNowBtn");
+          if (applyNowBtn) {
+            applyNowBtn.addEventListener("click", async (e) => {
+              const jobUrl = e.target.dataset.joburl;
+              const company = e.target.dataset.company;
+              const position = e.target.dataset.position;
+              const ats = e.target.dataset.ats;
+              
+              if (!jobUrl) return;
+              
+              // Open job URL in new tab
+              window.open(jobUrl, '_blank');
+              
+              // Show reminder
+              alert(`✅ Opened ${company} - ${position}\n\nDon't forget to:\n1. Use prepared CV and Cover Letter\n2. Mark as "Applied" after submitting`);
             });
           }
         }
