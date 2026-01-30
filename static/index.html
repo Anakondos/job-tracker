@@ -1151,6 +1151,7 @@
               <th class="sortable" onclick="sortTable('updated')">
                 Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
               </th>
+              <th style="width: 90px;">Added</th>
               <th class="sortable" onclick="sortTable('ats')">
                 ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
               </th>
@@ -1169,6 +1170,7 @@
               <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterUpdated" placeholder="..." class="column-filter" style="width: 100%;"></th>
+              <th></th>
               <th>
                 <select id="pipelineFilterAts" class="column-filter" style="width: 100%;">
                   <option value="">-</option>
@@ -1633,6 +1635,19 @@
 
     <script>
       // ---------- DATE FORMATTING ----------
+      function formatDateShort(isoDate) {
+        if (!isoDate) return "—";
+        try {
+          const date = new Date(isoDate);
+          if (isNaN(date.getTime())) return isoDate;
+          const month = date.toLocaleDateString('en-US', { month: 'short' });
+          const day = date.getDate();
+          return `${month} ${day}`;
+        } catch (e) {
+          return isoDate;
+        }
+      }
+      
       function formatDateWithAge(isoDate) {
         if (!isoDate) return "—";
         
@@ -2248,6 +2263,10 @@
           // Format date for display (Dec 19, 3d ago)
           const updatedAtStr = formatDateWithAge(updatedAtRaw);
           
+          // Added date (first_seen = when added to pipeline)
+          const addedAtRaw = job.first_seen || job.created_at || "";
+          const addedAtStr = addedAtRaw ? formatDateShort(addedAtRaw) : "—";
+          
           row.dataset.company = (job.company || "").trim();
           row.dataset.industry = tagsStr;
           row.dataset.title = (job.title || "").trim();
@@ -2280,6 +2299,7 @@
           )}</a>${sourceIcon}</td>
         <td>${escapeHtml(job.location || "")}</td>
         <td>${escapeHtml(updatedAtStr)}</td>
+        <td style="font-size: 11px; color: var(--muted);">${escapeHtml(addedAtStr)}</td>
         <td>${job.source === "onboard" ? "📌 manual" : escapeHtml(job.ats || "")}</td>
         <td>
           <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
