@@ -1151,7 +1151,7 @@
               <th class="sortable" onclick="sortTable('updated')">
                 Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
               </th>
-              <th style="width: 90px;">Added</th>
+              <th style="width: 90px;" class="sortable" onclick="sortTable('added')">Added <span class="sortIcon" id="sortIcon-added">⬍</span></th>
               <th class="sortable" onclick="sortTable('ats')">
                 ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
               </th>
@@ -1777,7 +1777,7 @@
           const av = a.dataset[column] || "";
           const bv = b.dataset[column] || "";
 
-          if (column === "updated") {
+          if (column === "updated" || column === "added") {
             const ad = Date.parse(av) || 0;
             const bd = Date.parse(bv) || 0;
             return asc ? ad - bd : bd - ad;
@@ -2272,6 +2272,7 @@
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
           row.dataset.updated = updatedAtRaw.trim(); // Use raw ISO for sorting
+          row.dataset.added = addedAtRaw.trim(); // Use raw ISO for sorting
           row.dataset.ats = job.source === "onboard" ? "manual" : (job.ats || "").trim();
           row.dataset.status = (st || "New").trim();
           row.dataset.jobId = job.id || "";
