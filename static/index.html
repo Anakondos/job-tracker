@@ -1750,7 +1750,7 @@
       };
 
       // ---------- SORT STATE ----------
-      let CURRENT_SORT = { column: null, asc: true };
+      let CURRENT_SORT = { column: 'added', asc: false }; // Default: newest first by Added date
 
       function setSortIcon(col, icon) {
         const el = document.getElementById(`sortIcon-${col}`);
