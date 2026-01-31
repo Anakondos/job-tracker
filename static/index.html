@@ -183,6 +183,10 @@
       }
       
       /* Pipeline table */
+      #jobsTable {
+        table-layout: fixed;
+        width: 100%;
+      }
       #jobsTable td, #jobsTable th {
         white-space: nowrap;
         overflow: hidden;
@@ -273,13 +277,15 @@
       }
       /* Updated column - sixth column */
       #jobsTable td:nth-child(6), #jobsTable th:nth-child(6) {
-        width: 110px !important;
-        max-width: 110px !important;
+        width: 120px !important;
+        min-width: 120px !important;
+        max-width: 120px !important;
       }
       /* Added column - seventh column */
       #jobsTable td:nth-child(7), #jobsTable th:nth-child(7) {
-        width: 70px !important;
-        max-width: 70px !important;
+        width: 120px !important;
+        min-width: 120px !important;
+        max-width: 120px !important;
       }
       /* ATS column - eighth column */
       #jobsTable td:nth-child(8), #jobsTable th:nth-child(8) {
