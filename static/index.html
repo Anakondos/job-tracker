@@ -17,6 +17,10 @@
         --danger: #ef4444;
         --ok: #22c55e;
       }
+      @keyframes flash {
+        0%, 100% { background-color: inherit; }
+        50% { background-color: #fbbf24; }
+      }
       body {
         margin: 0;
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
@@ -908,7 +912,7 @@
     <div class="tabs">
       <button class="tab-btn" data-tab="companies">Companies</button>
       <button class="tab-btn active" data-tab="jobs">Pipeline</button>
-      <button class="tab-btn" data-tab="answers">Answers</button>
+      <button class="tab-btn" data-tab="answers">Profile</button>
     </div>
 
     <!-- Companies Tab -->
@@ -1019,6 +1023,26 @@
     <div class="wrap">
       <div class="controls">
         <span class="pill" id="loadPill"><span class="dot" id="loadDot"></span><span id="loadText">Idle</span></span>
+      </div>
+      
+      <!-- Analysis Queue -->
+      <div id="analysisQueueSection" style="margin: 12px 0; padding: 16px; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); border-radius: 12px; border: 1px solid #3b5998;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <input type="text" id="queueUrlInput" placeholder="Paste job URL and press Enter or click +" 
+                 style="flex: 1; padding: 10px 14px; border: 2px solid #4a6fa5; border-radius: 8px; background: #0f1a2a; color: white; font-size: 14px;">
+          <button id="queueAddBtn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; white-space: nowrap;">
+            + Add
+          </button>
+        </div>
+        
+        <!-- Queue Items -->
+        <div id="analysisQueue" style="margin-top: 12px; display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: #93c5fd; font-size: 13px; font-weight: 500;">📋 Analysis Queue</span>
+            <button id="clearQueueBtn" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Clear All</button>
+          </div>
+          <div id="queueItems" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;"></div>
+        </div>
       </div>
       
       <!-- Quick Filters Row -->
@@ -1156,9 +1180,9 @@
                 Location <span class="sortIcon" id="sortIcon-location">⬍</span>
               </th>
               <th class="sortable" onclick="sortTable('updated')">
-                Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
+                ATS Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
               </th>
-              <th style="width: 90px;" class="sortable" onclick="sortTable('added')">Added <span class="sortIcon" id="sortIcon-added">⬍</span></th>
+              <th style="width: 120px;" class="sortable" onclick="sortTable('added')">Added <span class="sortIcon" id="sortIcon-added">⬍</span></th>
               <th class="sortable" onclick="sortTable('ats')">
                 ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
               </th>
@@ -1177,7 +1201,7 @@
               <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterUpdated" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th></th>
+              <th><input type="text" id="pipelineFilterAdded" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th>
                 <select id="pipelineFilterAts" class="column-filter" style="width: 100%;">
                   <option value="">-</option>
@@ -1276,8 +1300,28 @@
     </div> <!-- end tab-review -->
 
     <!-- Answers Tab -->
+    <!-- Profile Tab (formerly Answers) -->
     <div class="tab-content" id="tab-answers">
-      <h3 style="margin: 0 0 16px 0;">Answer Library</h3>
+      <h3 style="margin: 0 0 16px 0;">My Profile</h3>
+      
+      <!-- Target Roles -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">🎯 Target Roles</h4>
+        <p style="color: #9ca3af; font-size: 13px; margin-bottom: 12px;">Jobs with these role families will be shown as matching your profile:</p>
+        <div id="targetRolesList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <p style="color: #6b7280; font-size: 12px; margin-bottom: 8px;">Add role family:</p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="add-role-btn" data-role="engineering" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Engineering</button>
+            <button class="add-role-btn" data-role="design" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Design</button>
+            <button class="add-role-btn" data-role="data" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Data/Analytics</button>
+            <button class="add-role-btn" data-role="operations" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Operations</button>
+            <button class="add-role-btn" data-role="marketing" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Marketing</button>
+          </div>
+        </div>
+      </div>
+      
+      <h4 style="margin: 16px 0 12px 0; color: #9ca3af;">📋 Answer Library</h4>
       
       <!-- Personal Info -->
       <div class="card" style="margin-bottom: 16px; padding: 16px;">
@@ -1362,23 +1406,32 @@
         </div>
       </div>
     </div>
-    <!-- Add Job Modal -->
-    <div id="addJobModal" class="modal">
-      <div class="modal-content" style="max-width: 500px;">
-        <h3>Add Job to Pipeline</h3>
-        <p style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">Paste a job URL from any supported ATS (Greenhouse, Lever, Workday, SmartRecruiters, Ashby)</p>
+    <!-- Add Job Modal - Redesigned -->
+    <div id="addJobModal" class="modal" style="width: auto; max-width: none; padding: 0; background: transparent; border: none;">
+      <div id="addJobContainer" style="display: flex; margin: 0 auto; height: calc(100vh - 80px); background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.3); transition: width 0.3s ease;">
         
-        <label style="display: block; margin-bottom: 12px;">
-          Job URL *
-          <input type="url" id="addJobUrl" placeholder="https://boards.greenhouse.io/company/jobs/12345" style="width: 100%; margin-top: 4px;">
-        </label>
-        
-        <div id="addJobStatus" style="margin: 12px 0; padding: 8px; border-radius: 4px; display: none;"></div>
-        
-        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
-          <button type="button" id="addJobCancel" class="ghost">Cancel</button>
-          <button type="button" id="addJobSubmit" style="background: var(--accent); color: white;">Add Job</button>
+        <!-- Left Panel: Input & Compact Analysis - narrower -->
+        <div id="addJobLeftPanel" style="width: 420px; padding: 20px; background: white; color: #1f2937; overflow-y: auto;">
+          <h2 style="margin: 0 0 6px; font-size: 18px; color: #111827;">Add Job to Pipeline</h2>
+          <p style="color: #6b7280; font-size: 12px; margin-bottom: 16px;">Paste URL from Greenhouse, Lever, Workday, SmartRecruiters, Ashby</p>
+          
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px;">Job URL *</label>
+            <input type="url" id="addJobUrl" placeholder="https://boards.greenhouse.io/company/jobs/12345" style="width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #1f2937; background: #f9fafb;">
+          </div>
+          
+          <div id="addJobStatus" style="display: none;"></div>
+          
+          <div id="addJobButtons" style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="button" id="addJobSubmit" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">🔍 Analyze</button>
+          </div>
         </div>
+        
+        <!-- Right Panel: Detailed Analysis (hidden initially) -->
+        <div id="addJobRightPanel" style="width: 0; overflow: hidden; background: #f9fafb; border-left: 1px solid #e5e7eb; transition: width 0.3s ease;">
+          <div id="addJobDetailContent" style="padding: 24px; width: 800px;"></div>
+        </div>
+        
       </div>
     </div>
 
@@ -1658,9 +1711,12 @@
             date = new Date(isoDate);
           }
           if (isNaN(date.getTime())) return "—";
+          // Unified format: "Jan 30, 22:54"
           const month = date.toLocaleDateString('en-US', { month: 'short' });
           const day = date.getDate();
-          return `${month} ${day}`;
+          const hours = date.getHours().toString().padStart(2, '0');
+          const mins = date.getMinutes().toString().padStart(2, '0');
+          return `${month} ${day}, ${hours}:${mins}`;
         } catch (e) {
           return "—";
         }
@@ -1668,7 +1724,7 @@
       
       function formatDateWithAge(isoDate) {
         if (!isoDate) return "—";
-        
+
         try {
           // Handle numeric timestamps (milliseconds)
           let date;
@@ -1679,40 +1735,13 @@
             date = new Date(isoDate);
           }
           if (isNaN(date.getTime())) return "—";
-          
-          const now = new Date();
-          const diffMs = now - date;
-          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-          const diffMins = Math.floor(diffMs / (1000 * 60));
-          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-          
-          // Format date: "Dec 19, 10:45"
+
+          // Unified format: "Jan 30, 22:54"
           const month = date.toLocaleDateString('en-US', { month: 'short' });
           const day = date.getDate();
           const hours = date.getHours().toString().padStart(2, '0');
           const mins = date.getMinutes().toString().padStart(2, '0');
-          const dateStr = `${month} ${day}, ${hours}:${mins}`;
-          
-          // Age indicator
-          let ageStr;
-          if (diffMins < 1) {
-            ageStr = "now";
-          } else if (diffMins < 60) {
-            ageStr = `${diffMins}m`;
-          } else if (diffHours < 24) {
-            ageStr = `${diffHours}h`;
-          } else if (diffDays === 1) {
-            ageStr = "1d";
-          } else if (diffDays <= 7) {
-            ageStr = `${diffDays}d`;
-          } else if (diffDays <= 30) {
-            const weeks = Math.floor(diffDays / 7);
-            ageStr = `${weeks}w`;
-          } else {
-            ageStr = "30d+";
-          }
-          
-          return `${dateStr} (${ageStr})`;
+          return `${month} ${day}, ${hours}:${mins}`;
         } catch (e) {
           return isoDate;
         }
@@ -2124,7 +2153,9 @@
             const company = (j.company || "").toLowerCase();
             const title = (j.title || "").toLowerCase();
             const location = (j.location || "").toLowerCase();
-            return company.includes(search) || title.includes(search) || location.includes(search);
+            const jobId = (j.id || "").toLowerCase();
+            const atsJobId = (j.ats_job_id || "").toLowerCase();
+            return company.includes(search) || title.includes(search) || location.includes(search) || jobId.includes(search) || atsJobId.includes(search);
           });
         }
 
@@ -2164,8 +2195,15 @@
         if (pipelineFilters.updated) {
           const search = pipelineFilters.updated.toLowerCase();
           filtered = filtered.filter(j => {
-            const updated = (j.updated_at || j.first_seen || "").toLowerCase();
+            const updated = formatDateWithAge(j.updated_at || j.first_seen || "").toLowerCase();
             return updated.includes(search);
+          });
+        }
+        if (pipelineFilters.added) {
+          const search = pipelineFilters.added.toLowerCase();
+          filtered = filtered.filter(j => {
+            const added = formatDateShort(j.first_seen || j.created_at || "").toLowerCase();
+            return added.includes(search);
           });
         }
         if (pipelineFilters.jobId) {
@@ -2350,9 +2388,9 @@
             job.title || ""
           )}</a>${sourceIcon}</td>
         <td>${escapeHtml(job.location || "")}</td>
-        <td>${escapeHtml(updatedAtStr)}</td>
-        <td style="font-size: 11px; color: var(--muted);">${escapeHtml(addedAtStr)}</td>
-        <td>${job.source === "onboard" ? "📌 manual" : escapeHtml(job.ats || "")}</td>
+        <td style="font-size: 12px;">${escapeHtml(updatedAtStr)}</td>
+        <td style="font-size: 12px;">${escapeHtml(addedAtStr)}</td>
+        <td style="font-size: 12px;">${job.source === "onboard" ? "📌 manual" : escapeHtml(job.ats || "")}</td>
         <td style="white-space: nowrap;">
           ${(() => {
             // Status display with icon + gear dropdown
@@ -3390,6 +3428,7 @@
         ats: "",
         jobId: "",
         updated: "",
+        added: "",
         folder: "all"
       };
       
@@ -5174,7 +5213,12 @@
         pipelineFilters.updated = e.target.value;
         applyPipelineColumnFilters();
       });
-      
+
+      document.getElementById("pipelineFilterAdded")?.addEventListener("input", (e) => {
+        pipelineFilters.added = e.target.value;
+        applyPipelineColumnFilters();
+      });
+
       document.getElementById("pipelineFilterFolder")?.addEventListener("change", (e) => {
         pipelineFilters.folder = e.target.value;
         applyPipelineColumnFilters();
@@ -5349,14 +5393,84 @@
         updateStatus(filtered);
       });
 
-      // ==================== ANSWERS TAB ====================
+      // ==================== PROFILE TAB ====================
       let answerLibrary = {};
+      
+      // Target roles - stored in localStorage
+      let targetRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+      
+      const roleLabels = {
+        'product': 'Product Manager',
+        'tpm_program': 'TPM / Program Manager',
+        'project': 'Project Manager',
+        'engineering': 'Engineering',
+        'design': 'Design / UX',
+        'data': 'Data / Analytics',
+        'operations': 'Operations',
+        'marketing': 'Marketing',
+        'other': 'Other'
+      };
+      
+      function saveTargetRoles() {
+        localStorage.setItem('targetRoles', JSON.stringify(targetRoles));
+      }
+      
+      function renderTargetRoles() {
+        const container = document.getElementById('targetRolesList');
+        if (!container) return;
+        
+        container.innerHTML = targetRoles.map(role => `
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #3b82f6; color: white; border-radius: 20px; font-size: 13px;">
+            <span>${roleLabels[role] || role}</span>
+            <button onclick="removeTargetRole('${role}')" style="background: none; border: none; color: white; cursor: pointer; font-size: 14px; padding: 0; line-height: 1;">&times;</button>
+          </div>
+        `).join('');
+        
+        // Update add buttons visibility
+        document.querySelectorAll('.add-role-btn').forEach(btn => {
+          const role = btn.dataset.role;
+          if (targetRoles.includes(role)) {
+            btn.style.display = 'none';
+          } else {
+            btn.style.display = 'inline-block';
+          }
+        });
+      }
+      
+      function addTargetRole(role) {
+        if (!targetRoles.includes(role)) {
+          targetRoles.push(role);
+          saveTargetRoles();
+          renderTargetRoles();
+        }
+      }
+      
+      function removeTargetRole(role) {
+        // Don't allow removing all roles
+        if (targetRoles.length <= 1) {
+          alert('You must have at least one target role.');
+          return;
+        }
+        targetRoles = targetRoles.filter(r => r !== role);
+        saveTargetRoles();
+        renderTargetRoles();
+      }
+      
+      // Expose to global for inline onclick
+      window.removeTargetRole = removeTargetRole;
+      window.addTargetRole = addTargetRole;
       
       async function loadAnswerLibrary() {
         try {
           const resp = await fetch('/answers');
           answerLibrary = await resp.json();
           renderAnswers();
+          renderTargetRoles();
+          
+          // Setup add role buttons
+          document.querySelectorAll('.add-role-btn').forEach(btn => {
+            btn.onclick = () => addTargetRole(btn.dataset.role);
+          });
         } catch (e) {
           console.error('Failed to load answers:', e);
         }
@@ -5513,10 +5627,317 @@
         });
       });
       
+      // ==================== ANALYSIS QUEUE ====================
+      const analysisQueue = [];
+      let queueIdCounter = 1;
+      
+      const queueUrlInput = document.getElementById('queueUrlInput');
+      const queueAddBtn = document.getElementById('queueAddBtn');
+      const queueItemsDiv = document.getElementById('queueItems');
+      const analysisQueueDiv = document.getElementById('analysisQueue');
+      const clearQueueBtn = document.getElementById('clearQueueBtn');
+      
+      // Add to queue on Enter or button click
+      queueUrlInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addToQueue();
+      });
+      queueAddBtn.addEventListener('click', addToQueue);
+      clearQueueBtn.addEventListener('click', clearQueue);
+      
+      async function addToQueue() {
+        const url = queueUrlInput.value.trim();
+        if (!url) return;
+        
+        // Normalize URL for comparison (remove tracking params)
+        const normalizedUrl = url.split('?')[0].toLowerCase().replace(/\/$/, '');
+        
+        // Check for duplicates in queue
+        const existingInQueue = analysisQueue.find(item => {
+          const itemNormalized = item.url.split('?')[0].toLowerCase().replace(/\/$/, '');
+          return itemNormalized === normalizedUrl;
+        });
+        
+        if (existingInQueue) {
+          // Flash the existing item instead of adding duplicate
+          const existingEl = document.querySelector(`[data-queue-id="${existingInQueue.id}"]`);
+          if (existingEl) {
+            existingEl.style.animation = 'none';
+            existingEl.offsetHeight; // Trigger reflow
+            existingEl.style.animation = 'flash 0.5s';
+          }
+          queueUrlInput.value = '';
+          return;
+        }
+        
+        // Clear input immediately
+        queueUrlInput.value = '';
+        
+        // Create queue item with temp ID
+        const queueId = queueIdCounter++;
+        const item = {
+          id: queueId,
+          url: url,
+          status: 'fetching', // fetching -> analyzing -> ready | error
+          title: 'Loading...',
+          company: '',
+          score: null,
+          analysis: null,
+          error: null
+        };
+        
+        analysisQueue.push(item);
+        renderQueue();
+        
+        // Step 1: Quick fetch to get basic info
+        try {
+          // First check if already in pipeline
+          const checkRes = await fetch(`/job/find-by-url?url=${encodeURIComponent(url)}`);
+          const checkData = await checkRes.json();
+          
+          if (checkData.ok && checkData.found) {
+            item.status = 'exists';
+            item.title = checkData.job.title || 'Unknown';
+            item.company = checkData.job.company || '';
+            item.existingJob = checkData.job;
+            renderQueue();
+            return;
+          }
+          
+          // Step 2: Start analysis
+          item.status = 'analyzing';
+          item.title = 'Analyzing...';
+          renderQueue();
+          
+          const analyzeRes = await fetch('/analyze-job-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+          });
+          const analysis = await analyzeRes.json();
+          
+          if (analysis.ok) {
+            item.status = 'ready';
+            item.title = analysis.title || 'Unknown';
+            item.company = analysis.company || '';
+            item.score = analysis.match_score || analysis.analysis?.match_score || 0;
+            item.analysis = analysis;
+          } else if (analysis.is_closed) {
+            item.status = 'closed';
+            item.title = analysis.title || 'Position Closed';
+            item.company = analysis.company || '';
+            item.error = analysis.error;
+          } else {
+            item.status = 'error';
+            item.title = 'Error';
+            item.error = analysis.error || 'Analysis failed';
+          }
+        } catch (e) {
+          item.status = 'error';
+          item.title = 'Error';
+          item.error = e.message;
+        }
+        
+        renderQueue();
+      }
+      
+      function renderQueue() {
+        // Show/hide queue section
+        analysisQueueDiv.style.display = analysisQueue.length > 0 ? 'block' : 'none';
+        
+        queueItemsDiv.innerHTML = analysisQueue.map(item => {
+          let statusHtml = '';
+          let bgColor = '#1e293b';
+          let actions = '';
+          
+          switch (item.status) {
+            case 'fetching':
+              statusHtml = '<span style="color: #fbbf24;">⏳ Fetching...</span>';
+              break;
+            case 'analyzing':
+              statusHtml = '<span style="color: #60a5fa;">🤖 Analyzing...</span>';
+              break;
+            case 'ready':
+              const scoreColor = item.score >= 70 ? '#22c55e' : item.score >= 50 ? '#eab308' : '#ef4444';
+              statusHtml = `<span style="color: ${scoreColor}; font-weight: 600;">${item.score}%</span>`;
+              bgColor = '#1e3a2e';
+              actions = `
+                <button onclick="openQueueAnalysis(${item.id})" style="padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">View</button>
+                <button onclick="addQueueItemToPipeline(${item.id})" style="padding: 4px 10px; background: #22c55e; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Add</button>
+              `;
+              break;
+            case 'exists':
+              statusHtml = '<span style="color: #9ca3af;">Already in pipeline</span>';
+              bgColor = '#374151';
+              actions = `<button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+            case 'closed':
+              statusHtml = '<span style="color: #f87171;">❌ Closed</span>';
+              bgColor = '#3b1c1c';
+              actions = `<button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+            case 'error':
+              statusHtml = `<span style="color: #f87171;" title="${item.error || ''}">⚠️ Error</span>`;
+              bgColor = '#3b2c1c';
+              actions = `<button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+          }
+          
+          return `
+            <div data-queue-id="${item.id}" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: ${bgColor}; border-radius: 6px; border: 1px solid #4b5563;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</div>
+                <div style="font-size: 11px; color: #9ca3af;">${item.company || (item.status === 'ready' ? '' : '')}</div>
+              </div>
+              <div style="min-width: 80px; text-align: right; font-size: 12px;">
+                ${statusHtml}
+              </div>
+              <div style="min-width: 80px; text-align: right;">
+                ${actions}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      function openQueueAnalysis(queueId) {
+        const item = analysisQueue.find(i => i.id === queueId);
+        if (!item || !item.analysis) return;
+        
+        // Open the existing modal with this analysis
+        window.currentAnalysis = item.analysis;
+        window.currentJobUrl = item.url;
+        
+        // Show modal with analysis
+        const addJobModal = document.getElementById('addJobModal');
+        const addJobUrl = document.getElementById('addJobUrl');
+        addJobUrl.value = item.url;
+        addJobModal.style.display = 'flex';
+        
+        // Trigger the display of analysis (reuse existing code)
+        displayAnalysisResults(item.analysis, item.url);
+      }
+      
+      async function addQueueItemToPipeline(queueId) {
+        const item = analysisQueue.find(i => i.id === queueId);
+        if (!item) return;
+        
+        // Add to pipeline
+        await addJobToPipeline(item.url);
+        
+        // Remove from queue
+        removeFromQueue(queueId);
+      }
+      
+      function removeFromQueue(queueId) {
+        const idx = analysisQueue.findIndex(i => i.id === queueId);
+        if (idx !== -1) {
+          analysisQueue.splice(idx, 1);
+          renderQueue();
+        }
+      }
+      
+      function clearQueue() {
+        analysisQueue.length = 0;
+        renderQueue();
+      }
+      
+      // Helper function to display analysis results (extracted from main flow)
+      function displayAnalysisResults(analysis, url) {
+        const addJobStatus = document.getElementById("addJobStatus");
+        
+        const score = analysis.match_score || 0;
+        const roleType = analysis.analysis?.role_type || '';
+        const roleFamily = analysis.role_family || 'other';
+        const locationInfo = analysis.analysis?.location_info || '';
+        const summary = analysis.analysis?.summary || '';
+        const rec = analysis.recommendation_text || '';
+        
+        const scoreColor = score >= 75 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+        const scoreBg = score >= 75 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2';
+        
+        // Check if role is outside profile
+        const savedTargetRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+        const isOutsideProfile = !savedTargetRoles.includes(roleFamily);
+        
+        // Store for detail panel
+        window.currentAnalysis = analysis;
+        window.currentJobUrl = url;
+        
+        let compactHtml = `
+          <div style="padding: 16px; background: #f9fafb; border-radius: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0 0 4px; font-size: 16px; color: #111827;">${analysis.title || 'Unknown'}</h3>
+            <p style="margin: 0 0 8px; color: #6b7280; font-size: 13px;">${analysis.company || 'Unknown'}</p>
+            ${roleType ? `<p style="margin: 0 0 4px; color: #6366f1; font-size: 12px;">📋 ${roleType}</p>` : ''}
+            ${locationInfo ? `<p style="margin: 0; color: #059669; font-size: 12px;">📍 ${locationInfo}</p>` : ''}
+          </div>
+          
+          <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: center;">
+            <div style="text-align: center; padding: 12px 20px; background: ${scoreBg}; border-radius: 12px; border: 2px solid ${scoreColor};">
+              <div style="font-size: 28px; font-weight: bold; color: ${scoreColor};">${score}%</div>
+              <div style="font-size: 11px; color: #6b7280;">Match</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 14px; color: #111827; margin-bottom: 4px;">${rec}</div>
+              <div style="font-size: 12px; color: #6b7280; line-height: 1.4;">${summary.substring(0, 120)}${summary.length > 120 ? '...' : ''}</div>
+            </div>
+          </div>
+        `;
+        
+        if (isOutsideProfile) {
+          compactHtml += `
+            <div style="padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; margin-bottom: 16px;">
+              <div style="font-weight: 600; color: #92400e; margin-bottom: 4px;">⚠️ Role outside your target profile</div>
+              <div style="font-size: 12px; color: #78350f;">This is a "${roleType || roleFamily}" role. Your profile targets: Product, TPM, Program Manager roles.</div>
+              <button id="expandProfileBtn" style="margin-top: 8px; padding: 6px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                🔧 Expand my profile to include this
+              </button>
+            </div>
+          `;
+        }
+        
+        const addBtnColor = score >= 60 ? '#22c55e' : '#f59e0b';
+        const addBtnText = score >= 60 ? '✅ Add to Pipeline' : '⚠️ Add Anyway';
+        
+        compactHtml += `
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="confirmAddBtn" style="padding: 10px 20px; background: ${addBtnColor}; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+              ${addBtnText}
+            </button>
+            <button id="showDetailBtn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+              📊 Full Analysis →
+            </button>
+            <button id="skipBtn" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+              Skip
+            </button>
+          </div>
+        `;
+        
+        addJobStatus.style.display = 'block';
+        addJobStatus.style.background = 'transparent';
+        addJobStatus.innerHTML = compactHtml;
+        
+        // Event handlers
+        document.getElementById('confirmAddBtn').onclick = () => addJobToPipeline(url);
+        document.getElementById('skipBtn').onclick = () => { document.getElementById('addJobModal').style.display = 'none'; };
+        document.getElementById('showDetailBtn').onclick = () => showDetailedAnalysis(analysis, url);
+        
+        if (document.getElementById('expandProfileBtn')) {
+          document.getElementById('expandProfileBtn').onclick = () => {
+            const currentRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+            if (!currentRoles.includes(roleFamily)) {
+              currentRoles.push(roleFamily);
+              localStorage.setItem('targetRoles', JSON.stringify(currentRoles));
+              alert(`✅ Added "${roleFamily}" to your target roles!`);
+              document.getElementById('expandProfileBtn').closest('div').style.display = 'none';
+              if (typeof renderTargetRoles === 'function') renderTargetRoles();
+            }
+          };
+        }
+      }
+      
       // Add Job Modal
       const addJobModal = document.getElementById("addJobModal");
       const addJobBtn = document.getElementById("addJobBtn");
-      const addJobCancel = document.getElementById("addJobCancel");
       const addJobSubmit = document.getElementById("addJobSubmit");
       const addJobUrl = document.getElementById("addJobUrl");
       const addJobStatus = document.getElementById("addJobStatus");
@@ -5525,11 +5946,10 @@
         addJobModal.style.display = "flex";
         addJobUrl.value = "";
         addJobStatus.style.display = "none";
+        // Reset right panel to hidden (width 0)
+        document.getElementById('addJobRightPanel').style.width = '0';
+        document.getElementById('addJobRightPanel').style.overflow = 'hidden';
         addJobUrl.focus();
-      });
-      
-      addJobCancel.addEventListener("click", () => {
-        addJobModal.style.display = "none";
       });
       
       addJobModal.addEventListener("click", (e) => {
@@ -5548,10 +5968,10 @@
         }
         
         addJobSubmit.disabled = true;
-        addJobSubmit.textContent = "Searching...";
+        addJobSubmit.textContent = "Analyzing...";
         addJobStatus.style.display = "block";
         addJobStatus.style.background = "rgba(100,150,255,0.2)";
-        addJobStatus.textContent = "Checking if job exists in database...";
+        addJobStatus.innerHTML = "🔍 Checking if job exists...";
         
         try {
           // Step 1: Search for existing job
@@ -5561,52 +5981,389 @@
           if (searchData.ok && searchData.found) {
             // Job exists - show it with Open button
             const job = searchData.job;
-            const jobId = job.id || job.ats_job_id;
+            const jobId = job.ats_job_id || job.id || '';
             addJobStatus.style.background = "rgba(100,200,100,0.2)";
             addJobStatus.innerHTML = `
-              <strong>✅ Found in database:</strong><br>
+              <strong>✅ Already in pipeline:</strong><br>
               <span style="font-size: 14px;">${job.title || 'Unknown'}</span><br>
               <span style="color: #888;">${job.company || 'Unknown'} • ${job.location || ''}</span><br>
               <div style="margin-top: 8px;">
-                <button id="showInTableBtn"
-                        style="padding: 4px 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px;">
+                <button id="showInTableBtn" style="padding: 4px 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px;">
                   Show in Table →
                 </button>
-                <button onclick="document.getElementById('addJobModal').style.display='none'" 
-                        style="padding: 4px 12px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 4px 12px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
                   Close
                 </button>
               </div>
             `;
-            // Add click handler for Show in Table
-            document.getElementById('showInTableBtn').onclick = () => {
+            document.getElementById('showInTableBtn').onclick = function() {
               document.getElementById('addJobModal').style.display = 'none';
-              // Find and highlight row in table
-              const atsJobId = job.ats_job_id || '';
-              const jobId = job.id || '';
-              const rows = document.querySelectorAll('#jobsTable tbody tr');
-              for (const row of rows) {
-                if ((atsJobId && row.dataset.atsJobId === atsJobId) || 
-                    (jobId && row.dataset.jobId === jobId)) {
-                  // Scroll to row
-                  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  // Highlight row
-                  row.style.transition = 'background 0.3s';
-                  row.style.background = 'rgba(100,200,100,0.3)';
-                  setTimeout(() => { row.style.background = ''; }, 3000);
-                  break;
-                }
-              }
+              // Search by job ID
+              document.getElementById('globalSearchFilter').value = jobId;
+              document.getElementById('globalSearchFilter').dispatchEvent(new Event('input', { bubbles: true }));
             };
             addJobSubmit.disabled = false;
-            addJobSubmit.textContent = "Add Job";
+            addJobSubmit.textContent = "Analyze & Add";
             return;
           }
           
-          // Step 2: Job not found - add it
-          addJobStatus.textContent = "Job not found, adding to pipeline...";
-          addJobSubmit.textContent = "Adding...";
+          // Step 2: Analyze job with AI
+          addJobStatus.innerHTML = "🤖 Analyzing job match with AI...";
           
+          const analyzeRes = await fetch('/analyze-job-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+          });
+          const analysis = await analyzeRes.json();
+          
+          if (!analysis.ok) {
+            // Check if job is closed
+            if (analysis.is_closed) {
+              addJobStatus.style.background = "rgba(255,100,100,0.15)";
+              let closedHtml = `
+                <div style="padding: 12px; border: 2px solid #ef4444; border-radius: 8px; background: white;">
+                  <strong style="color: #ef4444; font-size: 16px;">❌ Position Closed</strong><br>
+                  <p style="margin: 8px 0; color: #374151;">${analysis.title || 'Unknown'} at ${analysis.company || 'Unknown'}</p>
+                  <p style="color: #6b7280; font-size: 13px;">${analysis.error}</p>
+              `;
+              
+              // Show screenshot if available
+              if (analysis.screenshot_base64) {
+                closedHtml += `
+                  <details style="margin-top: 12px;">
+                    <summary style="cursor: pointer; color: #3b82f6; font-size: 13px;">📸 View Screenshot</summary>
+                    <img src="data:image/jpeg;base64,${analysis.screenshot_base64}" style="max-width: 100%; margin-top: 8px; border-radius: 4px; border: 1px solid #e5e7eb;">
+                  </details>
+                `;
+              }
+              
+              closedHtml += `
+                  <div style="margin-top: 12px;">
+                    <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                      Close
+                    </button>
+                  </div>
+                </div>
+              `;
+              addJobStatus.innerHTML = closedHtml;
+              addJobSubmit.disabled = false;
+              addJobSubmit.textContent = "🔍 Analyze";
+              return;
+            }
+            
+            // Analysis failed - offer to add anyway
+            addJobStatus.style.background = "rgba(255,200,100,0.2)";
+            addJobStatus.innerHTML = `
+              <strong>⚠️ Could not analyze:</strong> ${analysis.error || 'Unknown error'}<br>
+              <div style="margin-top: 8px;">
+                <button id="addAnywayBtn" style="padding: 6px 16px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px;">
+                  ➕ Add Anyway
+                </button>
+                <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 6px 16px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                  Cancel
+                </button>
+              </div>
+            `;
+            document.getElementById('addAnywayBtn').onclick = () => addJobToPipeline(url);
+            addJobSubmit.disabled = false;
+            addJobSubmit.textContent = "🔍 Analyze";
+            return;
+          }
+          
+          // Step 3: Show analysis results in new design
+          const score = analysis.analysis?.match_score || 0;
+          const fit = analysis.analysis?.fit_level || 'unknown';
+          const roleType = analysis.analysis?.role_type || '';
+          const roleFamily = analysis.role_family || 'other';
+          const locationInfo = analysis.analysis?.location_info || '';
+          const gaps = analysis.analysis?.gaps || [];
+          const redFlags = analysis.analysis?.red_flags || [];
+          const matching = analysis.analysis?.matching_experience || [];
+          const keyReqs = analysis.analysis?.key_requirements || [];
+          const pros = analysis.analysis?.pros || [];
+          const cons = analysis.analysis?.cons || [];
+          const summary = analysis.analysis?.summary || '';
+          const rec = analysis.recommendation_text || '';
+          
+          // Check if role is outside profile (using saved target roles from localStorage)
+          const savedTargetRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+          const isOutsideProfile = !savedTargetRoles.includes(roleFamily);
+          console.log('[AddJob] roleFamily:', roleFamily, 'targetRoles:', savedTargetRoles, 'isOutsideProfile:', isOutsideProfile);
+          
+          const scoreColor = score >= 75 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+          const scoreBg = score >= 75 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2';
+          
+          // Store for detail panel
+          window.currentAnalysis = analysis;
+          window.currentJobUrl = url;
+          
+          // Compact analysis in left panel
+          let compactHtml = `
+            <div style="padding: 16px; background: #f9fafb; border-radius: 12px; margin-bottom: 16px;">
+              <h3 style="margin: 0 0 4px; font-size: 16px; color: #111827;">${analysis.title || 'Unknown'}</h3>
+              <p style="margin: 0 0 8px; color: #6b7280; font-size: 13px;">${analysis.company || 'Unknown'}</p>
+              ${roleType ? `<p style="margin: 0 0 4px; color: #6366f1; font-size: 12px;">📋 ${roleType}</p>` : ''}
+              ${locationInfo ? `<p style="margin: 0; color: #059669; font-size: 12px;">📍 ${locationInfo}</p>` : ''}
+            </div>
+            
+            <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: center;">
+              <div style="text-align: center; padding: 12px 20px; background: ${scoreBg}; border-radius: 12px; border: 2px solid ${scoreColor};">
+                <div style="font-size: 28px; font-weight: bold; color: ${scoreColor};">${score}%</div>
+                <div style="font-size: 11px; color: #6b7280;">Match</div>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 14px; color: #111827; margin-bottom: 4px;">${rec}</div>
+                <div style="font-size: 12px; color: #6b7280; line-height: 1.4;">${summary.substring(0, 120)}${summary.length > 120 ? '...' : ''}</div>
+              </div>
+            </div>
+          `;
+          
+          // Warning if outside profile
+          if (isOutsideProfile) {
+            compactHtml += `
+              <div style="padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; margin-bottom: 16px;">
+                <div style="font-weight: 600; color: #92400e; margin-bottom: 4px;">⚠️ Role outside your target profile</div>
+                <div style="font-size: 12px; color: #78350f;">This is a "${roleType || roleFamily}" role. Your profile targets: Product, TPM, Program Manager roles.</div>
+                <button id="expandProfileBtn" style="margin-top: 8px; padding: 6px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                  🔧 Expand my profile to include this
+                </button>
+              </div>
+            `;
+          }
+          
+          // Action buttons
+          const addBtnColor = score >= 60 ? '#22c55e' : '#f59e0b';
+          const addBtnText = score >= 60 ? '✅ Add to Pipeline' : '⚠️ Add Anyway';
+          
+          compactHtml += `
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button id="confirmAddBtn" style="padding: 10px 20px; background: ${addBtnColor}; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+                ${addBtnText}
+              </button>
+              <button id="showDetailBtn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                📊 Full Analysis →
+              </button>
+              <button id="skipBtn" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                Skip
+              </button>
+            </div>
+          `;
+          
+          addJobStatus.style.display = 'block';
+          addJobStatus.style.background = 'transparent';
+          addJobStatus.innerHTML = compactHtml;
+          
+          // Event handlers
+          document.getElementById('confirmAddBtn').onclick = () => addJobToPipeline(url);
+          document.getElementById('skipBtn').onclick = () => { document.getElementById('addJobModal').style.display = 'none'; };
+          document.getElementById('showDetailBtn').onclick = () => showDetailedAnalysis(analysis, url);
+          
+          if (document.getElementById('expandProfileBtn')) {
+            document.getElementById('expandProfileBtn').onclick = () => {
+              // Add this role family to target roles
+              const currentRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+              if (!currentRoles.includes(roleFamily)) {
+                currentRoles.push(roleFamily);
+                localStorage.setItem('targetRoles', JSON.stringify(currentRoles));
+                
+                // Update UI
+                const roleLabel = {
+                  'product': 'Product Manager',
+                  'tpm_program': 'TPM / Program Manager', 
+                  'project': 'Project Manager',
+                  'engineering': 'Engineering',
+                  'design': 'Design / UX',
+                  'data': 'Data / Analytics',
+                  'operations': 'Operations',
+                  'other': 'Other'
+                }[roleFamily] || roleFamily;
+                
+                alert(`✅ Added "${roleLabel}" to your target roles!\n\nThis role family will now be included in your profile.`);
+                
+                // Hide the warning box
+                document.getElementById('expandProfileBtn').closest('div').style.display = 'none';
+                
+                // If Profile tab is loaded, refresh it
+                if (typeof renderTargetRoles === 'function') {
+                  renderTargetRoles();
+                }
+              } else {
+                alert('This role is already in your target profile.');
+              }
+            };
+          }
+          
+        } catch (err) {
+          addJobStatus.style.display = 'block';
+          addJobStatus.style.background = '#fee2e2';
+          addJobStatus.style.padding = '12px';
+          addJobStatus.style.borderRadius = '8px';
+          addJobStatus.innerHTML = `<span style="color: #dc2626;">❌ Error: ${err.message}</span>`;
+        } finally {
+          addJobSubmit.disabled = false;
+          addJobSubmit.textContent = "🔍 Analyze";
+        }
+      });
+      
+      // Show detailed analysis in right panel
+      function showDetailedAnalysis(analysis, url) {
+        const rightPanel = document.getElementById('addJobRightPanel');
+        const detailContent = document.getElementById('addJobDetailContent');
+        
+        const score = analysis.analysis?.match_score || 0;
+        const fit = analysis.analysis?.fit_level || 'unknown';
+        const roleType = analysis.analysis?.role_type || '';
+        const locationInfo = analysis.analysis?.location_info || '';
+        const gaps = analysis.analysis?.gaps || [];
+        const redFlags = analysis.analysis?.red_flags || [];
+        const matching = analysis.analysis?.matching_experience || [];
+        const keyReqs = analysis.analysis?.key_requirements || [];
+        const pros = analysis.analysis?.pros || [];
+        const cons = analysis.analysis?.cons || [];
+        const summary = analysis.analysis?.summary || '';
+        const rec = analysis.recommendation_text || '';
+        
+        const scoreColor = score >= 75 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+        
+        // Build requirements table - dark text for readability
+        let reqsHtml = '';
+        if (keyReqs.length > 0) {
+          reqsHtml = '<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px;">';
+          reqsHtml += '<tr style="background: #f3f4f6;"><th style="padding: 10px; text-align: left; border: 1px solid #e5e7eb; color: #111827; font-weight: 600;">Requirement</th><th style="padding: 10px; width: 70px; text-align: center; border: 1px solid #e5e7eb; color: #111827; font-weight: 600;">Match</th><th style="padding: 10px; text-align: left; border: 1px solid #e5e7eb; color: #111827; font-weight: 600;">Notes</th></tr>';
+          keyReqs.forEach(r => {
+            if (typeof r === 'object' && r.requirement) {
+              const hasIcon = r.anton_has === 'yes' ? '✅' : r.anton_has === 'partial' ? '⚠️' : '❌';
+              reqsHtml += `<tr><td style="padding: 10px; border: 1px solid #e5e7eb; color: #1f2937;">${r.requirement}</td><td style="padding: 10px; text-align: center; border: 1px solid #e5e7eb; font-size: 16px;">${hasIcon}</td><td style="padding: 10px; border: 1px solid #e5e7eb; color: #374151;">${r.comment || ''}</td></tr>`;
+            } else {
+              reqsHtml += `<tr><td style="padding: 10px; border: 1px solid #e5e7eb; color: #1f2937;" colspan="3">• ${r}</td></tr>`;
+            }
+          });
+          reqsHtml += '</table>';
+        }
+        
+        // Build list helper
+        const buildList = (items, color) => items.length ? 
+          `<ul style="margin: 8px 0; padding-left: 20px; font-size: 13px;">${items.map(i => `<li style="margin: 6px 0; color: ${color}; line-height: 1.4;">${i}</li>`).join('')}</ul>` : 
+          '<p style="color: #9ca3af; font-size: 13px;">None</p>';
+        
+        detailContent.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+            <div>
+              <h1 style="margin: 0; font-size: 24px; color: #111827;">${analysis.title || 'Unknown'}</h1>
+              <p style="margin: 6px 0; color: #6b7280; font-size: 16px;">${analysis.company || 'Unknown'}</p>
+              ${roleType ? `<p style="margin: 4px 0; color: #6366f1; font-size: 14px;">📋 ${roleType}</p>` : ''}
+              ${locationInfo ? `<p style="margin: 4px 0; color: #059669; font-size: 14px;">📍 ${locationInfo}</p>` : ''}
+            </div>
+            <button onclick="closeRightPanel()" style="padding: 10px 20px; background: #374151; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap;">← Close</button>
+          </div>
+          
+          <div style="display: flex; gap: 24px; margin-bottom: 28px;">
+            <div style="text-align: center; padding: 20px 32px; background: white; border-radius: 16px; border: 3px solid ${scoreColor}; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <div style="font-size: 42px; font-weight: bold; color: ${scoreColor};">${score}%</div>
+              <div style="font-size: 13px; color: #6b7280; margin-top: 4px;">Match Score</div>
+            </div>
+            <div style="flex: 1; padding: 20px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <div style="font-weight: 600; font-size: 18px; color: #111827; margin-bottom: 8px;">${rec}</div>
+              <div style="color: #4b5563; font-size: 14px; line-height: 1.6;">${summary}</div>
+            </div>
+          </div>
+          
+          <div style="background: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+            <h2 style="font-size: 16px; color: #111827; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">📋 Requirements Analysis</h2>
+            ${reqsHtml || '<p style="color: #9ca3af;">No requirements data</p>'}
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #059669; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">✅ Pros</h3>
+              ${buildList(pros, '#065f46')}
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #dc2626; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">❌ Cons</h3>
+              ${buildList(cons, '#991b1b')}
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #2563eb; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">💪 Matching Experience</h3>
+              ${buildList(matching, '#1e40af')}
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #d97706; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">⚠️ Gaps</h3>
+              ${buildList(gaps, '#92400e')}
+            </div>
+          </div>
+          
+          ${redFlags.length > 0 ? `
+            <div style="background: #fef2f2; padding: 20px; border-radius: 16px; border-left: 4px solid #ef4444; margin-bottom: 20px;">
+              <h3 style="font-size: 15px; color: #dc2626; margin: 0 0 12px;">🚩 Red Flags</h3>
+              ${buildList(redFlags, '#991b1b')}
+            </div>
+          ` : ''}
+          
+          ${!(JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]')).includes(analysis.role_family || 'other') ? `
+            <div id="rightPanelProfileWarning" style="padding: 16px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; margin-bottom: 20px;">
+              <div style="font-weight: 600; color: #92400e; margin-bottom: 6px; font-size: 15px;">⚠️ Role outside your target profile</div>
+              <div style="font-size: 13px; color: #78350f; margin-bottom: 12px;">This is a "${analysis.analysis?.role_type || analysis.role_family}" role. Your profile targets: Product, TPM, Program Manager roles.</div>
+              <button onclick="expandProfileFromDetail('${analysis.role_family || 'other'}')" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500;">
+                🔧 Expand my profile to include this
+              </button>
+            </div>
+          ` : ''}
+        `;
+        
+        // Show right panel with animation - wider panel (800px)
+        rightPanel.style.width = '800px';
+        rightPanel.style.overflow = 'auto';
+      }
+      
+      // Expand profile from detail panel
+      function expandProfileFromDetail(roleFamily) {
+        const currentRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+        if (!currentRoles.includes(roleFamily)) {
+          currentRoles.push(roleFamily);
+          localStorage.setItem('targetRoles', JSON.stringify(currentRoles));
+          
+          const roleLabel = {
+            'product': 'Product Manager',
+            'tpm_program': 'TPM / Program Manager',
+            'project': 'Project Manager',
+            'engineering': 'Engineering',
+            'design': 'Design / UX', 
+            'data': 'Data / Analytics',
+            'operations': 'Operations',
+            'other': 'Other'
+          }[roleFamily] || roleFamily;
+          
+          alert(`✅ Added "${roleLabel}" to your target roles!`);
+          
+          // Hide warning
+          const warning = document.getElementById('rightPanelProfileWarning');
+          if (warning) warning.style.display = 'none';
+          
+          // Refresh Profile tab if loaded
+          if (typeof renderTargetRoles === 'function') renderTargetRoles();
+        }
+      }
+      window.expandProfileFromDetail = expandProfileFromDetail;
+      
+      // Close right panel helper
+      function closeRightPanel() {
+        const panel = document.getElementById('addJobRightPanel');
+        panel.style.width = '0';
+        panel.style.overflow = 'hidden';
+      }
+      
+      // Helper function to add job to pipeline
+      async function addJobToPipeline(url) {
+        const addJobStatus = document.getElementById("addJobStatus");
+        const addJobModal = document.getElementById("addJobModal");
+        
+        addJobStatus.innerHTML = "➕ Adding to pipeline...";
+        
+        try {
           const response = await fetch("/onboard", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -5618,23 +6375,19 @@
           if (data.ok) {
             addJobStatus.style.background = "rgba(100,200,100,0.2)";
             addJobStatus.innerHTML = `<strong>✅ Added:</strong> ${data.job?.title || 'Unknown'} at ${data.job?.company || 'Unknown'}`;
-            // Reload jobs
             setTimeout(() => {
               addJobModal.style.display = "none";
-              loadJobsFromCache(true);  // Force reload to show new job
+              loadJobsFromCache(true);
             }, 1500);
           } else {
             addJobStatus.style.background = "rgba(255,100,100,0.2)";
-            addJobStatus.textContent = `Error: ${data.message || 'Failed to add job'}`;
+            addJobStatus.innerHTML = `❌ Error: ${data.message || data.error || 'Failed to add'}`;
           }
         } catch (err) {
           addJobStatus.style.background = "rgba(255,100,100,0.2)";
-          addJobStatus.textContent = `Error: ${err.message}`;
-        } finally {
-          addJobSubmit.disabled = false;
-          addJobSubmit.textContent = "Add Job";
+          addJobStatus.innerHTML = `❌ Error: ${err.message}`;
         }
-      });
+      }
       
       // Enter key to submit
       addJobUrl.addEventListener("keypress", (e) => {

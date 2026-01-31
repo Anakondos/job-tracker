@@ -2365,22 +2365,28 @@ def detect_ats_from_url(url: str) -> dict:
     # Workday: company.wd1.myworkdayjobs.com/site/job/..._JOBID
     if "myworkdayjobs.com" in host:
         # https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi/job/..._R0082977
+        # https://proofpoint.wd5.myworkdayjobs.com/ProofpointCareers/job/...
         parts = host.split(".")
         company = parts[0] if parts else ""
-        
+
+        # Extract wd number (wd1, wd5, etc.) from host
+        wd_match = re.search(r"\.(wd\d+)\.", host)
+        wd_num = wd_match.group(1) if wd_match else "wd1"
+
         # Extract job ID from path (usually ends with _JOBID)
         job_id_match = re.search(r"_([A-Z0-9]+-?[0-9]*)$", path)
         job_id = job_id_match.group(1) if job_id_match else ""
-        
+
         # Extract site name from path
         site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", url)
         site = site_match.group(1) if site_match else company
-        
+
         return {
             "ats": "workday",
             "company": company.title(),
             "company_slug": company,
-            "board_url": f"https://{company}.wd1.myworkdayjobs.com/{site}",
+            "wd_num": wd_num,
+            "board_url": f"https://{company}.{wd_num}.myworkdayjobs.com/{site}",
             "job_id": job_id,
             "job_path": path,
             "job_url": url
@@ -2501,19 +2507,20 @@ def fetch_single_job(ats_info: dict) -> dict:
         company_slug = ats_info.get("company_slug")
         board_url = ats_info.get("board_url")
         job_url = ats_info.get("job_url", "")
-        
+        wd_num = ats_info.get("wd_num", "wd1")  # wd1, wd5, etc.
+
         # Extract site and job path from URL
-        # URL format: https://company.wd1.myworkdayjobs.com/site/job/location/title_JOBID
+        # URL format: https://company.wd5.myworkdayjobs.com/site/job/location/title_JOBID
         site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url or job_url)
         site = site_match.group(1) if site_match else company_slug
-        
+
         # Extract job path from original URL
         path_match = re.search(r"/job/(.+?)(?:\?|$)", job_url)
         job_path = path_match.group(1) if path_match else ""
-        
+
         if job_path:
             # Direct API call for specific job
-            api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+            api_url = f"https://{company_slug}.{wd_num}.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
             try:
                 resp = requests.get(api_url, headers={"Accept": "application/json"}, timeout=15)
                 if resp.status_code == 200:
@@ -2528,10 +2535,10 @@ def fetch_single_job(ats_info: dict) -> dict:
                     }
             except Exception as e:
                 print(f"[Workday] Direct API error: {e}")
-        
+
         # Fallback: search by job ID
         job_id = ats_info.get("job_id", "")
-        search_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
+        search_url = f"https://{company_slug}.{wd_num}.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
         try:
             resp = requests.post(
                 search_url,
@@ -2542,7 +2549,7 @@ def fetch_single_job(ats_info: dict) -> dict:
             if resp.status_code == 200:
                 data = resp.json()
                 postings = data.get("jobPostings", [])
-                
+
                 # Find exact match by job ID in externalPath
                 for posting in postings:
                     ext_path = posting.get("externalPath", "")
@@ -2550,10 +2557,10 @@ def fetch_single_job(ats_info: dict) -> dict:
                         return {
                             "title": posting.get("title", ""),
                             "location": posting.get("locationsText", ""),
-                            "url": f"https://{company_slug}.wd1.myworkdayjobs.com{ext_path}",
+                            "url": f"https://{company_slug}.{wd_num}.myworkdayjobs.com{ext_path}",
                             "ats_job_id": job_id,
                         }
-                
+
                 return {"error": f"Job {job_id} not found in search results"}
             else:
                 return {"error": f"Workday API returned {resp.status_code}"}
@@ -2782,15 +2789,29 @@ def onboard_job(payload: OnboardRequest):
 class AnalyzeJobUrlRequest(BaseModel):
     url: str
 
+# Cache for job analysis results (in-memory, clears on restart)
+_analysis_cache = {}
+
 @app.post("/analyze-job-url")
 async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     """
     Analyze a job URL before adding to pipeline.
     Returns match score and recommendation.
+    Results are cached to ensure consistent responses.
     """
     from api.prepare_application import analyze_job_with_ai
+    import hashlib
     
     url = payload.url.strip()
+    
+    # Normalize URL for cache key (remove tracking params)
+    cache_url = url.split('?')[0].lower().rstrip('/')
+    cache_key = hashlib.md5(cache_url.encode()).hexdigest()
+    
+    # Check cache first
+    if cache_key in _analysis_cache:
+        print(f"[AnalyzeJobUrl] Cache hit for {cache_url[:50]}...")
+        return _analysis_cache[cache_key]
     
     # 1. Parse URL to get job data
     job_data = None
@@ -2825,9 +2846,92 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     try:
         import requests
         from bs4 import BeautifulSoup
+        import re
+        
+        # Special handling for Greenhouse embedded (gh_jid in URL) - includes Epic Games, etc.
+        gh_jid_match = re.search(r'gh_jid=(\d+)', url)
+        if gh_jid_match:
+            job_id = gh_jid_match.group(1)
+            
+            # Map known companies to their Greenhouse board slug
+            company_slug = None
+            if "epicgames" in url.lower():
+                company_slug = "epicgames"
+                company = "Epic Games"
+            elif "stripe" in url.lower():
+                company_slug = "stripe"
+                company = "Stripe"
+            elif "figma" in url.lower():
+                company_slug = "figma"
+                company = "Figma"
+            elif "notion" in url.lower():
+                company_slug = "notion"
+                company = "Notion"
+            elif "discord" in url.lower():
+                company_slug = "discord"
+                company = "Discord"
+            elif "airbnb" in url.lower():
+                company_slug = "airbnb"
+                company = "Airbnb"
+            # Try extracting from URL path for unknown companies
+            else:
+                # Try to get company from the domain
+                import urllib.parse
+                parsed = urllib.parse.urlparse(url)
+                domain_parts = parsed.netloc.replace("www.", "").split(".")
+                if domain_parts:
+                    company_slug = domain_parts[0].lower()
+                    company = domain_parts[0].replace("-", " ").title()
+            
+            # Fetch from Greenhouse API
+            if job_id and company_slug:
+                api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs/{job_id}"
+                print(f"[AnalyzeJobUrl] Trying Greenhouse API: {api_url}")
+                resp = requests.get(api_url, timeout=15)
+                if resp.ok:
+                    data = resp.json()
+                    title = data.get("title", "")
+                    if not company:
+                        company = data.get("company", {}).get("name", company_slug.replace("-", " ").title())
+                    loc_data = data.get("location", {})
+                    location = loc_data.get("name", "") if isinstance(loc_data, dict) else str(loc_data)
+                    
+                    # Get full JD from content field
+                    content = data.get("content", "")
+                    if content:
+                        soup = BeautifulSoup(content, "html.parser")
+                        jd = soup.get_text(separator="\n", strip=True)
+                    
+                    ats = "greenhouse"
+                    print(f"[AnalyzeJobUrl] Greenhouse API success: {title} at {company}, JD={len(jd)} chars")
+                else:
+                    print(f"[AnalyzeJobUrl] Greenhouse API failed: {resp.status_code}")
+        
+        # Standard Greenhouse URL (boards.greenhouse.io)
+        if not jd and "boards.greenhouse.io" in url:
+            parts = url.split("boards.greenhouse.io/")[1].split("/")
+            company_slug = parts[0]
+            job_id = None
+            if len(parts) > 2:
+                job_id = parts[2].split("?")[0]
+            
+            if job_id:
+                api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs/{job_id}"
+                resp = requests.get(api_url, timeout=15)
+                if resp.ok:
+                    data = resp.json()
+                    title = data.get("title", "")
+                    company = data.get("company", {}).get("name", company_slug.replace("-", " ").title())
+                    loc_data = data.get("location", {})
+                    location = loc_data.get("name", "") if isinstance(loc_data, dict) else str(loc_data)
+                    content = data.get("content", "")
+                    if content:
+                        soup = BeautifulSoup(content, "html.parser")
+                        jd = soup.get_text(separator="\n", strip=True)
+                    ats = "greenhouse"
         
         # Special handling for Workday - use their API
-        if "myworkdayjobs" in url:
+        if not jd and "myworkdayjobs" in url:
             # Parse URL: https://company.wd1.myworkdayjobs.com/site/job/location/title_JOBID
             import re
             # Extract: company, site, and the job path (location/title_ID)
@@ -2859,45 +2963,120 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
         if not jd:
             headers = {"User-Agent": "Mozilla/5.0"}
             resp = requests.get(url, headers=headers, timeout=15)
-            soup = BeautifulSoup(resp.text, "html.parser")
+            html_text = resp.text
+            soup = BeautifulSoup(html_text, "html.parser")
             
-            # Extract title
-            title_el = soup.find("h1") or soup.find("title")
-            if title_el and not title:
-                title = title_el.get_text(strip=True)
+            # Extract from og:tags first (works for Deloitte, etc)
+            og_title = soup.find("meta", property="og:title")
+            og_desc = soup.find("meta", property="og:description")
+            
+            if og_title and not title:
+                title_content = og_title.get("content", "")
+                # Clean up "Check out this job at Company, Title" format
+                if "Check out this job at" in title_content:
+                    parts = title_content.split(",", 1)
+                    if len(parts) > 1:
+                        title = parts[1].strip()
+                        company = parts[0].replace("Check out this job at", "").strip()
+                else:
+                    title = title_content
+            
+            # Try to extract full JD from HTML - look for Position Summary section
+            position_summary = soup.find("h3", string=lambda t: t and "Position Summary" in t)
+            if position_summary:
+                # Get the next sibling with content
+                parent = position_summary.find_parent("article") or position_summary.find_parent("section")
+                if parent:
+                    jd = parent.get_text(separator="\n", strip=True)
+            
+            # Also try to find JSON-LD or embedded description
+            if not jd or len(jd) < 200:
+                import re
+                # Look for "description": "..." pattern in HTML
+                desc_match = re.search(r'"description"\s*:\s*"([^"]{200,})"', html_text)
+                if desc_match:
+                    jd_raw = desc_match.group(1)
+                    # Unescape unicode and HTML
+                    jd_raw = jd_raw.encode().decode('unicode_escape')
+                    jd_soup = BeautifulSoup(jd_raw, "html.parser")
+                    jd = jd_soup.get_text(separator="\n", strip=True)
+            
+            # Fallback to og:description
+            if (not jd or len(jd) < 100) and og_desc:
+                jd = og_desc.get("content", "")
+            
+            # Extract title from h1 or title tag
+            if not title:
+                title_el = soup.find("h1") or soup.find("title")
+                if title_el:
+                    title = title_el.get_text(strip=True)
             
             # Extract company from various sources
-            company_el = soup.find(class_=lambda x: x and "company" in x.lower()) if soup else None
-            if company_el and not company:
-                company = company_el.get_text(strip=True)
-            elif "greenhouse" in url and not company:
-                parts = url.split("/")
-                for i, p in enumerate(parts):
-                    if p == "boards.greenhouse.io" and i+1 < len(parts):
-                        company = parts[i+1].replace("-", " ").title()
-                        break
+            if not company:
+                company_el = soup.find(class_=lambda x: x and "company" in x.lower()) if soup else None
+                if company_el:
+                    company = company_el.get_text(strip=True)
+                elif "greenhouse" in url:
+                    parts = url.split("/")
+                    for i, p in enumerate(parts):
+                        if p == "boards.greenhouse.io" and i+1 < len(parts):
+                            company = parts[i+1].replace("-", " ").title()
+                            break
+                elif "deloitte" in url.lower():
+                    company = "Deloitte"
             
-            # Extract JD text
-            content_selectors = [
-                "#content", ".job-description", ".description", 
-                "[class*='description']", "[class*='content']", "main", "article"
-            ]
-            for sel in content_selectors:
-                el = soup.select_one(sel)
-                if el:
-                    jd = el.get_text(separator="\n", strip=True)
-                    if len(jd) > 200:
-                        break
+            # Extract JD text from page content as last resort
+            if not jd or len(jd) < 100:
+                content_selectors = [
+                    "#content", ".job-description", ".description", 
+                    "[class*='description']", "[class*='content']", "main", "article"
+                ]
+                for sel in content_selectors:
+                    el = soup.select_one(sel)
+                    if el:
+                        jd_text = el.get_text(separator="\n", strip=True)
+                        if len(jd_text) > 200:
+                            jd = jd_text
+                            break
             
-            if not jd:
+            if not jd or len(jd) < 100:
                 jd = soup.get_text(separator="\n", strip=True)[:5000]
             
     except Exception as e:
         print(f"[AnalyzeJobUrl] Fetch error: {e}")
         return {"ok": False, "error": f"Could not fetch job page: {str(e)}"}
     
+    # If standard parsing failed, try browser-based parsing
+    browser_result = None
     if not jd or len(jd) < 100:
-        return {"ok": False, "error": "Could not extract job description"}
+        print(f"[AnalyzeJobUrl] Standard parsing failed, trying browser-based parsing...")
+        try:
+            from utils.browser_parser import parse_job_page_sync
+            browser_result = parse_job_page_sync(url, take_screenshot=True)
+            
+            if browser_result.get("ok"):
+                jd = browser_result.get("jd", "")
+                title = browser_result.get("title", title) or title
+                company = browser_result.get("company", company) or company
+                location = browser_result.get("location", location) or location
+                
+                # Check if job is closed
+                if browser_result.get("is_closed"):
+                    return {
+                        "ok": False, 
+                        "error": f"⚠️ This job is no longer accepting applications ({browser_result.get('closed_reason', 'Position Closed')})",
+                        "is_closed": True,
+                        "title": title,
+                        "company": company,
+                        "screenshot_base64": browser_result.get("screenshot_base64")
+                    }
+                    
+                print(f"[AnalyzeJobUrl] Browser parsing success: {title}, JD={len(jd)} chars")
+        except Exception as e:
+            print(f"[AnalyzeJobUrl] Browser parsing failed: {e}")
+    
+    if not jd or len(jd) < 100:
+        return {"ok": False, "error": "Could not extract job description. The page may require login or the job may no longer be available."}
     
     # 3. Classify role
     from utils.job_utils import classify_role
@@ -2935,25 +3114,41 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
         recommendation = "low_match"
         rec_text = "❌ Low match. Consider skipping."
     
-    return {
+    # Use AI recommendation if available
+    ai_rec = analysis.get("recommendation", "")
+    if ai_rec:
+        rec_text = f"{ai_rec}: {analysis.get('recommendation_reason', '')}"
+    
+    result = {
         "ok": True,
         "url": url,
         "title": title,
         "company": company,
         "ats": ats,
         "role_family": role_family,
+        "match_score": score,  # Also at top level for easy access
         "analysis": {
             "match_score": score,
             "fit_level": fit,
+            "role_type": analysis.get("role_type", ""),
+            "location_info": analysis.get("location_info", ""),
             "summary": analysis.get("analysis_summary", ""),
             "key_requirements": analysis.get("key_requirements", []),
             "matching_experience": analysis.get("matching_experience", []),
             "gaps": analysis.get("gaps", []),
-            "red_flags": analysis.get("red_flags", [])
+            "red_flags": analysis.get("red_flags", []),
+            "pros": analysis.get("pros", []),
+            "cons": analysis.get("cons", [])
         },
         "recommendation": recommendation,
         "recommendation_text": rec_text
     }
+    
+    # Cache successful result
+    _analysis_cache[cache_key] = result
+    print(f"[AnalyzeJobUrl] Cached result for {cache_url[:50]}... (score: {score}%)")
+    
+    return result
 
 
 # ============= APPLY AUTOMATION ENDPOINTS =============
@@ -4835,3 +5030,9 @@ asyncio.run(main())
     ])
     
     return {"ok": True, "message": "Vision Form Filler started in Terminal"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8001)
+
