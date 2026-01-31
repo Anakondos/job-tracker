@@ -1182,8 +1182,8 @@
               <th style="width: 120px;" class="sortable" onclick="sortTable('company')">
                 Company <span class="sortIcon" id="sortIcon-company">⬍</span>
               </th>
-              <th style="width: 50px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
-                Match <span class="sortIcon" id="sortIcon-match">⬍</span>
+              <th style="width: 38px; padding: 4px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
+                <span class="sortIcon" id="sortIcon-match">⬍</span>
               </th>
               <th class="sortable" onclick="sortTable('title')">
                 Title <span class="sortIcon" id="sortIcon-title">⬍</span>
@@ -1212,12 +1212,12 @@
                 <input type="checkbox" id="selectAllJobs" title="Select all">
               </th>
               <th><input type="text" id="pipelineFilterCompany" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th>
-                <select id="pipelineFilterMatch" class="column-filter" style="width: 100%;">
+              <th style="padding: 2px;">
+                <select id="pipelineFilterMatch" class="column-filter" style="width: 36px; padding: 2px;">
                   <option value="">-</option>
-                  <option value="high">70+</option>
-                  <option value="med">50-69</option>
-                  <option value="low">&lt;50</option>
+                  <option value="high">+</option>
+                  <option value="med">~</option>
+                  <option value="low">-</option>
                 </select>
               </th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
