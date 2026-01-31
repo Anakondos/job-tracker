@@ -1182,7 +1182,7 @@
               <th style="width: 120px;" class="sortable" onclick="sortTable('company')">
                 Company <span class="sortIcon" id="sortIcon-company">⬍</span>
               </th>
-              <th style="width: 28px; padding: 2px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
+              <th style="width: 24px; max-width: 24px; padding: 0 2px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
                 <span class="sortIcon" id="sortIcon-match">⬍</span>
               </th>
               <th class="sortable" onclick="sortTable('title')">
@@ -1191,10 +1191,10 @@
               <th style="width: 130px;" class="sortable" onclick="sortTable('location')">
                 Location <span class="sortIcon" id="sortIcon-location">⬍</span>
               </th>
-              <th style="width: 115px;" class="sortable" onclick="sortTable('updated')">
+              <th style="width: 70px;" class="sortable" onclick="sortTable('updated')">
                 Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
               </th>
-              <th style="width: 115px;" class="sortable" onclick="sortTable('added')">
+              <th style="width: 70px;" class="sortable" onclick="sortTable('added')">
                 Added <span class="sortIcon" id="sortIcon-added">⬍</span>
               </th>
               <th style="width: 35px;" class="sortable" onclick="sortTable('ats')" title="ATS">
@@ -1212,14 +1212,7 @@
                 <input type="checkbox" id="selectAllJobs" title="Select all">
               </th>
               <th><input type="text" id="pipelineFilterCompany" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th style="padding: 1px;">
-                <select id="pipelineFilterMatch" class="column-filter" style="width: 26px; padding: 1px; font-size: 10px;">
-                  <option value="">-</option>
-                  <option value="high">+</option>
-                  <option value="med">~</option>
-                  <option value="low">−</option>
-                </select>
-              </th>
+              <th style="padding: 0; width: 24px; max-width: 24px;"></th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th></th>
@@ -1736,7 +1729,6 @@
       function formatDateShort(isoDate) {
         if (!isoDate) return "—";
         try {
-          // Handle numeric timestamps (milliseconds)
           let date;
           if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
             const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
@@ -1745,13 +1737,13 @@
             date = new Date(isoDate);
           }
           if (isNaN(date.getTime())) return "—";
-          // Format: "01.30.26  22:54" (date + double space + dimmed time)
           const month = (date.getMonth() + 1).toString().padStart(2, '0');
           const day = date.getDate().toString().padStart(2, '0');
           const year = date.getFullYear().toString().slice(-2);
           const hours = date.getHours().toString().padStart(2, '0');
           const mins = date.getMinutes().toString().padStart(2, '0');
-          return `${month}.${day}.${year}<span style="opacity: 0.5; margin-left: 6px;">${hours}:${mins}</span>`;
+          // Date only, time in tooltip
+          return `<span title="${month}.${day}.${year} ${hours}:${mins}">${month}.${day}.${year}</span>`;
         } catch (e) {
           return "—";
         }
@@ -1760,7 +1752,6 @@
       function formatDateWithAge(isoDate) {
         if (!isoDate) return "—";
         try {
-          // Handle numeric timestamps (milliseconds)
           let date;
           if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
             const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
@@ -1769,13 +1760,13 @@
             date = new Date(isoDate);
           }
           if (isNaN(date.getTime())) return "—";
-          // Format: "01.30.26  22:54" (date + double space + dimmed time)
           const month = (date.getMonth() + 1).toString().padStart(2, '0');
           const day = date.getDate().toString().padStart(2, '0');
           const year = date.getFullYear().toString().slice(-2);
           const hours = date.getHours().toString().padStart(2, '0');
           const mins = date.getMinutes().toString().padStart(2, '0');
-          return `${month}.${day}.${year}<span style="opacity: 0.5; margin-left: 6px;">${hours}:${mins}</span>`;
+          // Date only, time in tooltip
+          return `<span title="${month}.${day}.${year} ${hours}:${mins}">${month}.${day}.${year}</span>`;
         } catch (e) {
           return isoDate;
         }
@@ -2426,12 +2417,12 @@
           <input type="checkbox" class="jobCheckbox" data-jobkey="${escapeAttr(jobKey)}" data-url="${escapeAttr(url)}" data-company="${escapeAttr(job.company || '')}" data-title="${escapeAttr(job.title || '')}" data-ats="${escapeAttr(job.ats || '')}" data-status="${escapeAttr(st)}">
         </td>
         <td>${escapeHtml(job.company || "")}</td>
-        <td style="text-align: center;">
+        <td style="text-align: center; width: 24px; max-width: 24px; padding: 0;">
           ${(() => {
             const score = job.match_score;
-            if (!score && score !== 0) return '<span style="color: var(--muted); font-size: 10px;">—</span>';
+            if (!score && score !== 0) return '<span style="color: var(--muted); font-size: 9px;">—</span>';
             const color = score >= 70 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
-            return `<span class="matchScoreBtn" data-jobid="${escapeAttr(job.id || '')}" style="color: ${color}; font-weight: 600; cursor: pointer; font-size: 11px;" title="${score}% match - click for details">${score}</span>`;
+            return `<span class="matchScoreBtn" data-jobid="${escapeAttr(job.id || '')}" style="color: ${color}; font-weight: 600; cursor: pointer; font-size: 10px;" title="${score}% match - click for details">${score}</span>`;
           })()}
         </td>
         <td><a href="${escapeAttr(
@@ -2447,15 +2438,22 @@
             if (job.source === "onboard") return '📌';
             return atsShort[job.ats] || job.ats || '';
           })()}</td>
-        <td style="white-space: nowrap;">
+        <td style="white-space: nowrap; padding: 2px 4px;">
           ${(() => {
-            const icons = {
-              "New": "⚪", "Selected": "📋", "Ready": "✅", "Applied": "📤",
-              "Interview": "🎯", "Offer": "🎉", "Rejected": "❌", "Withdrawn": "🔙", "Closed": "🔒"
+            const statusConfig = {
+              "New": { color: "#6b7280", symbol: "●" },
+              "Selected": { color: "#3b82f6", symbol: "●" },
+              "Ready": { color: "#22c55e", symbol: "●" },
+              "Applied": { color: "#a855f7", symbol: "●" },
+              "Interview": { color: "#f59e0b", symbol: "●" },
+              "Offer": { color: "#10b981", symbol: "★" },
+              "Rejected": { color: "#ef4444", symbol: "●" },
+              "Withdrawn": { color: "#6b7280", symbol: "○" },
+              "Closed": { color: "#374151", symbol: "●" }
             };
-            const icon = icons[st] || "⚪";
-            return `<span title="${st}">${icon}</span>`;
-          })()}<select class="gearSelect" data-jobkey="${escapeAttr(jobKey)}" title="Change status" style="width: 18px; padding: 0; margin-left: 2px; background: transparent; border: none; cursor: pointer; font-size: 11px; color: var(--muted);">
+            const cfg = statusConfig[st] || { color: "#6b7280", symbol: "●" };
+            return `<span title="${st}" style="color: ${cfg.color}; font-size: 14px;">${cfg.symbol}</span>`;
+          })()}<select class="gearSelect" data-jobkey="${escapeAttr(jobKey)}" title="Change status" style="width: 16px; padding: 0; margin-left: 1px; background: transparent; border: none; cursor: pointer; font-size: 10px; color: var(--muted);">
             <option value="">⚙</option>
             ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
               .map(x => `<option value="${x}">${x}</option>`)
