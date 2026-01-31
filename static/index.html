@@ -1182,8 +1182,8 @@
               <th style="width: 120px;" class="sortable" onclick="sortTable('company')">
                 Company <span class="sortIcon" id="sortIcon-company">⬍</span>
               </th>
-              <th style="width: 36px; padding: 4px 2px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
-                <span class="sortIcon" id="sortIcon-match">⬍</span>
+              <th style="width: 50px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
+                Match <span class="sortIcon" id="sortIcon-match">⬍</span>
               </th>
               <th class="sortable" onclick="sortTable('title')">
                 Title <span class="sortIcon" id="sortIcon-title">⬍</span>
@@ -1212,7 +1212,14 @@
                 <input type="checkbox" id="selectAllJobs" title="Select all">
               </th>
               <th><input type="text" id="pipelineFilterCompany" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th></th>
+              <th>
+                <select id="pipelineFilterMatch" class="column-filter" style="width: 100%;">
+                  <option value="">-</option>
+                  <option value="high">70+</option>
+                  <option value="med">50-69</option>
+                  <option value="low">&lt;50</option>
+                </select>
+              </th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterUpdated" placeholder="..." class="column-filter" style="width: 100%;"></th>
@@ -2247,6 +2254,15 @@
           filtered = filtered.filter(j => j.folder_path);
         } else if (pipelineFilters.folder === "no") {
           filtered = filtered.filter(j => !j.folder_path);
+        }
+
+        // Filter by match score
+        if (pipelineFilters.match === "high") {
+          filtered = filtered.filter(j => (j.match_score || 0) >= 70);
+        } else if (pipelineFilters.match === "med") {
+          filtered = filtered.filter(j => (j.match_score || 0) >= 50 && (j.match_score || 0) < 70);
+        } else if (pipelineFilters.match === "low") {
+          filtered = filtered.filter(j => j.match_score && j.match_score < 50);
         }
 
         return filtered;
@@ -3473,7 +3489,8 @@
         jobId: "",
         updated: "",
         added: "",
-        folder: "all"
+        folder: "all",
+        match: ""
       };
       
       // Review column filters state
@@ -5348,7 +5365,12 @@
         pipelineFilters.folder = e.target.value;
         applyPipelineColumnFilters();
       });
-      
+
+      document.getElementById("pipelineFilterMatch")?.addEventListener("change", (e) => {
+        pipelineFilters.match = e.target.value;
+        applyPipelineColumnFilters();
+      });
+
       // Review column filter event listeners
       function applyReviewColumnFilters() {
         // Triggers server-side filtering via loadReviewJobs
