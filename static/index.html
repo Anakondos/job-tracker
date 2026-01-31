@@ -1065,38 +1065,30 @@
         </div>
       </div>
       
-      <!-- Quick Filters Row -->
-      <div id="quickFilters" style="display: flex; gap: 8px; align-items: center; margin: 12px 0; padding: 12px; background: var(--panel); border-radius: 8px; flex-wrap: wrap;">
+      <!-- Compact Filters Row -->
+      <div id="quickFilters" style="display: flex; gap: 8px; align-items: center; margin: 8px 0; padding: 8px 12px; background: var(--panel); border-radius: 8px;">
         <!-- Quick Filter Buttons -->
-        <div style="display: flex; gap: 6px; margin-right: 16px;">
-          <button class="quick-filter-btn" data-filter="new-week" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">🔥 New this week</button>
-          <button class="quick-filter-btn" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
-          <button class="quick-filter-btn" data-filter="applied" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📤 Applied</button>
-          <button class="quick-filter-btn active" data-filter="all" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">All</button>
+        <div style="display: flex; gap: 4px;">
+          <button class="quick-filter-btn" data-filter="new-week" style="padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 11px; white-space: nowrap;">🔥 New</button>
+          <button class="quick-filter-btn" data-filter="to-apply" style="padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 11px; white-space: nowrap;">📋 To Apply</button>
+          <button class="quick-filter-btn active" data-filter="all" style="padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 11px; white-space: nowrap;">All</button>
         </div>
-        
-        <!-- Date Range -->
-        <select id="dateRangeFilter" class="column-filter" style="width: 120px; font-size: 12px; padding: 6px;">
-          <option value="7">Last 7 days</option>
-          <option value="14">Last 2 weeks</option>
-          <option value="30">Last month</option>
-          <option value="90">Last 3 months</option>
-          <option value="all" selected>All time</option>
-        </select>
-        
+
+        <div style="width: 1px; height: 20px; background: var(--border);"></div>
+
         <!-- Location Category -->
-        <select id="locationCategoryFilter" class="column-filter" style="width: 90px; font-size: 12px; padding: 6px;">
+        <select id="locationCategoryFilter" class="column-filter" style="width: 80px; font-size: 11px; padding: 5px;">
           <option value="all" selected>All Loc</option>
           <option value="us">US Only</option>
           <option value="remote">Remote</option>
           <option value="nonus">Non-US</option>
         </select>
-        
+
         <!-- States Multi-select -->
-        <div class="ms" id="stateMultiSelect" style="min-width: 100px;">
-          <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 6px 8px;">
-            <span id="stateBtnText" style="font-size: 12px;">States...</span>
-            <span class="count" id="stateBtnCount" style="font-size: 11px;">0</span>
+        <div class="ms" id="stateMultiSelect" style="min-width: 90px;">
+          <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 5px 8px;">
+            <span id="stateBtnText" style="font-size: 11px;">States...</span>
+            <span class="count" id="stateBtnCount" style="font-size: 10px;">0</span>
           </button>
           <div class="msMenu" id="stateMenu">
             <input class="msSearch" id="stateSearch" placeholder="Search..." />
@@ -1107,28 +1099,25 @@
             </div>
           </div>
         </div>
-        
+
+        <div style="width: 1px; height: 20px; background: var(--border);"></div>
+
         <!-- Search -->
-        <div style="flex: 1; min-width: 200px;">
-          <input type="text" id="globalSearchFilter" placeholder="🔍 Search company, title..." style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 12px;">
+        <div style="flex: 1; min-width: 180px; max-width: 280px;">
+          <input type="text" id="globalSearchFilter" placeholder="🔍 Search..." style="width: 100%; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 11px;">
         </div>
-        
-        <!-- ATS Filter -->
-        <select id="pipelineFilterAtsQuick" class="column-filter" style="width: 100px; font-size: 12px; padding: 6px;">
-          <option value="">All ATS</option>
-          <option value="greenhouse">Greenhouse</option>
-          <option value="lever">Lever</option>
-          <option value="smartrecruiters">SmartRecr.</option>
-          <option value="workday">Workday</option>
-          <option value="ashby">Ashby</option>
-          <option value="manual">📌 Manual</option>
-        </select>
-        
+
         <!-- Clear All -->
-        <button id="clearFiltersBtn" class="ghost" style="padding: 6px 10px; font-size: 11px; color: var(--muted);" title="Clear all filters">✕ Clear</button>
-        
-        <!-- Add Job Button -->
-        <button id="addJobBtn" class="ghost" style="padding: 6px 12px; background: var(--accent); color: white; margin-left: auto;">+ Add Job</button>
+        <button id="clearFiltersBtn" class="ghost" style="padding: 5px 8px; font-size: 10px; color: var(--muted);" title="Clear all filters">✕ Clear</button>
+
+        <!-- Hidden elements for compatibility -->
+        <select id="dateRangeFilter" style="display: none;">
+          <option value="all" selected>All time</option>
+        </select>
+        <select id="pipelineFilterAtsQuick" style="display: none;">
+          <option value="">All ATS</option>
+        </select>
+        <button id="addJobBtn" style="display: none;"></button>
       </div>
       
       <!-- Bulk Actions Toolbar -->
