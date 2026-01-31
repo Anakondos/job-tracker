@@ -2287,17 +2287,88 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _detect_ats(self, url: str) -> str:
         """Detect ATS type from URL."""
         url_lower = url.lower()
-        if "greenhouse" in url_lower:
+        if "greenhouse" in url_lower or "grnhse" in url_lower:
             return "Greenhouse"
-        if "lever" in url_lower:
+        if "lever" in url_lower or "jobs.lever.co" in url_lower:
             return "Lever"
-        if "workday" in url_lower:
+        if "workday" in url_lower or "myworkdayjobs" in url_lower:
             return "Workday"
         if "ashby" in url_lower:
             return "Ashby"
         if "smartrecruiters" in url_lower:
             return "SmartRecruiters"
+        if "icims" in url_lower:
+            return "iCIMS"
+        if "jobvite" in url_lower:
+            return "Jobvite"
+        if "taleo" in url_lower:
+            return "Taleo"
+        if "breezy" in url_lower:
+            return "BreezyHR"
         return "Unknown"
+
+    # ATS-specific selectors for common fields
+    ATS_SELECTORS = {
+        "Greenhouse": {
+            "first_name": "#first_name",
+            "last_name": "#last_name",
+            "email": "#email",
+            "phone": "#phone",
+            "location": "#candidate-location, #location",
+            "resume": "input[type='file'][name*='resume'], input[type='file']:first-of-type",
+            "cover_letter": "input[type='file'][name*='cover'], input[type='file']:nth-of-type(2)",
+            "linkedin": "#job_application_answers_attributes_0_text_value, input[name*='linkedin']",
+            "country": "#country",
+            "work_company": "#company-name-{N}",
+            "work_title": "#title-{N}",
+            "school": "#school--{N}",
+            "degree": "#degree--{N}",
+            "apply_button": "button:has-text('Apply'), a.postings-btn",
+        },
+        "Lever": {
+            "first_name": "input[name='name']",
+            "email": "input[name='email']",
+            "phone": "input[name='phone']",
+            "location": "input[name='location']",
+            "resume": "input[type='file']",
+            "linkedin": "input[name='urls[LinkedIn]']",
+            "apply_button": "button[type='submit'], button:has-text('Submit')",
+        },
+        "Workday": {
+            "first_name": "input[data-automation-id='legalNameSection_firstName']",
+            "last_name": "input[data-automation-id='legalNameSection_lastName']",
+            "email": "input[data-automation-id='email']",
+            "phone": "input[data-automation-id='phone']",
+            "resume": "input[data-automation-id='file-upload-input-ref']",
+            "country": "button[data-automation-id='countryDropdown']",
+            "apply_button": "button[data-automation-id='jobPostingApplyButton']",
+        },
+        "Ashby": {
+            "first_name": "input[name='_systemfield_first_name']",
+            "last_name": "input[name='_systemfield_last_name']",
+            "email": "input[name='_systemfield_email']",
+            "phone": "input[name='_systemfield_phone']",
+            "resume": "input[type='file']",
+            "linkedin": "input[name='_systemfield_linkedin']",
+            "apply_button": "button[type='submit']",
+        },
+        "iCIMS": {
+            "first_name": "input[name='firstName']",
+            "last_name": "input[name='lastName']",
+            "email": "input[name='email']",
+            "phone": "input[name='phoneNumber']",
+            "resume": "input[type='file']",
+            "apply_button": "a.iCIMS_ApplyButton, button:has-text('Apply')",
+        },
+    }
+
+    def get_ats_selector(self, ats_type: str, field_name: str, index: int = 0) -> str:
+        """Get ATS-specific selector for a field."""
+        selectors = self.ATS_SELECTORS.get(ats_type, {})
+        selector = selectors.get(field_name, "")
+        if "{N}" in selector:
+            selector = selector.replace("{N}", str(index))
+        return selector
 
 
 # ═══════════════════════════════════════════════════════════════════════════
