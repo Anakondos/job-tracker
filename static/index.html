@@ -1182,6 +1182,9 @@
               <th style="width: 120px;" class="sortable" onclick="sortTable('company')">
                 Company <span class="sortIcon" id="sortIcon-company">⬍</span>
               </th>
+              <th style="width: 50px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
+                Match <span class="sortIcon" id="sortIcon-match">⬍</span>
+              </th>
               <th class="sortable" onclick="sortTable('title')">
                 Title <span class="sortIcon" id="sortIcon-title">⬍</span>
               </th>
@@ -1209,6 +1212,14 @@
                 <input type="checkbox" id="selectAllJobs" title="Select all">
               </th>
               <th><input type="text" id="pipelineFilterCompany" placeholder="..." class="column-filter" style="width: 100%;"></th>
+              <th>
+                <select id="pipelineFilterMatch" class="column-filter" style="width: 100%;">
+                  <option value="">-</option>
+                  <option value="high">70+</option>
+                  <option value="med">50-69</option>
+                  <option value="low">&lt;50</option>
+                </select>
+              </th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
               <th><input type="text" id="pipelineFilterUpdated" placeholder="..." class="column-filter" style="width: 100%;"></th>
@@ -1417,6 +1428,18 @@
         </div>
       </div>
     </div>
+
+    <!-- Match Analysis Modal -->
+    <div id="matchAnalysisModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 300; align-items: center; justify-content: center;">
+      <div style="background: var(--panel); border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 id="matchAnalysisTitle" style="margin: 0; font-size: 18px;">Match Analysis</h3>
+          <button onclick="document.getElementById('matchAnalysisModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--muted);">&times;</button>
+        </div>
+        <div id="matchAnalysisContent" style="font-size: 14px; line-height: 1.6;"></div>
+      </div>
+    </div>
+
     <!-- Add Job Modal - Redesigned -->
     <div id="addJobModal" class="modal" style="width: auto; max-width: none; padding: 0; background: transparent; border: none;">
       <div id="addJobContainer" style="display: flex; margin: 0 auto; height: calc(100vh - 80px); background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.3); transition: width 0.3s ease;">
@@ -2378,6 +2401,7 @@
           row.dataset.jobId = job.id || "";
           row.dataset.atsJobId = job.ats_job_id || "";
           row.dataset.url = url;
+          row.dataset.match = job.match_score || 0;
 
           // Determine role category for showing Add to Pipeline button
           const roleCategory = job.role_category || (job.role_excluded ? 'excluded' : (job.role_id ? 'primary' : 'unknown'));
@@ -2393,6 +2417,14 @@
           <input type="checkbox" class="jobCheckbox" data-jobkey="${escapeAttr(jobKey)}" data-url="${escapeAttr(url)}" data-company="${escapeAttr(job.company || '')}" data-title="${escapeAttr(job.title || '')}" data-ats="${escapeAttr(job.ats || '')}" data-status="${escapeAttr(st)}">
         </td>
         <td>${escapeHtml(job.company || "")}</td>
+        <td style="text-align: center;">
+          ${(() => {
+            const score = job.match_score;
+            if (!score && score !== 0) return '<span style="color: var(--muted); font-size: 11px;">—</span>';
+            const color = score >= 70 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
+            return `<span class="matchScoreBtn" data-jobid="${escapeAttr(job.id || '')}" style="color: ${color}; font-weight: 600; cursor: pointer; font-size: 12px;" title="Click to view analysis details">${score}%</span>`;
+          })()}
+        </td>
         <td><a href="${escapeAttr(
           url
         )}" target="_blank" rel="noopener">${escapeHtml(
@@ -2451,6 +2483,14 @@
         </td>
       `;
           tbody.appendChild(row);
+
+          // Match score click handler - show analysis details
+          const matchBtn = row.querySelector(".matchScoreBtn");
+          if (matchBtn) {
+            matchBtn.addEventListener("click", () => {
+              showMatchAnalysisModal(job);
+            });
+          }
 
           // Gear dropdown handler for manual status change
           const gearSel = row.querySelector("select.gearSelect");
@@ -4338,15 +4378,96 @@
       function showAnalysisModal(company, position, analysisData, jobData) {
         // Redirect to new prepare modal
         showPrepareModal(
-          company, 
-          position, 
-          jobData.job_url || '', 
-          analysisData.jd || '', 
+          company,
+          position,
+          jobData.job_url || '',
+          analysisData.jd || '',
           jobData.role_family || 'product',
           jobData
         );
       }
-      
+
+      // Show match analysis details in modal
+      function showMatchAnalysisModal(job) {
+        const modal = document.getElementById('matchAnalysisModal');
+        const title = document.getElementById('matchAnalysisTitle');
+        const content = document.getElementById('matchAnalysisContent');
+
+        const score = job.match_score || 0;
+        const analysis = job.analysis || {};
+        const scoreColor = score >= 70 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
+
+        title.innerHTML = `<span style="color: ${scoreColor}; font-weight: 700;">${score}%</span> Match — ${escapeHtml(job.company || '')}`;
+
+        let html = `
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(job.title || 'Unknown Position')}</div>
+            <div style="color: var(--muted); font-size: 13px;">${escapeHtml(job.location || '')}</div>
+          </div>
+        `;
+
+        if (analysis.fit_level) {
+          const fitColors = { 'strong': '#22c55e', 'good': '#3b82f6', 'moderate': '#eab308', 'weak': '#ef4444' };
+          const fitColor = fitColors[analysis.fit_level] || 'var(--muted)';
+          html += `<div style="margin-bottom: 12px;"><strong>Fit Level:</strong> <span style="color: ${fitColor}; text-transform: capitalize;">${analysis.fit_level}</span></div>`;
+        }
+
+        if (analysis.role_type) {
+          html += `<div style="margin-bottom: 12px;"><strong>Role Type:</strong> ${escapeHtml(analysis.role_type)}</div>`;
+        }
+
+        if (analysis.summary) {
+          html += `<div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHtml(analysis.summary)}</div>`;
+        }
+
+        if (analysis.key_requirements && analysis.key_requirements.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong>Key Requirements:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.key_requirements.slice(0, 5).forEach(req => {
+            html += `<li style="margin-bottom: 4px;">${escapeHtml(req)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.matching_experience && analysis.matching_experience.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #22c55e;">Your Matching Experience:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.matching_experience.slice(0, 5).forEach(exp => {
+            html += `<li style="margin-bottom: 4px; color: #86efac;">${escapeHtml(exp)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.gaps && analysis.gaps.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #ef4444;">Gaps:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.gaps.slice(0, 5).forEach(gap => {
+            html += `<li style="margin-bottom: 4px; color: #fca5a5;">${escapeHtml(gap)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.pros && analysis.pros.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #22c55e;">Pros:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.pros.forEach(pro => {
+            html += `<li style="margin-bottom: 4px;">${escapeHtml(pro)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.cons && analysis.cons.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #ef4444;">Cons:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.cons.forEach(con => {
+            html += `<li style="margin-bottom: 4px;">${escapeHtml(con)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (!analysis.summary && !analysis.fit_level && !analysis.key_requirements) {
+          html += `<div style="color: var(--muted); text-align: center; padding: 20px;">No detailed analysis available for this job.</div>`;
+        }
+
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+      }
+
       // === CV Management Functions (Legacy - kept for compatibility) ===
       let availableCvs = [];
       let selectedCvPath = null;
@@ -6371,14 +6492,22 @@
       async function addJobToPipeline(url) {
         const addJobStatus = document.getElementById("addJobStatus");
         const addJobModal = document.getElementById("addJobModal");
-        
+
         addJobStatus.innerHTML = "➕ Adding to pipeline...";
-        
+
+        // Get analysis data if available (from pre-analysis)
+        const analysis = window.currentAnalysis;
+        const requestBody = { url: url };
+        if (analysis) {
+          requestBody.match_score = analysis.match_score || analysis.analysis?.match_score;
+          requestBody.analysis = analysis.analysis || analysis;
+        }
+
         try {
           const response = await fetch("/onboard", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: url })
+            body: JSON.stringify(requestBody)
           });
           
           const data = await response.json();

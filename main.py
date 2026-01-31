@@ -2624,6 +2624,8 @@ def fetch_single_job(ats_info: dict) -> dict:
 
 class OnboardRequest(BaseModel):
     url: str
+    match_score: Optional[int] = None
+    analysis: Optional[dict] = None
 
 
 @app.post("/onboard")
@@ -2749,7 +2751,13 @@ def onboard_job(payload: OnboardRequest):
     }
     
     job["source"] = "onboard"
-    
+
+    # Add match_score and analysis if provided (from pre-analysis)
+    if payload.match_score is not None:
+        job["match_score"] = payload.match_score
+    if payload.analysis is not None:
+        job["analysis"] = payload.analysis
+
     # 5. Add to pipeline - always add manual jobs (user explicitly added them)
     added_to_pipeline = False
     existing = get_job_by_id(job["id"])
