@@ -4,7 +4,7 @@ import requests
 from urllib.parse import urljoin
 
 
-def fetch_smartrecruiters(company: str, api_url: str, base_url: str | None = None):
+def fetch_smartrecruiters(company: str, api_url: str, base_url: str = None):
     """
     company  – имя компании для отображения
     api_url  – SmartRecruiters endpoint:

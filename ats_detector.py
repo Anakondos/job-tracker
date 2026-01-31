@@ -46,7 +46,7 @@ CAREERS_URL_PATTERNS = [
 ]
 
 
-def detect_ats(careers_url: str) -> dict | None:
+def detect_ats(careers_url: str):
     """
     Загружает careers страницу и ищет ссылки на ATS.
     Возвращает {"ats": "greenhouse", "board_id": "openai", "board_url": "..."} или None
@@ -187,7 +187,7 @@ def guess_careers_urls(company_name: str, website: str = None) -> list:
     return urls
 
 
-def try_repair_company(company: dict) -> dict | None:
+def try_repair_company(company: dict):
     """
     Пытается найти рабочий ATS URL для компании.
     

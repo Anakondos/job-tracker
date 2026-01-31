@@ -5915,7 +5915,11 @@
             case 'exists':
               statusHtml = '<span style="color: #9ca3af;">Already in pipeline</span>';
               bgColor = '#374151';
-              actions = `<button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              const existingJobId = item.existingJob ? (item.existingJob.ats_job_id || item.existingJob.id || '') : '';
+              actions = `
+                <button onclick="showJobInTable('${existingJobId}')" style="padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">Show</button>
+                <button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>
+              `;
               break;
             case 'closed':
               statusHtml = '<span style="color: #f87171;">❌ Closed</span>';
@@ -5967,10 +5971,21 @@
       async function addQueueItemToPipeline(queueId) {
         const item = analysisQueue.find(i => i.id === queueId);
         if (!item) return;
-        
+
+        // Set analysis data for addJobToPipeline to use
+        if (item.analysis) {
+          window.currentAnalysis = {
+            match_score: item.analysis.match_score,
+            analysis: item.analysis
+          };
+        }
+
         // Add to pipeline
         await addJobToPipeline(item.url);
-        
+
+        // Clear analysis data
+        window.currentAnalysis = null;
+
         // Remove from queue
         removeFromQueue(queueId);
       }
@@ -5982,7 +5997,19 @@
           renderQueue();
         }
       }
-      
+
+      function showJobInTable(jobId) {
+        if (!jobId) return;
+        // Set filter to job ID
+        const filterInput = document.getElementById('pipelineFilterJobId');
+        if (filterInput) {
+          filterInput.value = jobId;
+          filterInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        // Scroll to table
+        document.getElementById('jobsTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
       function clearQueue() {
         analysisQueue.length = 0;
         renderQueue();

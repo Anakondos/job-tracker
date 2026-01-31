@@ -2182,13 +2182,37 @@ def parse_jd_endpoint(payload: ParseJDRequest):
             job = get_job_by_id(payload.job_id)
             if job:
                 # Use storage function to save jd_summary
-                from storage.job_storage import update_jd_summary
+                from storage.job_storage import update_jd_summary, _load_jobs, _save_jobs
                 update_jd_summary(payload.job_id, result["summary"])
-            
+
+                # Run AI match analysis if JD available
+                match_score = None
+                analysis = None
+                jd_text = result.get("jd_text", "")
+                if jd_text and len(jd_text) > 100:
+                    try:
+                        from api.prepare_application import analyze_job_with_ai
+                        role_family = job.get("role_family", "tpm_program")
+                        analysis = analyze_job_with_ai(payload.title, payload.company, jd_text, role_family)
+                        if analysis and "match_score" in analysis:
+                            match_score = analysis["match_score"]
+                            # Save match_score to job
+                            jobs = _load_jobs()
+                            for j in jobs:
+                                if j.get("id") == payload.job_id:
+                                    j["match_score"] = match_score
+                                    j["analysis"] = analysis
+                                    break
+                            _save_jobs(jobs)
+                    except Exception as e:
+                        print(f"AI analysis error: {e}")
+
             return {
                 "ok": True,
                 "summary": result["summary"],
-                "jd_preview": result.get("jd_text", "")[:500] + "..."
+                "jd_preview": result.get("jd_text", "")[:500] + "...",
+                "match_score": match_score,
+                "analysis": analysis
             }
         else:
             return {"ok": False, "error": result.get("error", "Unknown error")}
@@ -3155,8 +3179,87 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     # Cache successful result
     _analysis_cache[cache_key] = result
     print(f"[AnalyzeJobUrl] Cached result for {cache_url[:50]}... (score: {score}%)")
-    
+
     return result
+
+
+@app.post("/analyze-missing-scores")
+async def analyze_missing_scores():
+    """
+    Find jobs without match_score and analyze them.
+    Returns list of job IDs that will be analyzed.
+    """
+    jobs = get_all_jobs()
+    missing = [j for j in jobs if j.get("match_score") is None and j.get("status") in ["New", "Selected"]]
+
+    return {
+        "total_jobs": len(jobs),
+        "missing_scores": len(missing),
+        "jobs": [{"id": j["id"], "title": j.get("title"), "company": j.get("company"), "url": j.get("job_url")} for j in missing[:50]]
+    }
+
+
+class AnalyzeJobByIdRequest(BaseModel):
+    job_id: str
+
+
+@app.post("/analyze-job-by-id")
+async def analyze_job_by_id(payload: AnalyzeJobByIdRequest):
+    """
+    Analyze a specific job by ID and update its match_score.
+    """
+    from api.prepare_application import analyze_job_with_ai
+
+    job = get_job_by_id(payload.job_id)
+    if not job:
+        return {"ok": False, "error": "Job not found"}
+
+    url = job.get("job_url")
+    if not url:
+        return {"ok": False, "error": "Job has no URL"}
+
+    # Use existing analyze endpoint logic
+    try:
+        # Fetch JD
+        ats_info = detect_ats_from_url(url)
+        job_data = fetch_single_job(ats_info)
+
+        if "error" in job_data:
+            return {"ok": False, "error": job_data["error"]}
+
+        jd = job_data.get("description", "")
+        title = job_data.get("title") or job.get("title", "")
+        company = job.get("company", "")
+
+        if not jd:
+            return {"ok": False, "error": "Could not fetch job description"}
+
+        # Run AI analysis
+        analysis = analyze_job_with_ai(jd, title, company)
+
+        if not analysis or "error" in analysis:
+            return {"ok": False, "error": analysis.get("error", "Analysis failed")}
+
+        score = analysis.get("match_score", 0)
+
+        # Update job in storage
+        from storage.job_storage import _load_jobs, _save_jobs
+        jobs = _load_jobs()
+        for j in jobs:
+            if j.get("id") == payload.job_id:
+                j["match_score"] = score
+                j["analysis"] = analysis
+                break
+        _save_jobs(jobs)
+
+        return {
+            "ok": True,
+            "job_id": payload.job_id,
+            "match_score": score,
+            "analysis": analysis
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ============= APPLY AUTOMATION ENDPOINTS =============

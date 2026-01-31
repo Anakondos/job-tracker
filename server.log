@@ -1,0 +1,88 @@
+INFO:     Will watch for changes in these directories: ['/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/job-tracker-dev']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [86867] using StatReload
+INFO:     Started server process [86870]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:58903 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] Background refresh daemon started
+[Daemon] Starting cycle #1 with 132 companies
+[Daemon] Refreshing: Brex
+[Daemon] ✓ Brex: 195 jobs
+[Daemon] Refreshing: Datadog
+[Daemon] ✓ Datadog: 432 jobs
+[Daemon] Refreshing: Okta
+[Daemon] ✓ Okta: 326 jobs
+INFO:     127.0.0.1:58963 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59005 - "GET /daemon/status HTTP/1.1" 200 OK
+[JD Parser] Processing: Selectgroup - Delivery Lead
+[JD Parser] Fetched 407 chars
+[JD Parser] Saved to xx_7b041433.txt
+INFO:     127.0.0.1:59046 - "GET /daemon/status HTTP/1.1" 200 OK
+[JD Parser] Analysis complete: 8 keywords
+[PrepareApp] Detected Delivery role from title
+[PrepareApp] Using CV from: CV_Anton_Kondakov_DeliveryLead.docx (7032 chars)
+INFO:     127.0.0.1:59070 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59096 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59124 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59021 - "POST /jd/parse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59168 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59194 - "GET /pipeline/job/xx_7b041433 HTTP/1.1" 200 OK
+[Daemon] Refreshing: Twilio
+[Daemon] ✓ Twilio: 115 jobs
+[Daemon] Refreshing: Stripe
+[Daemon] ✓ Stripe: 591 jobs
+[Daemon] Refreshing: Coinbase
+[Daemon] ✓ Coinbase: 313 jobs
+[Daemon] Refreshing: Robinhood
+[Daemon] ✓ Robinhood: 132 jobs
+[Daemon] Refreshing: Marqeta
+[Daemon] ✓ Marqeta: 13 jobs
+[Daemon] Refreshing: NerdWallet
+[Daemon] ✓ NerdWallet: 35 jobs
+INFO:     127.0.0.1:59465 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59503 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59503 - "GET /static/index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59503 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59503 - "GET /stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59512 - "GET /env HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59505 - "GET /available-cvs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59513 - "GET /stats/by-date?days=14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59511 - "GET /companies?profile=all&my_roles=true&my_location=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59505 - "GET /pipeline/all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59512 - "GET /static/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59505 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59543 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59550 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59556 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59564 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] Refreshing: Cloudflare
+[Daemon] ✓ Cloudflare: 608 jobs
+[Daemon] Refreshing: Figma
+[Daemon] ✓ Figma: 170 jobs
+[Daemon] Refreshing: Notion
+INFO:     127.0.0.1:59585 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] ✓ Notion: 133 jobs
+INFO:     127.0.0.1:59599 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59625 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59634 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59650 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59658 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59664 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59676 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] Refreshing: Dropbox
+[Daemon] ✓ Dropbox: 167 jobs
+[Daemon] Refreshing: Reddit
+[Daemon] ✓ Reddit: 150 jobs
+[Daemon] Refreshing: Duolingo
+[Daemon] ✓ Duolingo: 66 jobs
+INFO:     127.0.0.1:59753 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] Refreshing: Airbnb
+[Daemon] ✓ Airbnb: 256 jobs
+[Daemon] Refreshing: Chime
+[Daemon] ✓ Chime: 56 jobs
+[Daemon] Refreshing: Webflow
+[Daemon] ✓ Webflow: 51 jobs
+INFO:     127.0.0.1:59814 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59814 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59830 - "GET /daemon/status HTTP/1.1" 200 OK

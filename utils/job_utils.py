@@ -238,8 +238,12 @@ def _get_role_family(role_id: str) -> str:
     if any(x in role_id_lower for x in ["product_manager", "product_owner", "director_product", "product_analyst", "product_operations"]):
         return "product"
     
+    # Scrum Master / Agile Coach - part of TPM/Program family
+    if any(x in role_id_lower for x in ["scrum_master", "agile_coach", "agile_delivery", "scrum_coach"]):
+        return "tpm_program"
+    
     # TPM/Program family
-    if any(x in role_id_lower for x in ["program_manager", "technical_program", "tpm", "director_program", "strategy_operations", "scrum_master", "delivery_manager", "release_manager", "implementation_manager", "engagement_manager"]):
+    if any(x in role_id_lower for x in ["program_manager", "technical_program", "tpm", "director_program", "strategy_operations", "delivery_manager", "release_manager", "implementation_manager", "engagement_manager"]):
         return "tpm_program"
     
     # Project family
