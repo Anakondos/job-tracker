@@ -1719,13 +1719,13 @@
             date = new Date(isoDate);
           }
           if (isNaN(date.getTime())) return "—";
-          // Format: "01.30.26 22:54"
+          // Format: "01.30.26  22:54" (date + double space + dimmed time)
           const month = (date.getMonth() + 1).toString().padStart(2, '0');
           const day = date.getDate().toString().padStart(2, '0');
           const year = date.getFullYear().toString().slice(-2);
           const hours = date.getHours().toString().padStart(2, '0');
           const mins = date.getMinutes().toString().padStart(2, '0');
-          return `${month}.${day}.${year} ${hours}:${mins}`;
+          return `${month}.${day}.${year}<span style="opacity: 0.5; margin-left: 6px;">${hours}:${mins}</span>`;
         } catch (e) {
           return "—";
         }
@@ -1743,13 +1743,13 @@
             date = new Date(isoDate);
           }
           if (isNaN(date.getTime())) return "—";
-          // Format: "01.30.26 22:54"
+          // Format: "01.30.26  22:54" (date + double space + dimmed time)
           const month = (date.getMonth() + 1).toString().padStart(2, '0');
           const day = date.getDate().toString().padStart(2, '0');
           const year = date.getFullYear().toString().slice(-2);
           const hours = date.getHours().toString().padStart(2, '0');
           const mins = date.getMinutes().toString().padStart(2, '0');
-          return `${month}.${day}.${year} ${hours}:${mins}`;
+          return `${month}.${day}.${year}<span style="opacity: 0.5; margin-left: 6px;">${hours}:${mins}</span>`;
         } catch (e) {
           return isoDate;
         }
@@ -2396,8 +2396,8 @@
             job.title || ""
           )}</a>${sourceIcon}</td>
         <td>${escapeHtml(job.location || "")}</td>
-        <td style="font-size: 12px; white-space: nowrap;">${escapeHtml(updatedAtStr)}</td>
-        <td style="font-size: 12px; white-space: nowrap;">${escapeHtml(addedAtStr)}</td>
+        <td style="font-size: 12px; white-space: nowrap;">${updatedAtStr}</td>
+        <td style="font-size: 12px; white-space: nowrap;">${addedAtStr}</td>
         <td style="font-size: 12px; white-space: nowrap;">${job.source === "onboard" ? "📌 manual" : escapeHtml(job.ats || "")}</td>
         <td style="white-space: nowrap;">
           ${(() => {
