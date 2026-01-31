@@ -7,15 +7,19 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <style>
       :root {
-        --bg: #0b0f17;
-        --panel: #111827;
-        --panel2: #0f172a;
-        --text: #e5e7eb;
-        --muted: #9ca3af;
-        --border: rgba(255, 255, 255, 0.1);
-        --accent: #60a5fa;
-        --danger: #ef4444;
-        --ok: #22c55e;
+        /* Softer dark theme - easier on eyes */
+        --bg: #0d1117;
+        --panel: #161b22;
+        --panel2: #0d1117;
+        --text: #c9d1d9;
+        --text-dim: #8b949e;
+        --muted: #6e7681;
+        --border: rgba(240, 246, 252, 0.1);
+        --accent: #58a6ff;
+        --accent-dim: rgba(88, 166, 255, 0.4);
+        --danger: #f85149;
+        --ok: #3fb950;
+        --warning: #d29922;
       }
       @keyframes flash {
         0%, 100% { background-color: inherit; }
@@ -206,6 +210,16 @@
         padding: 0 !important;
         display: inline-block !important;
         cursor: pointer;
+        accent-color: #6b7280;
+        opacity: 0.6;
+        transition: opacity 0.15s ease;
+      }
+      #jobsTable input[type="checkbox"]:hover {
+        opacity: 1;
+      }
+      #jobsTable input[type="checkbox"]:checked {
+        opacity: 0.85;
+        accent-color: #60a5fa;
       }
       /* ID column - first column */
       #jobsTable td:nth-child(1), #jobsTable th:nth-child(1) {
