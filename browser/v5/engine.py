@@ -1689,18 +1689,22 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
         """
         Fill autocomplete/combobox using aria-controls method.
-        
+
         Key principles (from manual testing):
         1. Use aria-controls to find the CORRECT listbox (not global selectors)
         2. Press Escape before clicking to close any open dropdowns
         3. scroll_into_view_if_needed before clicking
         4. For Location fields - wait 2 seconds for API response
+        5. For School fields - use search with fallback to "0 - Other"
         """
         # Get the frame context (for iframe support)
         frame = el.owner_frame() or self.page
-        
-        # Check if this is a Location field (needs special handling)
-        is_location = 'location' in field.label.lower() or 'city' in field.label.lower()
+
+        label_lower = field.label.lower()
+
+        # Check field type for special handling
+        is_location = 'location' in label_lower or 'city' in label_lower
+        is_school = 'school' in label_lower or 'university' in label_lower or 'college' in label_lower
         
         # Close any open dropdowns first
         self.page.keyboard.press('Escape')
@@ -1731,7 +1735,11 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             # Fallback: just click away to confirm text
             self.page.keyboard.press('Tab')
             return True
-        
+
+        # For School fields: search with fallback to "0 - Other"
+        if is_school:
+            return self._fill_school_autocomplete(el, field, frame)
+
         # Click to open dropdown
         el.click()
         time.sleep(0.4)
@@ -1820,7 +1828,98 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         
         time.sleep(0.2)
         return True
-    
+
+    def _fill_school_autocomplete(self, el: ElementHandle, field: FormField, frame) -> bool:
+        """
+        Fill school/university searchable dropdown with fallback.
+
+        PROVEN METHOD (from V6):
+        1. Click dropdown and type search text
+        2. Wait for search API results
+        3. If good match found - select it
+        4. Otherwise use fallback "0 - Other"
+        """
+        FALLBACK_OPTIONS = ["0 - Other", "Other", "Not Listed"]
+
+        # Close any open dropdowns
+        self.page.keyboard.press('Escape')
+        time.sleep(0.1)
+
+        el.scroll_into_view_if_needed()
+        el.click()
+        time.sleep(0.3)
+
+        # Type search - use shorter text for better matches
+        search_text = field.answer[:30] if len(field.answer) > 30 else field.answer
+        self.page.keyboard.type(search_text, delay=20)
+        time.sleep(1.0)  # Wait for search API
+
+        # Get options via aria-controls
+        controls_id = el.get_attribute('aria-controls')
+        options = []
+
+        if controls_id:
+            listbox = frame.query_selector(f'#{controls_id}')
+            if listbox:
+                options = listbox.query_selector_all('[role="option"]')
+
+        # Fallback to global selectors
+        if not options:
+            options = frame.query_selector_all('[role="option"], .select__option')
+
+        # Check if we found good results
+        if options:
+            first_text = options[0].inner_text().strip().lower()
+            # Check if first option is valid (not "no results" message)
+            if 'no result' not in first_text and 'no option' not in first_text:
+                # Check for match with our search
+                search_lower = field.answer.lower()
+                for opt in options:
+                    opt_text = opt.inner_text().strip()
+                    opt_lower = opt_text.lower()
+                    # Match if search text appears in option
+                    if search_lower[:15] in opt_lower or opt_lower in search_lower:
+                        opt.click()
+                        time.sleep(0.2)
+                        print(f"      🎓 School matched: {opt_text[:40]}")
+                        return True
+                # No exact match but results exist - take first
+                options[0].click()
+                time.sleep(0.2)
+                return True
+
+        # No results from search - try fallback options
+        print(f"      ⚠️ School not found, trying fallback...")
+        self.page.keyboard.press('Escape')
+        time.sleep(0.1)
+        el.click()
+        time.sleep(0.2)
+
+        # Clear and try each fallback
+        for fallback in FALLBACK_OPTIONS:
+            self.page.keyboard.press('Control+a')
+            self.page.keyboard.press('Backspace')
+            self.page.keyboard.type(fallback, delay=20)
+            time.sleep(0.8)
+
+            if controls_id:
+                listbox = frame.query_selector(f'#{controls_id}')
+                if listbox:
+                    options = listbox.query_selector_all('[role="option"]')
+                    if options:
+                        first_text = options[0].inner_text().strip()
+                        if 'no result' not in first_text.lower():
+                            options[0].click()
+                            time.sleep(0.2)
+                            print(f"      🎓 School fallback: {first_text[:40]}")
+                            return True
+
+        # Last resort: just tab out
+        self.page.keyboard.press('Escape')
+        self.page.keyboard.press('Tab')
+        print(f"      ⚠️ School: typed but no selection")
+        return True
+
     def _fill_checkbox(self, el: ElementHandle, field: FormField) -> bool:
         """Fill checkbox."""
         should_check = field.answer.lower() in ("yes", "true", "1", "checked")
