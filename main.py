@@ -2259,6 +2259,10 @@ def parse_jd_endpoint(payload: ParseJDRequest):
         )
         
         if result.get("ok"):
+            # Initialize variables
+            match_score = None
+            analysis = None
+
             # Update job in storage with jd_summary
             job = get_job_by_id(payload.job_id)
             if job:
@@ -2266,9 +2270,6 @@ def parse_jd_endpoint(payload: ParseJDRequest):
                 from storage.job_storage import update_jd_summary, _load_jobs, _save_jobs
                 update_jd_summary(payload.job_id, result["summary"])
 
-                # Run AI match analysis if JD available
-                match_score = None
-                analysis = None
                 jd_text = result.get("jd_text", "")
                 if jd_text and len(jd_text) > 100:
                     try:

@@ -2697,7 +2697,9 @@
                   job.status = 'Selected';
                   job.application_status = 'Selected';
                   if (parseData.summary) job.jd_summary = parseData.summary;
-                  
+                  if (parseData.match_score) job.match_score = parseData.match_score;
+                  if (parseData.analysis) job.analysis = parseData.analysis;
+
                   btn.textContent = "✅ Done!";
                   setTimeout(() => {
                     const filtered = applyFilters(ALL_JOBS);

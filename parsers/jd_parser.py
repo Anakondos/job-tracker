@@ -41,15 +41,33 @@ def fetch_jd_from_url(url: str, ats: str = "greenhouse") -> Optional[str]:
             jd = _fetch_greenhouse_api(url)
             if jd:
                 return jd
-        
+
+        # For JS-heavy sites (Ashby, Phenom, etc), use browser parser
+        js_heavy_ats = ["ashby", "phenom", "universal"]
+        js_heavy_domains = ["ashbyhq.com", "phenompeople.com", "careers.cisco.com"]
+
+        is_js_heavy = ats in js_heavy_ats or any(domain in url for domain in js_heavy_domains)
+
+        if is_js_heavy:
+            jd = _fetch_with_browser(url)
+            if jd and len(jd) > 100:
+                return jd
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
-        
+
         resp = requests.get(url, headers=headers, timeout=15)
         resp.raise_for_status()
         html = resp.text
-        
+
+        # Check if JS-required page
+        if "enable JavaScript" in html or "JavaScript is required" in html:
+            print(f"[JD Parser] JS required, trying browser parser")
+            jd = _fetch_with_browser(url)
+            if jd and len(jd) > 100:
+                return jd
+
         # Extract JD based on ATS
         if ats == "greenhouse" or "greenhouse" in url:
             return _parse_greenhouse_jd(html)
@@ -60,10 +78,27 @@ def fetch_jd_from_url(url: str, ats: str = "greenhouse") -> Optional[str]:
         else:
             # Generic extraction
             return _parse_generic_jd(html)
-            
+
     except Exception as e:
         print(f"[JD Parser] Error fetching {url}: {e}")
         return None
+
+
+def _fetch_with_browser(url: str) -> Optional[str]:
+    """Fetch JD using browser for JS-heavy sites"""
+    try:
+        from utils.browser_parser import parse_job_page_sync
+        print(f"[JD Parser] Using browser to fetch: {url}")
+        result = parse_job_page_sync(url)
+        if result:
+            # browser_parser returns 'jd' not 'description'
+            jd = result.get("jd") or result.get("description") or ""
+            if jd:
+                print(f"[JD Parser] Browser fetched {len(jd)} chars")
+                return jd
+    except Exception as e:
+        print(f"[JD Parser] Browser fetch error: {e}")
+    return None
 
 
 def _fetch_greenhouse_api(url: str) -> Optional[str]:
