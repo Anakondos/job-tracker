@@ -186,29 +186,43 @@
         margin-bottom: 16px;
       }
       
-      /* Pipeline table */
+      /* Pipeline table - colgroup based layout */
       #jobsTable {
         table-layout: fixed;
         width: 100%;
+        border-collapse: collapse;
       }
+      /* Column widths via colgroup - optimized to fit without scroll */
+      #jobsTable .col-id { width: 45px; }
+      #jobsTable .col-checkbox { width: 28px; }
+      #jobsTable .col-company { width: 90px; }
+      #jobsTable .col-match { width: 28px; }
+      #jobsTable .col-title { width: 200px; max-width: 200px; }
+      #jobsTable .col-location { width: 95px; }
+      #jobsTable .col-updated { width: 60px; }
+      #jobsTable .col-added { width: 60px; }
+      #jobsTable .col-ats { width: 28px; }
+      #jobsTable .col-actions { width: 80px; }
+      #jobsTable .col-folder { width: 32px; }
+
       #jobsTable td, #jobsTable th {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        padding: 8px 12px !important;
+        padding: 8px 6px;
+        vertical-align: middle;
       }
-      #jobsTable th:first-child, #jobsTable td:first-child {
+      #jobsTable th.center, #jobsTable td.center {
         text-align: center;
-        overflow: visible;
       }
-      #jobsTable input[type="checkbox"] {
+      #jobsTable input[type="checkbox"],
+      #jobsTable .jobCheckbox {
         width: 14px !important;
         height: 14px !important;
         min-width: 14px !important;
         max-width: 14px !important;
-        margin: 6px !important;
-        padding: 0 !important;
-        display: inline-block !important;
+        margin: 0;
+        padding: 0;
         cursor: pointer;
         accent-color: #6b7280;
         opacity: 0.6;
@@ -221,111 +235,87 @@
         opacity: 0.85;
         accent-color: #60a5fa;
       }
-      /* ID column - first column */
-      #jobsTable td:nth-child(1), #jobsTable th:nth-child(1) {
-        width: 75px !important;
-        max-width: 75px !important;
-        padding-left: 12px !important;
+      /* Column-specific overrides */
+      #jobsTable td:nth-child(1) { padding-left: 10px; }
+      #jobsTable td:nth-child(2), #jobsTable th:nth-child(2) { text-align: center; }
+      #jobsTable td:nth-child(4), #jobsTable th:nth-child(4) { text-align: center; }
+      #jobsTable td:nth-child(9), #jobsTable th:nth-child(9) { text-align: center; }
+      #jobsTable td:nth-child(10), #jobsTable td:nth-child(11) { overflow: visible; }
+
+      /* Filter inputs */
+      #pipelineFilterJobId { width: 45px; }
+      #pipelineFilterCompany { width: 100%; max-width: 110px; }
+      #pipelineFilterTitle { width: 100%; }
+      #pipelineFilterLocation { width: 100%; max-width: 100px; }
+      #pipelineFilterAts { width: 100%; max-width: 45px; }
+      #pipelineFilterStatus { width: 100%; max-width: 60px; }
+      #pipelineFilterFolder { width: 100%; max-width: 30px; }
+
+      /* Table cell classes */
+      .td-id { font-size: 10px; font-family: monospace; color: var(--muted); cursor: pointer; }
+      .td-checkbox { text-align: center; }
+      .td-company { }
+      .td-match { text-align: center; padding: 0 2px; }
+      .td-title { }
+      .td-location { }
+      .td-date { font-size: 12px; }
+      .td-ats { font-size: 11px; text-align: center; }
+      .td-actions { overflow: visible; white-space: nowrap; }
+      .td-folder { text-align: center; padding: 2px; overflow: visible; }
+
+      /* Match score styles */
+      .match-empty { color: var(--muted); font-size: 9px; }
+      .matchScoreBtn { font-weight: 600; cursor: pointer; font-size: 11px; }
+      .matchScoreBtn.match-high { color: #22c55e; }
+      .matchScoreBtn.match-mid { color: #eab308; }
+      .matchScoreBtn.match-low { color: #ef4444; }
+
+      /* Action buttons */
+      .smartActionBtn, .prepareBtn {
+        border: none;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 12px;
+        color: white;
       }
-      #pipelineFilterJobId {
-        width: 50px !important;
-        max-width: 50px !important;
-        min-width: 50px !important;
+      .action-select { background: #3b82f6; }
+      .action-prepare { background: #b45309; }
+      .action-apply { background: #16a34a; }
+      .removeFromPipelineBtn {
+        background: #5a2a2a;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 12px;
       }
-      #pipelineFilterCompany {
-        width: 110px !important;
-        max-width: 110px !important;
-        min-width: 110px !important;
+      .status-icon { font-size: 11px; }
+      .status-applied { color: #a855f7; }
+      .status-interview { color: #f59e0b; }
+
+      /* Gear select */
+      .gearSelect {
+        width: 20px;
+        padding: 0;
+        margin-left: 4px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--muted);
+        appearance: none;
+        -webkit-appearance: none;
       }
-      #pipelineFilterTitle {
-        width: 180px !important;
-        max-width: 180px !important;
-        min-width: 180px !important;
-      }
-      #pipelineFilterLocation {
-        width: 100px !important;
-        max-width: 100px !important;
-        min-width: 100px !important;
-      }
-      #pipelineFilterUpdated {
-        width: 90px !important;
-        max-width: 90px !important;
-        min-width: 90px !important;
-      }
-      #pipelineFilterAts {
-        width: 70px !important;
-        max-width: 70px !important;
-        min-width: 70px !important;
-      }
-      #pipelineFilterStatus {
-        width: 65px !important;
-        max-width: 65px !important;
-        min-width: 65px !important;
-      }
-      #pipelineFilterFolder {
-        width: 30px !important;
-        max-width: 30px !important;
-        min-width: 30px !important;
-      }
-      /* Checkbox column - second column */
-      #jobsTable td:nth-child(2), #jobsTable th:nth-child(2) {
-        width: 40px !important;
-        max-width: 40px !important;
-        text-align: center;
-        padding: 8px 4px !important;
-      }
-      /* Company column - third column */
-      #jobsTable td:nth-child(3), #jobsTable th:nth-child(3) {
-        width: 120px !important;
-        max-width: 120px !important;
-      }
-      /* Title column - fourth column */
-      #jobsTable td:nth-child(4), #jobsTable th:nth-child(4) {
-        width: auto !important;
-        max-width: none !important;
-      }
-      /* Location column - fifth column */
-      #jobsTable td:nth-child(5), #jobsTable th:nth-child(5) {
-        width: 130px !important;
-        max-width: 130px !important;
-      }
-      /* Updated column - sixth column */
-      #jobsTable td:nth-child(6), #jobsTable th:nth-child(6) {
-        width: 120px !important;
-        min-width: 120px !important;
-        max-width: 120px !important;
-      }
-      /* Added column - seventh column */
-      #jobsTable td:nth-child(7), #jobsTable th:nth-child(7) {
-        width: 120px !important;
-        min-width: 120px !important;
-        max-width: 120px !important;
-      }
-      /* ATS column - eighth column */
-      #jobsTable td:nth-child(8), #jobsTable th:nth-child(8) {
-        width: 80px !important;
-        max-width: 80px !important;
-      }
-      /* Status column - ninth column */
-      #jobsTable td:nth-child(9), #jobsTable th:nth-child(9) {
-        width: 85px !important;
-        max-width: 85px !important;
-        overflow: visible !important;
-      }
-      /* Folder column - tenth column */
-      #jobsTable td:nth-child(10), #jobsTable th:nth-child(10) {
-        width: 35px !important;
-        max-width: 35px !important;
-        text-align: center;
-        overflow: visible !important;
-        text-overflow: clip !important;
-      }
-      /* Actions column - eleventh column */
-      #jobsTable td:nth-child(11), #jobsTable th:nth-child(11) {
-        width: 100px !important;
-        min-width: 100px !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
+
+      /* Folder button */
+      .openFolderBtn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 0;
       }
       
       .summary-item {
@@ -986,6 +976,22 @@
           <div id="statsLastRefresh" style="margin-top: 8px; font-size: 11px; color: var(--muted);"></div>
         </div>
 
+        <!-- ATS Support Info -->
+        <div id="atsSupportInfo" style="margin-bottom: 12px; padding: 10px 14px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 8px; border: 1px solid #334155; font-size: 12px;">
+          <span style="color: #94a3b8;">Supported ATS (auto-fetch):</span>
+          <span id="supportedAtsList" style="margin-left: 8px;">
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 greenhouse</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 lever</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 ashby</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 workday</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 smartrecruiters</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px;">🔄 atlassian</span>
+          </span>
+          <span style="color: #64748b; margin-left: 12px;">|</span>
+          <span style="color: #94a3b8; margin-left: 12px;">Manual only:</span>
+          <span style="background: #4b5563; color: #9ca3af; padding: 2px 8px; border-radius: 4px; margin-left: 8px;">📝 other</span>
+        </div>
+
         <div class="tableWrap">
           <table id="companiesTable">
             <thead>
@@ -1175,51 +1181,54 @@
 
       <div class="tableWrap">
         <div style="overflow-x: auto;"><table id="jobsTable">
+          <colgroup>
+            <col class="col-id">
+            <col class="col-checkbox">
+            <col class="col-company">
+            <col class="col-match">
+            <col class="col-title">
+            <col class="col-location">
+            <col class="col-updated">
+            <col class="col-added">
+            <col class="col-ats">
+            <col class="col-actions">
+            <col class="col-folder">
+          </colgroup>
           <thead>
             <tr>
-              <th style="width: 65px;">ID</th>
-              <th style="width: 30px; text-align: center;">✓</th>
-              <th style="width: 120px;" class="sortable" onclick="sortTable('company')">
-                Company <span class="sortIcon" id="sortIcon-company">⬍</span>
-              </th>
-              <th style="width: 24px; max-width: 24px; padding: 0 2px;" class="sortable" onclick="sortTable('match')" title="AI Match Score">
-                <span class="sortIcon" id="sortIcon-match">⬍</span>
-              </th>
-              <th class="sortable" onclick="sortTable('title')">
-                Title <span class="sortIcon" id="sortIcon-title">⬍</span>
-              </th>
-              <th style="width: 130px;" class="sortable" onclick="sortTable('location')">
-                Location <span class="sortIcon" id="sortIcon-location">⬍</span>
-              </th>
-              <th style="width: 70px;" class="sortable" onclick="sortTable('updated')">
-                Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
-              </th>
-              <th style="width: 70px;" class="sortable" onclick="sortTable('added')">
-                Added <span class="sortIcon" id="sortIcon-added">⬍</span>
-              </th>
-              <th style="width: 35px;" class="sortable" onclick="sortTable('ats')" title="ATS">
-                <span class="sortIcon" id="sortIcon-ats">⬍</span>
-              </th>
-              <th style="width: 45px;" class="sortable" onclick="sortTable('status')" title="Status">
-                <span class="sortIcon" id="sortIcon-status">⬍</span>
-              </th>
-              <th style="width: 24px;">📁</th>
-              <th style="width: 75px;">Actions</th>
+              <th>ID</th>
+              <th class="center">✓</th>
+              <th class="sortable" onclick="sortTable('company')">Company <span class="sortIcon" id="sortIcon-company">⬍</span></th>
+              <th class="sortable center" onclick="sortTable('match')" title="AI Match Score">% <span class="sortIcon" id="sortIcon-match">⬍</span></th>
+              <th class="sortable" onclick="sortTable('title')">Title <span class="sortIcon" id="sortIcon-title">⬍</span></th>
+              <th class="sortable" onclick="sortTable('location')">Location <span class="sortIcon" id="sortIcon-location">⬍</span></th>
+              <th class="sortable" onclick="sortTable('updated')">Updated <span class="sortIcon" id="sortIcon-updated">⬍</span></th>
+              <th class="sortable" onclick="sortTable('added')">Added <span class="sortIcon" id="sortIcon-added">⬍</span></th>
+              <th class="sortable center" onclick="sortTable('ats')" title="ATS">ATS <span class="sortIcon" id="sortIcon-ats">⬍</span></th>
+              <th>Actions</th>
+              <th class="center">📁</th>
             </tr>
             <tr class="filter-row">
-              <th><input type="text" id="pipelineFilterJobId" placeholder="..." class="column-filter" style="width: 60px;"></th>
-              <th style="text-align: center;">
-                <input type="checkbox" id="selectAllJobs" title="Select all">
+              <th><input type="text" id="pipelineFilterJobId" placeholder="ID" class="column-filter"></th>
+              <th class="center"><input type="checkbox" id="selectAllJobs" title="Select all"></th>
+              <th><input type="text" id="pipelineFilterCompany" placeholder="Company" class="column-filter"></th>
+              <th>
+                <select id="pipelineFilterMatch" class="column-filter" style="width:45px;">
+                  <option value="">All</option>
+                  <option value="has">Has</option>
+                  <option value="high">70+</option>
+                  <option value="med">50-69</option>
+                  <option value="low">&lt;50</option>
+                  <option value="none">None</option>
+                </select>
               </th>
-              <th><input type="text" id="pipelineFilterCompany" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th style="padding: 0; width: 24px; max-width: 24px;"></th>
-              <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
+              <th><input type="text" id="pipelineFilterTitle" placeholder="Title" class="column-filter"></th>
+              <th><input type="text" id="pipelineFilterLocation" placeholder="Location" class="column-filter"></th>
               <th></th>
               <th></th>
               <th>
-                <select id="pipelineFilterAts" class="column-filter" style="width: 32px; padding: 1px; font-size: 10px;">
-                  <option value="">-</option>
+                <select id="pipelineFilterAts" class="column-filter">
+                  <option value="">All</option>
                   <option value="greenhouse">GH</option>
                   <option value="lever">LV</option>
                   <option value="workday">WD</option>
@@ -1229,23 +1238,22 @@
                 </select>
               </th>
               <th>
-                <select id="pipelineFilterStatus" class="column-filter" style="width: 40px; padding: 1px; font-size: 10px;">
-                  <option value="all">-</option>
-                  <option value="New">⚪</option>
-                  <option value="Selected">📋</option>
-                  <option value="Ready">✅</option>
-                  <option value="Applied">📤</option>
-                  <option value="Interview">🎯</option>
+                <select id="pipelineFilterStatus" class="column-filter">
+                  <option value="all">All</option>
+                  <option value="New">New</option>
+                  <option value="Selected">Sel</option>
+                  <option value="Ready">Rdy</option>
+                  <option value="Applied">App</option>
+                  <option value="Interview">Int</option>
                 </select>
               </th>
-              <th style="padding: 1px;">
-                <select id="pipelineFilterFolder" class="column-filter" style="width: 22px; padding: 1px; font-size: 10px;">
+              <th>
+                <select id="pipelineFilterFolder" class="column-filter">
                   <option value="all">-</option>
                   <option value="yes">✓</option>
                   <option value="no">✗</option>
                 </select>
               </th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -1275,13 +1283,22 @@
           <input type="text" id="reviewSearchFilter" placeholder="title, company..." style="width: 200px;">
         </label>
         
-        <button id="addSelectedBtn" class="ghost" style="background: #2a5a3a; color: white;" disabled>
-          ➕ Add Selected (0)
+        <button id="analyzeSelectedBtn" class="ghost" style="background: #3b82f6; color: white;" disabled>
+          🔍 Analyze Selected (0)
         </button>
-        
+
         <span id="reviewStatus" class="muted"></span>
       </div>
-      
+
+      <!-- Review Analysis Queue -->
+      <div id="reviewAnalysisQueue" style="margin: 12px 0; padding: 16px; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); border-radius: 12px; border: 1px solid #3b5998; display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-weight: 600; color: white; font-size: 14px;">📊 Analysis Queue</div>
+          <button id="clearReviewQueueBtn" style="padding: 4px 10px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Clear All</button>
+        </div>
+        <div id="reviewQueueItems" style="display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
+
       <div class="tableWrap">
       <table id="reviewTable">
         <thead>
@@ -2064,6 +2081,13 @@
         if (ln.states && ln.states.length > 0) {
           return true; // Has US states
         }
+        // Check remote_scope for US remote jobs (e.g. "Remote, North America" with remote_scope: "usa")
+        if (ln.remote && ln.remote_scope) {
+          const scope = ln.remote_scope.toLowerCase();
+          if (scope === "usa" || scope === "us") {
+            return true;
+          }
+        }
         
         // Fallback to text heuristic
         const l = (job.location || "").toLowerCase();
@@ -2073,7 +2097,8 @@
           l.includes(" us") ||
           l.includes(", us") ||
           l.includes("remote - us") ||
-          l.includes("remote (us)")
+          l.includes("remote (us)") ||
+          l.includes("north america")
         );
       }
 
@@ -2248,12 +2273,16 @@
         }
 
         // Filter by match score
-        if (pipelineFilters.match === "high") {
+        if (pipelineFilters.match === "has") {
+          filtered = filtered.filter(j => j.match_score && j.match_score > 0);
+        } else if (pipelineFilters.match === "high") {
           filtered = filtered.filter(j => (j.match_score || 0) >= 70);
         } else if (pipelineFilters.match === "med") {
           filtered = filtered.filter(j => (j.match_score || 0) >= 50 && (j.match_score || 0) < 70);
         } else if (pipelineFilters.match === "low") {
           filtered = filtered.filter(j => j.match_score && j.match_score < 50);
+        } else if (pipelineFilters.match === "none") {
+          filtered = filtered.filter(j => !j.match_score || j.match_score === 0);
         }
 
         return filtered;
@@ -2412,83 +2441,62 @@
           const sourceIcon = isOnboarded ? '<span title="User added via onboarding" style="margin-left: 4px;">📌</span>' : '';
           
           row.innerHTML = `
-        <td style="font-size: 10px; font-family: monospace; color: var(--muted); cursor: pointer;" title="Click to copy: ${escapeAttr(job.ats_job_id || job.id || '')}" onclick="navigator.clipboard.writeText('${escapeAttr(job.ats_job_id || job.id || '')}'); this.style.color='#22c55e'; setTimeout(() => this.style.color='var(--muted)', 500);">${escapeHtml((job.ats_job_id || job.id || '').toString().slice(-8))}</td>
-        <td style="text-align: center;">
+        <td class="td-id" title="Click to copy: ${escapeAttr(job.ats_job_id || job.id || '')}" onclick="navigator.clipboard.writeText('${escapeAttr(job.ats_job_id || job.id || '')}'); this.style.color='#22c55e'; setTimeout(() => this.style.color='var(--muted)', 500);">${escapeHtml((job.ats_job_id || job.id || '').toString().slice(-8))}</td>
+        <td class="td-checkbox">
           <input type="checkbox" class="jobCheckbox" data-jobkey="${escapeAttr(jobKey)}" data-url="${escapeAttr(url)}" data-company="${escapeAttr(job.company || '')}" data-title="${escapeAttr(job.title || '')}" data-ats="${escapeAttr(job.ats || '')}" data-status="${escapeAttr(st)}">
         </td>
-        <td>${escapeHtml(job.company || "")}</td>
-        <td style="text-align: center; width: 24px; max-width: 24px; padding: 0;">
+        <td class="td-company">${escapeHtml(job.company || "")}</td>
+        <td class="td-match">
           ${(() => {
             const score = job.match_score;
-            if (!score && score !== 0) return '<span style="color: var(--muted); font-size: 9px;">—</span>';
-            const color = score >= 70 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
-            return `<span class="matchScoreBtn" data-jobid="${escapeAttr(job.id || '')}" style="color: ${color}; font-weight: 600; cursor: pointer; font-size: 10px;" title="${score}% match - click for details">${score}</span>`;
+            if (!score && score !== 0) return '<span class="match-empty">—</span>';
+            const colorClass = score >= 70 ? 'match-high' : score >= 50 ? 'match-mid' : 'match-low';
+            return `<span class="matchScoreBtn ${colorClass}" data-jobid="${escapeAttr(job.id || '')}" title="${score}% match - click for details">${score}</span>`;
           })()}
         </td>
-        <td><a href="${escapeAttr(
-          url
-        )}" target="_blank" rel="noopener">${escapeHtml(
-            job.title || ""
-          )}</a>${sourceIcon}</td>
-        <td>${escapeHtml(job.location || "")}</td>
-        <td style="font-size: 12px; white-space: nowrap;">${updatedAtStr}</td>
-        <td style="font-size: 12px; white-space: nowrap;">${addedAtStr}</td>
-        <td style="font-size: 11px; white-space: nowrap;">${(() => {
+        <td class="td-title"><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || "")}</a>${sourceIcon}</td>
+        <td class="td-location">${escapeHtml(job.location || "")}</td>
+        <td class="td-date">${updatedAtStr}</td>
+        <td class="td-date">${addedAtStr}</td>
+        <td class="td-ats">${(() => {
             const atsShort = {'greenhouse': 'GH', 'lever': 'LV', 'workday': 'WD', 'smartrecruiters': 'SR', 'ashby': 'AS', 'manual': '📌'};
             if (job.source === "onboard") return '📌';
             return atsShort[job.ats] || job.ats || '';
           })()}</td>
-        <td style="white-space: nowrap; padding: 2px 4px;">
+        <td class="td-actions">
           ${(() => {
-            const statusConfig = {
-              "New": { color: "#6b7280", symbol: "●" },
-              "Selected": { color: "#3b82f6", symbol: "●" },
-              "Ready": { color: "#22c55e", symbol: "●" },
-              "Applied": { color: "#a855f7", symbol: "●" },
-              "Interview": { color: "#f59e0b", symbol: "●" },
-              "Offer": { color: "#10b981", symbol: "★" },
-              "Rejected": { color: "#ef4444", symbol: "●" },
-              "Withdrawn": { color: "#6b7280", symbol: "○" },
-              "Closed": { color: "#374151", symbol: "●" }
-            };
-            const cfg = statusConfig[st] || { color: "#6b7280", symbol: "●" };
-            return `<span title="${st}" style="color: ${cfg.color}; font-size: 14px;">${cfg.symbol}</span>`;
-          })()}<select class="gearSelect" data-jobkey="${escapeAttr(jobKey)}" title="Change status" style="width: 16px; padding: 0; margin-left: 1px; background: transparent; border: none; cursor: pointer; font-size: 10px; color: var(--muted);">
+            const btnData = `data-jobid="${escapeAttr(job.id || '')}" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" data-ats="${escapeAttr(job.ats || '')}"`;
+            const stLower = (st || '').toLowerCase();
+
+            if (stLower === 'new') {
+              return `<button class="smartActionBtn action-select" ${btnData} data-action="select" title="Parse JD and mark as Selected">▶️ Select</button>`;
+            } else if (st === 'Selected') {
+              return `<button class="prepareBtn action-prepare" ${btnData} title="Prepare CV & Cover Letter">📦 Prepare</button>`;
+            } else if (st === 'Ready') {
+              return `<button class="smartActionBtn action-apply" ${btnData} data-action="apply" title="Start form filler">🚀 Apply</button>`;
+            } else if (stLower === 'applied') {
+              return `<span class="status-icon status-applied">⏳</span>`;
+            } else if (stLower === 'interview') {
+              return `<span class="status-icon status-interview">🎯</span>`;
+            } else {
+              return '';
+            }
+          })()}
+          ${showAddButton && !inPipeline
+            ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
+            : ''}
+          ${isManual
+            ? `<button class="removeFromPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Remove from Pipeline">✖</button>`
+            : ''}
+          <select class="gearSelect" data-jobkey="${escapeAttr(jobKey)}" title="Change status: ${st}">
             <option value="">⚙</option>
             ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
               .map(x => `<option value="${x}">${x}</option>`)
               .join("")}
           </select>
         </td>
-        <td style="text-align: center; padding: 2px;">
-          ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder" style="background:none; border:none; cursor:pointer; font-size:16px;">📁</button>` : ''}
-        </td>
-        <td style="white-space: nowrap;">
-          ${(() => {
-            // Smart action button based on status
-            const btnData = `data-jobid="${escapeAttr(job.id || '')}" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" data-ats="${escapeAttr(job.ats || '')}"`;
-            const stLower = (st || '').toLowerCase();
-            
-            if (stLower === 'new') {
-              return `<button class="smartActionBtn" ${btnData} data-action="select" title="Parse JD and mark as Selected" style="background:#3b82f6; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">▶️ Select</button>`;
-            } else if (st === 'Selected') {
-              return `<button class="prepareBtn" ${btnData} title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`;
-            } else if (st === 'Ready') {
-              return `<button class="smartActionBtn" ${btnData} data-action="apply" title="Start form filler" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply</button>`;
-            } else if (stLower === 'applied') {
-              return `<span style="color: var(--muted); font-size: 11px;">⏳ Waiting</span>`;
-            } else if (stLower === 'interview') {
-              return `<span style="color: #8b5cf6; font-size: 11px;">📅 Interview</span>`;
-            } else {
-              return '';
-            }
-          })()}
-          ${showAddButton && !inPipeline 
-            ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
-            : ''}
-          ${isManual
-            ? `<button class="removeFromPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Remove from Pipeline" style="background: #5a2a2a; color: white; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px;">✖</button>`
-            : ''}
+        <td class="td-folder">
+          ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder">📁</button>` : ''}
         </td>
       `;
           tbody.appendChild(row);
@@ -3017,17 +3025,17 @@
       }
       
       function updateAddSelectedButton() {
-        const btn = document.getElementById("addSelectedBtn");
+        const btn = document.getElementById("analyzeSelectedBtn");
         const count = reviewSelectedJobs.size;
-        btn.textContent = `➕ Add Selected (${count})`;
+        btn.textContent = `🔍 Analyze Selected (${count})`;
         btn.disabled = count === 0;
       }
-      
+
       function updateReviewPagination(data) {
         const statusEl = document.getElementById("reviewStatus");
         const start = (data.page - 1) * data.limit + 1;
         const end = Math.min(data.page * data.limit, data.total);
-        
+
         statusEl.innerHTML = `
           Showing ${start}-${end} of ${data.total} jobs
           &nbsp;&nbsp;
@@ -3036,43 +3044,242 @@
           <button class="ghost" ${!data.has_next ? 'disabled' : ''} onclick="loadReviewJobs(${data.page + 1})">Next ▶</button>
         `;
       }
-      
-      async function addSelectedToPipeline() {
+
+      // ==================== REVIEW ANALYSIS QUEUE ====================
+      const reviewAnalysisQueue = [];
+      let reviewQueueIdCounter = 1;
+
+      async function analyzeSelectedJobs() {
         if (reviewSelectedJobs.size === 0) return;
-        
-        const btn = document.getElementById("addSelectedBtn");
+
+        const btn = document.getElementById("analyzeSelectedBtn");
         btn.disabled = true;
-        btn.textContent = "Adding...";
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
+        btn.textContent = "🔍 Starting...";
+
+        // Add all selected jobs to the analysis queue
         for (const [jobId, job] of reviewSelectedJobs) {
-          try {
-            const res = await fetch("/pipeline/add", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ job: job })
-            });
-            
-            if (res.ok) {
-              successCount++;
-            } else {
-              errorCount++;
-            }
-          } catch (err) {
-            errorCount++;
-          }
+          const jobUrl = job.url || job.job_url;
+          if (!jobUrl) continue;
+
+          // Check if already in queue
+          const existing = reviewAnalysisQueue.find(item => item.jobId === jobId);
+          if (existing) continue;
+
+          const queueId = reviewQueueIdCounter++;
+          const item = {
+            id: queueId,
+            jobId: jobId,
+            url: jobUrl,
+            status: 'pending',
+            title: job.title || 'Unknown',
+            company: job.company || '',
+            score: null,
+            analysis: null,
+            originalJob: job,
+            error: null
+          };
+
+          reviewAnalysisQueue.push(item);
         }
-        
-        // Clear selection and refresh
+
+        // Clear selection
         reviewSelectedJobs.clear();
+        document.querySelectorAll(".reviewJobCheck").forEach(cb => cb.checked = false);
+        document.getElementById("reviewSelectAll").checked = false;
         updateAddSelectedButton();
-        
-        alert(`Added ${successCount} jobs to Pipeline` + (errorCount > 0 ? `, ${errorCount} errors` : ''));
-        
-        // Reload current page
-        loadReviewJobs(reviewPage);
+
+        // Render queue and start analysis
+        renderReviewQueue();
+
+        // Start analyzing all pending items (in parallel, max 3 at a time)
+        const pendingItems = reviewAnalysisQueue.filter(item => item.status === 'pending');
+        const batchSize = 3;
+
+        for (let i = 0; i < pendingItems.length; i += batchSize) {
+          const batch = pendingItems.slice(i, i + batchSize);
+          await Promise.all(batch.map(item => analyzeReviewQueueItem(item)));
+        }
+      }
+
+      async function analyzeReviewQueueItem(item) {
+        item.status = 'analyzing';
+        renderReviewQueue();
+
+        try {
+          // First check if already in pipeline
+          const checkRes = await fetch(`/job/find-by-url?url=${encodeURIComponent(item.url)}`);
+          const checkData = await checkRes.json();
+
+          if (checkData.ok && checkData.found) {
+            item.status = 'exists';
+            item.existingJob = checkData.job;
+            renderReviewQueue();
+            return;
+          }
+
+          // Start analysis
+          const analyzeRes = await fetch('/analyze-job-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: item.url })
+          });
+          const analysis = await analyzeRes.json();
+
+          if (analysis.ok) {
+            item.status = 'ready';
+            item.title = analysis.title || item.title;
+            item.company = analysis.company || item.company;
+            item.score = analysis.match_score || analysis.analysis?.match_score || 0;
+            item.analysis = analysis;
+          } else if (analysis.is_closed) {
+            item.status = 'closed';
+            item.error = analysis.error || 'Position closed';
+          } else {
+            item.status = 'error';
+            item.error = analysis.error || 'Analysis failed';
+          }
+        } catch (e) {
+          item.status = 'error';
+          item.error = e.message;
+        }
+
+        renderReviewQueue();
+      }
+
+      function renderReviewQueue() {
+        const queueDiv = document.getElementById('reviewAnalysisQueue');
+        const itemsDiv = document.getElementById('reviewQueueItems');
+
+        // Show/hide queue section
+        queueDiv.style.display = reviewAnalysisQueue.length > 0 ? 'block' : 'none';
+
+        itemsDiv.innerHTML = reviewAnalysisQueue.map(item => {
+          let statusHtml = '';
+          let bgColor = '#1e293b';
+          let actions = '';
+
+          switch (item.status) {
+            case 'pending':
+              statusHtml = '<span style="color: #9ca3af;">⏳ Pending...</span>';
+              break;
+            case 'analyzing':
+              statusHtml = '<span style="color: #60a5fa;">🤖 Analyzing...</span>';
+              break;
+            case 'ready':
+              const scoreColor = item.score >= 70 ? '#22c55e' : item.score >= 50 ? '#eab308' : '#ef4444';
+              statusHtml = `<span style="color: ${scoreColor}; font-weight: 600;">${item.score}%</span>`;
+              bgColor = '#1e3a2e';
+              actions = `
+                <button onclick="openReviewQueueAnalysis(${item.id})" style="padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">View</button>
+                <button onclick="addReviewQueueItemToPipeline(${item.id})" style="padding: 4px 10px; background: #22c55e; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Add</button>
+              `;
+              break;
+            case 'exists':
+              statusHtml = '<span style="color: #9ca3af;">Already in pipeline</span>';
+              bgColor = '#374151';
+              actions = `<button onclick="removeFromReviewQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+            case 'closed':
+              statusHtml = '<span style="color: #f87171;">❌ Closed</span>';
+              bgColor = '#3b1c1c';
+              actions = `<button onclick="removeFromReviewQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+            case 'error':
+              statusHtml = `<span style="color: #f87171;" title="${item.error || ''}">⚠️ Error</span>`;
+              bgColor = '#3b2c1c';
+              actions = `<button onclick="removeFromReviewQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+          }
+
+          return `
+            <div data-review-queue-id="${item.id}" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: ${bgColor}; border-radius: 6px; border: 1px solid #4b5563;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</div>
+                <div style="font-size: 11px; color: #9ca3af;">${item.company}</div>
+              </div>
+              <div style="min-width: 80px; text-align: right; font-size: 12px;">
+                ${statusHtml}
+              </div>
+              <div style="min-width: 100px; text-align: right;">
+                ${actions}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function openReviewQueueAnalysis(queueId) {
+        const item = reviewAnalysisQueue.find(i => i.id === queueId);
+        if (!item || !item.analysis) return;
+
+        // Open the existing modal with this analysis
+        window.currentAnalysis = item.analysis;
+        window.currentJobUrl = item.url;
+
+        // Show modal with analysis
+        const addJobModal = document.getElementById('addJobModal');
+        const addJobUrl = document.getElementById('addJobUrl');
+        addJobUrl.value = item.url;
+        addJobModal.style.display = 'flex';
+
+        // Trigger the display of analysis (reuse existing code)
+        displayAnalysisResults(item.analysis, item.url);
+      }
+
+      async function addReviewQueueItemToPipeline(queueId) {
+        const item = reviewAnalysisQueue.find(i => i.id === queueId);
+        if (!item) return;
+
+        // Set analysis data for addJobToPipeline to use
+        if (item.analysis) {
+          window.currentAnalysis = {
+            match_score: item.analysis.match_score,
+            analysis: item.analysis
+          };
+        }
+
+        // Add to pipeline via /onboard (which handles everything properly)
+        try {
+          const res = await fetch('/onboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: item.url,
+              match_score: item.score,
+              analysis: item.analysis
+            })
+          });
+          const data = await res.json();
+
+          if (data.ok) {
+            // Remove from queue
+            removeFromReviewQueue(queueId);
+            // Refresh review list
+            loadReviewJobs(reviewPage);
+            // Refresh pipeline
+            loadJobsOnce();
+          } else {
+            alert('Error: ' + (data.error || 'Failed to add'));
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        }
+
+        // Clear analysis data
+        window.currentAnalysis = null;
+      }
+
+      function removeFromReviewQueue(queueId) {
+        const idx = reviewAnalysisQueue.findIndex(i => i.id === queueId);
+        if (idx !== -1) {
+          reviewAnalysisQueue.splice(idx, 1);
+          renderReviewQueue();
+        }
+      }
+
+      function clearReviewQueue() {
+        reviewAnalysisQueue.length = 0;
+        renderReviewQueue();
       }
 
       // ---------- LOADING ----------
@@ -3575,8 +3782,11 @@
         updateAddSelectedButton();
       });
       
-      // Add Selected button
-      document.getElementById("addSelectedBtn").addEventListener("click", addSelectedToPipeline);
+      // Analyze Selected button
+      document.getElementById("analyzeSelectedBtn").addEventListener("click", analyzeSelectedJobs);
+
+      // Clear Review Queue button
+      document.getElementById("clearReviewQueueBtn").addEventListener("click", clearReviewQueue);
       
       // Column sorting for Review table
       document.querySelectorAll("#reviewTable th.sortable").forEach(th => {
@@ -4404,7 +4614,9 @@
         const content = document.getElementById('matchAnalysisContent');
 
         const score = job.match_score || 0;
-        const analysis = job.analysis || {};
+        // Handle nested analysis structure (analysis.analysis) from /jd/parse response
+        const rawAnalysis = job.analysis || {};
+        const analysis = rawAnalysis.analysis || rawAnalysis;
         const scoreColor = score >= 70 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
 
         title.innerHTML = `<span style="color: ${scoreColor}; font-weight: 700;">${score}%</span> Match — ${escapeHtml(job.company || '')}`;
@@ -4426,14 +4638,20 @@
           html += `<div style="margin-bottom: 12px;"><strong>Role Type:</strong> ${escapeHtml(analysis.role_type)}</div>`;
         }
 
-        if (analysis.summary) {
-          html += `<div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHtml(analysis.summary)}</div>`;
+        if (analysis.analysis_summary || analysis.summary) {
+          const summaryText = analysis.analysis_summary || (typeof analysis.summary === 'string' ? analysis.summary : '');
+          if (summaryText) {
+            html += `<div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHtml(summaryText)}</div>`;
+          }
         }
 
         if (analysis.key_requirements && analysis.key_requirements.length > 0) {
           html += `<div style="margin-bottom: 12px;"><strong>Key Requirements:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
           analysis.key_requirements.slice(0, 5).forEach(req => {
-            html += `<li style="margin-bottom: 4px;">${escapeHtml(req)}</li>`;
+            // Handle both string and object formats
+            const reqText = typeof req === 'string' ? req : (req.requirement || JSON.stringify(req));
+            const hasIcon = req.anton_has === 'yes' ? '✅' : req.anton_has === 'partial' ? '⚠️' : req.anton_has === 'no' ? '❌' : '';
+            html += `<li style="margin-bottom: 4px;">${hasIcon} ${escapeHtml(reqText)}</li>`;
           });
           html += `</ul></div>`;
         }
@@ -4441,7 +4659,8 @@
         if (analysis.matching_experience && analysis.matching_experience.length > 0) {
           html += `<div style="margin-bottom: 12px;"><strong style="color: #22c55e;">Your Matching Experience:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
           analysis.matching_experience.slice(0, 5).forEach(exp => {
-            html += `<li style="margin-bottom: 4px; color: #86efac;">${escapeHtml(exp)}</li>`;
+            const expText = typeof exp === 'string' ? exp : JSON.stringify(exp);
+            html += `<li style="margin-bottom: 4px; color: #86efac;">${escapeHtml(expText)}</li>`;
           });
           html += `</ul></div>`;
         }
@@ -4449,7 +4668,8 @@
         if (analysis.gaps && analysis.gaps.length > 0) {
           html += `<div style="margin-bottom: 12px;"><strong style="color: #ef4444;">Gaps:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
           analysis.gaps.slice(0, 5).forEach(gap => {
-            html += `<li style="margin-bottom: 4px; color: #fca5a5;">${escapeHtml(gap)}</li>`;
+            const gapText = typeof gap === 'string' ? gap : JSON.stringify(gap);
+            html += `<li style="margin-bottom: 4px; color: #fca5a5;">${escapeHtml(gapText)}</li>`;
           });
           html += `</ul></div>`;
         }
@@ -4457,7 +4677,8 @@
         if (analysis.pros && analysis.pros.length > 0) {
           html += `<div style="margin-bottom: 12px;"><strong style="color: #22c55e;">Pros:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
           analysis.pros.forEach(pro => {
-            html += `<li style="margin-bottom: 4px;">${escapeHtml(pro)}</li>`;
+            const proText = typeof pro === 'string' ? pro : JSON.stringify(pro);
+            html += `<li style="margin-bottom: 4px;">${escapeHtml(proText)}</li>`;
           });
           html += `</ul></div>`;
         }
@@ -4465,7 +4686,8 @@
         if (analysis.cons && analysis.cons.length > 0) {
           html += `<div style="margin-bottom: 12px;"><strong style="color: #ef4444;">Cons:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
           analysis.cons.forEach(con => {
-            html += `<li style="margin-bottom: 4px;">${escapeHtml(con)}</li>`;
+            const conText = typeof con === 'string' ? con : JSON.stringify(con);
+            html += `<li style="margin-bottom: 4px;">${escapeHtml(conText)}</li>`;
           });
           html += `</ul></div>`;
         }
@@ -4860,11 +5082,21 @@
           }
           const recentBadge = recentlyUpdated ? '<span style="background: #22c55e; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">JUST NOW</span>' : '';
           
+          // ATS badge with support indicator
+          const atsSupported = c.ats_supported;
+          const atsBadgeStyle = atsSupported
+            ? 'background: #166534; color: #86efac;'  // Green for supported
+            : 'background: #4b5563; color: #9ca3af;'; // Gray for unsupported
+          const atsTitle = atsSupported
+            ? `${c.ats} - Auto-fetch supported ✓`
+            : `${c.ats} - Manual add only`;
+          const atsSupportIcon = atsSupported ? '🔄' : '📝';
+
           return `
             <tr class="company-row" data-company="${c.company}" data-id="${c.id || ''}" style="${rowStyle}">
               <td><strong>${c.company}</strong>${recentBadge}</td>
               <td style="color: var(--muted); font-size: 12px;">${c.industry || c.tags?.join(', ') || ''}</td>
-              <td><span class="ats-badge">${c.ats}</span></td>
+              <td><span class="ats-badge" style="${atsBadgeStyle}" title="${atsTitle}">${atsSupportIcon} ${c.ats}</span></td>
               <td><span class="${totalBadgeClass}">${c.total_jobs || 0}</span></td>
               <td><span class="${jobsBadgeClass}">${c.jobs_count}</span></td>
               <td>${c.new_count || 0}</td>
@@ -5419,22 +5651,22 @@
       document.getElementById("paginationPrev").addEventListener("click", () => {
         if (pipelinePage > 1) {
           pipelinePage--;
-          renderJobs(pipelineFilteredJobs);
+          renderJobs(pipelineFilteredJobs, true); // skipSort to preserve page
         }
       });
-      
+
       document.getElementById("paginationNext").addEventListener("click", () => {
         const totalPages = Math.ceil(pipelineFilteredJobs.length / pipelinePageSize);
         if (pipelinePage < totalPages) {
           pipelinePage++;
-          renderJobs(pipelineFilteredJobs);
+          renderJobs(pipelineFilteredJobs, true); // skipSort to preserve page
         }
       });
-      
+
       document.getElementById("paginationSize").addEventListener("change", (e) => {
         pipelinePageSize = parseInt(e.target.value);
         pipelinePage = 1; // Reset to first page
-        renderJobs(pipelineFilteredJobs);
+        renderJobs(pipelineFilteredJobs, true); // skipSort to preserve sort
       });
 
       // Quick Filter Buttons
@@ -6541,8 +6773,13 @@
         const analysis = window.currentAnalysis;
         const requestBody = { url: url };
         if (analysis) {
-          requestBody.match_score = analysis.match_score || analysis.analysis?.match_score;
+          // Extract match_score from nested analysis object
+          const score = analysis.analysis?.match_score || analysis.match_score || 0;
+          if (score > 0) {
+            requestBody.match_score = score;
+          }
           requestBody.analysis = analysis.analysis || analysis;
+          console.log('[AddJob] Sending match_score:', requestBody.match_score, 'analysis:', requestBody.analysis);
         }
 
         try {

@@ -14,7 +14,7 @@ import json
 from collections import Counter
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from typing import Any, Optional
 
 # ========== UNIVERSAL PATHS (work on any machine via iCloud) ==========
 def get_icloud_path() -> Path:
@@ -56,13 +56,14 @@ from parsers.smartrecruiters import fetch_smartrecruiters
 from parsers.ashby import fetch_ashby_jobs
 from parsers.workday_v2 import fetch_workday_v2
 from parsers.atlassian import fetch_atlassian
+from parsers.phenom import fetch_phenom_jobs
 from ats_detector import try_repair_company, verify_ats_url
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info, load_stats
 from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
 
-# ATS parser mapping
+# ATS parser mapping - these ATS support automatic job fetching
 ATS_PARSERS = {
     "greenhouse": lambda url: fetch_greenhouse("", url),
     "lever": lambda url: fetch_lever("", url),
@@ -70,7 +71,11 @@ ATS_PARSERS = {
     "ashby": fetch_ashby_jobs,
     "workday": lambda url: fetch_workday_v2("", url),
     "atlassian": lambda url: fetch_atlassian("", url),
+    "phenom": fetch_phenom_jobs,
 }
+
+# List of supported ATS for UI display
+SUPPORTED_ATS = list(ATS_PARSERS.keys())
 
 from storage.job_storage import (
     get_all_jobs, get_jobs_by_status, get_jobs_by_statuses,
@@ -401,13 +406,16 @@ def refresh_company_sync(company: dict) -> dict:
         jobs = fetcher(board_url)
         result["jobs"] = len(jobs) if jobs else 0
         result["ok"] = True
-        
+        print(f"[refresh_company_sync] {company_id}: fetched {len(jobs) if jobs else 0} jobs")
+
         # Update company status in storage
         from company_storage import update_company_status
         update_company_status(company_id, ok=True, jobs_count=len(jobs) if jobs else 0)
-        
+
         # Update cache with new jobs and track added count
+        print(f"[refresh_company_sync] {company_id}: calling update_cache_for_company...")
         added = update_cache_for_company(company_id, jobs or [])
+        print(f"[refresh_company_sync] {company_id}: update_cache returned {added}")
         result["jobs_added"] = added or 0
         
     except Exception as e:
@@ -420,49 +428,75 @@ def refresh_company_sync(company: dict) -> dict:
 def update_cache_for_company(company_id: str, new_jobs: list) -> int:
     """Update jobs_all.json cache for a specific company. Returns count of new jobs added to pipeline."""
     from utils.cache_manager import get_cache_path
-    from utils.role_classifier import classify_role
+    from utils.job_utils import classify_role
     from utils.normalize import normalize_location
-    
+
     cache_path = get_cache_path("all")
     if not cache_path.exists():
-        return
-    
+        print(f"[Daemon] Cache file not found: {cache_path}")
+        return 0
+
+    import time
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print(f"[update_cache] {company_id}: reading cache (attempt {attempt + 1})...")
+            with open(cache_path, "r") as f:
+                cache_data = json.load(f)
+            break  # Success, exit retry loop
+        except json.JSONDecodeError as e:
+            if attempt < max_retries - 1:
+                print(f"[update_cache] {company_id}: JSON error, retrying in 1s... ({e})")
+                time.sleep(1)
+                continue
+            else:
+                print(f"[update_cache] {company_id}: JSON error after {max_retries} attempts: {e}")
+                return 0
+
     try:
-        with open(cache_path, "r") as f:
-            cache_data = json.load(f)
-        
+
         all_jobs = cache_data.get("jobs", [])
-        
+        print(f"[update_cache] {company_id}: cache has {len(all_jobs)} jobs")
+
         # Remove old jobs from this company
         all_jobs = [j for j in all_jobs if j.get("company_id") != company_id]
-        
+        print(f"[update_cache] {company_id}: after removing old jobs: {len(all_jobs)}")
+
         # Normalize and classify new jobs
+        print(f"[update_cache] {company_id}: normalizing {len(new_jobs)} new jobs...")
         for job in new_jobs:
             job["company_id"] = company_id
             if "location_norm" not in job:
                 job["location_norm"] = normalize_location(job.get("location", ""))
             if "role_category" not in job:
-                role_info = classify_role(job.get("title", ""))
-                job["role_category"] = role_info.get("category", "unknown")
+                role_info = classify_role(job.get("title", ""), "")
+                job["role_category"] = role_info.get("role_category", "unknown")
+                job["role_family"] = role_info.get("role_family", "other")
                 job["role_id"] = role_info.get("role_id")
-        
+
         # Add new jobs
         all_jobs.extend(new_jobs)
-        
-        # Save back
+        print(f"[Daemon] Cache update: {company_id} - adding {len(new_jobs)} jobs, total will be {len(all_jobs)}")
+
+        # Save back using atomic write (write to temp file, then rename)
         cache_data["jobs"] = all_jobs
         cache_data["jobs_count"] = len(all_jobs)
         cache_data["last_updated"] = datetime.now(timezone.utc).isoformat()
-        
-        with open(cache_path, "w") as f:
+
+        temp_path = cache_path.with_suffix('.tmp')
+        with open(temp_path, "w") as f:
             json.dump(cache_data, f)
-        
+        temp_path.rename(cache_path)  # Atomic on most filesystems
+        print(f"[Daemon] Cache saved successfully for {company_id}")
+
         # Also update pipeline (jobs.json) with relevant jobs
         added = update_pipeline_for_company(company_id, new_jobs)
         return added
-        
+
     except Exception as e:
+        import traceback
         print(f"[Daemon] Cache update error for {company_id}: {e}")
+        traceback.print_exc()
         return 0
 
 def update_pipeline_for_company(company_id: str, new_jobs: list) -> int:
@@ -1210,13 +1244,15 @@ def get_companies(
             "interview_count": 0,
         })
 
+        ats_type = cfg.get("ats", "")
         items.append(
             {
                 "company": company_name,
                 "id": cfg.get("id", ""),
                 "industry": cfg.get("industry", ""),
                 "tags": cfg.get("tags", []),
-                "ats": cfg.get("ats", ""),
+                "ats": ats_type,
+                "ats_supported": ats_type in SUPPORTED_ATS,  # Can auto-fetch jobs
                 "url": cfg.get("url", "") or cfg.get("board_url", ""),
                 "enabled": cfg.get("enabled", True),
                 "status": company_status,
@@ -1243,14 +1279,59 @@ def get_companies(
     total_interview = sum(c["interview_count"] for c in items)
 
     return {
-        "count": len(items), 
+        "count": len(items),
         "companies": items,
+        "supported_ats": SUPPORTED_ATS,  # List of ATS that support auto-fetching
         "summary": {
             "total_jobs": total_jobs,
             "total_new": total_new,
             "total_applied": total_applied,
             "total_interview": total_interview,
         }
+    }
+
+
+@app.get("/ats-info")
+def get_ats_info():
+    """
+    Get information about supported ATS systems.
+    Returns which ATS support automatic job fetching and collected unsupported ATS.
+    """
+    # Load unsupported ATS data
+    unsupported_ats = {}
+    unsupported_file = Path("data/unsupported_ats.json")
+    if unsupported_file.exists():
+        try:
+            with open(unsupported_file, "r") as f:
+                data = json.load(f)
+                unsupported_ats = data.get("ats_systems", {})
+        except:
+            pass
+
+    # Format unsupported ATS for response
+    unsupported_list = []
+    for ats_key, ats_data in unsupported_ats.items():
+        unsupported_list.append({
+            "name": ats_data.get("name", ats_key),
+            "companies_count": len(ats_data.get("companies_using", [])),
+            "endpoints_found": len(ats_data.get("api_endpoints", [])),
+            "parser_status": ats_data.get("parser_status", "not_started"),
+            "first_seen": ats_data.get("first_seen"),
+        })
+
+    return {
+        "supported_ats": SUPPORTED_ATS,
+        "descriptions": {
+            "greenhouse": "Greenhouse - Full API support, auto-fill available",
+            "lever": "Lever - Full API support, auto-fill available",
+            "ashby": "Ashby - Full API support, auto-fill available",
+            "workday": "Workday - API support (limited)",
+            "smartrecruiters": "SmartRecruiters - API support",
+            "atlassian": "Atlassian - API support",
+        },
+        "auto_fill_supported": ["greenhouse", "lever", "ashby"],
+        "unsupported_ats": unsupported_list,
+        "unsupported_count": len(unsupported_list),
     }
 
 
@@ -2626,6 +2707,62 @@ def fetch_single_job(ats_info: dict) -> dict:
         except Exception as e:
             return {"error": str(e)}
     
+    elif ats == "ashby":
+        # Ashby API - fetch job details
+        company_slug = ats_info.get("company_slug", "")
+        job_id = ats_info.get("job_id", "")
+        job_url = ats_info.get("job_url", "") or f"https://jobs.ashbyhq.com/{company_slug}/{job_id}"
+
+        # Ashby has a GraphQL API, but we can also scrape the page
+        # Try API first
+        api_url = f"https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting"
+        try:
+            payload = {
+                "operationName": "ApiJobPosting",
+                "variables": {
+                    "organizationHostedJobsPageName": company_slug,
+                    "jobPostingId": job_id
+                },
+                "query": """
+                    query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) {
+                        jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) {
+                            id
+                            title
+                            locationName
+                            descriptionHtml
+                            publishedDate
+                        }
+                    }
+                """
+            }
+            resp = requests.post(api_url, json=payload, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json()
+                job_posting = data.get("data", {}).get("jobPosting", {})
+                if job_posting:
+                    from bs4 import BeautifulSoup
+                    desc_html = job_posting.get("descriptionHtml", "")
+                    desc_text = BeautifulSoup(desc_html, "html.parser").get_text(separator="\n", strip=True) if desc_html else ""
+
+                    return {
+                        "title": job_posting.get("title", ""),
+                        "location": job_posting.get("locationName", ""),
+                        "url": job_url,
+                        "ats_job_id": job_id,
+                        "description": desc_text,
+                        "updated_at": job_posting.get("publishedDate", ""),
+                    }
+        except Exception as e:
+            print(f"[Ashby] API error: {e}")
+
+        # Fallback: return basic info from URL
+        return {
+            "title": "",
+            "location": "",
+            "url": job_url,
+            "ats_job_id": job_id,
+        }
+
     elif ats == "universal":
         # Use Playwright-based universal parser
         try:
@@ -2642,7 +2779,7 @@ def fetch_single_job(ats_info: dict) -> dict:
             }
         except Exception as e:
             return {"error": f"Universal parser error: {str(e)}"}
-    
+
     return {"error": f"Fetch not implemented for ATS: {ats}"}
 
 
@@ -2695,7 +2832,13 @@ def onboard_job(payload: OnboardRequest):
     )
     
     new_company = None
+    company_parsing_started = False
+    total_jobs_found = 0
+
     if not company_exists:
+        # Check if ATS is supported for automatic parsing
+        ats_supported = ats in SUPPORTED_ATS
+
         new_company = {
             "id": company_slug,
             "name": company_name,
@@ -2706,12 +2849,39 @@ def onboard_job(payload: OnboardRequest):
             "priority": 0,
             "hq_state": None,
             "region": "global",
-            "enabled": True
+            "enabled": ats_supported  # Only enable for supported ATS
         }
         companies.append(new_company)
         with open(companies_path, "w") as f:
             json.dump(companies, f, indent=2, ensure_ascii=False)
-    
+
+        # If ATS is supported, trigger initial parsing of all company jobs
+        if ats_supported:
+            try:
+                print(f"[Onboard] New company with supported ATS ({ats}), starting initial parse...")
+                # Use refresh_company_sync which handles all the parsing logic
+                fetch_result = refresh_company_sync(new_company)
+                if fetch_result.get("ok"):
+                    company_parsing_started = True
+                    total_jobs_found = fetch_result.get("jobs", 0)
+                    print(f"[Onboard] Initial parse complete: {total_jobs_found} jobs found, {fetch_result.get('jobs_added', 0)} added to pipeline")
+                else:
+                    print(f"[Onboard] Initial parse failed: {fetch_result.get('error')}")
+            except Exception as e:
+                print(f"[Onboard] Initial parse error: {e}")
+        else:
+            # Register unsupported ATS for future implementation
+            try:
+                from tools.ats_discovery import register_unsupported_ats
+                register_unsupported_ats(
+                    ats_name=ats,
+                    discovery_result={"api_endpoints": [], "json_responses": []},
+                    company_url=url
+                )
+                print(f"[Onboard] Registered unsupported ATS '{ats}' for future implementation")
+            except Exception as e:
+                print(f"[Onboard] Could not register unsupported ATS: {e}")
+
     # 3. Fetch single job
     job_data = fetch_single_job(ats_info)
     if "error" in job_data:
@@ -2777,10 +2947,27 @@ def onboard_job(payload: OnboardRequest):
     job["source"] = "onboard"
 
     # Add match_score and analysis if provided (from pre-analysis)
+    print(f"[Onboard] Received match_score: {payload.match_score}, has analysis: {payload.analysis is not None}")
     if payload.match_score is not None:
         job["match_score"] = payload.match_score
+        print(f"[Onboard] Set match_score to {payload.match_score}")
     if payload.analysis is not None:
         job["analysis"] = payload.analysis
+
+    # If no analysis provided, run AI analysis automatically
+    if payload.analysis is None and job_data.get("description"):
+        try:
+            from api.prepare_application import analyze_job_with_ai
+            jd_text = job_data.get("description", "")
+            if jd_text and len(jd_text) > 100:
+                role_family = job.get("role_family", "tpm_program")
+                analysis = analyze_job_with_ai(job.get("title"), company_name, jd_text, role_family)
+                if analysis and "match_score" in analysis:
+                    job["match_score"] = analysis["match_score"]
+                    job["analysis"] = analysis
+                    print(f"[Onboard] AI analysis complete: {analysis.get('match_score')}% match")
+        except Exception as e:
+            print(f"[Onboard] AI analysis error: {e}")
 
     # 5. Add to pipeline - always add manual jobs (user explicitly added them)
     added_to_pipeline = False
@@ -2794,7 +2981,10 @@ def onboard_job(payload: OnboardRequest):
         "company": {
             "name": company_name,
             "new": new_company is not None,
-            "ats": ats
+            "ats": ats,
+            "ats_supported": ats in SUPPORTED_ATS,
+            "parsing_started": company_parsing_started,
+            "total_jobs_found": total_jobs_found
         },
         "job": {
             "id": job["id"],
@@ -3001,7 +3191,28 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
             # Extract from og:tags first (works for Deloitte, etc)
             og_title = soup.find("meta", property="og:title")
             og_desc = soup.find("meta", property="og:description")
-            
+            og_site_name = soup.find("meta", property="og:site_name")
+
+            # Try to get company from og:site_name (works for Phenom ATS like Cisco)
+            if og_site_name and not company:
+                company = og_site_name.get("content", "")
+
+            # Try to extract clean title and company from JSON-LD
+            json_ld_scripts = soup.find_all("script", type="application/ld+json")
+            for script in json_ld_scripts:
+                try:
+                    ld_data = json.loads(script.string)
+                    if ld_data.get("@type") == "JobPosting":
+                        if not title and ld_data.get("title"):
+                            title = ld_data.get("title")
+                        if not company:
+                            org = ld_data.get("hiringOrganization", {})
+                            if isinstance(org, dict) and org.get("name"):
+                                company = org.get("name")
+                        break
+                except:
+                    continue
+
             if og_title and not title:
                 title_content = og_title.get("content", "")
                 # Clean up "Check out this job at Company, Title" format
@@ -3091,7 +3302,20 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
                 title = browser_result.get("title", title) or title
                 company = browser_result.get("company", company) or company
                 location = browser_result.get("location", location) or location
-                
+
+                # Special handling for dejobs.org - h1 contains company, first JD line is title
+                if "dejobs.org" in url and jd:
+                    jd_lines = jd.split("\n")
+                    if jd_lines and not company:
+                        # h1/title is actually company name on dejobs.org
+                        company = title
+                        # First non-empty line of JD is the actual job title
+                        for line in jd_lines[:5]:
+                            line = line.strip()
+                            if line and len(line) > 5 and len(line) < 150:
+                                title = line
+                                break
+
                 # Check if job is closed
                 if browser_result.get("is_closed"):
                     return {
@@ -3151,6 +3375,27 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     if ai_rec:
         rec_text = f"{ai_rec}: {analysis.get('recommendation_reason', '')}"
     
+    # Collect application flow info from browser parsing
+    application_info = {}
+    if browser_result:
+        is_intermediate = browser_result.get("is_intermediate", False)
+        apply_url = browser_result.get("apply_url")
+        is_aggregator = browser_result.get("is_aggregator", False)
+
+        if is_intermediate and apply_url:
+            application_info = {
+                "is_intermediate": True,
+                "is_aggregator": is_aggregator,
+                "apply_url": apply_url,
+                "message": "⚠️ This is an aggregator page. Click 'Apply' to go to the actual company career page."
+            }
+        elif is_aggregator:
+            application_info = {
+                "is_intermediate": False,
+                "is_aggregator": True,
+                "message": "📋 This appears to be a job aggregator site."
+            }
+
     result = {
         "ok": True,
         "url": url,
@@ -3173,7 +3418,8 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
             "cons": analysis.get("cons", [])
         },
         "recommendation": recommendation,
-        "recommendation_text": rec_text
+        "recommendation_text": rec_text,
+        "application_info": application_info if application_info else None
     }
     
     # Cache successful result
@@ -3181,6 +3427,73 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     print(f"[AnalyzeJobUrl] Cached result for {cache_url[:50]}... (score: {score}%)")
 
     return result
+
+
+class CheckApplicationPageRequest(BaseModel):
+    url: str
+
+
+@app.post("/check-application-page")
+async def check_application_page(payload: CheckApplicationPageRequest):
+    """
+    Check if a job URL leads to an application form or if it's an intermediate page.
+    Use this before starting auto-fill to ensure we're on the right page.
+
+    Returns:
+        {
+            "ok": bool,
+            "url": str,              # Original URL
+            "final_url": str,        # URL of actual application page
+            "is_intermediate": bool, # True if original URL is aggregator/intermediate
+            "has_form": bool,        # True if application form was found
+            "form_fields_count": int,# Number of form fields detected
+            "redirects": list,       # URLs navigated through
+            "ready_for_autofill": bool,  # True if we can start auto-fill
+            "message": str,          # Human-readable status
+        }
+    """
+    from utils.browser_parser import navigate_to_application_form_sync, is_aggregator_url
+
+    url = payload.url.strip()
+
+    try:
+        result = navigate_to_application_form_sync(url)
+
+        is_intermediate = len(result.get("redirects", [])) > 0 or is_aggregator_url(url)
+        has_form = result.get("has_form", False)
+        ready = has_form and result.get("ok", False)
+
+        # Generate status message
+        if not result.get("ok"):
+            message = f"❌ Error: {result.get('error', 'Unknown error')}"
+        elif is_intermediate and not has_form:
+            message = "⚠️ Intermediate page detected. Apply button may lead to external site."
+        elif is_intermediate and has_form:
+            message = f"✅ Navigated through {len(result.get('redirects', []))} redirect(s) to application form."
+        elif has_form:
+            message = "✅ Application form detected. Ready for auto-fill."
+        else:
+            message = "⚠️ No application form found. May need to click Apply button manually."
+
+        return {
+            "ok": result.get("ok", False),
+            "url": url,
+            "final_url": result.get("final_url", url),
+            "is_intermediate": is_intermediate,
+            "has_form": has_form,
+            "form_fields_count": result.get("form_fields_count", 0),
+            "redirects": result.get("redirects", []),
+            "ready_for_autofill": ready,
+            "message": message
+        }
+
+    except Exception as e:
+        return {
+            "ok": False,
+            "url": url,
+            "error": str(e),
+            "message": f"❌ Error checking page: {str(e)}"
+        }
 
 
 @app.post("/analyze-missing-scores")
