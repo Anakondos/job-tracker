@@ -432,49 +432,79 @@ class FormInterceptor:
         result = FormInterceptResult(success=False)
 
         try:
-            # Setup interception
-            self._setup_interception()
-
             # Analyze current form fields
             result.form_html_fields = self.analyze_form_fields()
+
+            # Find required fields (from HTML)
+            result.required_fields = [
+                f.get("name") or f.get("id")
+                for f in result.form_html_fields
+                if f.get("required")
+            ]
 
             # Fill form if requested
             if fill_form and profile:
                 filled = self.fill_form_with_profile(profile)
                 time.sleep(wait_after_fill)
 
-            # Click submit
-            if not self.click_submit():
+            # Disable form validation to ensure submit works
+            self.page.evaluate("""
+                const form = document.querySelector('form');
+                if (form) {
+                    form.setAttribute('novalidate', '');
+                    // Remove required from file inputs (can't auto-fill)
+                    form.querySelectorAll('input[type="file"][required]').forEach(
+                        el => el.removeAttribute('required')
+                    );
+                }
+            """)
+
+            # Find submit button
+            submit_button = None
+            for selector in [
+                "button[type='submit']",
+                "input[type='submit']",
+                "button:has-text('Submit')",
+                "button:has-text('Apply')",
+            ]:
+                try:
+                    btn = self.page.query_selector(selector)
+                    if btn and btn.is_visible():
+                        submit_button = btn
+                        break
+                except:
+                    continue
+
+            if not submit_button:
                 result.error = "Could not find submit button"
                 return result
 
-            # Wait for request
-            time.sleep(wait_after_click)
+            # Use expect_request to capture the POST
+            try:
+                with self.page.expect_request(
+                    lambda req: req.method == "POST",
+                    timeout=10000
+                ) as request_info:
+                    # Submit via JavaScript for reliability
+                    self.page.evaluate("document.querySelector('form').submit()")
 
-            # Check if we captured a submit request
-            if self.submit_request:
+                request = request_info.value
                 result.success = True
-                result.submit_url = self.submit_request.url
-                result.method = self.submit_request.method
-                result.content_type = self.submit_request.content_type
+                result.submit_url = request.url
+                result.method = request.method
+                result.content_type = request.headers.get("content-type", "")
 
-                # Extract fields from body
-                if isinstance(self.submit_request.body, dict):
-                    result.fields = self.submit_request.body
-                else:
-                    result.fields = {"_raw": self.submit_request.body}
+                # Parse POST data
+                post_data = request.post_data
+                if post_data:
+                    result.fields = self._parse_body(post_data, result.content_type)
+                    if not isinstance(result.fields, dict):
+                        result.fields = {"_raw": result.fields}
 
-                # Find required fields (from HTML)
-                result.required_fields = [
-                    f.get("name") or f.get("id")
-                    for f in result.form_html_fields
-                    if f.get("required")
-                ]
-            else:
-                # No submit captured - return what we have
-                result.error = "No form submission request captured"
+            except Exception as e:
+                result.error = f"Failed to capture request: {e}"
 
-            # Include all intercepted requests
+            # Include all intercepted requests (if any from route)
             result.all_requests = [
                 asdict(req) for req in self.intercepted_requests
             ]
