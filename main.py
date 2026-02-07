@@ -4558,6 +4558,9 @@ def apply_dry_run(payload: DryRunRequest):
         - required_fields: List of required field names
         - form_html_fields: Detailed info about each HTML field
     """
+    import sys
+    import subprocess
+
     job_url = payload.job_url
     profile_name = payload.profile
 
