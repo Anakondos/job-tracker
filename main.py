@@ -4532,6 +4532,178 @@ finally:
     }
 
 
+# ============= DRY-RUN FORM INTERCEPTOR ENDPOINT =============
+
+class DryRunRequest(BaseModel):
+    """Request for dry-run form analysis."""
+    job_url: str
+    profile: str = "anton_tpm"
+    fill_form: bool = True
+    headless: bool = False
+
+
+@app.post("/apply/dry-run")
+def apply_dry_run(payload: DryRunRequest):
+    """
+    Dry-run mode: Intercept form submission without actually submitting.
+
+    Opens the job application page, optionally fills form fields,
+    clicks submit, and captures the request that WOULD be sent.
+
+    Returns:
+        - submit_url: Where the form would be submitted
+        - method: HTTP method (POST, PUT, etc.)
+        - content_type: Content type of the request
+        - fields: Dictionary of all form fields and their values
+        - required_fields: List of required field names
+        - form_html_fields: Detailed info about each HTML field
+    """
+    job_url = payload.job_url
+    profile_name = payload.profile
+
+    cwd = Path(__file__).parent.resolve()
+
+    # Load profile
+    profile_path = cwd / "browser" / "profiles" / f"{profile_name}.json"
+    if not profile_path.exists():
+        return {"ok": False, "error": f"Profile not found: {profile_name}"}
+
+    try:
+        with open(profile_path) as f:
+            profile = json.load(f)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to load profile: {e}"}
+
+    # Create script for dry-run
+    script_content = f'''
+import sys
+import json
+sys.path.insert(0, '{cwd}')
+
+from browser.form_interceptor import FormInterceptor
+from playwright.sync_api import sync_playwright
+
+job_url = "{job_url}"
+profile = {json.dumps(profile)}
+headless = {str(payload.headless)}
+fill_form = {str(payload.fill_form)}
+
+print("=" * 60)
+print("DRY-RUN Form Interceptor")
+print(f"URL: {{job_url}}")
+print(f"Fill form: {{fill_form}}")
+print("=" * 60)
+
+result_file = "/tmp/dry_run_result.json"
+
+try:
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=headless)
+        context = browser.new_context()
+        page = context.new_page()
+
+        print("\\n📄 Opening page...")
+        page.goto(job_url, timeout=30000)
+        page.wait_for_load_state("networkidle", timeout=30000)
+
+        print("\\n🔍 Setting up interceptor...")
+        interceptor = FormInterceptor(page, block_submit=True)
+
+        print("\\n⏳ Capturing form submission...")
+        result = interceptor.capture_form_submit(
+            fill_form=fill_form,
+            profile=profile if fill_form else None,
+            wait_after_fill=2.0,
+            wait_after_click=3.0,
+        )
+
+        print("\\n" + "=" * 60)
+        print("📋 RESULT")
+        print("=" * 60)
+        print(f"Success: {{result.success}}")
+        print(f"Submit URL: {{result.submit_url}}")
+        print(f"Method: {{result.method}}")
+        print(f"Content-Type: {{result.content_type}}")
+        print(f"\\nFields captured: {{len(result.fields)}}")
+        for key, value in list(result.fields.items())[:10]:
+            val_str = str(value)[:50] if value else "(empty)"
+            print(f"  - {{key}}: {{val_str}}")
+        print(f"\\nRequired fields: {{result.required_fields}}")
+        if result.error:
+            print(f"\\nError: {{result.error}}")
+
+        # Save result to file
+        with open(result_file, "w") as f:
+            json.dump(result.to_dict(), f, indent=2, default=str)
+
+        print(f"\\n✅ Result saved to: {{result_file}}")
+        browser.close()
+
+except Exception as e:
+    print(f"\\n❌ Error: {{e}}")
+    import traceback
+    traceback.print_exc()
+
+    # Save error result
+    with open(result_file, "w") as f:
+        json.dump({{"success": False, "error": str(e)}}, f)
+
+input("\\nPress Enter to close...")
+'''
+
+    script_file = Path("/tmp/dry_run_script.py")
+    script_file.write_text(script_content)
+
+    # Run in Terminal (macOS) or background (Linux)
+    escaped_cwd = str(cwd).replace(' ', '\\\\ ')
+
+    try:
+        # Try macOS Terminal first
+        apple_script = f'''
+        tell application "Terminal"
+            do script "cd {escaped_cwd} && {sys.executable} {script_file}"
+            delay 0.3
+            set current settings of front window to settings set "Basic"
+            set font size of front window to 13
+        end tell
+        '''
+        subprocess.run(['osascript', '-e', apple_script], capture_output=True)
+
+    except Exception:
+        # Fallback to background execution
+        log_file = Path("/tmp/dry_run.log")
+        subprocess.Popen(
+            [sys.executable, str(script_file)],
+            stdout=open(log_file, "w"),
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd)
+        )
+
+    return {
+        "ok": True,
+        "message": "Dry-run started. Check Terminal for results.",
+        "job_url": job_url,
+        "result_file": "/tmp/dry_run_result.json",
+        "profile": profile_name,
+    }
+
+
+@app.get("/apply/dry-run/result")
+def get_dry_run_result():
+    """Get the result of the last dry-run."""
+    result_file = Path("/tmp/dry_run_result.json")
+
+    if not result_file.exists():
+        return {"ok": False, "error": "No dry-run result found. Run /apply/dry-run first."}
+
+    try:
+        with open(result_file) as f:
+            result = json.load(f)
+        return {"ok": True, "result": result}
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to read result: {e}"}
+
+
 @app.get("/chrome/status")
 def chrome_debug_status():
     """Check if Chrome is running with debug port."""
