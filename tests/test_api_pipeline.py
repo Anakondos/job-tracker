@@ -116,7 +116,7 @@ class TestPipelineAdd:
 
         assert response.status_code == 200
         data = response.json()
-        assert data.get("success") is True or "added" in str(data).lower()
+        assert data.get("ok") is True or data.get("success") is True or "added" in str(data).lower()
 
     def test_add_job_missing_id(self, mock_storage):
         """Should reject job without ID."""

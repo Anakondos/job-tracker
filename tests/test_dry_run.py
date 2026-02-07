@@ -380,7 +380,6 @@ class TestFormInterceptorIntegration:
 
         mock_button = MagicMock()
         mock_button.is_visible = MagicMock(return_value=True)
-        mock_button.click = MagicMock()
 
         # Setup page mocks
         mock_page.query_selector_all.return_value = [mock_input]
@@ -391,6 +390,21 @@ class TestFormInterceptorIntegration:
             return None
 
         mock_page.query_selector.side_effect = query_selector_side_effect
+
+        # Mock expect_request context manager
+        mock_request = MagicMock()
+        mock_request.url = "http://example.com/submit"
+        mock_request.method = "POST"
+        mock_request.headers = {"content-type": "application/x-www-form-urlencoded"}
+        mock_request.post_data = "email=test%40example.com"
+
+        mock_request_info = MagicMock()
+        mock_request_info.value = mock_request
+
+        mock_expect_request = MagicMock()
+        mock_expect_request.__enter__ = MagicMock(return_value=mock_request_info)
+        mock_expect_request.__exit__ = MagicMock(return_value=False)
+        mock_page.expect_request = MagicMock(return_value=mock_expect_request)
 
         # Run interceptor
         interceptor = FormInterceptor(mock_page, block_submit=True)
@@ -404,8 +418,12 @@ class TestFormInterceptorIntegration:
         # Verify form was filled
         mock_input.fill.assert_called()
 
-        # Verify submit was clicked
-        mock_button.click.assert_called()
+        # Verify JavaScript form.submit() was called (not button click)
+        evaluate_calls = [str(call) for call in mock_page.evaluate.call_args_list]
+        submit_called = any("submit()" in call for call in evaluate_calls)
+        assert submit_called, "Expected form.submit() to be called via page.evaluate"
 
-        # Result should exist (success depends on whether we captured a request)
+        # Result should be successful with captured data
         assert isinstance(result, FormInterceptResult)
+        assert result.success is True
+        assert result.submit_url == "http://example.com/submit"
