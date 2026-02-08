@@ -64,6 +64,8 @@ from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_i
 from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
 
 # ATS parser mapping - these ATS support automatic job fetching
+from parsers.icims import fetch_icims
+
 ATS_PARSERS = {
     "greenhouse": lambda url: fetch_greenhouse("", url),
     "lever": lambda url: fetch_lever("", url),
@@ -72,6 +74,7 @@ ATS_PARSERS = {
     "workday": lambda url: fetch_workday_v2("", url),
     "atlassian": lambda url: fetch_atlassian("", url),
     "phenom": fetch_phenom_jobs,
+    "icims": lambda url: fetch_icims("", url),
 }
 
 # List of supported ATS for UI display
