@@ -1335,6 +1335,90 @@ def get_ats_info():
     }
 
 
+@app.post("/ats-discovery/{ats_name}")
+def trigger_ats_discovery_endpoint(ats_name: str, url: str = Query(..., description="Careers page URL to analyze")):
+    """
+    Manually trigger ATS discovery for a specific ATS system.
+    Analyzes the careers page and collects API endpoints for parser generation.
+    """
+    from tools.ats_discovery import load_unsupported_ats
+
+    # Check if already has enough data
+    data = load_unsupported_ats()
+    ats_key = ats_name.lower().replace(" ", "_")
+    existing = data.get("ats_systems", {}).get(ats_key, {})
+
+    trigger_ats_discovery_background(ats_name, url, "manual_trigger")
+
+    return {
+        "status": "discovery_started",
+        "ats": ats_name,
+        "url": url,
+        "existing_endpoints": len(existing.get("api_endpoints", [])),
+        "message": "Discovery running in background. Check /ats-info for results."
+    }
+
+
+@app.post("/ats-generate/{ats_name}")
+def trigger_parser_generation(ats_name: str):
+    """
+    Trigger parser generation for an ATS system using Claude API.
+    Requires collected discovery data and ANTHROPIC_API_KEY.
+    """
+    import threading
+    from tools.ats_discovery import load_unsupported_ats
+
+    # Check if we have data
+    data = load_unsupported_ats()
+    ats_key = ats_name.lower().replace(" ", "_")
+    ats_data = data.get("ats_systems", {}).get(ats_key)
+
+    if not ats_data:
+        return {"error": f"No discovery data for ATS '{ats_name}'. Run discovery first."}
+
+    if len(ats_data.get("api_endpoints", [])) == 0:
+        return {"error": f"No API endpoints found for '{ats_name}'. Need more discovery data."}
+
+    # Check for API key
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        return {"error": "ANTHROPIC_API_KEY not set. Cannot generate parser."}
+
+    def generate_task():
+        try:
+            from tools.ats_parser_generator import generate_parser, test_parser, update_parser_status
+            print(f"[Parser Generator] Starting generation for {ats_name}")
+
+            result = generate_parser(ats_name, save=True)
+            if result.get("error"):
+                update_parser_status(ats_name, "generation_failed", result["error"])
+                print(f"[Parser Generator] Generation failed: {result['error']}")
+                return
+
+            # Test the parser
+            test_result = test_parser(ats_name)
+            if test_result.get("error"):
+                update_parser_status(ats_name, "test_failed", test_result["error"])
+            elif test_result.get("jobs_count", 0) > 0:
+                update_parser_status(ats_name, "completed", f"Found {test_result['jobs_count']} jobs")
+            else:
+                update_parser_status(ats_name, "needs_review", "Parser runs but found 0 jobs")
+
+            print(f"[Parser Generator] Completed for {ats_name}")
+
+        except Exception as e:
+            print(f"[Parser Generator] Error: {e}")
+
+    thread = threading.Thread(target=generate_task, daemon=True)
+    thread.start()
+
+    return {
+        "status": "generation_started",
+        "ats": ats_name,
+        "endpoints_available": len(ats_data.get("api_endpoints", [])),
+        "message": "Parser generation running in background. Check /ats-info for status."
+    }
+
+
 class CompanyCreate(BaseModel):
     name: str
     ats: str  # greenhouse, lever, smartrecruiters
@@ -1343,28 +1427,99 @@ class CompanyCreate(BaseModel):
     tags: list[str] = []
 
 
+def trigger_ats_discovery_background(ats_name: str, careers_url: str, company_name: str):
+    """
+    Trigger ATS discovery in background thread when new unsupported ATS is detected.
+    Collects API endpoints and data for future parser generation.
+    """
+    import threading
+
+    def discover_task():
+        try:
+            from tools.ats_discovery import discover_api_endpoints, load_unsupported_ats, save_unsupported_ats
+            import asyncio
+
+            print(f"[ATS Discovery] Starting discovery for {ats_name} from {careers_url}")
+
+            # Run async discovery
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(discover_api_endpoints(careers_url))
+            loop.close()
+
+            if result.get("error"):
+                print(f"[ATS Discovery] Error: {result['error']}")
+                return
+
+            # Update unsupported_ats.json
+            data = load_unsupported_ats()
+            ats_key = ats_name.lower().replace(" ", "_")
+
+            if ats_key not in data.get("ats_systems", {}):
+                data.setdefault("ats_systems", {})[ats_key] = {
+                    "name": ats_name,
+                    "first_seen": datetime.now().isoformat(),
+                    "companies_using": [],
+                    "api_endpoints": [],
+                    "sample_responses": [],
+                    "parser_status": "not_started"
+                }
+
+            ats_data = data["ats_systems"][ats_key]
+
+            # Add company if not already there
+            if company_name not in ats_data.get("companies_using", []):
+                ats_data.setdefault("companies_using", []).append(company_name)
+
+            # Merge discovered endpoints
+            existing_urls = {ep.get("url") if isinstance(ep, dict) else ep for ep in ats_data.get("api_endpoints", [])}
+            for ep in result.get("api_endpoints", []):
+                ep_url = ep.get("url") if isinstance(ep, dict) else ep
+                if ep_url not in existing_urls:
+                    ats_data.setdefault("api_endpoints", []).append(ep)
+
+            # Add sample responses
+            for sample in result.get("json_responses", [])[:3]:
+                ats_data.setdefault("sample_responses", []).append(sample)
+
+            # Update status
+            if ats_data.get("parser_status") == "not_started" and len(ats_data.get("api_endpoints", [])) > 0:
+                ats_data["parser_status"] = "data_collected"
+
+            save_unsupported_ats(data)
+            print(f"[ATS Discovery] Completed for {ats_name}: {len(result.get('api_endpoints', []))} endpoints found")
+
+        except Exception as e:
+            print(f"[ATS Discovery] Error in background task: {e}")
+
+    # Run in background thread
+    thread = threading.Thread(target=discover_task, daemon=True)
+    thread.start()
+
+
 @app.post("/companies")
 def add_company(company: CompanyCreate):
     """
     Add a new company to companies.json.
+    If ATS is unsupported, triggers background discovery for future parser generation.
     """
     companies_path = Path("data/companies.json")
-    
+
     # Load existing
     if companies_path.exists():
         with open(companies_path, "r") as f:
             companies = json.load(f)
     else:
         companies = []
-    
+
     # Generate id from name
     company_id = company.name.lower().replace(" ", "_").replace("-", "_")
-    
+
     # Check if already exists
     for c in companies:
         if c.get("id") == company_id or c.get("name", "").lower() == company.name.lower():
             return {"error": f"Company '{company.name}' already exists", "status": "exists"}
-    
+
     # Create new company entry
     new_company = {
         "id": company_id,
@@ -1378,14 +1533,20 @@ def add_company(company: CompanyCreate):
         "hq_state": None,
         "region": "us"
     }
-    
+
     companies.append(new_company)
-    
+
     # Save
     with open(companies_path, "w") as f:
         json.dump(companies, f, indent=2)
-    
-    return {"status": "ok", "company": new_company}
+
+    # Trigger ATS discovery if unsupported ATS
+    ats_type = company.ats.lower() if company.ats else "other"
+    if ats_type not in SUPPORTED_ATS and company.board_url:
+        print(f"[AddCompany] New unsupported ATS '{ats_type}' detected, triggering discovery...")
+        trigger_ats_discovery_background(ats_type, company.board_url, company.name)
+
+    return {"status": "ok", "company": new_company, "ats_discovery_triggered": ats_type not in SUPPORTED_ATS}
 
 
 @app.delete("/companies/{company_id}")
@@ -1562,6 +1723,305 @@ async def refresh_single_company_stream(company_id: str, profile: str = Query("a
             "Connection": "keep-alive",
         }
     )
+
+
+# ===== Discovery endpoints =====
+# Auto-discovery of companies with relevant PM/TPM roles
+
+@app.post("/discovery/search")
+def discovery_search(ai: bool = True, seed: bool = True):
+    """
+    Run company discovery pipeline: AI search + seed list.
+    Found companies go to data/discovered_companies.json staging area.
+    """
+    from tools.company_discovery import (
+        load_companies, load_staging, save_staging,
+        get_existing_ids, get_staging_ids,
+        discover_via_ai, discover_from_seed_list,
+    )
+
+    existing_ids = get_existing_ids()
+    existing_names = {c.get("name", "") for c in load_companies()}
+    candidates = load_staging()
+    initial_count = len(candidates)
+
+    new_candidates = []
+    ai_count = 0
+    seed_count = 0
+
+    if ai:
+        ai_candidates = discover_via_ai(existing_ids, existing_names)
+        new_candidates.extend(ai_candidates)
+        ai_count = len(ai_candidates)
+
+    if seed:
+        seed_candidates = discover_from_seed_list(existing_ids)
+        new_candidates.extend(seed_candidates)
+        seed_count = len(seed_candidates)
+
+    # Deduplicate with staging
+    staging_ids = {c.get("id") for c in candidates}
+    added = 0
+    for nc in new_candidates:
+        if nc["id"] not in staging_ids:
+            candidates.append(nc)
+            staging_ids.add(nc["id"])
+            added += 1
+
+    save_staging(candidates)
+
+    return {
+        "ok": True,
+        "ai_suggested": ai_count,
+        "seed_suggested": seed_count,
+        "added_to_staging": added,
+        "total_staging": len(candidates),
+    }
+
+
+@app.get("/discovery/candidates")
+def discovery_candidates(status: str = None):
+    """
+    List discovered companies from staging area.
+    Optional filter by status: pending_validation, validated, ready_to_approve, etc.
+    """
+    staging_path = Path("data/discovered_companies.json")
+    if not staging_path.exists():
+        return {"candidates": [], "total": 0}
+
+    with open(staging_path, "r", encoding="utf-8") as f:
+        candidates = json.load(f)
+
+    if status:
+        candidates = [c for c in candidates if c.get("status") == status]
+
+    # Group counts by status
+    all_candidates = json.load(open(staging_path, "r", encoding="utf-8"))
+    status_counts = {}
+    for c in all_candidates:
+        s = c.get("status", "unknown")
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    return {
+        "candidates": candidates,
+        "total": len(candidates),
+        "status_counts": status_counts,
+    }
+
+
+@app.post("/discovery/validate")
+def discovery_validate():
+    """
+    Validate ATS for pending candidates in staging.
+    Detects ATS via URL patterns and HTTP checks.
+    """
+    from tools.company_discovery import load_staging, save_staging, validate_candidates
+
+    candidates = load_staging()
+    if not candidates:
+        return {"ok": True, "validated": 0, "message": "Staging is empty"}
+
+    changes = validate_candidates(candidates)
+    save_staging(candidates)
+
+    supported = sum(1 for c in candidates if c.get("supported"))
+    unsupported = sum(1 for c in candidates if c.get("status") == "unsupported_ats")
+    no_ats = sum(1 for c in candidates if c.get("status") == "no_ats_detected")
+
+    return {
+        "ok": True,
+        "validated": changes,
+        "supported_ats": supported,
+        "unsupported_ats": unsupported,
+        "no_ats": no_ats,
+    }
+
+
+@app.post("/discovery/preview")
+def discovery_preview():
+    """
+    Preview relevant PM/TPM roles for validated candidates.
+    Parses jobs from ATS and counts matching role titles.
+    """
+    from tools.company_discovery import load_staging, save_staging, preview_relevant_roles
+
+    candidates = load_staging()
+    if not candidates:
+        return {"ok": True, "previewed": 0, "message": "Staging is empty"}
+
+    changes = preview_relevant_roles(candidates)
+    save_staging(candidates)
+
+    ready = sum(1 for c in candidates if c.get("status") == "ready_to_approve")
+    no_roles = sum(1 for c in candidates if c.get("status") == "no_relevant_roles")
+
+    return {
+        "ok": True,
+        "previewed": changes,
+        "ready_to_approve": ready,
+        "no_relevant_roles": no_roles,
+    }
+
+
+@app.post("/discovery/approve/{candidate_id}")
+def discovery_approve(candidate_id: str):
+    """
+    Approve a discovered company — move from staging to companies.json.
+    Triggers initial parsing via refresh_company_sync() (same as /onboard auto-add).
+    """
+    staging_path = Path("data/discovered_companies.json")
+    companies_path = Path("data/companies.json")
+
+    # Load staging
+    if not staging_path.exists():
+        return {"ok": False, "error": "No staging file"}
+
+    with open(staging_path, "r", encoding="utf-8") as f:
+        candidates = json.load(f)
+
+    # Find candidate
+    candidate = None
+    for c in candidates:
+        if c.get("id") == candidate_id:
+            candidate = c
+            break
+
+    if not candidate:
+        return {"ok": False, "error": f"Candidate '{candidate_id}' not found in staging"}
+
+    if not candidate.get("supported"):
+        return {"ok": False, "error": f"Candidate has unsupported ATS: {candidate.get('ats')}"}
+
+    # Check not already in companies.json
+    companies = json.load(open(companies_path, "r", encoding="utf-8")) if companies_path.exists() else []
+    for c in companies:
+        if c.get("id") == candidate_id or c.get("name", "").lower() == candidate.get("name", "").lower():
+            return {"ok": False, "error": f"Company '{candidate_id}' already exists"}
+
+    # Create company entry (same format as /onboard auto-add: main.py:3004-3015)
+    new_company = {
+        "id": candidate_id,
+        "name": candidate.get("name", candidate_id),
+        "ats": candidate.get("ats"),
+        "board_url": candidate.get("board_url"),
+        "industry": candidate.get("industry", ""),
+        "tags": candidate.get("tags", []),
+        "priority": 0,
+        "hq_state": candidate.get("hq_state"),
+        "region": "us",
+        "enabled": True,
+    }
+
+    companies.append(new_company)
+    with open(companies_path, "w", encoding="utf-8") as f:
+        json.dump(companies, f, indent=2, ensure_ascii=False)
+
+    # Trigger initial parsing (same as /onboard: main.py:3021-3033)
+    parsing_result = {"ok": False, "jobs": 0}
+    try:
+        fetch_result = refresh_company_sync(new_company)
+        parsing_result = {
+            "ok": fetch_result.get("ok", False),
+            "jobs": fetch_result.get("jobs", 0),
+            "jobs_added": fetch_result.get("jobs_added", 0),
+        }
+    except Exception as e:
+        parsing_result["error"] = str(e)
+
+    # Update staging status
+    candidate["status"] = "approved"
+    candidate["approved_at"] = datetime.now().isoformat()
+    with open(staging_path, "w", encoding="utf-8") as f:
+        json.dump(candidates, f, indent=2, ensure_ascii=False)
+
+    return {
+        "ok": True,
+        "company": new_company,
+        "parsing": parsing_result,
+    }
+
+
+@app.post("/discovery/reject/{candidate_id}")
+def discovery_reject(candidate_id: str):
+    """Reject a discovered company — mark as rejected in staging."""
+    staging_path = Path("data/discovered_companies.json")
+
+    if not staging_path.exists():
+        return {"ok": False, "error": "No staging file"}
+
+    with open(staging_path, "r", encoding="utf-8") as f:
+        candidates = json.load(f)
+
+    found = False
+    for c in candidates:
+        if c.get("id") == candidate_id:
+            c["status"] = "rejected"
+            c["rejected_at"] = datetime.now().isoformat()
+            found = True
+            break
+
+    if not found:
+        return {"ok": False, "error": f"Candidate '{candidate_id}' not found"}
+
+    with open(staging_path, "w", encoding="utf-8") as f:
+        json.dump(candidates, f, indent=2, ensure_ascii=False)
+
+    return {"ok": True, "rejected": candidate_id}
+
+
+@app.post("/discovery/auto")
+def discovery_auto():
+    """
+    Full discovery pipeline: search → validate → preview.
+    Combines all steps into a single endpoint.
+    """
+    from tools.company_discovery import (
+        load_companies, load_staging, save_staging,
+        get_existing_ids, discover_via_ai, discover_from_seed_list,
+        validate_candidates, preview_relevant_roles,
+    )
+
+    results = {"steps": []}
+
+    # Step 1: Search
+    existing_ids = get_existing_ids()
+    existing_names = {c.get("name", "") for c in load_companies()}
+    candidates = load_staging()
+
+    new_candidates = []
+    ai_candidates = discover_via_ai(existing_ids, existing_names)
+    new_candidates.extend(ai_candidates)
+    seed_candidates = discover_from_seed_list(existing_ids)
+    new_candidates.extend(seed_candidates)
+
+    staging_ids = {c.get("id") for c in candidates}
+    added = 0
+    for nc in new_candidates:
+        if nc["id"] not in staging_ids:
+            candidates.append(nc)
+            staging_ids.add(nc["id"])
+            added += 1
+
+    save_staging(candidates)
+    results["steps"].append({"search": {"ai": len(ai_candidates), "seed": len(seed_candidates), "added": added}})
+
+    # Step 2: Validate
+    validated = validate_candidates(candidates)
+    save_staging(candidates)
+    supported = sum(1 for c in candidates if c.get("supported"))
+    results["steps"].append({"validate": {"validated": validated, "supported": supported}})
+
+    # Step 3: Preview
+    previewed = preview_relevant_roles(candidates)
+    save_staging(candidates)
+    ready = sum(1 for c in candidates if c.get("status") == "ready_to_approve")
+    results["steps"].append({"preview": {"previewed": previewed, "ready_to_approve": ready}})
+
+    results["ok"] = True
+    results["ready_to_approve"] = ready
+    results["total_staging"] = len(candidates)
+
+    return results
 
 
 @app.get("/profiles/{name}")
@@ -3012,6 +3472,9 @@ def onboard_job(payload: OnboardRequest):
 class AnalyzeJobUrlRequest(BaseModel):
     url: str
 
+class ClearAnalysisCacheRequest(BaseModel):
+    url: Optional[str] = None  # If None, clears all cache
+
 # Cache for job analysis results (in-memory, clears on restart)
 _analysis_cache = {}
 
@@ -3024,18 +3487,42 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     """
     from api.prepare_application import analyze_job_with_ai
     import hashlib
-    
+
     url = payload.url.strip()
-    
+
+    # Detect thank-you/confirmation/application pages - these are NOT job postings
+    url_lower = url.lower()
+    confirmation_indicators = [
+        "/thank-you", "/thankyou", "/thanks", "/confirmation",
+        "/success", "/applied", "/submitted", "/complete",
+        "application_id=", "confirmation_id=", "applied=true",
+        "mode=submit_apply", "mode=apply", "/apply"
+    ]
+    if any(indicator in url_lower for indicator in confirmation_indicators):
+        # Try to extract job URL without apply mode
+        clean_url = url
+        if "mode=submit_apply" in url_lower or "mode=apply" in url_lower:
+            clean_url = url.split("?")[0]  # Remove query params
+            if "/apply" in clean_url.lower():
+                clean_url = clean_url.replace("/apply", "")
+
+        return {
+            "ok": False,
+            "error": "⚠️ This appears to be an application form page, not the job listing. Try using the job description URL instead.",
+            "is_confirmation_page": True,
+            "suggested_url": clean_url if clean_url != url else None,
+            "url": url
+        }
+
     # Normalize URL for cache key (remove tracking params)
     cache_url = url.split('?')[0].lower().rstrip('/')
     cache_key = hashlib.md5(cache_url.encode()).hexdigest()
-    
+
     # Check cache first
     if cache_key in _analysis_cache:
         print(f"[AnalyzeJobUrl] Cache hit for {cache_url[:50]}...")
         return _analysis_cache[cache_key]
-    
+
     # 1. Parse URL to get job data
     job_data = None
     ats = None
@@ -3287,17 +3774,27 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
                 jd = soup.get_text(separator="\n", strip=True)[:5000]
             
     except Exception as e:
-        print(f"[AnalyzeJobUrl] Fetch error: {e}")
-        return {"ok": False, "error": f"Could not fetch job page: {str(e)}"}
-    
-    # If standard parsing failed, try browser-based parsing
+        print(f"[AnalyzeJobUrl] Standard fetch error: {e}, will try browser fallback")
+        jd = ""  # Reset JD to trigger browser fallback
+
+    # If standard parsing failed or JD is too short/low quality, try browser-based parsing
+    # Check for indicators that we got navigation/boilerplate instead of real JD
     browser_result = None
-    if not jd or len(jd) < 100:
-        print(f"[AnalyzeJobUrl] Standard parsing failed, trying browser-based parsing...")
+    jd_seems_valid = jd and len(jd) > 500 and (
+        "responsibilities" in jd.lower() or
+        "requirements" in jd.lower() or
+        "qualifications" in jd.lower() or
+        "experience" in jd.lower() or
+        "skills" in jd.lower()
+    )
+
+    if not jd_seems_valid:
+        print(f"[AnalyzeJobUrl] Standard parsing insufficient (len={len(jd) if jd else 0}, valid={jd_seems_valid}), trying browser-based parsing...")
         try:
             from utils.browser_parser import parse_job_page_sync
             browser_result = parse_job_page_sync(url, take_screenshot=True)
             
+            print(f"[AnalyzeJobUrl] Browser result: ok={browser_result.get('ok')}, jd_len={len(browser_result.get('jd', ''))}")
             if browser_result.get("ok"):
                 jd = browser_result.get("jd", "")
                 title = browser_result.get("title", title) or title
@@ -3428,6 +3925,34 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     print(f"[AnalyzeJobUrl] Cached result for {cache_url[:50]}... (score: {score}%)")
 
     return result
+
+
+@app.post("/clear-analysis-cache")
+def clear_analysis_cache_endpoint(payload: ClearAnalysisCacheRequest):
+    """
+    Clear the analysis cache for a specific URL or all cached results.
+    Use this when re-analyzing a job or clearing stale cached results.
+    """
+    import hashlib
+    global _analysis_cache
+
+    if payload.url:
+        # Clear specific URL
+        cache_url = payload.url.split('?')[0].lower().rstrip('/')
+        cache_key = hashlib.md5(cache_url.encode()).hexdigest()
+
+        if cache_key in _analysis_cache:
+            del _analysis_cache[cache_key]
+            print(f"[ClearCache] Cleared cache for {cache_url[:50]}...")
+            return {"ok": True, "cleared": 1, "message": f"Cleared cache for {cache_url}"}
+        else:
+            return {"ok": True, "cleared": 0, "message": "URL not in cache"}
+    else:
+        # Clear all cache
+        count = len(_analysis_cache)
+        _analysis_cache = {}
+        print(f"[ClearCache] Cleared all {count} cached results")
+        return {"ok": True, "cleared": count, "message": f"Cleared all {count} cached results"}
 
 
 class CheckApplicationPageRequest(BaseModel):
