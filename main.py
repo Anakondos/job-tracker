@@ -524,6 +524,66 @@ def update_pipeline_for_company(company_id: str, new_jobs: list) -> int:
     if added > 0:
         print(f"[Daemon] Added {added} new jobs to pipeline from {company_id}")
 
+# Self-healing: consecutive error tracking per company
+_COMPANY_ERRORS: dict[str, int] = {}  # company_id → consecutive error count
+_MAX_CONSECUTIVE_ERRORS = 3  # disable company after this many consecutive failures
+
+
+def _track_company_error(company: dict, error: str):
+    """
+    Track consecutive errors for a company.
+    After _MAX_CONSECUTIVE_ERRORS consecutive failures → auto-disable.
+    """
+    company_id = company.get("id", "")
+    if not company_id:
+        return
+
+    _COMPANY_ERRORS[company_id] = _COMPANY_ERRORS.get(company_id, 0) + 1
+    count = _COMPANY_ERRORS[company_id]
+
+    if count >= _MAX_CONSECUTIVE_ERRORS:
+        print(f"[Daemon] ⚠️ {company_id}: {count} consecutive errors → auto-disabling")
+        _auto_disable_company(company_id, error, count)
+        _COMPANY_ERRORS.pop(company_id, None)  # cleanup
+
+
+def _reset_company_errors(company_id: str):
+    """Reset consecutive error counter on successful parse."""
+    if company_id in _COMPANY_ERRORS:
+        del _COMPANY_ERRORS[company_id]
+
+
+def _auto_disable_company(company_id: str, last_error: str, error_count: int):
+    """
+    Auto-disable a company after consecutive failures.
+    Sets enabled=false, status="auto_disabled" in companies.json.
+    """
+    companies_path = Path("data/companies.json")
+    if not companies_path.exists():
+        return
+
+    try:
+        with open(companies_path, "r", encoding="utf-8") as f:
+            companies = json.load(f)
+
+        for c in companies:
+            if c.get("id") == company_id:
+                c["enabled"] = False
+                c["status"] = "auto_disabled"
+                c["auto_disabled_at"] = datetime.now(timezone.utc).isoformat()
+                c["auto_disabled_reason"] = f"{error_count} consecutive errors: {last_error[:200]}"
+                break
+        else:
+            return  # company not found
+
+        with open(companies_path, "w", encoding="utf-8") as f:
+            json.dump(companies, f, indent=2, ensure_ascii=False)
+
+        print(f"[Daemon] 🔒 Auto-disabled company: {company_id}")
+    except Exception as e:
+        print(f"[Daemon] Error auto-disabling {company_id}: {e}")
+
+
 async def background_refresh_daemon():
     """Background task that continuously refreshes companies"""
     global DAEMON_STATUS
@@ -618,8 +678,12 @@ async def background_refresh_daemon():
                     if result["ok"]:
                         added_str = f" (+{jobs_added} new)" if jobs_added > 0 else ""
                         print(f"[Daemon] ✓ {company_name}: {result['jobs']} jobs{added_str}")
+                        # Reset consecutive error counter on success
+                        _reset_company_errors(company.get("id", ""))
                     else:
                         print(f"[Daemon] ✗ {company_name}: {result['error']}")
+                        # Track consecutive errors, auto-disable after threshold
+                        _track_company_error(company, result.get("error", ""))
                 
                 DAEMON_STATUS["current_company"] = None
                 
