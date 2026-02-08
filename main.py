@@ -1504,6 +1504,9 @@ def trigger_ats_discovery_background(ats_name: str, careers_url: str, company_na
 def add_company(company: CompanyCreate):
     """
     Add a new company to companies.json.
+    Validates: duplicate check by name/id AND board_url.
+    Auto-detects ATS from board_url if ats is "universal" or empty.
+    Normalizes board_url (strip trailing slash).
     If ATS is unsupported, triggers background discovery for future parser generation.
     """
     companies_path = Path("data/companies.json")
@@ -1518,38 +1521,73 @@ def add_company(company: CompanyCreate):
     # Generate id from name
     company_id = company.name.lower().replace(" ", "_").replace("-", "_")
 
-    # Check if already exists
+    # Normalize board_url (strip trailing slash, whitespace)
+    board_url = company.board_url.strip().rstrip("/") if company.board_url else ""
+
+    # Check if already exists by name/id
     for c in companies:
         if c.get("id") == company_id or c.get("name", "").lower() == company.name.lower():
-            return {"error": f"Company '{company.name}' already exists", "status": "exists"}
+            return {"error": f"Company '{company.name}' already exists (by name/id)", "status": "exists"}
+
+    # Check duplicate by board_url (normalized comparison)
+    if board_url:
+        norm_url = board_url.lower().rstrip("/")
+        for c in companies:
+            existing_url = (c.get("board_url") or "").lower().rstrip("/")
+            if existing_url and existing_url == norm_url:
+                return {
+                    "error": f"Company with board_url '{board_url}' already exists as '{c.get('name')}' (id={c.get('id')})",
+                    "status": "exists"
+                }
+
+    # Auto-detect ATS if universal or empty
+    ats_type = (company.ats or "").lower().strip()
+    auto_detected = False
+    if ats_type in ("", "universal", "other", "unknown") and board_url:
+        detected = detect_ats_from_url(board_url)
+        detected_ats = detected.get("ats", "universal")
+        if detected_ats in SUPPORTED_ATS:
+            ats_type = detected_ats
+            # Use the normalized board_url from detection
+            if detected.get("board_url"):
+                board_url = detected["board_url"]
+            auto_detected = True
+            print(f"[AddCompany] Auto-detected ATS: {ats_type} for {board_url}")
+        else:
+            ats_type = detected_ats  # Keep detected ATS even if unsupported
 
     # Create new company entry
     new_company = {
         "id": company_id,
         "name": company.name,
-        "ats": company.ats,
-        "board_url": company.board_url,
+        "ats": ats_type,
+        "board_url": board_url,
         "api_url": None,
         "tags": company.tags,
         "industry": company.industry,
         "priority": 0,
         "hq_state": None,
-        "region": "us"
+        "region": "us",
+        "enabled": ats_type in SUPPORTED_ATS,
     }
 
     companies.append(new_company)
 
     # Save
-    with open(companies_path, "w") as f:
-        json.dump(companies, f, indent=2)
+    with open(companies_path, "w", encoding="utf-8") as f:
+        json.dump(companies, f, indent=2, ensure_ascii=False)
 
     # Trigger ATS discovery if unsupported ATS
-    ats_type = company.ats.lower() if company.ats else "other"
-    if ats_type not in SUPPORTED_ATS and company.board_url:
+    if ats_type not in SUPPORTED_ATS and board_url:
         print(f"[AddCompany] New unsupported ATS '{ats_type}' detected, triggering discovery...")
-        trigger_ats_discovery_background(ats_type, company.board_url, company.name)
+        trigger_ats_discovery_background(ats_type, board_url, company.name)
 
-    return {"status": "ok", "company": new_company, "ats_discovery_triggered": ats_type not in SUPPORTED_ATS}
+    return {
+        "status": "ok",
+        "company": new_company,
+        "ats_auto_detected": auto_detected,
+        "ats_discovery_triggered": ats_type not in SUPPORTED_ATS,
+    }
 
 
 @app.delete("/companies/{company_id}")
