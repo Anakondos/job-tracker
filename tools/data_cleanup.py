@@ -15,10 +15,12 @@ Data Cleanup Tool — чистка data/companies.json
 """
 
 import json
+import re
 import sys
 import requests
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import urlparse
 
 PROJECT_ROOT = Path(__file__).parent.parent
 COMPANIES_FILE = PROJECT_ROOT / "data" / "companies.json"
@@ -190,6 +192,180 @@ def mark_investigation(companies: list, dry_run: bool) -> int:
     return changes
 
 
+# ===== Поддерживаемые ATS (из main.py ATS_PARSERS) =====
+SUPPORTED_ATS = ["greenhouse", "lever", "smartrecruiters", "ashby", "workday", "atlassian", "phenom"]
+
+
+def detect_ats_from_board_url(board_url: str) -> dict | None:
+    """
+    Определяем ATS по board_url компании.
+    Упрощённая версия detect_ats_from_url() из main.py — работает с board_url, не с job URL.
+    Возвращает {ats, board_url} если определён поддерживаемый ATS, иначе None.
+    """
+    if not board_url:
+        return None
+
+    parsed = urlparse(board_url)
+    host = parsed.netloc.lower()
+    path = parsed.path
+
+    # Greenhouse: boards.greenhouse.io/company
+    if "greenhouse.io" in host:
+        slug = path.strip("/").split("/")[0] if path.strip("/") else ""
+        if slug:
+            return {"ats": "greenhouse", "board_url": f"https://boards.greenhouse.io/{slug}"}
+
+    # Lever: jobs.lever.co/company
+    if "lever.co" in host:
+        slug = path.strip("/").split("/")[0] if path.strip("/") else ""
+        if slug:
+            return {"ats": "lever", "board_url": f"https://jobs.lever.co/{slug}"}
+
+    # SmartRecruiters: jobs.smartrecruiters.com/Company
+    if "smartrecruiters.com" in host:
+        slug = path.strip("/").split("/")[0] if path.strip("/") else ""
+        if slug:
+            return {"ats": "smartrecruiters", "board_url": f"https://jobs.smartrecruiters.com/{slug}"}
+
+    # Ashby: jobs.ashbyhq.com/company
+    if "ashbyhq.com" in host:
+        slug = path.strip("/").split("/")[0] if path.strip("/") else ""
+        if slug:
+            return {"ats": "ashby", "board_url": f"https://jobs.ashbyhq.com/{slug}"}
+
+    # Workday: company.wd1.myworkdayjobs.com/site
+    if "myworkdayjobs.com" in host:
+        parts = host.split(".")
+        company = parts[0] if parts else ""
+        wd_match = re.search(r"\.(wd\d+)\.", host)
+        wd_num = wd_match.group(1) if wd_match else "wd1"
+        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url)
+        site = site_match.group(1) if site_match else company
+        return {"ats": "workday", "board_url": f"https://{company}.{wd_num}.myworkdayjobs.com/{site}"}
+
+    # iCIMS: external-company.icims.com/jobs
+    if "icims.com" in host:
+        subdomain = host.split(".")[0]
+        return {"ats": "icims", "board_url": f"https://{subdomain}.icims.com/jobs"}
+
+    # Phenom: обычно company.wd1.myworkdayjobs.com или careers.company.com с phenom JS
+    # Phenom определяется по содержимому, здесь не можем — пропускаем
+
+    return None
+
+
+def try_detect_ats_via_http(board_url: str) -> dict | None:
+    """
+    Пробуем определить ATS через HTTP-запрос к board_url.
+    Ищем паттерны в HTML/редиректах.
+    """
+    try:
+        r = requests.get(board_url, timeout=15, allow_redirects=True, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        })
+        final_url = r.url.lower()
+
+        # Проверяем редирект на известный ATS
+        redirect_result = detect_ats_from_board_url(final_url)
+        if redirect_result and redirect_result["ats"] in SUPPORTED_ATS:
+            return redirect_result
+
+        # Ищем паттерны в HTML
+        html = r.text[:10000].lower()
+
+        # Greenhouse embed
+        if "boards.greenhouse.io" in html or "greenhouse.io/embed" in html:
+            match = re.search(r"boards\.greenhouse\.io/([a-z0-9_-]+)", html)
+            if match:
+                slug = match.group(1)
+                return {"ats": "greenhouse", "board_url": f"https://boards.greenhouse.io/{slug}"}
+
+        # Lever embed
+        if "jobs.lever.co" in html or "lever.co/embed" in html:
+            match = re.search(r"jobs\.lever\.co/([a-z0-9_-]+)", html)
+            if match:
+                slug = match.group(1)
+                return {"ats": "lever", "board_url": f"https://jobs.lever.co/{slug}"}
+
+        # Ashby embed
+        if "jobs.ashbyhq.com" in html:
+            match = re.search(r"jobs\.ashbyhq\.com/([a-z0-9_-]+)", html)
+            if match:
+                slug = match.group(1)
+                return {"ats": "ashby", "board_url": f"https://jobs.ashbyhq.com/{slug}"}
+
+        # SmartRecruiters embed
+        if "jobs.smartrecruiters.com" in html:
+            match = re.search(r"jobs\.smartrecruiters\.com/([a-zA-Z0-9_-]+)", html)
+            if match:
+                slug = match.group(1)
+                return {"ats": "smartrecruiters", "board_url": f"https://jobs.smartrecruiters.com/{slug}"}
+
+    except Exception as e:
+        print(f"    ⚠️ HTTP ошибка: {e}")
+
+    return None
+
+
+def triage_universal(companies: list, dry_run: bool) -> int:
+    """
+    Триаж universal-компаний:
+    1. Определяем ATS по URL паттерну (detect_ats_from_board_url)
+    2. Если не нашли — пробуем HTTP запрос (try_detect_ats_via_http)
+    3. Если нашли поддерживаемый ATS — обновляем ats + board_url
+    4. Если нашли неподдерживаемый (icims, zoho, etc.) — помечаем статус
+    5. Если не определили — disable + status="unsupported_ats"
+    """
+    changes = 0
+    universal = [c for c in companies if c.get("ats") == "universal" and c.get("enabled", True)]
+
+    print(f"\n📋 Найдено {len(universal)} enabled universal-компаний\n")
+
+    for c in universal:
+        cid = c["id"]
+        board_url = c.get("board_url", "")
+        print(f"  [{cid}] {board_url}")
+
+        # Шаг 1: определяем ATS по URL паттерну
+        result = detect_ats_from_board_url(board_url)
+
+        # Шаг 2: если не нашли — HTTP запрос
+        if not result and not dry_run:
+            print(f"    🔍 Проверяем через HTTP...")
+            result = try_detect_ats_via_http(board_url)
+
+        if result:
+            new_ats = result["ats"]
+            new_board_url = result["board_url"]
+
+            if new_ats in SUPPORTED_ATS:
+                # Поддерживаемый ATS — обновляем
+                print(f"    ✅ ATS определён: {new_ats} → board_url: {new_board_url}")
+                if not dry_run:
+                    c["ats"] = new_ats
+                    c["board_url"] = new_board_url
+                changes += 1
+            else:
+                # Неподдерживаемый ATS (icims, etc.) — помечаем но не disable
+                print(f"    🟡 ATS определён: {new_ats} (не поддерживается)")
+                if not dry_run:
+                    c["ats"] = new_ats
+                    c["board_url"] = new_board_url
+                    c["status"] = "unsupported_ats"
+                changes += 1
+        else:
+            # Не определили ATS — disable
+            if dry_run:
+                print(f"    ❓ ATS не определён (dry-run, HTTP не вызывается)")
+            else:
+                print(f"    ❌ ATS не определён → disable")
+                c["enabled"] = False
+                c["status"] = "unsupported_ats"
+                changes += 1
+
+    return changes
+
+
 def print_summary(companies: list):
     """Печатаем статистику"""
     total = len(companies)
@@ -214,9 +390,26 @@ def main():
 
     if triage:
         # Phase 1.3 — триаж universal-компаний
-        print("\n🔄 Триаж universal-компаний")
+        mode_t = "DRY RUN" if dry_run else "APPLY"
+        print(f"\n🔄 Триаж universal-компаний [{mode_t}]")
         print("=" * 50)
-        print("⚠️ Эта функция будет реализована в Шаге 1.3")
+
+        companies = load_companies()
+        print(f"📂 Загружено {len(companies)} компаний")
+
+        changes = triage_universal(companies, dry_run)
+
+        print(f"\n{'=' * 50}")
+        print(f"📝 Изменено: {changes} компаний")
+
+        if dry_run:
+            print("⚠️ DRY RUN — изменения НЕ сохранены")
+            print("Запустите без --dry-run для применения:")
+            print("  python tools/data_cleanup.py --triage-universal")
+        elif changes > 0:
+            save_companies(companies)
+
+        print_summary(load_companies() if not dry_run and changes > 0 else companies)
         return
 
     mode = "DRY RUN" if dry_run else "APPLY"
