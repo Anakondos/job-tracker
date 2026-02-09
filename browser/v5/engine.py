@@ -1503,31 +1503,86 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _match_option(self, field: FormField) -> Optional[str]:
         """Try to match profile data to dropdown options."""
         label_lower = field.label.lower()
-        
-        # Gender
+        options_lower = [opt.lower() for opt in field.options]
+
+        # Gender - prefer "Decline to self-identify" or similar
         if "gender" in label_lower:
-            for opt in field.options:
-                if "decline" in opt.lower() or "prefer not" in opt.lower():
-                    return opt
-        
-        # Veteran
+            priority_patterns = [
+                "decline", "prefer not", "do not wish", "choose not",
+                "i don't wish", "not disclosed", "not to say"
+            ]
+            for pattern in priority_patterns:
+                for i, opt_lower in enumerate(options_lower):
+                    if pattern in opt_lower:
+                        return field.options[i]
+            # Fallback: first option that's not male/female specific
+            for i, opt_lower in enumerate(options_lower):
+                if "male" not in opt_lower and "female" not in opt_lower and "man" not in opt_lower and "woman" not in opt_lower:
+                    return field.options[i]
+
+        # Hispanic/Latino
+        if "hispanic" in label_lower or "latino" in label_lower:
+            priority_patterns = ["decline", "prefer not", "do not wish", "no"]
+            for pattern in priority_patterns:
+                for i, opt_lower in enumerate(options_lower):
+                    if pattern in opt_lower:
+                        return field.options[i]
+
+        # Race/Ethnicity
+        if "race" in label_lower or "ethnicity" in label_lower:
+            priority_patterns = [
+                "decline", "prefer not", "do not wish", "two or more",
+                "not disclosed", "choose not"
+            ]
+            for pattern in priority_patterns:
+                for i, opt_lower in enumerate(options_lower):
+                    if pattern in opt_lower:
+                        return field.options[i]
+
+        # Veteran status
         if "veteran" in label_lower:
-            for opt in field.options:
-                if "not a" in opt.lower() or "no" in opt.lower():
-                    return opt
-        
+            priority_patterns = [
+                "not a protected veteran", "i am not a", "not a veteran",
+                "decline", "prefer not", "do not wish", "no"
+            ]
+            for pattern in priority_patterns:
+                for i, opt_lower in enumerate(options_lower):
+                    if pattern in opt_lower:
+                        return field.options[i]
+
         # Disability
         if "disability" in label_lower:
-            for opt in field.options:
-                if "do not want" in opt.lower() or "prefer not" in opt.lower():
-                    return opt
-        
-        # Country
+            priority_patterns = [
+                "do not want to answer", "prefer not", "decline",
+                "do not wish", "i don't have", "no, i do not"
+            ]
+            for pattern in priority_patterns:
+                for i, opt_lower in enumerate(options_lower):
+                    if pattern in opt_lower:
+                        return field.options[i]
+
+        # Country - prefer United States
         if "country" in label_lower:
-            for opt in field.options:
-                if "united states" in opt.lower():
-                    return opt
-        
+            for i, opt_lower in enumerate(options_lower):
+                if "united states" in opt_lower or opt_lower == "usa" or opt_lower == "us":
+                    return field.options[i]
+
+        # State - match from profile
+        if "state" in label_lower and "united" not in label_lower:
+            profile_state = self.profile.get("personal.state")
+            if profile_state:
+                state_lower = profile_state.lower()
+                for i, opt_lower in enumerate(options_lower):
+                    if state_lower in opt_lower or opt_lower in state_lower:
+                        return field.options[i]
+
+        # Yes/No questions - match from YES_NO_PATTERNS
+        yes_no = self.profile.find_yes_no(field.label)
+        if yes_no:
+            for i, opt_lower in enumerate(options_lower):
+                if yes_no.lower() == opt_lower or yes_no.lower() in opt_lower:
+                    return field.options[i]
+
         return None
     
     def _resolve_file_field(self, field: FormField):
@@ -1689,18 +1744,22 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
         """
         Fill autocomplete/combobox using aria-controls method.
-        
+
         Key principles (from manual testing):
         1. Use aria-controls to find the CORRECT listbox (not global selectors)
         2. Press Escape before clicking to close any open dropdowns
         3. scroll_into_view_if_needed before clicking
         4. For Location fields - wait 2 seconds for API response
+        5. For School fields - use search with fallback to "0 - Other"
         """
         # Get the frame context (for iframe support)
         frame = el.owner_frame() or self.page
-        
-        # Check if this is a Location field (needs special handling)
-        is_location = 'location' in field.label.lower() or 'city' in field.label.lower()
+
+        label_lower = field.label.lower()
+
+        # Check field type for special handling
+        is_location = 'location' in label_lower or 'city' in label_lower
+        is_school = 'school' in label_lower or 'university' in label_lower or 'college' in label_lower
         
         # Close any open dropdowns first
         self.page.keyboard.press('Escape')
@@ -1731,7 +1790,11 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             # Fallback: just click away to confirm text
             self.page.keyboard.press('Tab')
             return True
-        
+
+        # For School fields: search with fallback to "0 - Other"
+        if is_school:
+            return self._fill_school_autocomplete(el, field, frame)
+
         # Click to open dropdown
         el.click()
         time.sleep(0.4)
@@ -1820,7 +1883,98 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         
         time.sleep(0.2)
         return True
-    
+
+    def _fill_school_autocomplete(self, el: ElementHandle, field: FormField, frame) -> bool:
+        """
+        Fill school/university searchable dropdown with fallback.
+
+        PROVEN METHOD (from V6):
+        1. Click dropdown and type search text
+        2. Wait for search API results
+        3. If good match found - select it
+        4. Otherwise use fallback "0 - Other"
+        """
+        FALLBACK_OPTIONS = ["0 - Other", "Other", "Not Listed"]
+
+        # Close any open dropdowns
+        self.page.keyboard.press('Escape')
+        time.sleep(0.1)
+
+        el.scroll_into_view_if_needed()
+        el.click()
+        time.sleep(0.3)
+
+        # Type search - use shorter text for better matches
+        search_text = field.answer[:30] if len(field.answer) > 30 else field.answer
+        self.page.keyboard.type(search_text, delay=20)
+        time.sleep(1.0)  # Wait for search API
+
+        # Get options via aria-controls
+        controls_id = el.get_attribute('aria-controls')
+        options = []
+
+        if controls_id:
+            listbox = frame.query_selector(f'#{controls_id}')
+            if listbox:
+                options = listbox.query_selector_all('[role="option"]')
+
+        # Fallback to global selectors
+        if not options:
+            options = frame.query_selector_all('[role="option"], .select__option')
+
+        # Check if we found good results
+        if options:
+            first_text = options[0].inner_text().strip().lower()
+            # Check if first option is valid (not "no results" message)
+            if 'no result' not in first_text and 'no option' not in first_text:
+                # Check for match with our search
+                search_lower = field.answer.lower()
+                for opt in options:
+                    opt_text = opt.inner_text().strip()
+                    opt_lower = opt_text.lower()
+                    # Match if search text appears in option
+                    if search_lower[:15] in opt_lower or opt_lower in search_lower:
+                        opt.click()
+                        time.sleep(0.2)
+                        print(f"      🎓 School matched: {opt_text[:40]}")
+                        return True
+                # No exact match but results exist - take first
+                options[0].click()
+                time.sleep(0.2)
+                return True
+
+        # No results from search - try fallback options
+        print(f"      ⚠️ School not found, trying fallback...")
+        self.page.keyboard.press('Escape')
+        time.sleep(0.1)
+        el.click()
+        time.sleep(0.2)
+
+        # Clear and try each fallback
+        for fallback in FALLBACK_OPTIONS:
+            self.page.keyboard.press('Control+a')
+            self.page.keyboard.press('Backspace')
+            self.page.keyboard.type(fallback, delay=20)
+            time.sleep(0.8)
+
+            if controls_id:
+                listbox = frame.query_selector(f'#{controls_id}')
+                if listbox:
+                    options = listbox.query_selector_all('[role="option"]')
+                    if options:
+                        first_text = options[0].inner_text().strip()
+                        if 'no result' not in first_text.lower():
+                            options[0].click()
+                            time.sleep(0.2)
+                            print(f"      🎓 School fallback: {first_text[:40]}")
+                            return True
+
+        # Last resort: just tab out
+        self.page.keyboard.press('Escape')
+        self.page.keyboard.press('Tab')
+        print(f"      ⚠️ School: typed but no selection")
+        return True
+
     def _fill_checkbox(self, el: ElementHandle, field: FormField) -> bool:
         """Fill checkbox."""
         should_check = field.answer.lower() in ("yes", "true", "1", "checked")
@@ -2188,17 +2342,88 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _detect_ats(self, url: str) -> str:
         """Detect ATS type from URL."""
         url_lower = url.lower()
-        if "greenhouse" in url_lower:
+        if "greenhouse" in url_lower or "grnhse" in url_lower:
             return "Greenhouse"
-        if "lever" in url_lower:
+        if "lever" in url_lower or "jobs.lever.co" in url_lower:
             return "Lever"
-        if "workday" in url_lower:
+        if "workday" in url_lower or "myworkdayjobs" in url_lower:
             return "Workday"
         if "ashby" in url_lower:
             return "Ashby"
         if "smartrecruiters" in url_lower:
             return "SmartRecruiters"
+        if "icims" in url_lower:
+            return "iCIMS"
+        if "jobvite" in url_lower:
+            return "Jobvite"
+        if "taleo" in url_lower:
+            return "Taleo"
+        if "breezy" in url_lower:
+            return "BreezyHR"
         return "Unknown"
+
+    # ATS-specific selectors for common fields
+    ATS_SELECTORS = {
+        "Greenhouse": {
+            "first_name": "#first_name",
+            "last_name": "#last_name",
+            "email": "#email",
+            "phone": "#phone",
+            "location": "#candidate-location, #location",
+            "resume": "input[type='file'][name*='resume'], input[type='file']:first-of-type",
+            "cover_letter": "input[type='file'][name*='cover'], input[type='file']:nth-of-type(2)",
+            "linkedin": "#job_application_answers_attributes_0_text_value, input[name*='linkedin']",
+            "country": "#country",
+            "work_company": "#company-name-{N}",
+            "work_title": "#title-{N}",
+            "school": "#school--{N}",
+            "degree": "#degree--{N}",
+            "apply_button": "button:has-text('Apply'), a.postings-btn",
+        },
+        "Lever": {
+            "first_name": "input[name='name']",
+            "email": "input[name='email']",
+            "phone": "input[name='phone']",
+            "location": "input[name='location']",
+            "resume": "input[type='file']",
+            "linkedin": "input[name='urls[LinkedIn]']",
+            "apply_button": "button[type='submit'], button:has-text('Submit')",
+        },
+        "Workday": {
+            "first_name": "input[data-automation-id='legalNameSection_firstName']",
+            "last_name": "input[data-automation-id='legalNameSection_lastName']",
+            "email": "input[data-automation-id='email']",
+            "phone": "input[data-automation-id='phone']",
+            "resume": "input[data-automation-id='file-upload-input-ref']",
+            "country": "button[data-automation-id='countryDropdown']",
+            "apply_button": "button[data-automation-id='jobPostingApplyButton']",
+        },
+        "Ashby": {
+            "first_name": "input[name='_systemfield_first_name']",
+            "last_name": "input[name='_systemfield_last_name']",
+            "email": "input[name='_systemfield_email']",
+            "phone": "input[name='_systemfield_phone']",
+            "resume": "input[type='file']",
+            "linkedin": "input[name='_systemfield_linkedin']",
+            "apply_button": "button[type='submit']",
+        },
+        "iCIMS": {
+            "first_name": "input[name='firstName']",
+            "last_name": "input[name='lastName']",
+            "email": "input[name='email']",
+            "phone": "input[name='phoneNumber']",
+            "resume": "input[type='file']",
+            "apply_button": "a.iCIMS_ApplyButton, button:has-text('Apply')",
+        },
+    }
+
+    def get_ats_selector(self, ats_type: str, field_name: str, index: int = 0) -> str:
+        """Get ATS-specific selector for a field."""
+        selectors = self.ATS_SELECTORS.get(ats_type, {})
+        selector = selectors.get(field_name, "")
+        if "{N}" in selector:
+            selector = selector.replace("{N}", str(index))
+        return selector
 
 
 # ═══════════════════════════════════════════════════════════════════════════

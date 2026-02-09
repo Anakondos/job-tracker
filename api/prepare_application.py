@@ -12,13 +12,18 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 
 
-GOLD_CV_PATH = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+GOLD_CV_PATH = Path("/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+# Fallback for other machine
+if not GOLD_CV_PATH.exists():
+    GOLD_CV_PATH = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
+    
 APPLICATIONS_PATH = GOLD_CV_PATH / "Applications"
 
 ROLE_CV_MAP = {
     "product": "CV_Anton_Kondakov_Product Manager.docx",
     "tpm_program": "CV_Anton_Kondakov_TPM.docx", 
     "project": "CV_Anton_Kondakov_Project Manager.docx",
+    "scrum": "CV_Anton_Kondakov_Scrum Master.docx",
     "other": "CV_Anton_Kondakov_Product Manager.docx",
 }
 
@@ -85,24 +90,213 @@ def call_claude_api(prompt: str, max_tokens: int = 2000) -> Optional[str]:
         return None
 
 
+def extract_cv_text(cv_path: Path) -> str:
+    """Extract text from DOCX CV file for RAG"""
+    try:
+        from docx import Document
+        doc = Document(str(cv_path))
+        text_parts = []
+        for para in doc.paragraphs:
+            if para.text.strip():
+                text_parts.append(para.text.strip())
+        # Also get tables (often used in CVs)
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = ' | '.join(cell.text.strip() for cell in row.cells if cell.text.strip())
+                if row_text:
+                    text_parts.append(row_text)
+        return '\n'.join(text_parts)
+    except Exception as e:
+        print(f"[PrepareApp] CV extraction error: {e}")
+        return ""
+
+
+def get_cv_for_role(role_family: str, job_title: str = "") -> tuple:
+    """Get CV path and text for given role family, with title-based detection"""
+    
+    # Check if job title indicates specific role type
+    title_lower = job_title.lower() if job_title else ""
+    
+    # Scrum Master detection - use Scrum CV even if role_family is tpm_program
+    if any(x in title_lower for x in ["scrum master", "scrum coach", "agile coach", "agile delivery"]):
+        cv_name = "CV_Anton_Kondakov_Scrum Master.docx"
+        print(f"[PrepareApp] Detected Scrum Master role from title")
+    # Product Owner detection
+    elif "product owner" in title_lower:
+        cv_name = "CV_Anton_Kondakov_PO.docx"
+        print(f"[PrepareApp] Detected Product Owner role from title")
+    # Delivery Manager/Lead detection  
+    elif any(x in title_lower for x in ["delivery manager", "delivery lead"]):
+        cv_name = "CV_Anton_Kondakov_DeliveryLead.docx"
+        print(f"[PrepareApp] Detected Delivery role from title")
+    else:
+        cv_name = ROLE_CV_MAP.get(role_family, ROLE_CV_MAP["product"])
+    
+    cv_path = GOLD_CV_PATH / cv_name
+    
+    if cv_path.exists():
+        cv_text = extract_cv_text(cv_path)
+        return cv_path, cv_text
+    
+    # Fallback to product CV
+    cv_path = GOLD_CV_PATH / ROLE_CV_MAP["product"]
+    if cv_path.exists():
+        return cv_path, extract_cv_text(cv_path)
+    
+    return None, ""
+
+
+# Comprehensive candidate profile with full context (synced from CV Optimisation project)
 CANDIDATE_PROFILE = """
-CANDIDATE: Anton Kondakov - Senior Product Manager / Product Owner
-EXPERIENCE: 15+ years in Product Management, Program Management, TPM
-KEY ACHIEVEMENTS: Cloud migration ($1.2M savings), Regulatory platforms (MiFID II, CAT, EMIR), ML-powered analytics (88% efficiency)
-TECHNICAL: AWS, GCP, Azure, JIRA, Confluence, SQL, Agile, SAFe, Scrum
-CERTIFICATIONS: SAFe POPM, PSM I, Google Cloud Digital Leader
-LOCATION: Raleigh, NC | WORK AUTH: Authorized, no sponsorship needed
+CANDIDATE: Anton Kondakov
+LinkedIn: https://www.linkedin.com/in/antonkondakov/
+
+CURRENT STATUS:
+Senior Technical Program Manager and Product Manager with 15+ years of experience in financial services
+and enterprise technology. Actively pursuing VP-level or senior individual contributor positions at major
+financial institutions or technology companies.
+
+WORK HISTORY (exact dates - no overlaps):
+- Luxoft USA / Deutsche Bank (Cary, NC): Feb 2020 – May 2025 - VP, Product Owner
+- Luxoft Poland / UBS: Apr 2016 – Jan 2020 - Senior Business Analyst
+- Luxoft Europe: Oct 2013 – Mar 2016 - Business Analyst
+- Earlier: Barclays Capital, various financial data roles
+
+CORE EXPERTISE:
+- Regulatory Compliance Platforms: MiFID II, CAT, EMIR, GDPR - 100% compliance track record
+- Cloud Transformations: GCP, AWS, Azure - led migrations saving $1.2M annually
+- Enterprise System Integrations: 20+ downstream systems, 50M+ daily API requests
+- Team Leadership: Managed distributed teams of 50+ engineers across 15+ countries
+- Domain: Investment Banking, Commercial Insurance (London Market), Enterprise SaaS
+
+KEY ACHIEVEMENTS (use round numbers):
+- Cloud Migration: $1.2M annual savings, 40% latency reduction
+- System Reliability: 25% improvement, 99% uptime
+- Team Scale: 50+ engineers, 15+ countries
+- Regulatory: 100% compliance across MiFID II, CAT, EMIR
+
+TECHNICAL SKILLS:
+- Cloud: GCP, AWS, Azure (Google Cloud Architect certified)
+- Tools: ServiceNow, Jira, MS Project, Confluence, Datadog, Splunk
+- Programming: Java, Python, Angular
+- Infrastructure: Terraform, CI/CD (Jenkins, GitHub Actions, ArgoCD)
+- AI/ML: Amazon Q Developer, Vertex AI, BigQuery ML
+
+CERTIFICATIONS:
+- SAFe 5 POPM (Product Owner/Product Manager)
+- PSM I (Professional Scrum Master)
+- Google Cloud Architect
+- MBA: Master's in Management - Presidential Program, International Institute of Management LINK / The Open University Business School (UK)
+
+LOCATION & AUTHORIZATION:
+- Based in Raleigh, NC (Research Triangle)
+- Open to: Charlotte, RTP, Remote USA
+- US Work Authorized - NO sponsorship required
+- Available: Immediately
+
+TARGET ROLES (what Anton IS looking for):
+- Technical Program Manager (TPM)
+- Product Manager / Senior Product Manager
+- Program Manager / Delivery Manager
+- Product Owner
+- Scrum Master / Agile Coach
+- VP-level or Senior IC positions
+
+TARGET INDUSTRIES:
+- Financial Services (FinTech, Banking, Insurance)
+- Enterprise Technology / SaaS
+- Aerospace & Defense (program/portfolio management)
+- Healthcare Technology (if leveraging compliance expertise)
+
+NOT LOOKING FOR (important for analysis):
+- Financial Portfolio Manager (investments/asset management) - DIFFERENT ROLE
+- Sales roles
+- Pure software engineering (coding-focused)
+- Contract/temporary positions (prefers full-time)
+- Roles requiring relocation outside US
+
+ANALYSIS RULES:
+1. "Portfolio Manager" in Tech/Aerospace = Project Portfolio Management = GOOD MATCH
+2. "Portfolio Manager" in Bank/Investment = Financial Asset Management = NOT A MATCH
+3. Always check company industry context before scoring
+4. Regulatory compliance experience is a strong differentiator
+5. Cloud transformation experience = infrastructure delivery expertise
+6. M&A integration work = change management capability
 """
 
 
 def analyze_job_with_ai(job_title: str, company: str, jd: str, role_family: str) -> Dict:
-    prompt = f"""{CANDIDATE_PROFILE}
+    """Analyze job match using RAG - loads actual CV for comparison"""
+    
+    # Try to load actual CV for this role type (pass job_title for better detection)
+    cv_path, cv_text = get_cv_for_role(role_family, job_title)
+    
+    # Use CV text if available, otherwise use static profile
+    if cv_text and len(cv_text) > 500:
+        candidate_info = f"""ANTON'S CV ({role_family.upper()} version):
+{cv_text[:4000]}
 
-JOB: {company} - {job_title} ({role_family})
-JD: {jd[:5000]}
+ADDITIONAL CONTEXT:
+- Location: Raleigh, NC (Open to Charlotte, RTP, Remote USA)
+- Work Authorization: US Authorized, no sponsorship required
+- Certifications: SAFe 5 POPM, PSM I, Google Cloud Digital Leader
+- Looking for: Senior PM, TPM, Program Manager, Product Owner, Scrum Master roles
+"""
+        print(f"[PrepareApp] Using CV from: {cv_path.name} ({len(cv_text)} chars)")
+    else:
+        candidate_info = CANDIDATE_PROFILE
+        print(f"[PrepareApp] Using static profile (CV not found or too short)")
+    
+    prompt = f"""{candidate_info}
 
-Analyze and return ONLY valid JSON:
-{{"match_score": <0-100>, "fit_level": "<excellent|good|moderate|low>", "analysis_summary": "<2-3 sentences>", "key_requirements": ["<top 5>"], "matching_experience": ["<matches>"], "gaps": ["<gaps>"], "red_flags": ["<concerns>"], "cv_decision": "<base|optimize>", "cv_reason": "<why>", "keywords_to_add": ["<missing keywords>"], "cover_letter_focus": ["<points>"]}}"""
+=== JOB TO ANALYZE ===
+Company: {company}
+Title: {job_title}
+Role Category: {role_family}
+
+Job Description:
+{jd[:6000]}
+
+=== ANALYSIS INSTRUCTIONS ===
+
+You are analyzing this job for Anton Kondakov. Use the FULL CONTEXT above to make accurate decisions.
+
+CRITICAL RULES:
+1. CHECK COMPANY CONTEXT: "Portfolio Manager" at Frontgrade (Aerospace) = Program Management (GOOD MATCH)
+   vs "Portfolio Manager" at Goldman Sachs = Investment Management (NOT A MATCH)
+2. Anton has 15+ years in Tech/Financial Services - regulatory compliance is his differentiator
+3. His cloud transformation and distributed team leadership transfers across industries
+4. Location must be: Remote USA, NC-based, or relocatable within US
+
+SCORING GUIDE:
+- 80-100%: Strong match - most requirements met, industry aligned, clear path
+- 65-79%: Good match - solid fit with minor gaps, worth applying
+- 50-64%: Moderate - some transferable skills, significant adaptation needed
+- Below 50%: Poor match - wrong industry, wrong role type, or major gaps
+
+Return ONLY valid JSON:
+{{
+  "match_score": <0-100>,
+  "fit_level": "<excellent|good|moderate|low>",
+  "analysis_summary": "<2-3 sentences explaining the match, be specific>",
+  "role_type": "<what this role actually is: TPM, Product Manager, Financial Analyst, etc>",
+  "industry_context": "<company industry and how it relates to Anton's background>",
+  "location_info": "<location, remote status, salary if mentioned>",
+  "key_requirements": [
+    {{"requirement": "<from JD>", "anton_has": "<yes|partial|no>", "evidence": "<specific experience>"}}
+  ],
+  "matching_experience": ["<specific relevant experience>"],
+  "gaps": ["<what's genuinely missing>"],
+  "red_flags": ["<serious concerns if any>"],
+  "pros": ["<reasons to apply>"],
+  "cons": ["<reasons to hesitate>"],
+  "recommendation": "<STRONG APPLY|APPLY|MAYBE|SKIP>",
+  "recommendation_reason": "<clear explanation>",
+  "cv_decision": "<base|optimize>",
+  "cv_reason": "<why>",
+  "keywords_to_add": ["<relevant keywords from JD>"],
+  "cover_letter_focus": ["<key points to emphasize>"]
+}}"""
 
     response = call_claude_api(prompt, 1500)
     if not response:
@@ -243,5 +437,29 @@ def prepare_application(job_title: str, company: str, job_url: str, jd: str, rol
             result.cover_letter_preview = cl_text[:500] + "..." if len(cl_text) > 500 else cl_text
     
     result.application_url = job_url
+    
+    # Save metadata.json with keywords and analysis for future reference
+    if result.application_folder:
+        try:
+            metadata = {
+                "job_title": job_title,
+                "company": company,
+                "job_url": job_url,
+                "role_family": role_family,
+                "match_score": result.match_score,
+                "fit_level": result.fit_level,
+                "cv_decision": result.cv_decision,
+                "cv_reason": result.cv_reason,
+                "keywords_added": result.keywords_added or [],
+                "gaps": result.gaps or [],
+                "red_flags": result.red_flags or [],
+                "created_at": datetime.now().isoformat()
+            }
+            metadata_path = Path(result.application_folder) / "metadata.json"
+            with open(metadata_path, "w") as f:
+                json.dump(metadata, f, indent=2)
+        except Exception as e:
+            print(f"[PrepareApp] Metadata save error: {e}")
+    
     print(f"[PrepareApp] Done: score={result.match_score}")
     return result

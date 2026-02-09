@@ -145,10 +145,10 @@ def fetch_workday(
     
     jobs = []
     offset = 0
-    batch_size = 50  # Workday max seems to be 50
+    batch_size = 20  # Workday wd5/wd3 limit is 20; wd1/wd12 accept up to 50
     retries = 0
     max_retries = 3
-    
+
     while offset < limit:
         payload = {
             "appliedFacets": {},
@@ -156,10 +156,10 @@ def fetch_workday(
             "offset": offset,
             "searchText": ""
         }
-        
+
         try:
             r = session.post(api_url, json=payload, timeout=timeout)
-            
+
             # Handle rate limiting (429)
             if r.status_code == 429:
                 retries += 1
@@ -255,6 +255,92 @@ def fetch_workday(
         time.sleep(0.3)
     
     return jobs
+
+
+def fetch_workday_job_detail(job_url: str, timeout: int = 15) -> Optional[Dict]:
+    """
+    Fetch enriched job details from Workday job detail API.
+    Returns dict with startDate, endDate, timeLeftToApply, postedOn, salary info.
+
+    Args:
+        job_url: Full Workday job URL (e.g. https://zoom.wd5.myworkdayjobs.com/Zoom/job/...)
+    """
+    try:
+        parsed = urlparse(job_url)
+        host = parsed.netloc
+        path = parsed.path.strip('/')
+
+        # Extract tenant
+        tenant_match = re.match(r'^([^.]+)\.wd\d+\.myworkdayjobs\.com$', host)
+        if not tenant_match:
+            return None
+        tenant = tenant_match.group(1)
+
+        # Build detail API URL: /wday/cxs/{tenant}/{site_id}/job/{path_to_job}
+        # Path format: {site_id}/job/{location}/{title_reqid} or en-US/{site_id}/job/...
+        path_parts = path.split('/')
+
+        # Skip locale
+        if path_parts and re.match(r'^[a-z]{2}(-[A-Z]{2})?$', path_parts[0]):
+            path_parts = path_parts[1:]
+
+        if len(path_parts) < 3 or path_parts[1] != 'job':
+            return None
+
+        site_id = path_parts[0]
+        job_path = '/'.join(path_parts[1:])  # job/{location}/{title_reqid}
+
+        api_url = f"https://{host}/wday/cxs/{tenant}/{site_id}/{job_path}"
+
+        session = requests.Session()
+        # Get session cookies first
+        base_url = f"https://{host}/{site_id}"
+        session.get(base_url, timeout=timeout)
+
+        session.headers.update({
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        })
+
+        r = session.get(api_url, timeout=timeout)
+        if r.status_code != 200:
+            return None
+
+        data = r.json()
+        info = data.get("jobPostingInfo", data)
+
+        result = {}
+        if info.get("startDate"):
+            result["start_date"] = info["startDate"]
+        if info.get("endDate"):
+            result["end_date"] = info["endDate"]
+            result["deadline"] = info["endDate"]
+        if info.get("timeLeftToApply"):
+            result["time_left"] = info["timeLeftToApply"]
+        if info.get("postedOn"):
+            result["posted_on"] = info["postedOn"]
+        if info.get("timeType"):
+            result["time_type"] = info["timeType"]
+        if info.get("jobReqId"):
+            result["req_id"] = info["jobReqId"]
+
+        # Extract salary from job description if available
+        jd = info.get("jobDescription", "")
+        if jd:
+            # Strip HTML tags for clean extraction
+            clean_jd = re.sub(r'<[^>]+>', ' ', jd)
+            # Find all dollar amounts
+            amounts = re.findall(r'\$[\d,]+(?:\.\d+)?', clean_jd)
+            if len(amounts) >= 2:
+                result["salary_range"] = f"{amounts[0]} - {amounts[1]}"
+            elif len(amounts) == 1:
+                result["salary_range"] = amounts[0]
+
+        return result
+
+    except Exception as e:
+        print(f"[Workday] Job detail error: {e}")
+        return None
 
 
 # ============================================

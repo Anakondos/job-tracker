@@ -2,66 +2,176 @@
   "personal": {
     "first_name": "Anton",
     "last_name": "Kondakov",
+    "full_name": "Anton Kondakov",
+    "preferred_name": "Anton Kondakov",
     "email": "anakondos@gmail.com",
-    "phone": "+1 910 536 0602",
-    "location": "Raleigh, NC",
-    "country": "United States"
+    "phone": "(910) 536-0602",
+    "phone_type": "Mobile",
+    "address": {
+      "street": "2000 Sweet Samson street",
+      "city": "Raleigh",
+      "state": "NC",
+      "zip": "27587",
+      "country": "United States of America"
+    },
+    "location": "Raleigh, NC 27587"
   },
   "links": {
-    "linkedin": "https://www.linkedin.com/in/antonkondakov/"
+    "linkedin": "https://www.linkedin.com/in/antonkondakov/",
+    "github": "",
+    "portfolio": "",
+    "twitter": ""
   },
   "files": {
-    "base_path": "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV",
-    "default_role": "TPM",
+    "base_path": "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV",
+    "default_role": "RTE",
     "by_role": {
+      "RTE": {
+        "cv": "CV_Anton_Kondakov_RTE.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_Delivery_Lead.docx"
+      },
       "TPM": {
-        "cv": "CV_Anton_Kondakov_Product Manager.pdf",
-        "cover_letter": "Cover_Letter_Anton_Kondakov_ProductM.docx"
+        "cv": "CV_Anton_Kondakov_TPM.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_Delivery_Lead.docx"
       },
       "Product Manager": {
         "cv": "CV_Anton_Kondakov_Product Manager.pdf",
         "cover_letter": "Cover_Letter_Anton_Kondakov_ProductM.docx"
+      },
+      "Project Manager": {
+        "cv": "CV_Anton_Kondakov_Project Manager.pdf",
+        "cover_letter": "Cover_Letter_Anton_Kondakov_Delivery_Lead.docx"
       }
     }
   },
   "work_experience": [
     {
-      "company": "YOUR_CURRENT_COMPANY",
-      "title": "YOUR_TITLE",
-      "start_month": "Month",
-      "start_year": "Year",
+      "company": "DXC Technology — London Market Insurance",
+      "title": "Agile Delivery Manager / Release Train Engineer",
+      "location": "",
+      "start_month": "06",
+      "start_year": "2025",
       "end_month": "",
       "end_year": "",
-      "current": true
+      "current": true,
+      "description": "Leading SAFe-based Agile Release Train for global insurance platform modernization on AWS. Driving PI Planning, coordinating cross-functional delivery, and building high-performing teams.",
+      "bullets": [
+        "Facilitate quarterly PI Planning sessions coordinating priorities across product, engineering, and business stakeholders",
+        "Manage ART-level dependencies, risks, and impediments ensuring predictable delivery across 6-sprint PIs",
+        "Coach and mentor agile teams driving continuous improvement through Inspect & Adapt workshops",
+        "Built new cross-functional team achieving delivery velocity parity within first quarter",
+        "Increased team capacity by 15% and reduced conflicts by 60% through mentoring and process optimization"
+      ]
+    },
+    {
+      "company": "Luxoft USA — Deutsche Bank",
+      "title": "Senior Agile Program Manager / Release Train Engineer",
+      "location": "Cary NC",
+      "start_month": "02",
+      "start_year": "2020",
+      "end_month": "05",
+      "end_year": "2025",
+      "current": false,
+      "description": "Directed large-scale Agile Release Train (50+ engineers) delivering regulatory compliance and cloud transformation programs. Managed intake, prioritization, execution, and release across geographically distributed teams.",
+      "bullets": [
+        "Planned, coordinated, and facilitated PI Planning for cloud migration program (20+ applications, 50+ microservices)",
+        "Coached agile teams of 50+ engineers, improving delivery predictability by 20% and reducing incidents by 50%",
+        "Managed ART-level risks and dependencies for DB-Fidessa M&A integration across 15 countries — 98% SIT success",
+        "Optimized flow of value through release management automation — tripled release frequency, $1.2M annual savings",
+        "Synthesized metrics and communicated ART-level data to executive stakeholders through regular System Demos",
+        "Fostered safe, collaborative environment ensuring 100% audit success across regulatory programs"
+      ]
+    },
+    {
+      "company": "Luxoft Poland — UBS Bank",
+      "title": "Agile Program Manager / Scrum Master",
+      "location": "Krakow Poland",
+      "start_month": "04",
+      "start_year": "2016",
+      "end_month": "01",
+      "end_year": "2020",
+      "current": false,
+      "description": "Led infrastructure transformation program (13,000+ sites) coordinating multiple agile teams and vendors",
+      "bullets": [
+        "Facilitated planning sessions and retrospectives driving continuous improvement — 99% data integrity achieved",
+        "Consolidated vendor landscape (12→4) reducing management overhead by 40% through stakeholder alignment",
+        "Mentored team members and promoted professional growth, building high-performing delivery organization"
+      ]
+    },
+    {
+      "company": "Luxoft Europe",
+      "title": "Senior Project Manager",
+      "location": "",
+      "start_month": "10",
+      "start_year": "2013",
+      "end_month": "03",
+      "end_year": "2016",
+      "current": false,
+      "description": "Managed enterprise programs for Fortune 500 clients (Lukoil, PepsiCo, Pfizer) across energy, retail, pharma",
+      "bullets": [
+        "Facilitated executive workshops aligning technical delivery with business objectives — 25,000 users across 12 countries",
+        "Led cross-functional teams delivering SAP/Ariba integration across 15 markets with successful adoption"
+      ]
     }
   ],
   "education": [
     {
-      "school": "YOUR_UNIVERSITY",
-      "degree": "Master's Degree",
-      "discipline": "YOUR_FIELD"
+      "school": "The Open University Business School",
+      "degree": "Master's",
+      "field_of_study": "Risk Management",
+      "gpa": "",
+      "start_year": "",
+      "end_year": ""
+    },
+    {
+      "school": "Moscow State University of Instrument Engineering and Informatics",
+      "school_alt": "MIPT",
+      "degree": "Master's",
+      "field_of_study": "Computer and Information Science",
+      "gpa": "",
+      "start_year": "1996",
+      "end_year": "2001"
     }
   ],
+  "skills": {
+    "summary": "SAFe & Agile Leadership: PI Planning, ART Coordination, System Demos, Inspect & Adapt, Agile Coaching, Scrum, Kanban\nProgram Delivery: Intake & Prioritization, Dependency Management, Risk Management, Release Management, Value Flow Optimization\nPeople Management: Team Building, Mentoring & Coaching, Performance Management, Professional Development, Conflict Resolution\nStakeholder Engagement: Executive Communication, Cross-Functional Alignment, Vendor Management, Business Value Realization",
+    "categories": {
+      "agile": ["PI Planning", "ART Coordination", "System Demos", "Inspect & Adapt", "Agile Coaching", "Scrum", "Kanban", "SAFe"],
+      "program": ["Intake & Prioritization", "Dependency Management", "Risk Management", "Release Management", "Value Flow Optimization"],
+      "people": ["Team Building", "Mentoring & Coaching", "Performance Management", "Professional Development", "Conflict Resolution"],
+      "stakeholder": ["Executive Communication", "Cross-Functional Alignment", "Vendor Management", "Business Value Realization"],
+      "technical": ["AWS", "GCP", "Azure", "JIRA", "Confluence", "SQL", "Python"]
+    }
+  },
   "common_answers": {
     "18_or_older": "Yes",
     "authorized_to_work": "Yes",
     "require_sponsorship": "No",
-    "how_heard": "LinkedIn",
+    "how_heard": "Other",
+    "previously_worked_here": "No",
     "work_remotely": "Yes",
     "government_official": "No",
-    "ai_tools_comfortable": "Yes"
+    "willing_to_relocate": "Yes",
+    "available_start_date": "2 weeks notice",
+    "non_compete": "No"
+  },
+  "salary": {
+    "min": 135000,
+    "max": 155000,
+    "template": "Given my extensive experience leading large-scale cloud transformation programs, managing cross-functional teams, and driving delivery excellence in Agile and SAFe environments, I believe a competitive total compensation range for this role would be $135,000 to $155,000. This reflects both the scope of responsibility outlined and current market rates for similar positions at the manager level.\n\nThat said, I am flexible and open to further discussion based on the overall compensation package, benefits, and growth opportunities at {COMPANY}. My primary focus is finding a long-term fit where I can deliver strong results and grow with the team."
   },
   "demographics": {
-    "gender": "Decline",
-    "hispanic_latino": "Decline",
-    "race_ethnicity": "Decline",
-    "veteran_status": "I am not",
-    "disability_status": "I don't wish"
+    "gender": "Male",
+    "hispanic_latino": "No",
+    "race_ethnicity": "White (United States of America)",
+    "veteran_status": "Non-Veteran",
+    "disability_status": "No, I do not have a disability and have not had one in the past"
   },
   "resume": {
-    "path": "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/CV_Anton_Kondakov_Product Manager.pdf"
+    "path": "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/CV_Anton_Kondakov_Product Manager.pdf",
+    "filename": "Anton_Kondakov_RTE_Manager.pdf"
   },
   "cover_letter": {
-    "path": "/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Cover_Letter_Anton_Kondakov_ProductM.docx"
+    "path": "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Cover_Letter_Anton_Kondakov_Delivery_Lead.docx"
   }
 }

@@ -14,7 +14,7 @@ import json
 from collections import Counter
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from typing import Any, Optional
 
 # ========== UNIVERSAL PATHS (work on any machine via iCloud) ==========
 def get_icloud_path() -> Path:
@@ -43,7 +43,7 @@ APPLICATIONS_PATH = get_applications_path()
 _current_dir = Path(__file__).parent.name
 ENV = os.getenv("JOB_TRACKER_ENV", "DEV" if "dev" in _current_dir.lower() else "PROD")
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -56,13 +56,17 @@ from parsers.smartrecruiters import fetch_smartrecruiters
 from parsers.ashby import fetch_ashby_jobs
 from parsers.workday_v2 import fetch_workday_v2
 from parsers.atlassian import fetch_atlassian
+from parsers.phenom import fetch_phenom_jobs
 from ats_detector import try_repair_company, verify_ats_url
 from company_storage import load_profile
 from utils.normalize import normalize_location, STATE_MAP
 from utils.cache_manager import load_cache, save_cache, clear_cache, get_cache_info, load_stats
 from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
 
-# ATS parser mapping
+# ATS parser mapping - these ATS support automatic job fetching
+from parsers.icims import fetch_icims
+from parsers.jibe import fetch_jibe
+
 ATS_PARSERS = {
     "greenhouse": lambda url: fetch_greenhouse("", url),
     "lever": lambda url: fetch_lever("", url),
@@ -70,7 +74,13 @@ ATS_PARSERS = {
     "ashby": fetch_ashby_jobs,
     "workday": lambda url: fetch_workday_v2("", url),
     "atlassian": lambda url: fetch_atlassian("", url),
+    "phenom": lambda url: fetch_phenom_jobs("", url),
+    "icims": lambda url: fetch_icims("", url),
+    "jibe": lambda url: fetch_jibe("", url),
 }
+
+# List of supported ATS for UI display
+SUPPORTED_ATS = list(ATS_PARSERS.keys())
 
 from storage.job_storage import (
     get_all_jobs, get_jobs_by_status, get_jobs_by_statuses,
@@ -350,7 +360,7 @@ def update_daemon_lock():
 # Daemon status (global)
 # NOTE: Daemon disabled by default to avoid conflicts when running on multiple machines via iCloud
 DAEMON_STATUS = {
-    "enabled": False,  # Changed to False - enable manually via UI or API
+    "enabled": True,  # Auto-start daemon on server startup
     "running": False,
     "locked_by": None,  # Which machine has the lock
     "current_company": None,
@@ -401,13 +411,16 @@ def refresh_company_sync(company: dict) -> dict:
         jobs = fetcher(board_url)
         result["jobs"] = len(jobs) if jobs else 0
         result["ok"] = True
-        
+        print(f"[refresh_company_sync] {company_id}: fetched {len(jobs) if jobs else 0} jobs")
+
         # Update company status in storage
         from company_storage import update_company_status
         update_company_status(company_id, ok=True, jobs_count=len(jobs) if jobs else 0)
-        
+
         # Update cache with new jobs and track added count
+        print(f"[refresh_company_sync] {company_id}: calling update_cache_for_company...")
         added = update_cache_for_company(company_id, jobs or [])
+        print(f"[refresh_company_sync] {company_id}: update_cache returned {added}")
         result["jobs_added"] = added or 0
         
     except Exception as e:
@@ -420,49 +433,91 @@ def refresh_company_sync(company: dict) -> dict:
 def update_cache_for_company(company_id: str, new_jobs: list) -> int:
     """Update jobs_all.json cache for a specific company. Returns count of new jobs added to pipeline."""
     from utils.cache_manager import get_cache_path
-    from utils.role_classifier import classify_role
+    from utils.job_utils import classify_role, generate_job_id
     from utils.normalize import normalize_location
-    
+
     cache_path = get_cache_path("all")
     if not cache_path.exists():
-        return
-    
+        print(f"[Daemon] Cache file not found: {cache_path}")
+        return 0
+
+    import time
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print(f"[update_cache] {company_id}: reading cache (attempt {attempt + 1})...")
+            with open(cache_path, "r") as f:
+                cache_data = json.load(f)
+            break  # Success, exit retry loop
+        except json.JSONDecodeError as e:
+            if attempt < max_retries - 1:
+                print(f"[update_cache] {company_id}: JSON error, retrying in 1s... ({e})")
+                time.sleep(1)
+                continue
+            else:
+                print(f"[update_cache] {company_id}: JSON error after {max_retries} attempts: {e}")
+                return 0
+
     try:
-        with open(cache_path, "r") as f:
-            cache_data = json.load(f)
-        
+
         all_jobs = cache_data.get("jobs", [])
-        
+        print(f"[update_cache] {company_id}: cache has {len(all_jobs)} jobs")
+
         # Remove old jobs from this company
         all_jobs = [j for j in all_jobs if j.get("company_id") != company_id]
-        
+        print(f"[update_cache] {company_id}: after removing old jobs: {len(all_jobs)}")
+
+        # Resolve company name from companies.json
+        company_name = ""
+        try:
+            from company_storage import load_companies
+            for c in load_companies():
+                if c.get("id") == company_id:
+                    company_name = c.get("name", "")
+                    break
+        except Exception:
+            pass
+
         # Normalize and classify new jobs
+        print(f"[update_cache] {company_id}: normalizing {len(new_jobs)} new jobs...")
         for job in new_jobs:
             job["company_id"] = company_id
+            if not job.get("company") and company_name:
+                job["company"] = company_name
             if "location_norm" not in job:
                 job["location_norm"] = normalize_location(job.get("location", ""))
             if "role_category" not in job:
-                role_info = classify_role(job.get("title", ""))
-                job["role_category"] = role_info.get("category", "unknown")
+                role_info = classify_role(job.get("title", ""), "")
+                job["role_category"] = role_info.get("role_category", "unknown")
+                job["role_family"] = role_info.get("role_family", "other")
                 job["role_id"] = role_info.get("role_id")
-        
+            # Generate job ID if missing (required for pipeline)
+            if not job.get("id"):
+                job["id"] = generate_job_id(job)
+
         # Add new jobs
         all_jobs.extend(new_jobs)
-        
-        # Save back
+        print(f"[Daemon] Cache update: {company_id} - adding {len(new_jobs)} jobs, total will be {len(all_jobs)}")
+
+        # Save back using atomic write (write to temp file, then rename)
         cache_data["jobs"] = all_jobs
         cache_data["jobs_count"] = len(all_jobs)
         cache_data["last_updated"] = datetime.now(timezone.utc).isoformat()
-        
-        with open(cache_path, "w") as f:
+
+        temp_path = cache_path.with_suffix('.tmp')
+        with open(temp_path, "w") as f:
             json.dump(cache_data, f)
-        
+        temp_path.rename(cache_path)  # Atomic on most filesystems
+        print(f"[Daemon] Cache saved successfully for {company_id}")
+
         # Also update pipeline (jobs.json) with relevant jobs
         added = update_pipeline_for_company(company_id, new_jobs)
         return added
-        
+
     except Exception as e:
+        import traceback
         print(f"[Daemon] Cache update error for {company_id}: {e}")
+        traceback.print_exc()
         return 0
 
 def update_pipeline_for_company(company_id: str, new_jobs: list) -> int:
@@ -486,6 +541,103 @@ def update_pipeline_for_company(company_id: str, new_jobs: list) -> int:
     
     if added > 0:
         print(f"[Daemon] Added {added} new jobs to pipeline from {company_id}")
+
+# Self-healing: consecutive error tracking per company
+_COMPANY_ERRORS: dict[str, int] = {}  # company_id → consecutive error count
+_MAX_CONSECUTIVE_ERRORS = 3  # disable company after this many consecutive failures
+
+
+def _track_company_error(company: dict, error: str):
+    """
+    Track consecutive errors for a company.
+    After _MAX_CONSECUTIVE_ERRORS consecutive failures → try repair first, then auto-disable.
+    """
+    company_id = company.get("id", "")
+    if not company_id:
+        return
+
+    _COMPANY_ERRORS[company_id] = _COMPANY_ERRORS.get(company_id, 0) + 1
+    count = _COMPANY_ERRORS[company_id]
+
+    if count >= _MAX_CONSECUTIVE_ERRORS:
+        print(f"[Daemon] ⚠️ {company_id}: {count} consecutive errors → attempting repair...")
+
+        # Try repair before disabling
+        repair_result = try_repair_company({
+            "name": company.get("name", company_id),
+            "ats": company.get("ats", ""),
+            "board_url": company.get("board_url", ""),
+        })
+
+        if repair_result and repair_result.get("verified"):
+            new_ats = repair_result["ats"]
+            new_url = repair_result["board_url"]
+            print(f"[Daemon] 🔧 Repair found new URL for {company_id}: {new_ats} → {new_url}")
+
+            # Update companies.json with repaired data
+            try:
+                companies_path = Path("data/companies.json")
+                with open(companies_path, "r", encoding="utf-8") as f:
+                    companies = json.load(f)
+
+                for c in companies:
+                    if c.get("id") == company_id:
+                        c["ats"] = new_ats
+                        c["board_url"] = new_url
+                        c["repaired_at"] = datetime.now(timezone.utc).isoformat()
+                        break
+
+                with open(companies_path, "w", encoding="utf-8") as f:
+                    json.dump(companies, f, indent=2, ensure_ascii=False)
+
+                print(f"[Daemon] ✅ Repaired {company_id} → {new_ats}")
+                _COMPANY_ERRORS.pop(company_id, None)  # reset errors after repair
+                return  # Don't disable — repaired successfully
+            except Exception as e:
+                print(f"[Daemon] ❌ Failed to save repair for {company_id}: {e}")
+
+        # Repair failed → auto-disable
+        print(f"[Daemon] ❌ Repair failed for {company_id} → auto-disabling")
+        _auto_disable_company(company_id, error, count)
+        _COMPANY_ERRORS.pop(company_id, None)  # cleanup
+
+
+def _reset_company_errors(company_id: str):
+    """Reset consecutive error counter on successful parse."""
+    if company_id in _COMPANY_ERRORS:
+        del _COMPANY_ERRORS[company_id]
+
+
+def _auto_disable_company(company_id: str, last_error: str, error_count: int):
+    """
+    Auto-disable a company after consecutive failures.
+    Sets enabled=false, status="auto_disabled" in companies.json.
+    """
+    companies_path = Path("data/companies.json")
+    if not companies_path.exists():
+        return
+
+    try:
+        with open(companies_path, "r", encoding="utf-8") as f:
+            companies = json.load(f)
+
+        for c in companies:
+            if c.get("id") == company_id:
+                c["enabled"] = False
+                c["status"] = "auto_disabled"
+                c["auto_disabled_at"] = datetime.now(timezone.utc).isoformat()
+                c["auto_disabled_reason"] = f"{error_count} consecutive errors: {last_error[:200]}"
+                break
+        else:
+            return  # company not found
+
+        with open(companies_path, "w", encoding="utf-8") as f:
+            json.dump(companies, f, indent=2, ensure_ascii=False)
+
+        print(f"[Daemon] 🔒 Auto-disabled company: {company_id}")
+    except Exception as e:
+        print(f"[Daemon] Error auto-disabling {company_id}: {e}")
+
 
 async def background_refresh_daemon():
     """Background task that continuously refreshes companies"""
@@ -581,8 +733,12 @@ async def background_refresh_daemon():
                     if result["ok"]:
                         added_str = f" (+{jobs_added} new)" if jobs_added > 0 else ""
                         print(f"[Daemon] ✓ {company_name}: {result['jobs']} jobs{added_str}")
+                        # Reset consecutive error counter on success
+                        _reset_company_errors(company.get("id", ""))
                     else:
                         print(f"[Daemon] ✗ {company_name}: {result['error']}")
+                        # Track consecutive errors, auto-disable after threshold
+                        _track_company_error(company, result.get("error", ""))
                 
                 DAEMON_STATUS["current_company"] = None
                 
@@ -694,6 +850,12 @@ def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[di
             jobs = fetch_workday_v2(company, url)
         elif ats == "atlassian":
             jobs = fetch_atlassian(company, url)
+        elif ats == "phenom":
+            jobs = fetch_phenom_jobs(url)
+        elif ats == "icims":
+            jobs = fetch_icims(company, url)
+        elif ats == "jibe":
+            jobs = fetch_jibe(company, url)
         else:
             jobs = []
 
@@ -1210,13 +1372,15 @@ def get_companies(
             "interview_count": 0,
         })
 
+        ats_type = cfg.get("ats", "")
         items.append(
             {
                 "company": company_name,
                 "id": cfg.get("id", ""),
                 "industry": cfg.get("industry", ""),
                 "tags": cfg.get("tags", []),
-                "ats": cfg.get("ats", ""),
+                "ats": ats_type,
+                "ats_supported": ats_type in SUPPORTED_ATS,  # Can auto-fetch jobs
                 "url": cfg.get("url", "") or cfg.get("board_url", ""),
                 "enabled": cfg.get("enabled", True),
                 "status": company_status,
@@ -1243,14 +1407,148 @@ def get_companies(
     total_interview = sum(c["interview_count"] for c in items)
 
     return {
-        "count": len(items), 
+        "count": len(items),
         "companies": items,
+        "supported_ats": SUPPORTED_ATS,  # List of ATS that support auto-fetching
         "summary": {
             "total_jobs": total_jobs,
             "total_new": total_new,
             "total_applied": total_applied,
             "total_interview": total_interview,
         }
+    }
+
+
+@app.get("/ats-info")
+def get_ats_info():
+    """
+    Get information about supported ATS systems.
+    Returns which ATS support automatic job fetching and collected unsupported ATS.
+    """
+    # Load unsupported ATS data
+    unsupported_ats = {}
+    unsupported_file = Path("data/unsupported_ats.json")
+    if unsupported_file.exists():
+        try:
+            with open(unsupported_file, "r") as f:
+                data = json.load(f)
+                unsupported_ats = data.get("ats_systems", {})
+        except:
+            pass
+
+    # Format unsupported ATS for response (skip those already in SUPPORTED_ATS)
+    unsupported_list = []
+    for ats_key, ats_data in unsupported_ats.items():
+        if ats_key in ATS_PARSERS:
+            continue  # Already supported, skip
+        unsupported_list.append({
+            "name": ats_data.get("name", ats_key),
+            "companies_count": len(ats_data.get("companies_using", [])),
+            "endpoints_found": len(ats_data.get("api_endpoints", [])),
+            "parser_status": ats_data.get("parser_status", "not_started"),
+            "first_seen": ats_data.get("first_seen"),
+        })
+
+    return {
+        "supported_ats": SUPPORTED_ATS,
+        "descriptions": {
+            "greenhouse": "Greenhouse - Full API support, auto-fill available",
+            "lever": "Lever - Full API support, auto-fill available",
+            "ashby": "Ashby - Full API support, auto-fill available",
+            "workday": "Workday - API support (limited)",
+            "smartrecruiters": "SmartRecruiters - API support",
+            "atlassian": "Atlassian - API support",
+            "phenom": "Phenom - API support",
+            "icims": "iCIMS - HTML parsing",
+            "jibe": "Jibe (Google Hire) - API support",
+        },
+        "auto_fill_supported": ["greenhouse", "lever", "ashby"],
+        "unsupported_ats": unsupported_list,
+        "unsupported_count": len(unsupported_list),
+    }
+
+
+@app.post("/ats-discovery/{ats_name}")
+def trigger_ats_discovery_endpoint(ats_name: str, url: str = Query(..., description="Careers page URL to analyze")):
+    """
+    Manually trigger ATS discovery for a specific ATS system.
+    Analyzes the careers page and collects API endpoints for parser generation.
+    """
+    from tools.ats_discovery import load_unsupported_ats
+
+    # Check if already has enough data
+    data = load_unsupported_ats()
+    ats_key = ats_name.lower().replace(" ", "_")
+    existing = data.get("ats_systems", {}).get(ats_key, {})
+
+    trigger_ats_discovery_background(ats_name, url, "manual_trigger")
+
+    return {
+        "status": "discovery_started",
+        "ats": ats_name,
+        "url": url,
+        "existing_endpoints": len(existing.get("api_endpoints", [])),
+        "message": "Discovery running in background. Check /ats-info for results."
+    }
+
+
+@app.post("/ats-generate/{ats_name}")
+def trigger_parser_generation(ats_name: str):
+    """
+    Trigger parser generation for an ATS system using Claude API.
+    Requires collected discovery data and ANTHROPIC_API_KEY.
+    """
+    import threading
+    from tools.ats_discovery import load_unsupported_ats
+
+    # Check if we have data
+    data = load_unsupported_ats()
+    ats_key = ats_name.lower().replace(" ", "_")
+    ats_data = data.get("ats_systems", {}).get(ats_key)
+
+    if not ats_data:
+        return {"error": f"No discovery data for ATS '{ats_name}'. Run discovery first."}
+
+    if len(ats_data.get("api_endpoints", [])) == 0:
+        return {"error": f"No API endpoints found for '{ats_name}'. Need more discovery data."}
+
+    # Check for API key
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        return {"error": "ANTHROPIC_API_KEY not set. Cannot generate parser."}
+
+    def generate_task():
+        try:
+            from tools.ats_parser_generator import generate_parser, test_parser, update_parser_status
+            print(f"[Parser Generator] Starting generation for {ats_name}")
+
+            result = generate_parser(ats_name, save=True)
+            if result.get("error"):
+                update_parser_status(ats_name, "generation_failed", result["error"])
+                print(f"[Parser Generator] Generation failed: {result['error']}")
+                return
+
+            # Test the parser
+            test_result = test_parser(ats_name)
+            if test_result.get("error"):
+                update_parser_status(ats_name, "test_failed", test_result["error"])
+            elif test_result.get("jobs_count", 0) > 0:
+                update_parser_status(ats_name, "completed", f"Found {test_result['jobs_count']} jobs")
+            else:
+                update_parser_status(ats_name, "needs_review", "Parser runs but found 0 jobs")
+
+            print(f"[Parser Generator] Completed for {ats_name}")
+
+        except Exception as e:
+            print(f"[Parser Generator] Error: {e}")
+
+    thread = threading.Thread(target=generate_task, daemon=True)
+    thread.start()
+
+    return {
+        "status": "generation_started",
+        "ats": ats_name,
+        "endpoints_available": len(ats_data.get("api_endpoints", [])),
+        "message": "Parser generation running in background. Check /ats-info for status."
     }
 
 
@@ -1262,49 +1560,164 @@ class CompanyCreate(BaseModel):
     tags: list[str] = []
 
 
+def trigger_ats_discovery_background(ats_name: str, careers_url: str, company_name: str):
+    """
+    Trigger ATS discovery in background thread when new unsupported ATS is detected.
+    Collects API endpoints and data for future parser generation.
+    """
+    import threading
+
+    def discover_task():
+        try:
+            from tools.ats_discovery import discover_api_endpoints, load_unsupported_ats, save_unsupported_ats
+            import asyncio
+
+            print(f"[ATS Discovery] Starting discovery for {ats_name} from {careers_url}")
+
+            # Run async discovery
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(discover_api_endpoints(careers_url))
+            loop.close()
+
+            if result.get("error"):
+                print(f"[ATS Discovery] Error: {result['error']}")
+                return
+
+            # Update unsupported_ats.json
+            data = load_unsupported_ats()
+            ats_key = ats_name.lower().replace(" ", "_")
+
+            if ats_key not in data.get("ats_systems", {}):
+                data.setdefault("ats_systems", {})[ats_key] = {
+                    "name": ats_name,
+                    "first_seen": datetime.now().isoformat(),
+                    "companies_using": [],
+                    "api_endpoints": [],
+                    "sample_responses": [],
+                    "parser_status": "not_started"
+                }
+
+            ats_data = data["ats_systems"][ats_key]
+
+            # Add company if not already there
+            if company_name not in ats_data.get("companies_using", []):
+                ats_data.setdefault("companies_using", []).append(company_name)
+
+            # Merge discovered endpoints
+            existing_urls = {ep.get("url") if isinstance(ep, dict) else ep for ep in ats_data.get("api_endpoints", [])}
+            for ep in result.get("api_endpoints", []):
+                ep_url = ep.get("url") if isinstance(ep, dict) else ep
+                if ep_url not in existing_urls:
+                    ats_data.setdefault("api_endpoints", []).append(ep)
+
+            # Add sample responses
+            for sample in result.get("json_responses", [])[:3]:
+                ats_data.setdefault("sample_responses", []).append(sample)
+
+            # Update status
+            if ats_data.get("parser_status") == "not_started" and len(ats_data.get("api_endpoints", [])) > 0:
+                ats_data["parser_status"] = "data_collected"
+
+            save_unsupported_ats(data)
+            print(f"[ATS Discovery] Completed for {ats_name}: {len(result.get('api_endpoints', []))} endpoints found")
+
+        except Exception as e:
+            print(f"[ATS Discovery] Error in background task: {e}")
+
+    # Run in background thread
+    thread = threading.Thread(target=discover_task, daemon=True)
+    thread.start()
+
+
 @app.post("/companies")
 def add_company(company: CompanyCreate):
     """
     Add a new company to companies.json.
+    Validates: duplicate check by name/id AND board_url.
+    Auto-detects ATS from board_url if ats is "universal" or empty.
+    Normalizes board_url (strip trailing slash).
+    If ATS is unsupported, triggers background discovery for future parser generation.
     """
     companies_path = Path("data/companies.json")
-    
+
     # Load existing
     if companies_path.exists():
         with open(companies_path, "r") as f:
             companies = json.load(f)
     else:
         companies = []
-    
+
     # Generate id from name
     company_id = company.name.lower().replace(" ", "_").replace("-", "_")
-    
-    # Check if already exists
+
+    # Normalize board_url (strip trailing slash, whitespace)
+    board_url = company.board_url.strip().rstrip("/") if company.board_url else ""
+
+    # Check if already exists by name/id
     for c in companies:
         if c.get("id") == company_id or c.get("name", "").lower() == company.name.lower():
-            return {"error": f"Company '{company.name}' already exists", "status": "exists"}
-    
+            return {"error": f"Company '{company.name}' already exists (by name/id)", "status": "exists"}
+
+    # Check duplicate by board_url (normalized comparison)
+    if board_url:
+        norm_url = board_url.lower().rstrip("/")
+        for c in companies:
+            existing_url = (c.get("board_url") or "").lower().rstrip("/")
+            if existing_url and existing_url == norm_url:
+                return {
+                    "error": f"Company with board_url '{board_url}' already exists as '{c.get('name')}' (id={c.get('id')})",
+                    "status": "exists"
+                }
+
+    # Auto-detect ATS if universal or empty
+    ats_type = (company.ats or "").lower().strip()
+    auto_detected = False
+    if ats_type in ("", "universal", "other", "unknown") and board_url:
+        detected = detect_ats_from_url(board_url)
+        detected_ats = detected.get("ats", "universal")
+        if detected_ats in SUPPORTED_ATS:
+            ats_type = detected_ats
+            # Use the normalized board_url from detection
+            if detected.get("board_url"):
+                board_url = detected["board_url"]
+            auto_detected = True
+            print(f"[AddCompany] Auto-detected ATS: {ats_type} for {board_url}")
+        else:
+            ats_type = detected_ats  # Keep detected ATS even if unsupported
+
     # Create new company entry
     new_company = {
         "id": company_id,
         "name": company.name,
-        "ats": company.ats,
-        "board_url": company.board_url,
+        "ats": ats_type,
+        "board_url": board_url,
         "api_url": None,
         "tags": company.tags,
         "industry": company.industry,
         "priority": 0,
         "hq_state": None,
-        "region": "us"
+        "region": "us",
+        "enabled": ats_type in SUPPORTED_ATS,
     }
-    
+
     companies.append(new_company)
-    
+
     # Save
-    with open(companies_path, "w") as f:
-        json.dump(companies, f, indent=2)
-    
-    return {"status": "ok", "company": new_company}
+    with open(companies_path, "w", encoding="utf-8") as f:
+        json.dump(companies, f, indent=2, ensure_ascii=False)
+
+    # Trigger ATS discovery if unsupported ATS
+    if ats_type not in SUPPORTED_ATS and board_url:
+        print(f"[AddCompany] New unsupported ATS '{ats_type}' detected, triggering discovery...")
+        trigger_ats_discovery_background(ats_type, board_url, company.name)
+
+    return {
+        "status": "ok",
+        "company": new_company,
+        "ats_auto_detected": auto_detected,
+        "ats_discovery_triggered": ats_type not in SUPPORTED_ATS,
+    }
 
 
 @app.delete("/companies/{company_id}")
@@ -1481,6 +1894,305 @@ async def refresh_single_company_stream(company_id: str, profile: str = Query("a
             "Connection": "keep-alive",
         }
     )
+
+
+# ===== Discovery endpoints =====
+# Auto-discovery of companies with relevant PM/TPM roles
+
+@app.post("/discovery/search")
+def discovery_search(ai: bool = True, seed: bool = True):
+    """
+    Run company discovery pipeline: AI search + seed list.
+    Found companies go to data/discovered_companies.json staging area.
+    """
+    from tools.company_discovery import (
+        load_companies, load_staging, save_staging,
+        get_existing_ids, get_staging_ids,
+        discover_via_ai, discover_from_seed_list,
+    )
+
+    existing_ids = get_existing_ids()
+    existing_names = {c.get("name", "") for c in load_companies()}
+    candidates = load_staging()
+    initial_count = len(candidates)
+
+    new_candidates = []
+    ai_count = 0
+    seed_count = 0
+
+    if ai:
+        ai_candidates = discover_via_ai(existing_ids, existing_names)
+        new_candidates.extend(ai_candidates)
+        ai_count = len(ai_candidates)
+
+    if seed:
+        seed_candidates = discover_from_seed_list(existing_ids)
+        new_candidates.extend(seed_candidates)
+        seed_count = len(seed_candidates)
+
+    # Deduplicate with staging
+    staging_ids = {c.get("id") for c in candidates}
+    added = 0
+    for nc in new_candidates:
+        if nc["id"] not in staging_ids:
+            candidates.append(nc)
+            staging_ids.add(nc["id"])
+            added += 1
+
+    save_staging(candidates)
+
+    return {
+        "ok": True,
+        "ai_suggested": ai_count,
+        "seed_suggested": seed_count,
+        "added_to_staging": added,
+        "total_staging": len(candidates),
+    }
+
+
+@app.get("/discovery/candidates")
+def discovery_candidates(status: str = None):
+    """
+    List discovered companies from staging area.
+    Optional filter by status: pending_validation, validated, ready_to_approve, etc.
+    """
+    staging_path = Path("data/discovered_companies.json")
+    if not staging_path.exists():
+        return {"candidates": [], "total": 0}
+
+    with open(staging_path, "r", encoding="utf-8") as f:
+        candidates = json.load(f)
+
+    if status:
+        candidates = [c for c in candidates if c.get("status") == status]
+
+    # Group counts by status
+    all_candidates = json.load(open(staging_path, "r", encoding="utf-8"))
+    status_counts = {}
+    for c in all_candidates:
+        s = c.get("status", "unknown")
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    return {
+        "candidates": candidates,
+        "total": len(candidates),
+        "status_counts": status_counts,
+    }
+
+
+@app.post("/discovery/validate")
+def discovery_validate():
+    """
+    Validate ATS for pending candidates in staging.
+    Detects ATS via URL patterns and HTTP checks.
+    """
+    from tools.company_discovery import load_staging, save_staging, validate_candidates
+
+    candidates = load_staging()
+    if not candidates:
+        return {"ok": True, "validated": 0, "message": "Staging is empty"}
+
+    changes = validate_candidates(candidates)
+    save_staging(candidates)
+
+    supported = sum(1 for c in candidates if c.get("supported"))
+    unsupported = sum(1 for c in candidates if c.get("status") == "unsupported_ats")
+    no_ats = sum(1 for c in candidates if c.get("status") == "no_ats_detected")
+
+    return {
+        "ok": True,
+        "validated": changes,
+        "supported_ats": supported,
+        "unsupported_ats": unsupported,
+        "no_ats": no_ats,
+    }
+
+
+@app.post("/discovery/preview")
+def discovery_preview():
+    """
+    Preview relevant PM/TPM roles for validated candidates.
+    Parses jobs from ATS and counts matching role titles.
+    """
+    from tools.company_discovery import load_staging, save_staging, preview_relevant_roles
+
+    candidates = load_staging()
+    if not candidates:
+        return {"ok": True, "previewed": 0, "message": "Staging is empty"}
+
+    changes = preview_relevant_roles(candidates)
+    save_staging(candidates)
+
+    ready = sum(1 for c in candidates if c.get("status") == "ready_to_approve")
+    no_roles = sum(1 for c in candidates if c.get("status") == "no_relevant_roles")
+
+    return {
+        "ok": True,
+        "previewed": changes,
+        "ready_to_approve": ready,
+        "no_relevant_roles": no_roles,
+    }
+
+
+@app.post("/discovery/approve/{candidate_id}")
+def discovery_approve(candidate_id: str):
+    """
+    Approve a discovered company — move from staging to companies.json.
+    Triggers initial parsing via refresh_company_sync() (same as /onboard auto-add).
+    """
+    staging_path = Path("data/discovered_companies.json")
+    companies_path = Path("data/companies.json")
+
+    # Load staging
+    if not staging_path.exists():
+        return {"ok": False, "error": "No staging file"}
+
+    with open(staging_path, "r", encoding="utf-8") as f:
+        candidates = json.load(f)
+
+    # Find candidate
+    candidate = None
+    for c in candidates:
+        if c.get("id") == candidate_id:
+            candidate = c
+            break
+
+    if not candidate:
+        return {"ok": False, "error": f"Candidate '{candidate_id}' not found in staging"}
+
+    if not candidate.get("supported"):
+        return {"ok": False, "error": f"Candidate has unsupported ATS: {candidate.get('ats')}"}
+
+    # Check not already in companies.json
+    companies = json.load(open(companies_path, "r", encoding="utf-8")) if companies_path.exists() else []
+    for c in companies:
+        if c.get("id") == candidate_id or c.get("name", "").lower() == candidate.get("name", "").lower():
+            return {"ok": False, "error": f"Company '{candidate_id}' already exists"}
+
+    # Create company entry (same format as /onboard auto-add: main.py:3004-3015)
+    new_company = {
+        "id": candidate_id,
+        "name": candidate.get("name", candidate_id),
+        "ats": candidate.get("ats"),
+        "board_url": candidate.get("board_url"),
+        "industry": candidate.get("industry", ""),
+        "tags": candidate.get("tags", []),
+        "priority": 0,
+        "hq_state": candidate.get("hq_state"),
+        "region": "us",
+        "enabled": True,
+    }
+
+    companies.append(new_company)
+    with open(companies_path, "w", encoding="utf-8") as f:
+        json.dump(companies, f, indent=2, ensure_ascii=False)
+
+    # Trigger initial parsing (same as /onboard: main.py:3021-3033)
+    parsing_result = {"ok": False, "jobs": 0}
+    try:
+        fetch_result = refresh_company_sync(new_company)
+        parsing_result = {
+            "ok": fetch_result.get("ok", False),
+            "jobs": fetch_result.get("jobs", 0),
+            "jobs_added": fetch_result.get("jobs_added", 0),
+        }
+    except Exception as e:
+        parsing_result["error"] = str(e)
+
+    # Update staging status
+    candidate["status"] = "approved"
+    candidate["approved_at"] = datetime.now().isoformat()
+    with open(staging_path, "w", encoding="utf-8") as f:
+        json.dump(candidates, f, indent=2, ensure_ascii=False)
+
+    return {
+        "ok": True,
+        "company": new_company,
+        "parsing": parsing_result,
+    }
+
+
+@app.post("/discovery/reject/{candidate_id}")
+def discovery_reject(candidate_id: str):
+    """Reject a discovered company — mark as rejected in staging."""
+    staging_path = Path("data/discovered_companies.json")
+
+    if not staging_path.exists():
+        return {"ok": False, "error": "No staging file"}
+
+    with open(staging_path, "r", encoding="utf-8") as f:
+        candidates = json.load(f)
+
+    found = False
+    for c in candidates:
+        if c.get("id") == candidate_id:
+            c["status"] = "rejected"
+            c["rejected_at"] = datetime.now().isoformat()
+            found = True
+            break
+
+    if not found:
+        return {"ok": False, "error": f"Candidate '{candidate_id}' not found"}
+
+    with open(staging_path, "w", encoding="utf-8") as f:
+        json.dump(candidates, f, indent=2, ensure_ascii=False)
+
+    return {"ok": True, "rejected": candidate_id}
+
+
+@app.post("/discovery/auto")
+def discovery_auto():
+    """
+    Full discovery pipeline: search → validate → preview.
+    Combines all steps into a single endpoint.
+    """
+    from tools.company_discovery import (
+        load_companies, load_staging, save_staging,
+        get_existing_ids, discover_via_ai, discover_from_seed_list,
+        validate_candidates, preview_relevant_roles,
+    )
+
+    results = {"steps": []}
+
+    # Step 1: Search
+    existing_ids = get_existing_ids()
+    existing_names = {c.get("name", "") for c in load_companies()}
+    candidates = load_staging()
+
+    new_candidates = []
+    ai_candidates = discover_via_ai(existing_ids, existing_names)
+    new_candidates.extend(ai_candidates)
+    seed_candidates = discover_from_seed_list(existing_ids)
+    new_candidates.extend(seed_candidates)
+
+    staging_ids = {c.get("id") for c in candidates}
+    added = 0
+    for nc in new_candidates:
+        if nc["id"] not in staging_ids:
+            candidates.append(nc)
+            staging_ids.add(nc["id"])
+            added += 1
+
+    save_staging(candidates)
+    results["steps"].append({"search": {"ai": len(ai_candidates), "seed": len(seed_candidates), "added": added}})
+
+    # Step 2: Validate
+    validated = validate_candidates(candidates)
+    save_staging(candidates)
+    supported = sum(1 for c in candidates if c.get("supported"))
+    results["steps"].append({"validate": {"validated": validated, "supported": supported}})
+
+    # Step 3: Preview
+    previewed = preview_relevant_roles(candidates)
+    save_staging(candidates)
+    ready = sum(1 for c in candidates if c.get("status") == "ready_to_approve")
+    results["steps"].append({"preview": {"previewed": previewed, "ready_to_approve": ready}})
+
+    results["ok"] = True
+    results["ready_to_approve"] = ready
+    results["total_staging"] = len(candidates)
+
+    return results
 
 
 @app.get("/profiles/{name}")
@@ -2152,6 +2864,204 @@ def pipeline_get_job_endpoint(job_id: str):
         return {"ok": False, "error": "Job not found"}
 
 
+@app.post("/pipeline/enrich/{job_id}")
+def enrich_job_endpoint(job_id: str):
+    """
+    Enrich a pipeline job with extra data from ATS job detail API.
+    Currently supports Workday: fetches deadline, salary, posted date.
+    """
+    from storage.job_storage import get_job_by_id, _load_jobs, _save_jobs
+
+    job = get_job_by_id(job_id)
+    if not job:
+        return {"ok": False, "error": "Job not found"}
+
+    ats = job.get("ats", "")
+    job_url = job.get("job_url") or job.get("url", "")
+
+    if ats == "workday" and "myworkdayjobs.com" in job_url:
+        from parsers.workday import fetch_workday_job_detail
+        detail = fetch_workday_job_detail(job_url)
+        if detail:
+            # Update job in storage
+            jobs = _load_jobs()
+            for j in jobs:
+                if j.get("id") == job_id:
+                    if detail.get("deadline"):
+                        j["deadline"] = detail["deadline"]
+                    if detail.get("start_date") and not j.get("updated_at"):
+                        j["updated_at"] = detail["start_date"]
+                        j["first_published"] = detail["start_date"]
+                    if detail.get("time_left"):
+                        j["time_left"] = detail["time_left"]
+                    if detail.get("salary_range"):
+                        j["salary_range"] = detail["salary_range"]
+                    if detail.get("posted_on"):
+                        j["posted_on_raw"] = detail["posted_on"]
+                    j["enriched"] = True
+                    _save_jobs(jobs)
+                    return {"ok": True, "enriched": detail, "job": j}
+            return {"ok": False, "error": "Job not found in storage"}
+        return {"ok": False, "error": "Could not fetch job details from Workday"}
+
+    return {"ok": False, "error": f"Enrichment not supported for ATS: {ats}"}
+
+
+@app.post("/pipeline/enrich-batch")
+def enrich_batch_endpoint(background_tasks: BackgroundTasks):
+    """
+    Batch enrich all unenriched Workday jobs in pipeline.
+    Runs in background to avoid timeout.
+    """
+    from storage.job_storage import _load_jobs, _save_jobs
+
+    jobs = _load_jobs()
+    to_enrich = [j for j in jobs if j.get("ats") == "workday"
+                 and not j.get("enriched")
+                 and "myworkdayjobs.com" in (j.get("job_url") or j.get("url", ""))]
+
+    if not to_enrich:
+        return {"ok": True, "message": "No jobs to enrich", "total": 0}
+
+    def _do_batch_enrich():
+        import time
+        from parsers.workday import fetch_workday_job_detail
+        from storage.job_storage import _load_jobs as load_j, _save_jobs as save_j
+
+        all_jobs = load_j()
+        job_map = {j.get("id"): j for j in all_jobs}
+        enriched_count = 0
+        error_count = 0
+
+        for target in to_enrich:
+            job_id = target.get("id")
+            job_url = target.get("job_url") or target.get("url", "")
+            try:
+                detail = fetch_workday_job_detail(job_url, timeout=10)
+                if detail and job_id in job_map:
+                    j = job_map[job_id]
+                    if detail.get("deadline"):
+                        j["deadline"] = detail["deadline"]
+                    if detail.get("start_date") and not j.get("updated_at"):
+                        j["updated_at"] = detail["start_date"]
+                        j["first_published"] = detail["start_date"]
+                    if detail.get("time_left"):
+                        j["time_left"] = detail["time_left"]
+                    if detail.get("salary_range"):
+                        j["salary_range"] = detail["salary_range"]
+                    j["enriched"] = True
+                    enriched_count += 1
+                else:
+                    error_count += 1
+            except Exception:
+                error_count += 1
+            time.sleep(0.5)
+
+            # Save every 20 jobs
+            if (enriched_count + error_count) % 20 == 0:
+                save_j(list(job_map.values()))
+                print(f"[Enrich] Progress: {enriched_count} enriched, {error_count} errors")
+
+        save_j(list(job_map.values()))
+        print(f"[Enrich] Done: {enriched_count} enriched, {error_count} errors out of {len(to_enrich)}")
+
+    background_tasks.add_task(_do_batch_enrich)
+    return {"ok": True, "message": f"Enriching {len(to_enrich)} Workday jobs in background", "total": len(to_enrich)}
+
+
+@app.post("/pipeline/match-batch")
+def match_batch_endpoint(background_tasks: BackgroundTasks, limit: int = Query(default=50)):
+    """
+    Batch compute match scores for pipeline jobs without scores.
+    Parses JD from URL and runs AI analysis against CV.
+    limit: max jobs to process (default 50, each costs ~1 API call)
+    """
+    from storage.job_storage import _load_jobs
+
+    jobs = _load_jobs()
+    to_score = [j for j in jobs if j.get("status") == "new"
+                and not j.get("match_score")
+                and (j.get("job_url") or j.get("url"))
+                and j.get("role_category") in ["primary", "adjacent"]]
+
+    # Limit to prevent excessive API costs
+    batch = to_score[:limit]
+    if not batch:
+        return {"ok": True, "message": "No jobs to score", "total": 0, "remaining": 0}
+
+    def _do_batch_match():
+        import time
+        from parsers.jd_parser import parse_and_store_jd
+        from api.prepare_application import analyze_job_with_ai
+        from storage.job_storage import _load_jobs as load_j, _save_jobs as save_j
+
+        all_jobs = load_j()
+        job_map = {j.get("id"): j for j in all_jobs}
+        scored = 0
+        errors = 0
+
+        for target in batch:
+            job_id = target.get("id")
+            job_url = target.get("job_url") or target.get("url", "")
+            title = target.get("title", "")
+            company = target.get("company", "")
+            ats = target.get("ats", "")
+
+            try:
+                # Step 1: Parse JD
+                result = parse_and_store_jd(
+                    job_id=job_id, url=job_url,
+                    title=title, company=company, ats=ats
+                )
+                if not result.get("ok"):
+                    errors += 1
+                    continue
+
+                jd_text = result.get("jd_text", "")
+                if not jd_text or len(jd_text) < 100:
+                    errors += 1
+                    continue
+
+                # Save jd_summary
+                if job_id in job_map:
+                    job_map[job_id]["jd_summary"] = result.get("summary", {})
+
+                # Step 2: AI match analysis
+                role_family = target.get("role_family", "tpm_program")
+                analysis = analyze_job_with_ai(title, company, jd_text, role_family)
+
+                if analysis and "match_score" in analysis:
+                    if job_id in job_map:
+                        job_map[job_id]["match_score"] = analysis["match_score"]
+                        job_map[job_id]["analysis"] = analysis
+                        scored += 1
+                        print(f"[Match] {company} | {title[:40]} → {analysis['match_score']}%")
+                else:
+                    errors += 1
+
+            except Exception as e:
+                print(f"[Match] Error for {job_id}: {e}")
+                errors += 1
+
+            time.sleep(1)  # Rate limit
+
+            # Save every 10 jobs
+            if (scored + errors) % 10 == 0:
+                save_j(list(job_map.values()))
+                print(f"[Match] Progress: {scored} scored, {errors} errors")
+
+        save_j(list(job_map.values()))
+        print(f"[Match] Done: {scored} scored, {errors} errors out of {len(batch)}")
+
+    background_tasks.add_task(_do_batch_match)
+    return {
+        "ok": True,
+        "message": f"Scoring {len(batch)} jobs in background",
+        "total": len(batch),
+        "remaining": len(to_score) - len(batch)
+    }
+
+
 class ParseJDRequest(BaseModel):
     job_id: str
     url: str
@@ -2178,17 +3088,42 @@ def parse_jd_endpoint(payload: ParseJDRequest):
         )
         
         if result.get("ok"):
+            # Initialize variables
+            match_score = None
+            analysis = None
+
             # Update job in storage with jd_summary
             job = get_job_by_id(payload.job_id)
             if job:
                 # Use storage function to save jd_summary
-                from storage.job_storage import update_jd_summary
+                from storage.job_storage import update_jd_summary, _load_jobs, _save_jobs
                 update_jd_summary(payload.job_id, result["summary"])
-            
+
+                jd_text = result.get("jd_text", "")
+                if jd_text and len(jd_text) > 100:
+                    try:
+                        from api.prepare_application import analyze_job_with_ai
+                        role_family = job.get("role_family", "tpm_program")
+                        analysis = analyze_job_with_ai(payload.title, payload.company, jd_text, role_family)
+                        if analysis and "match_score" in analysis:
+                            match_score = analysis["match_score"]
+                            # Save match_score to job
+                            jobs = _load_jobs()
+                            for j in jobs:
+                                if j.get("id") == payload.job_id:
+                                    j["match_score"] = match_score
+                                    j["analysis"] = analysis
+                                    break
+                            _save_jobs(jobs)
+                    except Exception as e:
+                        print(f"AI analysis error: {e}")
+
             return {
                 "ok": True,
                 "summary": result["summary"],
-                "jd_preview": result.get("jd_text", "")[:500] + "..."
+                "jd_preview": result.get("jd_text", "")[:500] + "...",
+                "match_score": match_score,
+                "analysis": analysis
             }
         else:
             return {"ok": False, "error": result.get("error", "Unknown error")}
@@ -2365,24 +3300,31 @@ def detect_ats_from_url(url: str) -> dict:
     # Workday: company.wd1.myworkdayjobs.com/site/job/..._JOBID
     if "myworkdayjobs.com" in host:
         # https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi/job/..._R0082977
+        # https://proofpoint.wd5.myworkdayjobs.com/ProofpointCareers/job/...
         parts = host.split(".")
         company = parts[0] if parts else ""
-        
+
+        # Extract wd number (wd1, wd5, etc.) from host
+        wd_match = re.search(r"\.(wd\d+)\.", host)
+        wd_num = wd_match.group(1) if wd_match else "wd1"
+
         # Extract job ID from path (usually ends with _JOBID)
         job_id_match = re.search(r"_([A-Z0-9]+-?[0-9]*)$", path)
         job_id = job_id_match.group(1) if job_id_match else ""
-        
+
         # Extract site name from path
         site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", url)
         site = site_match.group(1) if site_match else company
-        
+
         return {
             "ats": "workday",
             "company": company.title(),
             "company_slug": company,
-            "board_url": f"https://{company}.wd1.myworkdayjobs.com/{site}",
+            "wd_num": wd_num,
+            "board_url": f"https://{company}.{wd_num}.myworkdayjobs.com/{site}",
             "job_id": job_id,
-            "job_path": path
+            "job_path": path,
+            "job_url": url
         }
     
     # Lever: jobs.lever.co/company/job-uuid
@@ -2428,6 +3370,20 @@ def detect_ats_from_url(url: str) -> dict:
                 "job_id": job_id
             }
     
+    # Jibe (Google Hire): company.jibeapply.com/jobs/slug
+    if "jibeapply.com" in host:
+        company_slug = host.split(".")[0]
+        job_id_match = re.match(r"/jobs/(\d+)", path)
+        job_id = job_id_match.group(1) if job_id_match else ""
+        return {
+            "ats": "jibe",
+            "company": company_slug.replace("-", " ").title(),
+            "company_slug": company_slug,
+            "board_url": f"https://{company_slug}.jibeapply.com/jobs",
+            "job_id": job_id,
+            "job_url": url
+        }
+
     # iCIMS: external-company.icims.com/jobs/12345/title/job
     if "icims.com" in host:
         # Extract company from subdomain: external-firstcitizens.icims.com -> firstcitizens
@@ -2496,56 +3452,65 @@ def fetch_single_job(ats_info: dict) -> dict:
             return {"error": str(e)}
     
     elif ats == "workday":
-        # Search by job ID
+        # Use direct job API endpoint
         company_slug = ats_info.get("company_slug")
-        job_id = ats_info.get("job_id")
         board_url = ats_info.get("board_url")
-        
-        # Use job_id directly for search - don't strip the number part
-        # R-105810 should stay R-105810, not become R
-        clean_job_id = job_id or ""
-        
-        # Extract site from board_url
-        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url)
+        job_url = ats_info.get("job_url", "")
+        wd_num = ats_info.get("wd_num", "wd1")  # wd1, wd5, etc.
+
+        # Extract site and job path from URL
+        # URL format: https://company.wd5.myworkdayjobs.com/site/job/location/title_JOBID
+        site_match = re.search(r"myworkdayjobs\.com/(?:[a-z][a-z]-[A-Z][A-Z]/)?([^/]+)", board_url or job_url)
         site = site_match.group(1) if site_match else company_slug
-        
-        search_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
+
+        # Extract job path from original URL
+        path_match = re.search(r"/job/(.+?)(?:\?|$)", job_url)
+        job_path = path_match.group(1) if path_match else ""
+
+        if job_path:
+            # Direct API call for specific job
+            api_url = f"https://{company_slug}.{wd_num}.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+            try:
+                resp = requests.get(api_url, headers={"Accept": "application/json"}, timeout=15)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    job_info = data.get("jobPostingInfo", {})
+                    return {
+                        "title": job_info.get("title", ""),
+                        "location": job_info.get("location", ""),
+                        "url": job_url,
+                        "ats_job_id": ats_info.get("job_id", ""),
+                        "description": job_info.get("jobDescription", ""),
+                    }
+            except Exception as e:
+                print(f"[Workday] Direct API error: {e}")
+
+        # Fallback: search by job ID
+        job_id = ats_info.get("job_id", "")
+        search_url = f"https://{company_slug}.{wd_num}.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/jobs"
         try:
             resp = requests.post(
                 search_url,
-                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": clean_job_id},
+                json={"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": job_id},
                 headers={"Content-Type": "application/json"},
                 timeout=15
             )
             if resp.status_code == 200:
                 data = resp.json()
                 postings = data.get("jobPostings", [])
-                
+
                 # Find exact match by job ID in externalPath
-                matched_job = None
                 for posting in postings:
                     ext_path = posting.get("externalPath", "")
-                    if job_id in ext_path or clean_job_id in ext_path:
-                        matched_job = posting
-                        break
-                
-                if matched_job:
-                    return {
-                        "title": matched_job.get("title", ""),
-                        "location": matched_job.get("locationsText", ""),
-                        "url": f"https://{company_slug}.wd1.myworkdayjobs.com{matched_job.get('externalPath', '')}",
-                        "ats_job_id": job_id,
-                    }
-                elif postings:
-                    job = postings[0]
-                    return {
-                        "title": job.get("title", ""),
-                        "location": job.get("locationsText", ""),
-                        "url": f"https://{company_slug}.wd1.myworkdayjobs.com{job.get('externalPath', '')}",
-                        "ats_job_id": job_id,
-                    }
-                else:
-                    return {"error": f"Job {job_id} not found"}
+                    if job_id and job_id in ext_path:
+                        return {
+                            "title": posting.get("title", ""),
+                            "location": posting.get("locationsText", ""),
+                            "url": f"https://{company_slug}.{wd_num}.myworkdayjobs.com{ext_path}",
+                            "ats_job_id": job_id,
+                        }
+
+                return {"error": f"Job {job_id} not found in search results"}
             else:
                 return {"error": f"Workday API returned {resp.status_code}"}
         except Exception as e:
@@ -2586,6 +3551,62 @@ def fetch_single_job(ats_info: dict) -> dict:
         except Exception as e:
             return {"error": str(e)}
     
+    elif ats == "ashby":
+        # Ashby API - fetch job details
+        company_slug = ats_info.get("company_slug", "")
+        job_id = ats_info.get("job_id", "")
+        job_url = ats_info.get("job_url", "") or f"https://jobs.ashbyhq.com/{company_slug}/{job_id}"
+
+        # Ashby has a GraphQL API, but we can also scrape the page
+        # Try API first
+        api_url = f"https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting"
+        try:
+            payload = {
+                "operationName": "ApiJobPosting",
+                "variables": {
+                    "organizationHostedJobsPageName": company_slug,
+                    "jobPostingId": job_id
+                },
+                "query": """
+                    query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) {
+                        jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) {
+                            id
+                            title
+                            locationName
+                            descriptionHtml
+                            publishedDate
+                        }
+                    }
+                """
+            }
+            resp = requests.post(api_url, json=payload, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json()
+                job_posting = data.get("data", {}).get("jobPosting", {})
+                if job_posting:
+                    from bs4 import BeautifulSoup
+                    desc_html = job_posting.get("descriptionHtml", "")
+                    desc_text = BeautifulSoup(desc_html, "html.parser").get_text(separator="\n", strip=True) if desc_html else ""
+
+                    return {
+                        "title": job_posting.get("title", ""),
+                        "location": job_posting.get("locationName", ""),
+                        "url": job_url,
+                        "ats_job_id": job_id,
+                        "description": desc_text,
+                        "updated_at": job_posting.get("publishedDate", ""),
+                    }
+        except Exception as e:
+            print(f"[Ashby] API error: {e}")
+
+        # Fallback: return basic info from URL
+        return {
+            "title": "",
+            "location": "",
+            "url": job_url,
+            "ats_job_id": job_id,
+        }
+
     elif ats == "universal":
         # Use Playwright-based universal parser
         try:
@@ -2602,12 +3623,14 @@ def fetch_single_job(ats_info: dict) -> dict:
             }
         except Exception as e:
             return {"error": f"Universal parser error: {str(e)}"}
-    
+
     return {"error": f"Fetch not implemented for ATS: {ats}"}
 
 
 class OnboardRequest(BaseModel):
     url: str
+    match_score: Optional[int] = None
+    analysis: Optional[dict] = None
 
 
 @app.post("/onboard")
@@ -2653,7 +3676,13 @@ def onboard_job(payload: OnboardRequest):
     )
     
     new_company = None
+    company_parsing_started = False
+    total_jobs_found = 0
+
     if not company_exists:
+        # Check if ATS is supported for automatic parsing
+        ats_supported = ats in SUPPORTED_ATS
+
         new_company = {
             "id": company_slug,
             "name": company_name,
@@ -2664,12 +3693,39 @@ def onboard_job(payload: OnboardRequest):
             "priority": 0,
             "hq_state": None,
             "region": "global",
-            "enabled": True
+            "enabled": ats_supported  # Only enable for supported ATS
         }
         companies.append(new_company)
         with open(companies_path, "w") as f:
             json.dump(companies, f, indent=2, ensure_ascii=False)
-    
+
+        # If ATS is supported, trigger initial parsing of all company jobs
+        if ats_supported:
+            try:
+                print(f"[Onboard] New company with supported ATS ({ats}), starting initial parse...")
+                # Use refresh_company_sync which handles all the parsing logic
+                fetch_result = refresh_company_sync(new_company)
+                if fetch_result.get("ok"):
+                    company_parsing_started = True
+                    total_jobs_found = fetch_result.get("jobs", 0)
+                    print(f"[Onboard] Initial parse complete: {total_jobs_found} jobs found, {fetch_result.get('jobs_added', 0)} added to pipeline")
+                else:
+                    print(f"[Onboard] Initial parse failed: {fetch_result.get('error')}")
+            except Exception as e:
+                print(f"[Onboard] Initial parse error: {e}")
+        else:
+            # Register unsupported ATS for future implementation
+            try:
+                from tools.ats_discovery import register_unsupported_ats
+                register_unsupported_ats(
+                    ats_name=ats,
+                    discovery_result={"api_endpoints": [], "json_responses": []},
+                    company_url=url
+                )
+                print(f"[Onboard] Registered unsupported ATS '{ats}' for future implementation")
+            except Exception as e:
+                print(f"[Onboard] Could not register unsupported ATS: {e}")
+
     # 3. Fetch single job
     job_data = fetch_single_job(ats_info)
     if "error" in job_data:
@@ -2733,7 +3789,30 @@ def onboard_job(payload: OnboardRequest):
     }
     
     job["source"] = "onboard"
-    
+
+    # Add match_score and analysis if provided (from pre-analysis)
+    print(f"[Onboard] Received match_score: {payload.match_score}, has analysis: {payload.analysis is not None}")
+    if payload.match_score is not None:
+        job["match_score"] = payload.match_score
+        print(f"[Onboard] Set match_score to {payload.match_score}")
+    if payload.analysis is not None:
+        job["analysis"] = payload.analysis
+
+    # If no analysis provided, run AI analysis automatically
+    if payload.analysis is None and job_data.get("description"):
+        try:
+            from api.prepare_application import analyze_job_with_ai
+            jd_text = job_data.get("description", "")
+            if jd_text and len(jd_text) > 100:
+                role_family = job.get("role_family", "tpm_program")
+                analysis = analyze_job_with_ai(job.get("title"), company_name, jd_text, role_family)
+                if analysis and "match_score" in analysis:
+                    job["match_score"] = analysis["match_score"]
+                    job["analysis"] = analysis
+                    print(f"[Onboard] AI analysis complete: {analysis.get('match_score')}% match")
+        except Exception as e:
+            print(f"[Onboard] AI analysis error: {e}")
+
     # 5. Add to pipeline - always add manual jobs (user explicitly added them)
     added_to_pipeline = False
     existing = get_job_by_id(job["id"])
@@ -2746,7 +3825,10 @@ def onboard_job(payload: OnboardRequest):
         "company": {
             "name": company_name,
             "new": new_company is not None,
-            "ats": ats
+            "ats": ats,
+            "ats_supported": ats in SUPPORTED_ATS,
+            "parsing_started": company_parsing_started,
+            "total_jobs_found": total_jobs_found
         },
         "job": {
             "id": job["id"],
@@ -2766,6 +3848,640 @@ def onboard_job(payload: OnboardRequest):
         },
         "added_to_pipeline": added_to_pipeline
     }
+
+
+# ============= ANALYZE JOB BEFORE ADD =============
+
+class AnalyzeJobUrlRequest(BaseModel):
+    url: str
+
+class ClearAnalysisCacheRequest(BaseModel):
+    url: Optional[str] = None  # If None, clears all cache
+
+# Cache for job analysis results (in-memory, clears on restart)
+_analysis_cache = {}
+
+@app.post("/analyze-job-url")
+async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
+    """
+    Analyze a job URL before adding to pipeline.
+    Returns match score and recommendation.
+    Results are cached to ensure consistent responses.
+    """
+    from api.prepare_application import analyze_job_with_ai
+    import hashlib
+
+    url = payload.url.strip()
+
+    # Detect thank-you/confirmation/application pages - these are NOT job postings
+    url_lower = url.lower()
+    confirmation_indicators = [
+        "/thank-you", "/thankyou", "/thanks", "/confirmation",
+        "/success", "/applied", "/submitted", "/complete",
+        "application_id=", "confirmation_id=", "applied=true",
+        "mode=submit_apply", "mode=apply", "/apply"
+    ]
+    if any(indicator in url_lower for indicator in confirmation_indicators):
+        # Try to extract job URL without apply mode
+        clean_url = url
+        if "mode=submit_apply" in url_lower or "mode=apply" in url_lower:
+            clean_url = url.split("?")[0]  # Remove query params
+            if "/apply" in clean_url.lower():
+                clean_url = clean_url.replace("/apply", "")
+
+        return {
+            "ok": False,
+            "error": "⚠️ This appears to be an application form page, not the job listing. Try using the job description URL instead.",
+            "is_confirmation_page": True,
+            "suggested_url": clean_url if clean_url != url else None,
+            "url": url
+        }
+
+    # Normalize URL for cache key (remove tracking params)
+    cache_url = url.split('?')[0].lower().rstrip('/')
+    cache_key = hashlib.md5(cache_url.encode()).hexdigest()
+
+    # Check cache first
+    if cache_key in _analysis_cache:
+        print(f"[AnalyzeJobUrl] Cache hit for {cache_url[:50]}...")
+        return _analysis_cache[cache_key]
+
+    # 1. Parse URL to get job data
+    job_data = None
+    ats = None
+    
+    # Try different parsers
+    if "greenhouse" in url.lower() or "boards.greenhouse.io" in url:
+        from parsers.greenhouse import parse_jobs_api
+        ats = "greenhouse"
+        # Extract company from URL
+        if "boards.greenhouse.io" in url:
+            parts = url.split("boards.greenhouse.io/")[1].split("/")
+            company_slug = parts[0]
+            job_data = {"board_url": f"https://boards.greenhouse.io/{company_slug}"}
+    elif "lever.co" in url.lower():
+        ats = "lever"
+    elif "smartrecruiters" in url.lower():
+        ats = "smartrecruiters"
+    elif "myworkdayjobs" in url.lower() or "workday" in url.lower():
+        ats = "workday"
+    elif "ashby" in url.lower():
+        ats = "ashby"
+    else:
+        ats = "universal"
+    
+    # 2. Fetch JD
+    jd = ""
+    title = ""
+    company = ""
+    location = ""
+    
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        import re
+        
+        # Special handling for Greenhouse embedded (gh_jid in URL) - includes Epic Games, etc.
+        gh_jid_match = re.search(r'gh_jid=(\d+)', url)
+        if gh_jid_match:
+            job_id = gh_jid_match.group(1)
+            
+            # Map known companies to their Greenhouse board slug
+            company_slug = None
+            if "epicgames" in url.lower():
+                company_slug = "epicgames"
+                company = "Epic Games"
+            elif "stripe" in url.lower():
+                company_slug = "stripe"
+                company = "Stripe"
+            elif "figma" in url.lower():
+                company_slug = "figma"
+                company = "Figma"
+            elif "notion" in url.lower():
+                company_slug = "notion"
+                company = "Notion"
+            elif "discord" in url.lower():
+                company_slug = "discord"
+                company = "Discord"
+            elif "airbnb" in url.lower():
+                company_slug = "airbnb"
+                company = "Airbnb"
+            # Try extracting from URL path for unknown companies
+            else:
+                # Try to get company from the domain
+                import urllib.parse
+                parsed = urllib.parse.urlparse(url)
+                domain_parts = parsed.netloc.replace("www.", "").split(".")
+                if domain_parts:
+                    company_slug = domain_parts[0].lower()
+                    company = domain_parts[0].replace("-", " ").title()
+            
+            # Fetch from Greenhouse API
+            if job_id and company_slug:
+                api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs/{job_id}"
+                print(f"[AnalyzeJobUrl] Trying Greenhouse API: {api_url}")
+                resp = requests.get(api_url, timeout=15)
+                if resp.ok:
+                    data = resp.json()
+                    title = data.get("title", "")
+                    if not company:
+                        company = data.get("company", {}).get("name", company_slug.replace("-", " ").title())
+                    loc_data = data.get("location", {})
+                    location = loc_data.get("name", "") if isinstance(loc_data, dict) else str(loc_data)
+                    
+                    # Get full JD from content field
+                    content = data.get("content", "")
+                    if content:
+                        soup = BeautifulSoup(content, "html.parser")
+                        jd = soup.get_text(separator="\n", strip=True)
+                    
+                    ats = "greenhouse"
+                    print(f"[AnalyzeJobUrl] Greenhouse API success: {title} at {company}, JD={len(jd)} chars")
+                else:
+                    print(f"[AnalyzeJobUrl] Greenhouse API failed: {resp.status_code}")
+        
+        # Standard Greenhouse URL (boards.greenhouse.io)
+        if not jd and "boards.greenhouse.io" in url:
+            parts = url.split("boards.greenhouse.io/")[1].split("/")
+            company_slug = parts[0]
+            job_id = None
+            if len(parts) > 2:
+                job_id = parts[2].split("?")[0]
+            
+            if job_id:
+                api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs/{job_id}"
+                resp = requests.get(api_url, timeout=15)
+                if resp.ok:
+                    data = resp.json()
+                    title = data.get("title", "")
+                    company = data.get("company", {}).get("name", company_slug.replace("-", " ").title())
+                    loc_data = data.get("location", {})
+                    location = loc_data.get("name", "") if isinstance(loc_data, dict) else str(loc_data)
+                    content = data.get("content", "")
+                    if content:
+                        soup = BeautifulSoup(content, "html.parser")
+                        jd = soup.get_text(separator="\n", strip=True)
+                    ats = "greenhouse"
+        
+        # Special handling for Workday - use their API
+        if not jd and "myworkdayjobs" in url:
+            # Parse URL: https://company.wd1.myworkdayjobs.com/site/job/location/title_JOBID
+            import re
+            # Extract: company, site, and the job path (location/title_ID)
+            match = re.match(r"https://([^.]+)\.wd\d\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([^/]+)/job/(.+)", url)
+            if match:
+                company_slug = match.group(1)
+                site = match.group(2)
+                job_path = match.group(3).split("?")[0]  # Remove query params
+                
+                # Fetch job details from Workday API - need full path
+                api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                headers = {"Content-Type": "application/json", "Accept": "application/json"}
+                resp = requests.get(api_url, headers=headers, timeout=15)
+                
+                if resp.ok:
+                    data = resp.json()
+                    job_posting = data.get("jobPostingInfo", {})
+                    title = job_posting.get("title", "")
+                    company = job_posting.get("company", company_slug.replace("-", " ").title())
+                    location = job_posting.get("location", "")
+                    jd = job_posting.get("jobDescription", "")
+                    
+                    # Clean HTML from JD
+                    if jd:
+                        soup_jd = BeautifulSoup(jd, "html.parser")
+                        jd = soup_jd.get_text(separator="\n", strip=True)
+        
+        # Standard HTML parsing for other ATS
+        if not jd:
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=15)
+            html_text = resp.text
+            soup = BeautifulSoup(html_text, "html.parser")
+            
+            # Extract from og:tags first (works for Deloitte, etc)
+            og_title = soup.find("meta", property="og:title")
+            og_desc = soup.find("meta", property="og:description")
+            og_site_name = soup.find("meta", property="og:site_name")
+
+            # Try to get company from og:site_name (works for Phenom ATS like Cisco)
+            if og_site_name and not company:
+                company = og_site_name.get("content", "")
+
+            # Try to extract clean title and company from JSON-LD
+            json_ld_scripts = soup.find_all("script", type="application/ld+json")
+            for script in json_ld_scripts:
+                try:
+                    ld_data = json.loads(script.string)
+                    if ld_data.get("@type") == "JobPosting":
+                        if not title and ld_data.get("title"):
+                            title = ld_data.get("title")
+                        if not company:
+                            org = ld_data.get("hiringOrganization", {})
+                            if isinstance(org, dict) and org.get("name"):
+                                company = org.get("name")
+                        break
+                except:
+                    continue
+
+            if og_title and not title:
+                title_content = og_title.get("content", "")
+                # Clean up "Check out this job at Company, Title" format
+                if "Check out this job at" in title_content:
+                    parts = title_content.split(",", 1)
+                    if len(parts) > 1:
+                        title = parts[1].strip()
+                        company = parts[0].replace("Check out this job at", "").strip()
+                else:
+                    title = title_content
+            
+            # Try to extract full JD from HTML - look for Position Summary section
+            position_summary = soup.find("h3", string=lambda t: t and "Position Summary" in t)
+            if position_summary:
+                # Get the next sibling with content
+                parent = position_summary.find_parent("article") or position_summary.find_parent("section")
+                if parent:
+                    jd = parent.get_text(separator="\n", strip=True)
+            
+            # Also try to find JSON-LD or embedded description
+            if not jd or len(jd) < 200:
+                import re
+                # Look for "description": "..." pattern in HTML
+                desc_match = re.search(r'"description"\s*:\s*"([^"]{200,})"', html_text)
+                if desc_match:
+                    jd_raw = desc_match.group(1)
+                    # Unescape unicode and HTML
+                    jd_raw = jd_raw.encode().decode('unicode_escape')
+                    jd_soup = BeautifulSoup(jd_raw, "html.parser")
+                    jd = jd_soup.get_text(separator="\n", strip=True)
+            
+            # Fallback to og:description
+            if (not jd or len(jd) < 100) and og_desc:
+                jd = og_desc.get("content", "")
+            
+            # Extract title from h1 or title tag
+            if not title:
+                title_el = soup.find("h1") or soup.find("title")
+                if title_el:
+                    title = title_el.get_text(strip=True)
+            
+            # Extract company from various sources
+            if not company:
+                company_el = soup.find(class_=lambda x: x and "company" in x.lower()) if soup else None
+                if company_el:
+                    company = company_el.get_text(strip=True)
+                elif "greenhouse" in url:
+                    parts = url.split("/")
+                    for i, p in enumerate(parts):
+                        if p == "boards.greenhouse.io" and i+1 < len(parts):
+                            company = parts[i+1].replace("-", " ").title()
+                            break
+                elif "deloitte" in url.lower():
+                    company = "Deloitte"
+            
+            # Extract JD text from page content as last resort
+            if not jd or len(jd) < 100:
+                content_selectors = [
+                    "#content", ".job-description", ".description", 
+                    "[class*='description']", "[class*='content']", "main", "article"
+                ]
+                for sel in content_selectors:
+                    el = soup.select_one(sel)
+                    if el:
+                        jd_text = el.get_text(separator="\n", strip=True)
+                        if len(jd_text) > 200:
+                            jd = jd_text
+                            break
+            
+            if not jd or len(jd) < 100:
+                jd = soup.get_text(separator="\n", strip=True)[:5000]
+            
+    except Exception as e:
+        print(f"[AnalyzeJobUrl] Standard fetch error: {e}, will try browser fallback")
+        jd = ""  # Reset JD to trigger browser fallback
+
+    # If standard parsing failed or JD is too short/low quality, try browser-based parsing
+    # Check for indicators that we got navigation/boilerplate instead of real JD
+    browser_result = None
+    jd_seems_valid = jd and len(jd) > 500 and (
+        "responsibilities" in jd.lower() or
+        "requirements" in jd.lower() or
+        "qualifications" in jd.lower() or
+        "experience" in jd.lower() or
+        "skills" in jd.lower()
+    )
+
+    if not jd_seems_valid:
+        print(f"[AnalyzeJobUrl] Standard parsing insufficient (len={len(jd) if jd else 0}, valid={jd_seems_valid}), trying browser-based parsing...")
+        try:
+            from utils.browser_parser import parse_job_page_sync
+            browser_result = parse_job_page_sync(url, take_screenshot=True)
+            
+            print(f"[AnalyzeJobUrl] Browser result: ok={browser_result.get('ok')}, jd_len={len(browser_result.get('jd', ''))}")
+            if browser_result.get("ok"):
+                jd = browser_result.get("jd", "")
+                title = browser_result.get("title", title) or title
+                company = browser_result.get("company", company) or company
+                location = browser_result.get("location", location) or location
+
+                # Special handling for dejobs.org - h1 contains company, first JD line is title
+                if "dejobs.org" in url and jd:
+                    jd_lines = jd.split("\n")
+                    if jd_lines and not company:
+                        # h1/title is actually company name on dejobs.org
+                        company = title
+                        # First non-empty line of JD is the actual job title
+                        for line in jd_lines[:5]:
+                            line = line.strip()
+                            if line and len(line) > 5 and len(line) < 150:
+                                title = line
+                                break
+
+                # Check if job is closed
+                if browser_result.get("is_closed"):
+                    return {
+                        "ok": False, 
+                        "error": f"⚠️ This job is no longer accepting applications ({browser_result.get('closed_reason', 'Position Closed')})",
+                        "is_closed": True,
+                        "title": title,
+                        "company": company,
+                        "screenshot_base64": browser_result.get("screenshot_base64")
+                    }
+                    
+                print(f"[AnalyzeJobUrl] Browser parsing success: {title}, JD={len(jd)} chars")
+        except Exception as e:
+            print(f"[AnalyzeJobUrl] Browser parsing failed: {e}")
+    
+    if not jd or len(jd) < 100:
+        return {"ok": False, "error": "Could not extract job description. The page may require login or the job may no longer be available."}
+    
+    # 3. Classify role
+    from utils.job_utils import classify_role
+    role = classify_role(title, jd)
+    role_family = role.get("role_family", "other")
+    
+    # 4. Analyze with AI
+    analysis = analyze_job_with_ai(title, company, jd, role_family)
+    
+    if "error" in analysis:
+        # Fallback - still allow adding but with warning
+        analysis = {
+            "match_score": 50,
+            "fit_level": "unknown",
+            "analysis_summary": "Could not analyze. Add manually to review.",
+            "key_requirements": [],
+            "gaps": [],
+            "red_flags": []
+        }
+    
+    # 5. Generate recommendation
+    score = analysis.get("match_score", 50)
+    fit = analysis.get("fit_level", "unknown")
+    
+    if score >= 75:
+        recommendation = "strong_match"
+        rec_text = "✅ Strong match! Recommended to apply."
+    elif score >= 60:
+        recommendation = "good_match"
+        rec_text = "👍 Good match. Worth applying."
+    elif score >= 45:
+        recommendation = "moderate_match"
+        rec_text = "⚠️ Moderate match. Review before adding."
+    else:
+        recommendation = "low_match"
+        rec_text = "❌ Low match. Consider skipping."
+    
+    # Use AI recommendation if available
+    ai_rec = analysis.get("recommendation", "")
+    if ai_rec:
+        rec_text = f"{ai_rec}: {analysis.get('recommendation_reason', '')}"
+    
+    # Collect application flow info from browser parsing
+    application_info = {}
+    if browser_result:
+        is_intermediate = browser_result.get("is_intermediate", False)
+        apply_url = browser_result.get("apply_url")
+        is_aggregator = browser_result.get("is_aggregator", False)
+
+        if is_intermediate and apply_url:
+            application_info = {
+                "is_intermediate": True,
+                "is_aggregator": is_aggregator,
+                "apply_url": apply_url,
+                "message": "⚠️ This is an aggregator page. Click 'Apply' to go to the actual company career page."
+            }
+        elif is_aggregator:
+            application_info = {
+                "is_intermediate": False,
+                "is_aggregator": True,
+                "message": "📋 This appears to be a job aggregator site."
+            }
+
+    result = {
+        "ok": True,
+        "url": url,
+        "title": title,
+        "company": company,
+        "ats": ats,
+        "role_family": role_family,
+        "match_score": score,  # Also at top level for easy access
+        "analysis": {
+            "match_score": score,
+            "fit_level": fit,
+            "role_type": analysis.get("role_type", ""),
+            "location_info": analysis.get("location_info", ""),
+            "summary": analysis.get("analysis_summary", ""),
+            "key_requirements": analysis.get("key_requirements", []),
+            "matching_experience": analysis.get("matching_experience", []),
+            "gaps": analysis.get("gaps", []),
+            "red_flags": analysis.get("red_flags", []),
+            "pros": analysis.get("pros", []),
+            "cons": analysis.get("cons", [])
+        },
+        "recommendation": recommendation,
+        "recommendation_text": rec_text,
+        "application_info": application_info if application_info else None
+    }
+    
+    # Cache successful result
+    _analysis_cache[cache_key] = result
+    print(f"[AnalyzeJobUrl] Cached result for {cache_url[:50]}... (score: {score}%)")
+
+    return result
+
+
+@app.post("/clear-analysis-cache")
+def clear_analysis_cache_endpoint(payload: ClearAnalysisCacheRequest):
+    """
+    Clear the analysis cache for a specific URL or all cached results.
+    Use this when re-analyzing a job or clearing stale cached results.
+    """
+    import hashlib
+    global _analysis_cache
+
+    if payload.url:
+        # Clear specific URL
+        cache_url = payload.url.split('?')[0].lower().rstrip('/')
+        cache_key = hashlib.md5(cache_url.encode()).hexdigest()
+
+        if cache_key in _analysis_cache:
+            del _analysis_cache[cache_key]
+            print(f"[ClearCache] Cleared cache for {cache_url[:50]}...")
+            return {"ok": True, "cleared": 1, "message": f"Cleared cache for {cache_url}"}
+        else:
+            return {"ok": True, "cleared": 0, "message": "URL not in cache"}
+    else:
+        # Clear all cache
+        count = len(_analysis_cache)
+        _analysis_cache = {}
+        print(f"[ClearCache] Cleared all {count} cached results")
+        return {"ok": True, "cleared": count, "message": f"Cleared all {count} cached results"}
+
+
+class CheckApplicationPageRequest(BaseModel):
+    url: str
+
+
+@app.post("/check-application-page")
+async def check_application_page(payload: CheckApplicationPageRequest):
+    """
+    Check if a job URL leads to an application form or if it's an intermediate page.
+    Use this before starting auto-fill to ensure we're on the right page.
+
+    Returns:
+        {
+            "ok": bool,
+            "url": str,              # Original URL
+            "final_url": str,        # URL of actual application page
+            "is_intermediate": bool, # True if original URL is aggregator/intermediate
+            "has_form": bool,        # True if application form was found
+            "form_fields_count": int,# Number of form fields detected
+            "redirects": list,       # URLs navigated through
+            "ready_for_autofill": bool,  # True if we can start auto-fill
+            "message": str,          # Human-readable status
+        }
+    """
+    from utils.browser_parser import navigate_to_application_form_sync, is_aggregator_url
+
+    url = payload.url.strip()
+
+    try:
+        result = navigate_to_application_form_sync(url)
+
+        is_intermediate = len(result.get("redirects", [])) > 0 or is_aggregator_url(url)
+        has_form = result.get("has_form", False)
+        ready = has_form and result.get("ok", False)
+
+        # Generate status message
+        if not result.get("ok"):
+            message = f"❌ Error: {result.get('error', 'Unknown error')}"
+        elif is_intermediate and not has_form:
+            message = "⚠️ Intermediate page detected. Apply button may lead to external site."
+        elif is_intermediate and has_form:
+            message = f"✅ Navigated through {len(result.get('redirects', []))} redirect(s) to application form."
+        elif has_form:
+            message = "✅ Application form detected. Ready for auto-fill."
+        else:
+            message = "⚠️ No application form found. May need to click Apply button manually."
+
+        return {
+            "ok": result.get("ok", False),
+            "url": url,
+            "final_url": result.get("final_url", url),
+            "is_intermediate": is_intermediate,
+            "has_form": has_form,
+            "form_fields_count": result.get("form_fields_count", 0),
+            "redirects": result.get("redirects", []),
+            "ready_for_autofill": ready,
+            "message": message
+        }
+
+    except Exception as e:
+        return {
+            "ok": False,
+            "url": url,
+            "error": str(e),
+            "message": f"❌ Error checking page: {str(e)}"
+        }
+
+
+@app.post("/analyze-missing-scores")
+async def analyze_missing_scores():
+    """
+    Find jobs without match_score and analyze them.
+    Returns list of job IDs that will be analyzed.
+    """
+    jobs = get_all_jobs()
+    missing = [j for j in jobs if j.get("match_score") is None and j.get("status") in ["New", "Selected"]]
+
+    return {
+        "total_jobs": len(jobs),
+        "missing_scores": len(missing),
+        "jobs": [{"id": j["id"], "title": j.get("title"), "company": j.get("company"), "url": j.get("job_url")} for j in missing[:50]]
+    }
+
+
+class AnalyzeJobByIdRequest(BaseModel):
+    job_id: str
+
+
+@app.post("/analyze-job-by-id")
+async def analyze_job_by_id(payload: AnalyzeJobByIdRequest):
+    """
+    Analyze a specific job by ID and update its match_score.
+    """
+    from api.prepare_application import analyze_job_with_ai
+
+    job = get_job_by_id(payload.job_id)
+    if not job:
+        return {"ok": False, "error": "Job not found"}
+
+    url = job.get("job_url")
+    if not url:
+        return {"ok": False, "error": "Job has no URL"}
+
+    # Use existing analyze endpoint logic
+    try:
+        # Fetch JD
+        ats_info = detect_ats_from_url(url)
+        job_data = fetch_single_job(ats_info)
+
+        if "error" in job_data:
+            return {"ok": False, "error": job_data["error"]}
+
+        jd = job_data.get("description", "")
+        title = job_data.get("title") or job.get("title", "")
+        company = job.get("company", "")
+
+        if not jd:
+            return {"ok": False, "error": "Could not fetch job description"}
+
+        # Run AI analysis
+        analysis = analyze_job_with_ai(jd, title, company)
+
+        if not analysis or "error" in analysis:
+            return {"ok": False, "error": analysis.get("error", "Analysis failed")}
+
+        score = analysis.get("match_score", 0)
+
+        # Update job in storage
+        from storage.job_storage import _load_jobs, _save_jobs
+        jobs = _load_jobs()
+        for j in jobs:
+            if j.get("id") == payload.job_id:
+                j["match_score"] = score
+                j["analysis"] = analysis
+                break
+        _save_jobs(jobs)
+
+        return {
+            "ok": True,
+            "job_id": payload.job_id,
+            "match_score": score,
+            "analysis": analysis
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ============= APPLY AUTOMATION ENDPOINTS =============
@@ -2794,13 +4510,8 @@ def apply_greenhouse_endpoint(payload: ApplyRequest):
     if not profile_path.exists():
         return {"ok": False, "error": f"Profile '{profile_name}' not found"}
     
-    # Use symlink path without spaces for subprocess compatibility
+    # Use absolute path 
     cwd = os.path.dirname(os.path.abspath(__file__))
-    if "Mobile Documents" in cwd:
-        cwd = cwd.replace(
-            str(AI_PROJECTS_PATH),
-            str(ICLOUD_PATH)
-        )
     
     # Write script to file to avoid shell escaping issues
     script_file = "/tmp/greenhouse_apply_script.py"
@@ -3707,6 +5418,16 @@ async def check_existing_application(payload: CheckExistingRequest):
         except:
             cl_preview = "Could not read cover letter"
     
+    # Read metadata.json for keywords and analysis info
+    metadata = {}
+    metadata_file = latest_folder / "metadata.json"
+    if metadata_file.exists():
+        try:
+            import json
+            metadata = json.load(open(metadata_file))
+        except:
+            pass
+    
     return {
         "exists": True,
         "folder": str(latest_folder),
@@ -3716,7 +5437,12 @@ async def check_existing_application(payload: CheckExistingRequest):
         "cover_letter_path": str(cl_file) if cl_file else None,
         "cover_letter_filename": cl_file.name if cl_file else None,
         "cover_letter_preview": cl_preview,
-        "created_at": datetime.fromtimestamp(latest_folder.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+        "created_at": datetime.fromtimestamp(latest_folder.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
+        "keywords_added": metadata.get("keywords_added", []),
+        "match_score": metadata.get("match_score"),
+        "fit_level": metadata.get("fit_level"),
+        "cv_decision": metadata.get("cv_decision"),
+        "cv_reason": metadata.get("cv_reason")
     }
 
 
@@ -4637,3 +6363,9 @@ asyncio.run(main())
     ])
     
     return {"ok": True, "message": "Vision Form Filler started in Terminal"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8001)
+

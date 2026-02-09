@@ -1,0 +1,108 @@
+INFO:     Will watch for changes in these directories: ['/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/job-tracker-dev']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [83151] using StatReload
+INFO:     Started server process [83154]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[JD Parser] Processing: OpenAI - Technical Program Manager
+[JD Parser] Using browser to fetch: https://jobs.ashbyhq.com/openai/f59c3a8e-85f6-45e0-99eb-3d3f3a9b5f41
+[Daemon] Background refresh daemon started
+[Daemon] Starting cycle #1 with 134 companies
+[Daemon] Refreshing: Brex
+[refresh_company_sync] brex: fetched 195 jobs
+[refresh_company_sync] brex: calling update_cache_for_company...
+[update_cache] brex: reading cache (attempt 1)...
+[update_cache] brex: cache has 64347 jobs
+[update_cache] brex: after removing old jobs: 64152
+[update_cache] brex: normalizing 195 new jobs...
+[Daemon] Cache update: brex - adding 195 jobs, total will be 64347
+[Daemon] Cache saved successfully for brex
+[refresh_company_sync] brex: update_cache returned 0
+[Daemon] ✓ Brex: 195 jobs
+[Daemon] Refreshing: Datadog
+[refresh_company_sync] datadog: fetched 432 jobs
+[refresh_company_sync] datadog: calling update_cache_for_company...
+[update_cache] datadog: reading cache (attempt 1)...
+[update_cache] datadog: cache has 64347 jobs
+[update_cache] datadog: after removing old jobs: 63915
+[update_cache] datadog: normalizing 432 new jobs...
+INFO:     127.0.0.1:59680 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59690 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] Cache update: datadog - adding 432 jobs, total will be 64347
+[Daemon] Cache saved successfully for datadog
+[refresh_company_sync] datadog: update_cache returned 0
+[Daemon] ✓ Datadog: 432 jobs
+[Daemon] Refreshing: Okta
+[JD Parser] Browser fetched 87 chars
+[refresh_company_sync] okta: fetched 325 jobs
+[refresh_company_sync] okta: calling update_cache_for_company...
+[update_cache] okta: reading cache (attempt 1)...
+[update_cache] okta: cache has 64347 jobs
+[update_cache] okta: after removing old jobs: 64022
+[update_cache] okta: normalizing 325 new jobs...
+[Daemon] Cache update: okta - adding 325 jobs, total will be 64347
+[JD Parser] JS required, trying browser parser
+[JD Parser] Using browser to fetch: https://jobs.ashbyhq.com/openai/f59c3a8e-85f6-45e0-99eb-3d3f3a9b5f41
+[Daemon] Cache saved successfully for okta
+[refresh_company_sync] okta: update_cache returned 0
+[Daemon] ✓ Okta: 325 jobs
+[JD Parser] Browser fetched 87 chars
+[JD Parser] Fetched 51 chars
+[JD Parser] Saved to test_final.txt
+[JD Parser] JD text too short
+[JD Parser] Analysis complete: 0 keywords
+INFO:     127.0.0.1:59603 - "POST /jd/parse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60176 - "GET /daemon/status HTTP/1.1" 200 OK
+[JD Parser] Processing: OpenAI - Research Engineer
+[JD Parser] Using browser to fetch: https://jobs.ashbyhq.com/openai/240d459b-696d-43eb-8497-fab3e56ecd9b
+INFO:     127.0.0.1:60234 - "GET /daemon/status HTTP/1.1" 200 OK
+[JD Parser] Browser fetched 5760 chars
+[JD Parser] Fetched 5760 chars
+[JD Parser] Saved to openai_real.txt
+INFO:     127.0.0.1:60301 - "GET /daemon/status HTTP/1.1" 200 OK
+[JD Parser] Analysis complete: 9 keywords
+INFO:     127.0.0.1:60191 - "POST /jd/parse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60457 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60553 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] Refreshing: Twilio
+[refresh_company_sync] twilio: fetched 115 jobs
+[refresh_company_sync] twilio: calling update_cache_for_company...
+[update_cache] twilio: reading cache (attempt 1)...
+[update_cache] twilio: cache has 64347 jobs
+[update_cache] twilio: after removing old jobs: 64232
+[update_cache] twilio: normalizing 115 new jobs...
+[Daemon] Cache update: twilio - adding 115 jobs, total will be 64347
+[Daemon] Cache saved successfully for twilio
+[refresh_company_sync] twilio: update_cache returned 0
+[Daemon] ✓ Twilio: 115 jobs
+[Daemon] Refreshing: Stripe
+INFO:     127.0.0.1:60677 - "GET /daemon/status HTTP/1.1" 200 OK
+[JD Parser] Processing: OpenAI - Technical Program Manager, Applied Research
+[JD Parser] Using browser to fetch: https://jobs.ashbyhq.com/openai/ac4b4824-0439-425b-8332-b67d919cb054
+INFO:     127.0.0.1:60725 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60725 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60801 - "GET /daemon/status HTTP/1.1" 200 OK
+[JD Parser] Browser fetched 6805 chars
+[JD Parser] Fetched 6805 chars
+[JD Parser] Saved to xx_ac4b4824-0439-425b-8332-b67d919cb054.txt
+INFO:     127.0.0.1:60864 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] ✗ Stripe: HTTPSConnectionPool(host='boards-api.greenhouse.io', port=443): Read timed out. (read timeout=20)
+[Daemon] Refreshing: Coinbase
+[JD Parser] Analysis complete: 10 keywords
+[PrepareApp] Using CV from: CV_Anton_Kondakov_TPM.docx (7789 chars)
+[refresh_company_sync] coinbase: fetched 313 jobs
+[refresh_company_sync] coinbase: calling update_cache_for_company...
+[update_cache] coinbase: reading cache (attempt 1)...
+[update_cache] coinbase: cache has 64347 jobs
+[update_cache] coinbase: after removing old jobs: 64034
+[update_cache] coinbase: normalizing 313 new jobs...
+[Daemon] Cache update: coinbase - adding 313 jobs, total will be 64347
+INFO:     127.0.0.1:60905 - "GET /daemon/status HTTP/1.1" 200 OK
+[Daemon] Cache saved successfully for coinbase
+[refresh_company_sync] coinbase: update_cache returned 0
+[Daemon] ✓ Coinbase: 313 jobs
+INFO:     127.0.0.1:60949 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61003 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61034 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61070 - "GET /daemon/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60712 - "POST /jd/parse HTTP/1.1" 200 OK

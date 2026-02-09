@@ -33,6 +33,9 @@ ATS_PATTERNS = {
     "workday": [
         r"([a-zA-Z0-9_-]+)\.wd\d+\.myworkdayjobs\.com",
     ],
+    "jibe": [
+        r"([a-zA-Z0-9_-]+)\.jibeapply\.com",
+    ],
 }
 
 # Стандартные careers URL паттерны
@@ -46,7 +49,7 @@ CAREERS_URL_PATTERNS = [
 ]
 
 
-def detect_ats(careers_url: str) -> dict | None:
+def detect_ats(careers_url: str):
     """
     Загружает careers страницу и ищет ссылки на ATS.
     Возвращает {"ats": "greenhouse", "board_id": "openai", "board_url": "..."} или None
@@ -99,6 +102,7 @@ def build_board_url(ats: str, board_id: str) -> str:
         "smartrecruiters": f"https://jobs.smartrecruiters.com/{board_id}",
         "ashby": f"https://jobs.ashbyhq.com/{board_id}",
         "workday": "",
+        "jibe": f"https://{board_id}.jibeapply.com/jobs",
     }
     return urls.get(ats, "")
 
@@ -111,6 +115,7 @@ def build_api_url(ats: str, board_id: str) -> str:
         "smartrecruiters": f"https://api.smartrecruiters.com/v1/companies/{board_id}/postings",
         "ashby": f"https://api.ashbyhq.com/posting-api/job-board/{board_id}",
         "workday": "",
+        "jibe": f"https://{board_id}.jibeapply.com/api/jobs?page=1&limit=1",
     }
     return urls.get(ats, "")
 
@@ -187,7 +192,7 @@ def guess_careers_urls(company_name: str, website: str = None) -> list:
     return urls
 
 
-def try_repair_company(company: dict) -> dict | None:
+def try_repair_company(company: dict):
     """
     Пытается найти рабочий ATS URL для компании.
     

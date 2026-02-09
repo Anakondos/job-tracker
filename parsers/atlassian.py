@@ -37,22 +37,35 @@ def fetch_atlassian(company: str, base_url: str = None):
     all_jobs = []
     limit = 100
     offset = 0
-    
+
+    import time
+
     # First request to get total count
-    r = requests.get(f"{api_url}?limit={limit}&offset={offset}", headers=headers, timeout=30)
+    r = requests.get(f"{api_url}?limit={limit}&offset={offset}", headers=headers, timeout=45)
     r.raise_for_status()
     data = r.json()
-    
+
     total_count = data.get("totalCount", 0)
     all_jobs.extend(data.get("jobs", []))
-    
-    # Fetch remaining pages
+
+    # Fetch remaining pages with retry
     while offset + limit < total_count:
         offset += limit
-        r = requests.get(f"{api_url}?limit={limit}&offset={offset}", headers=headers, timeout=30)
-        r.raise_for_status()
-        data = r.json()
-        all_jobs.extend(data.get("jobs", []))
+        time.sleep(0.5)
+        for attempt in range(3):
+            try:
+                r = requests.get(f"{api_url}?limit={limit}&offset={offset}", headers=headers, timeout=45)
+                r.raise_for_status()
+                data = r.json()
+                all_jobs.extend(data.get("jobs", []))
+                break
+            except (requests.Timeout, requests.ConnectionError) as e:
+                if attempt < 2:
+                    print(f"[Atlassian] Retry {attempt+1} for offset={offset}: {e}")
+                    time.sleep(2)
+                else:
+                    print(f"[Atlassian] Failed after 3 retries at offset={offset}: {e}")
+                    break
     
     # Normalize jobs
     jobs = []

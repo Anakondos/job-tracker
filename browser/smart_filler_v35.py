@@ -33,8 +33,11 @@ BROWSER_DIR = Path(__file__).parent
 DATABASE_PATH = BROWSER_DIR / "learned_database_v3.json"
 FIELD_DB_PATH = BROWSER_DIR / "field_database.json"
 PROFILE_PATH = BROWSER_DIR / "profiles" / "anton_tpm.json"
-RESUME_PATH = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Anton_Kondakov_TPM_CV.pdf")
-COVER_LETTERS_DIR = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/cover_letters")
+
+# Universal paths - work on any machine
+ICLOUD_BASE = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects"
+RESUME_PATH = ICLOUD_BASE / "Gold CV/CV_Anton_Kondakov_TPM.pdf"
+COVER_LETTERS_DIR = ICLOUD_BASE / "Gold CV/cover_letters"
 
 
 class FieldType(Enum):
@@ -345,68 +348,203 @@ class KnowledgeBase:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# TEXT AI
+# TEXT AI (Claude API with Ollama fallback)
 # ═══════════════════════════════════════════════════════════════════
 
+def get_anthropic_api_key() -> Optional[str]:
+    """Get Claude API key from environment or config."""
+    import os
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        return key
+    config_path = Path(__file__).parent / "v5" / "config" / "api_keys.json"
+    if config_path.exists():
+        with open(config_path) as f:
+            return json.load(f).get("anthropic_api_key")
+    return None
+
+
 class TextAI:
+    """AI for form filling - Claude API primary, Ollama fallback."""
+    
     def __init__(self, model: str = "llama3.2:3b", knowledge_base: 'KnowledgeBase' = None):
         self.model = model
-        self.url = "http://localhost:11434"
-        self.available = self._check()
+        self.ollama_url = "http://localhost:11434"
         self.kb = knowledge_base
+        
+        # Try Claude first
+        self.api_key = get_anthropic_api_key()
+        self._claude_client = None
+        self.use_claude = self.api_key is not None
+        
+        # Ollama as fallback
+        self.ollama_available = self._check_ollama()
+        
+        self.available = self.use_claude or self.ollama_available
+        if self.use_claude:
+            print("   🤖 AI: Claude API")
+        elif self.ollama_available:
+            print("   🤖 AI: Ollama (local)")
+        else:
+            print("   ⚠️ AI: Not available")
     
-    def _check(self) -> bool:
+    @property
+    def claude_client(self):
+        if self._claude_client is None and self.api_key:
+            import anthropic
+            self._claude_client = anthropic.Anthropic(api_key=self.api_key)
+        return self._claude_client
+    
+    def _check_ollama(self) -> bool:
         try:
-            return requests.get(f"{self.url}/api/tags", timeout=3).ok
+            return requests.get(f"{self.ollama_url}/api/tags", timeout=3).ok
         except:
             return False
     
     def generate(self, question: str, context: str) -> str:
+        """Generate answer for text field."""
         if not self.available:
             return ""
         
-        # Add knowledge base context if available
+        # Add knowledge base context
         kb_context = ""
         if self.kb:
             kb_context = self.kb.get_context_for_question(question)
             if kb_context:
-                kb_context = f"\n\n{kb_context}"
+                kb_context = f"\n\nRelevant experience:\n{kb_context}"
         
-        try:
-            resp = requests.post(f"{self.url}/api/generate", json={
-                "model": self.model,
-                "prompt": f"""Job application question: {question}
+        prompt = f"""Job application question: {question}
 
 Profile: {context}{kb_context}
 
-Write a brief, professional answer (1-3 sentences). Use specific examples from the experience if relevant:""",
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 150}
-            }, timeout=30)
-            if resp.ok:
-                return resp.json().get("response", "").strip()
-        except:
-            pass
+Write a brief, professional answer (1-3 sentences). Use specific examples from the experience if relevant.
+Return ONLY the answer text, nothing else."""
+        
+        # Try Claude first
+        if self.use_claude:
+            try:
+                response = self.claude_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=200,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                )
+                return response.content[0].text.strip()
+            except Exception as e:
+                print(f"   ⚠️ Claude error: {e}")
+        
+        # Fallback to Ollama
+        if self.ollama_available:
+            try:
+                resp = requests.post(f"{self.ollama_url}/api/generate", json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": 150}
+                }, timeout=30)
+                if resp.ok:
+                    return resp.json().get("response", "").strip()
+            except:
+                pass
+        
         return ""
     
     def choose_option(self, question: str, options: List[str], context: str) -> Optional[str]:
+        """Choose best option from dropdown."""
         if not self.available or not options:
             return None
-        try:
-            resp = requests.post(f"{self.url}/api/generate", json={
-                "model": self.model,
-                "prompt": f"Question: {question}\nOptions: {', '.join(options)}\nProfile: {context}\n\nWhich option? Reply with exact option text only:",
-                "stream": False,
-                "options": {"temperature": 0.1, "num_predict": 50}
-            }, timeout=20)
-            if resp.ok:
-                answer = resp.json().get("response", "").strip()
+        
+        prompt = f"""Question: {question}
+Options: {', '.join(options)}
+Profile: {context}
+
+Which option best fits? Reply with the EXACT option text only, nothing else."""
+        
+        # Try Claude first
+        if self.use_claude:
+            try:
+                response = self.claude_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=50,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1,
+                )
+                answer = response.content[0].text.strip()
                 for opt in options:
                     if opt.lower() in answer.lower() or answer.lower() in opt.lower():
                         return opt
-        except:
-            pass
+            except Exception as e:
+                print(f"   ⚠️ Claude error: {e}")
+        
+        # Fallback to Ollama
+        if self.ollama_available:
+            try:
+                resp = requests.post(f"{self.ollama_url}/api/generate", json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 50}
+                }, timeout=20)
+                if resp.ok:
+                    answer = resp.json().get("response", "").strip()
+                    for opt in options:
+                        if opt.lower() in answer.lower() or answer.lower() in opt.lower():
+                            return opt
+            except:
+                pass
+        
         return None
+    
+    def generate_cover_letter(self, job_title: str, company: str, description: str = "") -> str:
+        """Generate cover letter using AI."""
+        if not self.available:
+            return ""
+        
+        prompt = f"""Write a professional cover letter for:
+Position: {job_title}
+Company: {company}
+Job Description: {description[:1500] if description else 'Not provided'}
+
+The candidate is Anton Kondakov, a Senior Technical Program Manager with 15+ years of experience 
+in software delivery, team leadership, and cross-functional program management.
+
+Requirements:
+- Professional tone
+- 3-4 paragraphs
+- Highlight relevant experience
+- Show enthusiasm for the role
+- Keep it concise (under 400 words)
+
+Write ONLY the cover letter text, no additional commentary."""
+
+        # Try Claude first
+        if self.use_claude:
+            try:
+                response = self.claude_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=800,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.4,
+                )
+                return response.content[0].text.strip()
+            except Exception as e:
+                print(f"   ⚠️ Claude CL error: {e}")
+        
+        # Fallback to Ollama
+        if self.ollama_available:
+            try:
+                resp = requests.post(f"{self.ollama_url}/api/generate", json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.4, "num_predict": 600}
+                }, timeout=60)
+                if resp.ok:
+                    return resp.json().get("response", "").strip()
+            except:
+                pass
+        
+        return ""
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -893,7 +1031,7 @@ class SmartFillerV35:
         return job_title, company, description
     
     def generate_cover_letter(self, job_title: str, company: str, description: str = "") -> Optional[Path]:
-        """Generate cover letter using Ollama AI and save to file."""
+        """Generate cover letter using AI and save to file."""
         if not self.ai.available:
             print("   ⚠️ AI not available for cover letter generation")
             return None
@@ -913,59 +1051,16 @@ class SmartFillerV35:
         
         print(f"   ✍️ Generating cover letter for {company}...")
         
-        # Get profile summary
-        profile_summary = self.profile.data.get("summary", "")
-        if not profile_summary:
-            # Build from work experience
-            work = self.profile.data.get("work_experience", [])
-            if work:
-                profile_summary = f"{work[0].get('title', '')} with experience at {', '.join(w.get('company', '') for w in work[:3])}"
+        # Use the new AI method
+        cover_letter = self.ai.generate_cover_letter(job_title, company, description)
         
-        # Generate with AI
-        try:
-            prompt = f"""Write a professional cover letter for:
-
-POSITION: {job_title}
-COMPANY: {company}
-JOB DESCRIPTION: {description[:1500] if description else 'Not provided'}
-
-CANDIDATE PROFILE:
-{profile_summary}
-Name: {self.profile.get('personal.first_name')} {self.profile.get('personal.last_name')}
-Current Role: {self.profile.get('work_experience.0.title')} at {self.profile.get('work_experience.0.company')}
-
-Write a concise cover letter (under 300 words) that:
-1. Shows specific interest in this company and role
-2. Highlights 2-3 relevant achievements with metrics
-3. Has a clear call to action
-4. Professional but warm tone
-
-Format:
-Dear Hiring Manager,
-[content]
-Sincerely,
-{self.profile.get('personal.first_name')} {self.profile.get('personal.last_name')}"""
-
-            resp = requests.post(f"{self.ai.url}/api/generate", json={
-                "model": self.ai.model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.7, "num_predict": 500}
-            }, timeout=60)
-            
-            if resp.ok:
-                cover_letter = resp.json().get("response", "").strip()
-                
-                # Save to file
-                with open(filepath, 'w') as f:
-                    f.write(cover_letter)
-                
-                print(f"   ✅ Cover letter saved: {filename}")
-                return filepath
-            
-        except Exception as e:
-            print(f"   ❌ Cover letter generation failed: {e}")
+        if cover_letter:
+            with open(filepath, 'w') as f:
+                f.write(cover_letter)
+            print(f"   ✅ Cover letter saved: {filename}")
+            return filepath
         
+        print("   ❌ Cover letter generation failed")
         return None
     
     def upload_file_v35(self, field: DetectedField) -> bool:
@@ -1459,6 +1554,9 @@ Sincerely,
             self.fill_repeatable_section(section_name)
 
     def multi_pass_fill(self, interactive: bool = True, max_passes: int = 5):
+        # TODO: V3.5 repeatable sections disabled for now
+        # self.fill_all_repeatable_sections()
+        
         for pass_num in range(1, max_passes + 1):
             print(f"\n🔄 Pass {pass_num}...")
             

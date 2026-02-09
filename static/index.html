@@ -7,15 +7,23 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <style>
       :root {
-        --bg: #0b0f17;
-        --panel: #111827;
-        --panel2: #0f172a;
-        --text: #e5e7eb;
-        --muted: #9ca3af;
-        --border: rgba(255, 255, 255, 0.1);
-        --accent: #60a5fa;
-        --danger: #ef4444;
-        --ok: #22c55e;
+        /* Softer dark theme - easier on eyes */
+        --bg: #0d1117;
+        --panel: #161b22;
+        --panel2: #0d1117;
+        --text: #c9d1d9;
+        --text-dim: #8b949e;
+        --muted: #6e7681;
+        --border: rgba(240, 246, 252, 0.1);
+        --accent: #58a6ff;
+        --accent-dim: rgba(88, 166, 255, 0.4);
+        --danger: #f85149;
+        --ok: #3fb950;
+        --warning: #d29922;
+      }
+      @keyframes flash {
+        0%, 100% { background-color: inherit; }
+        50% { background-color: #fbbf24; }
       }
       body {
         margin: 0;
@@ -178,125 +186,136 @@
         margin-bottom: 16px;
       }
       
-      /* Pipeline table */
+      /* Pipeline table - colgroup based layout */
+      #jobsTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+      }
+      /* Column widths via colgroup - optimized to fit without scroll */
+      #jobsTable .col-id { width: 45px; }
+      #jobsTable .col-checkbox { width: 28px; }
+      #jobsTable .col-company { width: 90px; }
+      #jobsTable .col-match { width: 28px; }
+      #jobsTable .col-title { width: 200px; max-width: 200px; }
+      #jobsTable .col-location { width: 95px; }
+      #jobsTable .col-updated { width: 60px; }
+      #jobsTable .col-added { width: 60px; }
+      #jobsTable .col-ats { width: 28px; }
+      #jobsTable .col-actions { width: 80px; }
+      #jobsTable .col-folder { width: 32px; }
+
       #jobsTable td, #jobsTable th {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        padding: 8px 12px !important;
+        padding: 8px 6px;
+        vertical-align: middle;
       }
-      #jobsTable th:first-child, #jobsTable td:first-child {
+      #jobsTable th.center, #jobsTable td.center {
         text-align: center;
-        overflow: visible;
       }
-      #jobsTable input[type="checkbox"] {
+      #jobsTable input[type="checkbox"],
+      #jobsTable .jobCheckbox {
         width: 14px !important;
         height: 14px !important;
         min-width: 14px !important;
         max-width: 14px !important;
-        margin: 6px !important;
-        padding: 0 !important;
-        display: inline-block !important;
+        margin: 0;
+        padding: 0;
         cursor: pointer;
+        accent-color: #6b7280;
+        opacity: 0.6;
+        transition: opacity 0.15s ease;
       }
-      /* ID column - first column */
-      #jobsTable td:nth-child(1), #jobsTable th:nth-child(1) {
-        width: 75px !important;
-        max-width: 75px !important;
-        padding-left: 12px !important;
+      #jobsTable input[type="checkbox"]:hover {
+        opacity: 1;
       }
-      #pipelineFilterJobId {
-        width: 50px !important;
-        max-width: 50px !important;
-        min-width: 50px !important;
+      #jobsTable input[type="checkbox"]:checked {
+        opacity: 0.85;
+        accent-color: #60a5fa;
       }
-      #pipelineFilterCompany {
-        width: 110px !important;
-        max-width: 110px !important;
-        min-width: 110px !important;
+      /* Column-specific overrides */
+      #jobsTable td:nth-child(1) { padding-left: 10px; }
+      #jobsTable td:nth-child(2), #jobsTable th:nth-child(2) { text-align: center; }
+      #jobsTable td:nth-child(4), #jobsTable th:nth-child(4) { text-align: center; }
+      #jobsTable td:nth-child(9), #jobsTable th:nth-child(9) { text-align: center; }
+      #jobsTable td:nth-child(10), #jobsTable td:nth-child(11) { overflow: visible; }
+
+      /* Filter inputs */
+      #pipelineFilterJobId { width: 45px; }
+      #pipelineFilterCompany { width: 100%; max-width: 110px; }
+      #pipelineFilterTitle { width: 100%; }
+      #pipelineFilterLocation { width: 100%; max-width: 100px; }
+      #pipelineFilterAts { width: 100%; max-width: 45px; }
+      #pipelineFilterStatus { width: 100%; max-width: 60px; }
+      #pipelineFilterFolder { width: 100%; max-width: 30px; }
+
+      /* Table cell classes */
+      .td-id { font-size: 10px; font-family: monospace; color: var(--muted); cursor: pointer; }
+      .td-checkbox { text-align: center; }
+      .td-company { }
+      .td-match { text-align: center; padding: 0 2px; }
+      .td-title { }
+      .td-location { }
+      .td-date { font-size: 12px; }
+      .td-ats { font-size: 11px; text-align: center; }
+      .td-actions { overflow: visible; white-space: nowrap; }
+      .td-folder { text-align: center; padding: 2px; overflow: visible; }
+
+      /* Match score styles */
+      .match-empty { color: var(--muted); font-size: 9px; }
+      .matchScoreBtn { font-weight: 600; cursor: pointer; font-size: 11px; }
+      .matchScoreBtn.match-high { color: #22c55e; }
+      .matchScoreBtn.match-mid { color: #eab308; }
+      .matchScoreBtn.match-low { color: #ef4444; }
+
+      /* Action buttons */
+      .smartActionBtn, .prepareBtn {
+        border: none;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 12px;
+        color: white;
       }
-      #pipelineFilterTitle {
-        width: 180px !important;
-        max-width: 180px !important;
-        min-width: 180px !important;
+      .action-select { background: #3b82f6; }
+      .action-prepare { background: #b45309; }
+      .action-apply { background: #16a34a; }
+      .removeFromPipelineBtn {
+        background: #5a2a2a;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 12px;
       }
-      #pipelineFilterLocation {
-        width: 100px !important;
-        max-width: 100px !important;
-        min-width: 100px !important;
+      .status-icon { font-size: 11px; }
+      .status-applied { color: #a855f7; }
+      .status-interview { color: #f59e0b; }
+
+      /* Gear select */
+      .gearSelect {
+        width: 20px;
+        padding: 0;
+        margin-left: 4px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--muted);
+        appearance: none;
+        -webkit-appearance: none;
       }
-      #pipelineFilterUpdated {
-        width: 90px !important;
-        max-width: 90px !important;
-        min-width: 90px !important;
-      }
-      #pipelineFilterAts {
-        width: 70px !important;
-        max-width: 70px !important;
-        min-width: 70px !important;
-      }
-      #pipelineFilterStatus {
-        width: 65px !important;
-        max-width: 65px !important;
-        min-width: 65px !important;
-      }
-      #pipelineFilterFolder {
-        width: 30px !important;
-        max-width: 30px !important;
-        min-width: 30px !important;
-      }
-      /* Checkbox column - second column */
-      #jobsTable td:nth-child(2), #jobsTable th:nth-child(2) {
-        width: 40px !important;
-        max-width: 40px !important;
-        text-align: center;
-        padding: 8px 4px !important;
-      }
-      /* Company column - third column */
-      #jobsTable td:nth-child(3), #jobsTable th:nth-child(3) {
-        width: 120px !important;
-        max-width: 120px !important;
-      }
-      /* Title column - fourth column */
-      #jobsTable td:nth-child(4), #jobsTable th:nth-child(4) {
-        width: auto !important;
-        max-width: none !important;
-      }
-      /* Location column - fifth column */
-      #jobsTable td:nth-child(5), #jobsTable th:nth-child(5) {
-        width: 130px !important;
-        max-width: 130px !important;
-      }
-      /* Updated column - sixth column */
-      #jobsTable td:nth-child(6), #jobsTable th:nth-child(6) {
-        width: 110px !important;
-        max-width: 110px !important;
-      }
-      /* ATS column - seventh column */
-      #jobsTable td:nth-child(7), #jobsTable th:nth-child(7) {
-        width: 80px !important;
-        max-width: 80px !important;
-      }
-      /* Status column - eighth column */
-      #jobsTable td:nth-child(8), #jobsTable th:nth-child(8) {
-        width: 85px !important;
-        max-width: 85px !important;
-        overflow: visible !important;
-      }
-      /* Folder column - ninth column */
-      #jobsTable td:nth-child(9), #jobsTable th:nth-child(9) {
-        width: 35px !important;
-        max-width: 35px !important;
-        text-align: center;
-        overflow: visible !important;
-        text-overflow: clip !important;
-      }
-      /* Actions column - tenth column */
-      #jobsTable td:nth-child(10), #jobsTable th:nth-child(10) {
-        width: 90px !important;
-        max-width: 90px !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
+
+      /* Folder button */
+      .openFolderBtn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 0;
       }
       
       .summary-item {
@@ -894,7 +913,9 @@
           <div id="refreshLogList" style="padding: 4px 0; font-size: 12px; font-family: monospace;"></div>
         </div>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" style="display: flex; gap: 8px;">
+        <button class="refresh-btn" id="matchBtn" onclick="batchMatch()" style="background: #4c1d95; font-size: 12px; padding: 6px 12px;" title="AI match scoring for unscored jobs (uses Claude API)">🎯 Match</button>
+        <button class="refresh-btn" id="enrichBtn" onclick="enrichDeadlines()" style="background: #1e3a5f; font-size: 12px; padding: 6px 12px;" title="Fetch deadlines and salary for Workday jobs">⏰ Deadlines</button>
         <button class="refresh-btn" id="refreshBtn">🔄 Refresh from ATS</button>
       </div>
     </header>
@@ -903,7 +924,7 @@
     <div class="tabs">
       <button class="tab-btn" data-tab="companies">Companies</button>
       <button class="tab-btn active" data-tab="jobs">Pipeline</button>
-      <button class="tab-btn" data-tab="answers">Answers</button>
+      <button class="tab-btn" data-tab="answers">Profile</button>
     </div>
 
     <!-- Companies Tab -->
@@ -955,6 +976,36 @@
             </table>
           </div>
           <div id="statsLastRefresh" style="margin-top: 8px; font-size: 11px; color: var(--muted);"></div>
+        </div>
+
+        <!-- ATS Support Info -->
+        <div id="atsSupportInfo" style="margin-bottom: 12px; padding: 10px 14px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 8px; border: 1px solid #334155; font-size: 12px;">
+          <span style="color: #94a3b8;">Supported ATS (auto-fetch):</span>
+          <span id="supportedAtsList" style="margin-left: 8px;">
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 greenhouse</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 lever</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 ashby</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 workday</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 smartrecruiters</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 atlassian</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 phenom</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 icims</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px;">🔄 jibe</span>
+          </span>
+          <span style="color: #64748b; margin-left: 12px;">|</span>
+          <span style="color: #94a3b8; margin-left: 12px;">Manual only:</span>
+          <span style="background: #4b5563; color: #9ca3af; padding: 2px 8px; border-radius: 4px; margin-left: 8px;">📝 other</span>
+        </div>
+
+        <!-- Unsupported ATS Parser Status (collapsible) -->
+        <div id="unsupportedAtsSection" style="margin-bottom: 12px; display: none;">
+          <div onclick="toggleUnsupportedAts()" style="cursor: pointer; padding: 8px 14px; background: #1e293b; border-radius: 8px 8px 0 0; border: 1px solid #334155; border-bottom: none; font-size: 12px; display: flex; align-items: center; gap: 8px;">
+            <span id="unsupportedAtsToggle" style="transition: transform 0.2s;">▶</span>
+            <span style="color: #f59e0b;">⚠️ Unsupported ATS systems:</span>
+            <span id="unsupportedAtsCount" style="background: #78350f; color: #fbbf24; padding: 1px 6px; border-radius: 4px; font-size: 11px;">0</span>
+            <span id="unsupportedAtsNew" style="background: #166534; color: #86efac; padding: 1px 6px; border-radius: 4px; font-size: 11px; display: none;">NEW</span>
+          </div>
+          <div id="unsupportedAtsList" style="display: none; padding: 10px 14px; background: #0f172a; border-radius: 0 0 8px 8px; border: 1px solid #334155; border-top: none; font-size: 11px; max-height: 200px; overflow-y: auto;"></div>
         </div>
 
         <div class="tableWrap">
@@ -1012,45 +1063,54 @@
     <!-- Jobs Tab -->
     <div class="tab-content active" id="tab-jobs">
     <div class="wrap">
-      <div class="controls">
+      <div class="controls" style="display: none;">
         <span class="pill" id="loadPill"><span class="dot" id="loadDot"></span><span id="loadText">Idle</span></span>
       </div>
       
-      <!-- Quick Filters Row -->
-      <div id="quickFilters" style="display: flex; gap: 8px; align-items: center; margin: 12px 0; padding: 12px; background: var(--panel); border-radius: 8px; flex-wrap: wrap;">
-        <!-- Quick Filter Buttons -->
-        <div style="display: flex; gap: 6px; margin-right: 16px;">
-          <button class="quick-filter-btn" data-filter="new-week" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">🔥 New this week</button>
-          <button class="quick-filter-btn" data-filter="recent-manual" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📌 Recent Manual</button>
-          <button class="quick-filter-btn" data-filter="to-apply" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📋 To Apply</button>
-          <button class="quick-filter-btn" data-filter="applied" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap;">📤 Applied</button>
-          <button class="quick-filter-btn active" data-filter="all" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 12px; white-space: nowrap;">All</button>
+      <!-- Analysis Queue -->
+      <div id="analysisQueueSection" style="margin: 12px 0; padding: 16px; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); border-radius: 12px; border: 1px solid #3b5998;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <input type="text" id="queueUrlInput" placeholder="Paste job URL and press Enter or click +" 
+                 style="flex: 1; padding: 10px 14px; border: 2px solid #4a6fa5; border-radius: 8px; background: #0f1a2a; color: white; font-size: 14px;">
+          <button id="queueAddBtn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; white-space: nowrap;">
+            + Add
+          </button>
         </div>
         
-        <!-- Date Range -->
-        <select id="dateRangeFilter" class="column-filter" style="width: 120px; font-size: 12px; padding: 6px;">
-          <option value="1">Today</option>
-          <option value="3">Last 3 days</option>
-          <option value="7">Last 7 days</option>
-          <option value="14">Last 2 weeks</option>
-          <option value="30">Last month</option>
-          <option value="90">Last 3 months</option>
-          <option value="all" selected>All time</option>
-        </select>
-        
+        <!-- Queue Items -->
+        <div id="analysisQueue" style="margin-top: 12px; display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: #93c5fd; font-size: 13px; font-weight: 500;">📋 Analysis Queue</span>
+            <button id="clearQueueBtn" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Clear All</button>
+          </div>
+          <div id="queueItems" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;"></div>
+        </div>
+      </div>
+      
+      <!-- Compact Filters Row -->
+      <div id="quickFilters" style="display: flex; gap: 8px; align-items: center; margin: 8px 0; padding: 8px 12px; background: var(--panel); border-radius: 8px;">
+        <!-- Quick Filter Buttons -->
+        <div style="display: flex; gap: 4px;">
+          <button class="quick-filter-btn" data-filter="new-week" style="padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 11px; white-space: nowrap;">🔥 New</button>
+          <button class="quick-filter-btn" data-filter="to-apply" style="padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); cursor: pointer; font-size: 11px; white-space: nowrap;">📋 To Apply</button>
+          <button class="quick-filter-btn active" data-filter="all" style="padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--accent); color: white; cursor: pointer; font-size: 11px; white-space: nowrap;">All</button>
+        </div>
+
+        <div style="width: 1px; height: 20px; background: var(--border);"></div>
+
         <!-- Location Category -->
-        <select id="locationCategoryFilter" class="column-filter" style="width: 90px; font-size: 12px; padding: 6px;">
+        <select id="locationCategoryFilter" class="column-filter" style="width: 80px; font-size: 11px; padding: 5px;">
           <option value="all" selected>All Loc</option>
           <option value="us">US Only</option>
           <option value="remote">Remote</option>
           <option value="nonus">Non-US</option>
         </select>
-        
+
         <!-- States Multi-select -->
-        <div class="ms" id="stateMultiSelect" style="min-width: 100px;">
-          <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 6px 8px;">
-            <span id="stateBtnText" style="font-size: 12px;">States...</span>
-            <span class="count" id="stateBtnCount" style="font-size: 11px;">0</span>
+        <div class="ms" id="stateMultiSelect" style="min-width: 90px;">
+          <button class="msBtn column-filter" id="stateBtn" type="button" style="width: 100%; text-align: left; padding: 5px 8px;">
+            <span id="stateBtnText" style="font-size: 11px;">States...</span>
+            <span class="count" id="stateBtnCount" style="font-size: 10px;">0</span>
           </button>
           <div class="msMenu" id="stateMenu">
             <input class="msSearch" id="stateSearch" placeholder="Search..." />
@@ -1061,28 +1121,25 @@
             </div>
           </div>
         </div>
-        
+
+        <div style="width: 1px; height: 20px; background: var(--border);"></div>
+
         <!-- Search -->
-        <div style="flex: 1; min-width: 200px;">
-          <input type="text" id="globalSearchFilter" placeholder="🔍 Search company, title..." style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 12px;">
+        <div style="flex: 1; min-width: 180px; max-width: 280px;">
+          <input type="text" id="globalSearchFilter" placeholder="🔍 Search..." style="width: 100%; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 11px;">
         </div>
-        
-        <!-- ATS Filter -->
-        <select id="pipelineFilterAtsQuick" class="column-filter" style="width: 100px; font-size: 12px; padding: 6px;">
-          <option value="">All ATS</option>
-          <option value="greenhouse">Greenhouse</option>
-          <option value="lever">Lever</option>
-          <option value="smartrecruiters">SmartRecr.</option>
-          <option value="workday">Workday</option>
-          <option value="ashby">Ashby</option>
-          <option value="manual">📌 Manual</option>
-        </select>
-        
+
         <!-- Clear All -->
-        <button id="clearFiltersBtn" class="ghost" style="padding: 6px 10px; font-size: 11px; color: var(--muted);" title="Clear all filters">✕ Clear</button>
-        
-        <!-- Add Job Button -->
-        <button id="addJobBtn" class="ghost" style="padding: 6px 12px; background: var(--accent); color: white; margin-left: auto;">+ Add Job</button>
+        <button id="clearFiltersBtn" class="ghost" style="padding: 5px 8px; font-size: 10px; color: var(--muted);" title="Clear all filters">✕ Clear</button>
+
+        <!-- Hidden elements for compatibility -->
+        <select id="dateRangeFilter" style="display: none;">
+          <option value="all" selected>All time</option>
+        </select>
+        <select id="pipelineFilterAtsQuick" style="display: none;">
+          <option value="">All ATS</option>
+        </select>
+        <button id="addJobBtn" style="display: none;"></button>
       </div>
       
       <!-- Bulk Actions Toolbar -->
@@ -1097,6 +1154,7 @@
             <option value="v7">V7 (Agent 🤖)</option>
             <option value="v6" selected>V6 (AI + Simple)</option>
             <option value="v5">V5 (Full Features)</option>
+            <option value="v35">V35 (Legacy)</option>
           </select>
         </div>
         
@@ -1139,54 +1197,84 @@
 
       <div class="tableWrap">
         <div style="overflow-x: auto;"><table id="jobsTable">
+          <colgroup>
+            <col class="col-id">
+            <col class="col-checkbox">
+            <col class="col-company">
+            <col class="col-match">
+            <col class="col-title">
+            <col class="col-location">
+            <col class="col-updated">
+            <col class="col-added">
+            <col class="col-ats">
+            <col class="col-actions">
+            <col class="col-folder">
+          </colgroup>
           <thead>
             <tr>
               <th>ID</th>
-              <th style="text-align: center;">✓</th>
-              <th class="sortable" onclick="sortTable('company')">
-                Company <span class="sortIcon" id="sortIcon-company">⬍</span>
-              </th>
-              <th class="sortable" onclick="sortTable('title')">
-                Title <span class="sortIcon" id="sortIcon-title">⬍</span>
-              </th>
-              <th class="sortable" onclick="sortTable('location')">
-                Location <span class="sortIcon" id="sortIcon-location">⬍</span>
-              </th>
-              <th class="sortable" onclick="sortTable('updated')">
-                Updated <span class="sortIcon" id="sortIcon-updated">⬍</span>
-              </th>
-              <th class="sortable" onclick="sortTable('ats')">
-                ATS <span class="sortIcon" id="sortIcon-ats">⬍</span>
-              </th>
-              <th class="sortable" onclick="sortTable('status')">
-                Status <span class="sortIcon" id="sortIcon-status">⬍</span>
-              </th>
-              <th>📁</th>
+              <th class="center">✓</th>
+              <th class="sortable" onclick="sortTable('company')">Company <span class="sortIcon" id="sortIcon-company">⬍</span></th>
+              <th class="sortable center" onclick="sortTable('match')" title="AI Match Score">% <span class="sortIcon" id="sortIcon-match">⬍</span></th>
+              <th class="sortable" onclick="sortTable('title')">Title <span class="sortIcon" id="sortIcon-title">⬍</span></th>
+              <th class="sortable" onclick="sortTable('location')">Location <span class="sortIcon" id="sortIcon-location">⬍</span></th>
+              <th class="sortable" onclick="sortTable('added')" title="When job was published on ATS">Posted <span class="sortIcon" id="sortIcon-added">⬍</span></th>
+              <th class="sortable" onclick="sortTable('deadline')" title="Application deadline">Deadline <span class="sortIcon" id="sortIcon-deadline">⬍</span></th>
+              <th class="sortable center" onclick="sortTable('ats')" title="ATS">ATS <span class="sortIcon" id="sortIcon-ats">⬍</span></th>
               <th>Actions</th>
+              <th class="center">📁</th>
             </tr>
             <tr class="filter-row">
-              <th><input type="text" id="pipelineFilterJobId" placeholder="..." class="column-filter" style="width: 60px;"></th>
-              <th style="text-align: center;">
-                <input type="checkbox" id="selectAllJobs" title="Select all">
-              </th>
-              <th><input type="text" id="pipelineFilterCompany" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th><input type="text" id="pipelineFilterTitle" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th><input type="text" id="pipelineFilterLocation" placeholder="..." class="column-filter" style="width: 100%;"></th>
-              <th><input type="text" id="pipelineFilterUpdated" placeholder="..." class="column-filter" style="width: 100%;"></th>
+              <th><input type="text" id="pipelineFilterJobId" placeholder="ID" class="column-filter"></th>
+              <th class="center"><input type="checkbox" id="selectAllJobs" title="Select all"></th>
+              <th><input type="text" id="pipelineFilterCompany" placeholder="Company" class="column-filter"></th>
               <th>
-                <select id="pipelineFilterAts" class="column-filter" style="width: 100%;">
-                  <option value="">-</option>
+                <select id="pipelineFilterMatch" class="column-filter" style="width:45px;">
+                  <option value="">All</option>
+                  <option value="has">Has</option>
+                  <option value="high">70+</option>
+                  <option value="med">50-69</option>
+                  <option value="low">&lt;50</option>
+                  <option value="none">None</option>
+                </select>
+              </th>
+              <th><input type="text" id="pipelineFilterTitle" placeholder="Title" class="column-filter"></th>
+              <th><input type="text" id="pipelineFilterLocation" placeholder="Location" class="column-filter"></th>
+              <th>
+                <select id="pipelineFilterPosted" class="column-filter" style="width:45px;">
+                  <option value="">All</option>
+                  <option value="today">Today</option>
+                  <option value="3d">3d</option>
+                  <option value="7d">7d</option>
+                  <option value="30d">30d</option>
+                </select>
+              </th>
+              <th>
+                <select id="pipelineFilterDeadline" class="column-filter" style="width:45px;">
+                  <option value="">All</option>
+                  <option value="has">Has</option>
+                  <option value="urgent">≤3d</option>
+                  <option value="soon">≤7d</option>
+                  <option value="expired">Exp</option>
+                </select>
+              </th>
+              <th>
+                <select id="pipelineFilterAts" class="column-filter">
+                  <option value="">All</option>
                   <option value="greenhouse">GH</option>
-                  <option value="lever">Lever</option>
+                  <option value="lever">LV</option>
                   <option value="workday">WD</option>
                   <option value="smartrecruiters">SR</option>
-                  <option value="ashby">Ashby</option>
+                  <option value="ashby">AS</option>
+                  <option value="icims">IC</option>
+                  <option value="phenom">PH</option>
+                  <option value="jibe">JB</option>
                   <option value="manual">📌</option>
                 </select>
               </th>
               <th>
-                <select id="pipelineFilterStatus" class="column-filter" style="width: 100%;">
-                  <option value="all">-</option>
+                <select id="pipelineFilterStatus" class="column-filter">
+                  <option value="all">All</option>
                   <option value="New">New</option>
                   <option value="Selected">Sel</option>
                   <option value="Ready">Rdy</option>
@@ -1195,13 +1283,12 @@
                 </select>
               </th>
               <th>
-                <select id="pipelineFilterFolder" class="column-filter" style="width: 100%;">
+                <select id="pipelineFilterFolder" class="column-filter">
                   <option value="all">-</option>
                   <option value="yes">✓</option>
                   <option value="no">✗</option>
                 </select>
               </th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -1231,13 +1318,22 @@
           <input type="text" id="reviewSearchFilter" placeholder="title, company..." style="width: 200px;">
         </label>
         
-        <button id="addSelectedBtn" class="ghost" style="background: #2a5a3a; color: white;" disabled>
-          ➕ Add Selected (0)
+        <button id="analyzeSelectedBtn" class="ghost" style="background: #3b82f6; color: white;" disabled>
+          🔍 Analyze Selected (0)
         </button>
-        
+
         <span id="reviewStatus" class="muted"></span>
       </div>
-      
+
+      <!-- Review Analysis Queue -->
+      <div id="reviewAnalysisQueue" style="margin: 12px 0; padding: 16px; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); border-radius: 12px; border: 1px solid #3b5998; display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-weight: 600; color: white; font-size: 14px;">📊 Analysis Queue</div>
+          <button id="clearReviewQueueBtn" style="padding: 4px 10px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Clear All</button>
+        </div>
+        <div id="reviewQueueItems" style="display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
+
       <div class="tableWrap">
       <table id="reviewTable">
         <thead>
@@ -1271,8 +1367,28 @@
     </div> <!-- end tab-review -->
 
     <!-- Answers Tab -->
+    <!-- Profile Tab (formerly Answers) -->
     <div class="tab-content" id="tab-answers">
-      <h3 style="margin: 0 0 16px 0;">Answer Library</h3>
+      <h3 style="margin: 0 0 16px 0;">My Profile</h3>
+      
+      <!-- Target Roles -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">🎯 Target Roles</h4>
+        <p style="color: #9ca3af; font-size: 13px; margin-bottom: 12px;">Jobs with these role families will be shown as matching your profile:</p>
+        <div id="targetRolesList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <p style="color: #6b7280; font-size: 12px; margin-bottom: 8px;">Add role family:</p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="add-role-btn" data-role="engineering" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Engineering</button>
+            <button class="add-role-btn" data-role="design" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Design</button>
+            <button class="add-role-btn" data-role="data" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Data/Analytics</button>
+            <button class="add-role-btn" data-role="operations" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Operations</button>
+            <button class="add-role-btn" data-role="marketing" style="padding: 4px 10px; background: #374151; color: #9ca3af; border: 1px dashed #4b5563; border-radius: 6px; cursor: pointer; font-size: 12px;">+ Marketing</button>
+          </div>
+        </div>
+      </div>
+      
+      <h4 style="margin: 16px 0 12px 0; color: #9ca3af;">📋 Answer Library</h4>
       
       <!-- Personal Info -->
       <div class="card" style="margin-bottom: 16px; padding: 16px;">
@@ -1357,23 +1473,44 @@
         </div>
       </div>
     </div>
-    <!-- Add Job Modal -->
-    <div id="addJobModal" class="modal">
-      <div class="modal-content" style="max-width: 500px;">
-        <h3>Add Job to Pipeline</h3>
-        <p style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">Paste a job URL from any supported ATS (Greenhouse, Lever, Workday, SmartRecruiters, Ashby)</p>
-        
-        <label style="display: block; margin-bottom: 12px;">
-          Job URL *
-          <input type="url" id="addJobUrl" placeholder="https://boards.greenhouse.io/company/jobs/12345" style="width: 100%; margin-top: 4px;">
-        </label>
-        
-        <div id="addJobStatus" style="margin: 12px 0; padding: 8px; border-radius: 4px; display: none;"></div>
-        
-        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
-          <button type="button" id="addJobCancel" class="ghost">Cancel</button>
-          <button type="button" id="addJobSubmit" style="background: var(--accent); color: white;">Add Job</button>
+
+    <!-- Match Analysis Modal -->
+    <div id="matchAnalysisModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 300; align-items: center; justify-content: center;">
+      <div style="background: var(--panel); border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 id="matchAnalysisTitle" style="margin: 0; font-size: 18px;">Match Analysis</h3>
+          <button onclick="document.getElementById('matchAnalysisModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--muted);">&times;</button>
         </div>
+        <div id="matchAnalysisContent" style="font-size: 14px; line-height: 1.6;"></div>
+      </div>
+    </div>
+
+    <!-- Add Job Modal - Redesigned -->
+    <div id="addJobModal" class="modal" style="width: auto; max-width: none; padding: 0; background: transparent; border: none;">
+      <div id="addJobContainer" style="display: flex; margin: 0 auto; height: calc(100vh - 80px); background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.3); transition: width 0.3s ease;">
+        
+        <!-- Left Panel: Input & Compact Analysis - narrower -->
+        <div id="addJobLeftPanel" style="width: 420px; padding: 20px; background: white; color: #1f2937; overflow-y: auto;">
+          <h2 style="margin: 0 0 6px; font-size: 18px; color: #111827;">Add Job to Pipeline</h2>
+          <p style="color: #6b7280; font-size: 12px; margin-bottom: 16px;">Paste URL from Greenhouse, Lever, Workday, SmartRecruiters, Ashby</p>
+          
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px;">Job URL *</label>
+            <input type="url" id="addJobUrl" placeholder="https://boards.greenhouse.io/company/jobs/12345" style="width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #1f2937; background: #f9fafb;">
+          </div>
+          
+          <div id="addJobStatus" style="display: none;"></div>
+          
+          <div id="addJobButtons" style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="button" id="addJobSubmit" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">🔍 Analyze</button>
+          </div>
+        </div>
+        
+        <!-- Right Panel: Detailed Analysis (hidden initially) -->
+        <div id="addJobRightPanel" style="width: 0; overflow: hidden; background: #f9fafb; border-left: 1px solid #e5e7eb; transition: width 0.3s ease;">
+          <div id="addJobDetailContent" style="padding: 24px; width: 800px;"></div>
+        </div>
+        
       </div>
     </div>
 
@@ -1528,6 +1665,10 @@
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: 6px;">
               <span style="font-size: 13px; color: var(--muted);">Form Filler:</span>
               <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="radio" name="fillerEngine" value="v7" style="accent-color: #8b5cf6;">
+                <span style="font-size: 13px;">V7 (Agent 🤖)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                 <input type="radio" name="fillerEngine" value="v6" checked style="accent-color: #16a34a;">
                 <span style="font-size: 13px;">V6 (AI + Simple)</span>
               </label>
@@ -1550,52 +1691,37 @@
     </div>
 
     <!-- Prepare Result Modal -->
-    <div id="prepareResultModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; z-index:9999;">
-      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:750px; max-height:90vh; overflow-y:auto; margin: 20px;">
+    <div id="prepareResultModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200;">
+      <div class="modal-content" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:700px; max-height:85vh; overflow-y:auto;">
         <div class="modal-header">
           <h3>✅ Application Prepared</h3>
           <button class="modal-close" onclick="closePrepareModal()">×</button>
         </div>
         <div class="modal-body">
-          <div style="margin-bottom: 16px; font-size: 18px;">
+          <div style="margin-bottom: 16px;">
             <strong id="prepareCompanyName"></strong> - <span id="preparePositionName"></span>
           </div>
-          
-          <!-- JD Summary Section -->
-          <div id="prepareJdSection" style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-radius: 8px;">
-            <div style="font-size: 12px; color: #a5b4fc; margin-bottom: 12px;">📋 Job Requirements</div>
-            <div id="prepareKeywords" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;"></div>
-            <div id="prepareRequirements" style="font-size: 13px; color: #e0e7ff;"></div>
-          </div>
-          
-          <!-- Match Score -->
-          <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-            <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-              <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Match Score</div>
-              <div id="prepareMatchScore" style="font-size: 28px; font-weight: bold; color: #10b981;">--</div>
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <div style="flex: 1; padding: 12px; background: var(--card); border-radius: 8px;">
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">📄 CV</div>
+              <div id="prepareCvName" style="font-weight: 500;"></div>
             </div>
-            <div style="flex: 1; padding: 16px; background: var(--bg); border-radius: 8px; text-align: center;">
-              <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">CV Selected</div>
-              <div id="prepareCvName" style="font-size: 14px; font-weight: 500;"></div>
+            <div style="flex: 1; padding: 12px; background: var(--card); border-radius: 8px;">
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">📝 Template</div>
+              <div id="prepareTemplateName" style="font-weight: 500;"></div>
             </div>
           </div>
-          
-          <!-- What was done -->
           <div style="margin-bottom: 16px;">
-            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">🎯 Cover Letter Highlights</div>
-            <div id="prepareMission" style="padding: 12px; background: var(--bg); border-radius: 8px; font-size: 13px; line-height: 1.5;"></div>
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">🎯 Company Mission (AI Generated)</div>
+            <div id="prepareMission" style="padding: 12px; background: var(--card); border-radius: 8px; font-style: italic;"></div>
           </div>
-          
-          <!-- Folder -->
           <div style="margin-bottom: 16px;">
-            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">📁 Application Folder</div>
-            <div id="prepareFolderPath" style="padding: 8px; background: var(--bg); border-radius: 4px; font-family: monospace; font-size: 11px; word-break: break-all;"></div>
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">📁 Folder</div>
+            <div id="prepareFolderPath" style="padding: 8px; background: var(--card); border-radius: 4px; font-family: monospace; font-size: 11px; word-break: break-all;"></div>
           </div>
-          
           <div style="display: flex; gap: 8px; justify-content: flex-end;">
-            <button onclick="closePrepareModal()" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 20px; cursor: pointer;">Close</button>
-            <button onclick="openPrepareFolder()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor: pointer; font-weight: 500;">📁 Open Folder</button>
-            <button id="btnApplyFromModal" onclick="applyFromModal()" style="background: #16a34a; color: white; border: none; border-radius: 6px; padding: 10px 24px; cursor: pointer; font-weight: 600; font-size: 15px;">🚀 Apply Now</button>
+            <button onclick="openPrepareFolder()" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer;">📁 Open in Finder</button>
+            <button onclick="closePrepareModal()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer;">Close</button>
           </div>
         </div>
       </div>
@@ -1652,46 +1778,47 @@
 
     <script>
       // ---------- DATE FORMATTING ----------
-      function formatDateWithAge(isoDate) {
+      function formatDateShort(isoDate) {
         if (!isoDate) return "—";
-        
         try {
-          const date = new Date(isoDate);
-          if (isNaN(date.getTime())) return isoDate;
-          
-          const now = new Date();
-          const diffMs = now - date;
-          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-          const diffMins = Math.floor(diffMs / (1000 * 60));
-          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-          
-          // Format date: "Dec 19, 10:45"
-          const month = date.toLocaleDateString('en-US', { month: 'short' });
-          const day = date.getDate();
+          let date;
+          if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
+            const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
+            date = new Date(ts);
+          } else {
+            date = new Date(isoDate);
+          }
+          if (isNaN(date.getTime())) return "—";
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const day = date.getDate().toString().padStart(2, '0');
+          const year = date.getFullYear().toString().slice(-2);
           const hours = date.getHours().toString().padStart(2, '0');
           const mins = date.getMinutes().toString().padStart(2, '0');
-          const dateStr = `${month} ${day}, ${hours}:${mins}`;
-          
-          // Age indicator
-          let ageStr;
-          if (diffMins < 1) {
-            ageStr = "now";
-          } else if (diffMins < 60) {
-            ageStr = `${diffMins}m`;
-          } else if (diffHours < 24) {
-            ageStr = `${diffHours}h`;
-          } else if (diffDays === 1) {
-            ageStr = "1d";
-          } else if (diffDays <= 7) {
-            ageStr = `${diffDays}d`;
-          } else if (diffDays <= 30) {
-            const weeks = Math.floor(diffDays / 7);
-            ageStr = `${weeks}w`;
+          // Date only, time in tooltip
+          return `<span title="${month}.${day}.${year} ${hours}:${mins}">${month}.${day}.${year}</span>`;
+        } catch (e) {
+          return "—";
+        }
+      }
+
+      function formatDateWithAge(isoDate) {
+        if (!isoDate) return "—";
+        try {
+          let date;
+          if (typeof isoDate === 'number' || /^\d{10,13}$/.test(isoDate)) {
+            const ts = typeof isoDate === 'number' ? isoDate : parseInt(isoDate);
+            date = new Date(ts);
           } else {
-            ageStr = "30d+";
+            date = new Date(isoDate);
           }
-          
-          return `${dateStr} (${ageStr})`;
+          if (isNaN(date.getTime())) return "—";
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const day = date.getDate().toString().padStart(2, '0');
+          const year = date.getFullYear().toString().slice(-2);
+          const hours = date.getHours().toString().padStart(2, '0');
+          const mins = date.getMinutes().toString().padStart(2, '0');
+          // Date only, time in tooltip
+          return `<span title="${month}.${day}.${year} ${hours}:${mins}">${month}.${day}.${year}</span>`;
         } catch (e) {
           return isoDate;
         }
@@ -1740,7 +1867,7 @@
       };
 
       // ---------- SORT STATE ----------
-      let CURRENT_SORT = { column: null, asc: true };
+      let CURRENT_SORT = { column: 'added', asc: false }; // Default: newest first by Added date
 
       function setSortIcon(col, icon) {
         const el = document.getElementById(`sortIcon-${col}`);
@@ -1761,9 +1888,6 @@
 
       // keepDirection=true when re-applying sort after re-render
       function sortTable(column, keepDirection = false) {
-        const tbody = document.querySelector("#jobsTable tbody");
-        const rows = Array.from(tbody.querySelectorAll("tr"));
-
         if (!keepDirection) {
           if (CURRENT_SORT.column === column) {
             CURRENT_SORT.asc = !CURRENT_SORT.asc;
@@ -1776,26 +1900,54 @@
         }
 
         const asc = !!CURRENT_SORT.asc;
+        
+        // Sort the data array for proper pagination
+        pipelineFilteredJobs.sort((a, b) => {
+          let av, bv;
+          if (column === 'added') {
+            av = a.first_seen || a.created_at || '';
+            bv = b.first_seen || b.created_at || '';
+          } else if (column === 'deadline') {
+            av = a.deadline || a.end_date || '';
+            bv = b.deadline || b.end_date || '';
+          } else if (column === 'company') {
+            av = (a.company || '').toLowerCase();
+            bv = (b.company || '').toLowerCase();
+          } else if (column === 'title') {
+            av = (a.title || '').toLowerCase();
+            bv = (b.title || '').toLowerCase();
+          } else if (column === 'location') {
+            av = (a.location || '').toLowerCase();
+            bv = (b.location || '').toLowerCase();
+          } else if (column === 'ats') {
+            av = a.source === 'onboard' ? 'manual' : (a.ats || '').toLowerCase();
+            bv = b.source === 'onboard' ? 'manual' : (b.ats || '').toLowerCase();
+          } else if (column === 'status') {
+            av = (a.application_status || a.status || 'new').toLowerCase();
+            bv = (b.application_status || b.status || 'new').toLowerCase();
+          } else if (column === 'match') {
+            // Numeric sort for match score
+            av = a.match_score || 0;
+            bv = b.match_score || 0;
+            return asc ? av - bv : bv - av;
+          } else {
+            av = '';
+            bv = '';
+          }
 
-        rows.sort((a, b) => {
-          const av = a.dataset[column] || "";
-          const bv = b.dataset[column] || "";
-
-          if (column === "updated") {
-            const ad = Date.parse(av) || 0;
-            const bd = Date.parse(bv) || 0;
+          if (column === 'added' || column === 'deadline') {
+            const ad = (typeof av === 'number' && av > 1e9) ? av : (Date.parse(av) || 0);
+            const bd = (typeof bv === 'number' && bv > 1e9) ? bv : (Date.parse(bv) || 0);
             return asc ? ad - bd : bd - ad;
           }
 
-          // stable, case-insensitive
-          const cmp = av.localeCompare(bv, undefined, { sensitivity: "base" });
+          const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
           return asc ? cmp : -cmp;
         });
 
-        // re-append in order
-        for (const r of rows) tbody.appendChild(r);
-
         updateSortIcons();
+        pipelinePage = 1;
+        renderJobs(pipelineFilteredJobs, true); // skipSort=true to avoid loop
       }
 
       function applyCurrentSortIfAny() {
@@ -1969,9 +2121,12 @@
         if (ln.states && ln.states.length > 0) {
           return true; // Has US states
         }
-        // Check remote_scope for Remote USA jobs
-        if (ln.remote && (ln.remote_scope === "usa" || ln.remote_scope === "us")) {
-          return true;
+        // Check remote_scope for US remote jobs (e.g. "Remote, North America" with remote_scope: "usa")
+        if (ln.remote && ln.remote_scope) {
+          const scope = ln.remote_scope.toLowerCase();
+          if (scope === "usa" || scope === "us") {
+            return true;
+          }
         }
         
         // Fallback to text heuristic
@@ -1983,9 +2138,7 @@
           l.includes(", us") ||
           l.includes("remote - us") ||
           l.includes("remote (us)") ||
-          l.includes("remote, us") ||
-          l.includes("(remote)") ||
-          l === "remote"  // Simple "Remote" likely means US for US companies
+          l.includes("north america")
         );
       }
 
@@ -2028,15 +2181,6 @@
             return ["applied", "interview", "offer"].includes(st);
           });
           // No date filter for applied - show all
-        } else if (activeQuickFilter === "recent-manual") {
-          // Show manually added jobs from last 7 days
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          filtered = filtered.filter(j => {
-            const isManual = j.source === 'onboard' || j.source === 'manual' || j.source === 'manual_onboard' || j.ats === 'universal';
-            const jobDate = new Date(j.updated_at || j.first_seen || j.last_seen || 0);
-            return isManual && jobDate >= weekAgo;
-          });
         } else {
           // "all" - apply date range filter
           if (dateRangeDays !== "all") {
@@ -2049,8 +2193,11 @@
           }
         }
 
-        // 3. Location filter by category
+        // 3. Location filter by category (skip for manual jobs)
         filtered = filtered.filter((job) => {
+          // Always include manually added jobs
+          if (job.source === 'onboard') return true;
+          
           const ln = job.location_norm || {};
           const isUS = isUSHeuristic(job);
           const isRemote = ln.remote === true;
@@ -2065,10 +2212,13 @@
         });
         debugCounts.afterLocation = filtered.length;
 
-        // 4. States filter (only if states selected)
+        // 4. States filter (only if states selected, skip for manual jobs)
         const hasStateFilter = selectedStates.length > 0;
         if (hasStateFilter) {
           filtered = filtered.filter((job) => {
+            // Always include manually added jobs
+            if (job.source === 'onboard') return true;
+            
             const ln = job.location_norm;
             const isUS = isUSHeuristic(job);
             
@@ -2093,7 +2243,9 @@
             const company = (j.company || "").toLowerCase();
             const title = (j.title || "").toLowerCase();
             const location = (j.location || "").toLowerCase();
-            return company.includes(search) || title.includes(search) || location.includes(search);
+            const jobId = (j.id || "").toLowerCase();
+            const atsJobId = (j.ats_job_id || "").toLowerCase();
+            return company.includes(search) || title.includes(search) || location.includes(search) || jobId.includes(search) || atsJobId.includes(search);
           });
         }
 
@@ -2130,12 +2282,50 @@
         if (pipelineFilters.ats) {
           filtered = filtered.filter(j => pipelineFilters.ats === "manual" ? j.source === "onboard" : j.ats === pipelineFilters.ats);
         }
-        if (pipelineFilters.updated) {
-          const search = pipelineFilters.updated.toLowerCase();
-          filtered = filtered.filter(j => {
-            const updated = (j.updated_at || j.first_seen || "").toLowerCase();
-            return updated.includes(search);
-          });
+        // Posted date filter (how recently published)
+        if (pipelineFilters.posted) {
+          const now = new Date();
+          let cutoffDays = 0;
+          if (pipelineFilters.posted === 'today') cutoffDays = 1;
+          else if (pipelineFilters.posted === '3d') cutoffDays = 3;
+          else if (pipelineFilters.posted === '7d') cutoffDays = 7;
+          else if (pipelineFilters.posted === '30d') cutoffDays = 30;
+          if (cutoffDays > 0) {
+            const cutoff = new Date(now.getTime() - cutoffDays * 24*60*60*1000);
+            filtered = filtered.filter(j => {
+              const d = new Date(j.first_seen || j.created_at || 0);
+              return d >= cutoff;
+            });
+          }
+        }
+        // Deadline filter
+        if (pipelineFilters.deadline) {
+          const now = new Date();
+          if (pipelineFilters.deadline === 'has') {
+            filtered = filtered.filter(j => j.deadline || j.end_date);
+          } else if (pipelineFilters.deadline === 'urgent') {
+            filtered = filtered.filter(j => {
+              const dl = j.deadline || j.end_date;
+              if (!dl) return false;
+              const d = new Date(dl);
+              const days = Math.ceil((d - now) / (1000*60*60*24));
+              return days >= 0 && days <= 3;
+            });
+          } else if (pipelineFilters.deadline === 'soon') {
+            filtered = filtered.filter(j => {
+              const dl = j.deadline || j.end_date;
+              if (!dl) return false;
+              const d = new Date(dl);
+              const days = Math.ceil((d - now) / (1000*60*60*24));
+              return days >= 0 && days <= 7;
+            });
+          } else if (pipelineFilters.deadline === 'expired') {
+            filtered = filtered.filter(j => {
+              const dl = j.deadline || j.end_date;
+              if (!dl) return false;
+              return new Date(dl) < now;
+            });
+          }
         }
         if (pipelineFilters.jobId) {
           const searchId = pipelineFilters.jobId.toLowerCase();
@@ -2151,6 +2341,19 @@
           filtered = filtered.filter(j => j.folder_path);
         } else if (pipelineFilters.folder === "no") {
           filtered = filtered.filter(j => !j.folder_path);
+        }
+
+        // Filter by match score
+        if (pipelineFilters.match === "has") {
+          filtered = filtered.filter(j => j.match_score && j.match_score > 0);
+        } else if (pipelineFilters.match === "high") {
+          filtered = filtered.filter(j => (j.match_score || 0) >= 70);
+        } else if (pipelineFilters.match === "med") {
+          filtered = filtered.filter(j => (j.match_score || 0) >= 50 && (j.match_score || 0) < 70);
+        } else if (pipelineFilters.match === "low") {
+          filtered = filtered.filter(j => j.match_score && j.match_score < 50);
+        } else if (pipelineFilters.match === "none") {
+          filtered = filtered.filter(j => !j.match_score || j.match_score === 0);
         }
 
         return filtered;
@@ -2234,7 +2437,7 @@
         }
       }
 
-      function renderJobs(jobs) {
+      function renderJobs(jobs, skipSort = false) {
         // Store filtered jobs for pagination
         pipelineFilteredJobs = jobs;
         
@@ -2283,129 +2486,169 @@
           // Format date for display (Dec 19, 3d ago)
           const updatedAtStr = formatDateWithAge(updatedAtRaw);
           
+          // Added date (first_seen = original ATS published date)
+          const addedAtRaw = job.first_seen || job.created_at || "";
+          const addedAtStr = addedAtRaw ? formatDateShort(addedAtRaw) : "—";
+          const pipelineDateRaw = job.added_to_pipeline || "";
+          // Plain text date for tooltip (no HTML)
+          let pipelineDateStr = "";
+          if (pipelineDateRaw) {
+            try {
+              const pd = new Date(pipelineDateRaw);
+              if (!isNaN(pd.getTime())) {
+                const m = (pd.getMonth()+1).toString().padStart(2,'0');
+                const d = pd.getDate().toString().padStart(2,'0');
+                const y = pd.getFullYear().toString().slice(-2);
+                pipelineDateStr = `${m}.${d}.${y}`;
+              }
+            } catch(e) {}
+          }
+          
           row.dataset.company = (job.company || "").trim();
           row.dataset.industry = tagsStr;
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
-          row.dataset.updated = updatedAtRaw.trim(); // Use raw ISO for sorting
+          row.dataset.added = addedAtRaw.trim(); // Use raw ISO for sorting
+          row.dataset.deadline = (job.deadline || job.end_date || "").trim();
           row.dataset.ats = job.source === "onboard" ? "manual" : (job.ats || "").trim();
           row.dataset.status = (st || "New").trim();
           row.dataset.jobId = job.id || "";
           row.dataset.atsJobId = job.ats_job_id || "";
           row.dataset.url = url;
+          row.dataset.match = job.match_score || 0;
 
           // Determine role category for showing Add to Pipeline button
           const roleCategory = job.role_category || (job.role_excluded ? 'excluded' : (job.role_id ? 'primary' : 'unknown'));
           const showAddButton = ['unknown', 'excluded'].includes(roleCategory);
           const inPipeline = job.in_pipeline || job.status; // Job is already in pipeline if has status
-          const isManual = job.source === 'manual';
+          const isManual = job.source === 'manual' || job.source === 'onboard' || job.source === 'manual_onboard';
           const isOnboarded = job.source === 'onboard' || job.source === 'manual_onboard';
           const sourceIcon = isOnboarded ? '<span title="User added via onboarding" style="margin-left: 4px;">📌</span>' : '';
           
           row.innerHTML = `
-        <td style="font-size: 10px; font-family: monospace; color: var(--muted); cursor: pointer;" title="Click to copy: ${escapeAttr(job.ats_job_id || job.id || '')}" onclick="navigator.clipboard.writeText('${escapeAttr(job.ats_job_id || job.id || '')}'); this.style.color='#22c55e'; setTimeout(() => this.style.color='var(--muted)', 500);">${escapeHtml((job.ats_job_id || job.id || '').toString().slice(-8))}</td>
-        <td style="text-align: center;">
+        <td class="td-id" title="Click to copy: ${escapeAttr(job.ats_job_id || job.id || '')}" onclick="navigator.clipboard.writeText('${escapeAttr(job.ats_job_id || job.id || '')}'); this.style.color='#22c55e'; setTimeout(() => this.style.color='var(--muted)', 500);">${escapeHtml((job.ats_job_id || job.id || '').toString().slice(-8))}</td>
+        <td class="td-checkbox">
           <input type="checkbox" class="jobCheckbox" data-jobkey="${escapeAttr(jobKey)}" data-url="${escapeAttr(url)}" data-company="${escapeAttr(job.company || '')}" data-title="${escapeAttr(job.title || '')}" data-ats="${escapeAttr(job.ats || '')}" data-status="${escapeAttr(st)}">
         </td>
-        <td>${escapeHtml(job.company || "")}</td>
-        <td><a href="${escapeAttr(
-          url
-        )}" target="_blank" rel="noopener">${escapeHtml(
-            job.title || ""
-          )}</a>${sourceIcon}</td>
-        <td>${escapeHtml(job.location || "")}</td>
-        <td>${escapeHtml(updatedAtStr)}</td>
-        <td>${job.source === "onboard" ? "📌 manual" : escapeHtml(job.ats || "")}</td>
-        <td>
-          <select class="statusSelect" data-jobkey="${escapeAttr(jobKey)}">
-            ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
-              .map(
-                (x) => {
-                  const icons = {
-                    "New": "⚪",
-                    "Selected": "📋",
-                    "Ready": "✅",
-                    "Applied": "📤",
-                    "Interview": "🎯",
-                    "Offer": "🎉",
-                    "Rejected": "❌",
-                    "Withdrawn": "🔙",
-                    "Closed": "🔒"
-                  };
-                  return `<option value="${x}" ${x === st ? "selected" : ""}>${icons[x] || ""} ${x}</option>`;
-                }
-              )
-              .join("")}
-          </select>
-        </td>
-        <td style="text-align: center; padding: 2px;">
-          ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder" style="background:none; border:none; cursor:pointer; font-size:16px;">📁</button>` : ''}
-        </td>
-        <td>
+        <td class="td-company">${escapeHtml(job.company || "")}</td>
+        <td class="td-match">
           ${(() => {
-            // Smart action button based on status
+            const score = job.match_score;
+            if (!score && score !== 0) return '<span class="match-empty">—</span>';
+            const colorClass = score >= 70 ? 'match-high' : score >= 50 ? 'match-mid' : 'match-low';
+            return `<span class="matchScoreBtn ${colorClass}" data-jobid="${escapeAttr(job.id || '')}" title="${score}% match - click for details">${score}</span>`;
+          })()}
+        </td>
+        <td class="td-title"><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || "")}</a>${sourceIcon}</td>
+        <td class="td-location">${escapeHtml(job.location || "")}</td>
+        <td class="td-date" title="${pipelineDateStr ? 'Found: ' + pipelineDateStr : ''}">${addedAtStr}</td>
+        <td class="td-date">${(() => {
+            const dl = job.deadline || job.end_date;
+            if (!dl) return '<span style="color:#64748b">—</span>';
+            try {
+              const dd = new Date(dl);
+              const now = new Date();
+              const daysLeft = Math.ceil((dd - now) / (1000*60*60*24));
+              const dlStr = (dd.getMonth()+1).toString().padStart(2,'0') + '.' + dd.getDate().toString().padStart(2,'0') + '.' + dd.getFullYear().toString().slice(-2);
+              if (daysLeft < 0) return `<span style="color:#ef4444" title="Expired">❌ ${dlStr}</span>`;
+              const color = daysLeft <= 2 ? '#ef4444' : daysLeft <= 5 ? '#f59e0b' : '#22c55e';
+              return `<span style="color:${color}" title="${job.time_left || daysLeft + ' days left'}">⏰ ${dlStr}</span>`;
+            } catch(e) { return '—'; }
+          })()}</td>
+        <td class="td-ats">${(() => {
+            const atsShort = {'greenhouse': 'GH', 'lever': 'LV', 'workday': 'WD', 'smartrecruiters': 'SR', 'ashby': 'AS', 'jibe': 'JB', 'phenom': 'PH', 'icims': 'IC', 'atlassian': 'AT', 'manual': '📌'};
+            if (job.source === "onboard") return '📌';
+            return atsShort[job.ats] || job.ats || '';
+          })()}</td>
+        <td class="td-actions">
+          ${(() => {
             const btnData = `data-jobid="${escapeAttr(job.id || '')}" data-jobkey="${escapeAttr(jobKey)}" data-company="${escapeAttr(job.company || '')}" data-position="${escapeAttr(job.title || '')}" data-joburl="${escapeAttr(url)}" data-ats="${escapeAttr(job.ats || '')}"`;
             const stLower = (st || '').toLowerCase();
-            
+
             if (stLower === 'new') {
-              return `<button class="smartActionBtn" ${btnData} data-action="select" title="Parse JD and mark as Selected" style="background:#3b82f6; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">▶️ Select</button>`;
+              return `<button class="smartActionBtn action-select" ${btnData} data-action="select" title="Parse JD and mark as Selected">▶️ Select</button>`;
             } else if (st === 'Selected') {
-              return `<button class="prepareBtn" ${btnData} title="Prepare CV & Cover Letter" style="background:#b45309; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">📦 Prepare</button>`;
+              return `<button class="prepareBtn action-prepare" ${btnData} title="Prepare CV & Cover Letter">📦 Prepare</button>`;
             } else if (st === 'Ready') {
-              return `<button class="smartActionBtn" ${btnData} data-action="apply" title="Start form filler" style="background:#16a34a; color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">🚀 Apply</button>`;
+              return `<button class="smartActionBtn action-apply" ${btnData} data-action="apply" title="Start form filler">🚀 Apply</button>`;
             } else if (stLower === 'applied') {
-              return `<span style="color: var(--muted); font-size: 11px;">⏳ Waiting</span>`;
+              return `<span class="status-icon status-applied">⏳</span>`;
             } else if (stLower === 'interview') {
-              return `<span style="color: #8b5cf6; font-size: 11px;">📅 Interview</span>`;
+              return `<span class="status-icon status-interview">🎯</span>`;
             } else {
               return '';
             }
           })()}
-          ${showAddButton && !inPipeline 
+          ${showAddButton && !inPipeline
             ? `<button class="addToPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Add to Pipeline">➕</button>`
             : ''}
           ${isManual
-            ? `<button class="removeFromPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Remove from Pipeline" style="background: #5a2a2a; color: white; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px;">✖</button>`
+            ? `<button class="removeFromPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Remove from Pipeline">✖</button>`
             : ''}
+          <select class="gearSelect" data-jobkey="${escapeAttr(jobKey)}" title="Change status: ${st}">
+            <option value="">⚙</option>
+            ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
+              .map(x => `<option value="${x}">${x}</option>`)
+              .join("")}
+          </select>
+        </td>
+        <td class="td-folder">
+          ${job.folder_path ? `<button class="openFolderBtn" data-folder="${escapeAttr(job.folder_path)}" title="Open documents folder">📁</button>` : ''}
         </td>
       `;
           tbody.appendChild(row);
 
-          const sel = row.querySelector("select.statusSelect");
-          sel.addEventListener("change", async (e) => {
-            const newStatus = e.target.value;
-            const jobId = job.id;  // Use job.id for Pipeline
-            const oldStatus = st;
+          // Match score click handler - show analysis details
+          const matchBtn = row.querySelector(".matchScoreBtn");
+          if (matchBtn) {
+            matchBtn.addEventListener("click", () => {
+              showMatchAnalysisModal(job);
+            });
+          }
 
-            // optimistic update
-            job.application_status = newStatus;
-            job.status = newStatus;  // Pipeline uses 'status' field
-            row.dataset.status = newStatus;
-
-            const ok = await persistStatus(jobId, newStatus);  // Keep original case
-            if (!ok) {
-              // revert
-              e.target.value = oldStatus;
-              job.application_status = oldStatus;
-              job.status = oldStatus;
-              row.dataset.status = oldStatus;
-            } else {
-              // Update status in ALL_JOBS arrays too
-              const updateJobInArray = (arr, id, status) => {
-                const found = arr.find(j => j.id === id);
-                if (found) {
-                  found.status = status;
-                  found.application_status = status;
-                }
-              };
-              updateJobInArray(ALL_JOBS, jobId, newStatus);
-              updateJobInArray(ALL_JOBS_RAW, jobId, newStatus);
+          // Gear dropdown handler for manual status change
+          const gearSel = row.querySelector("select.gearSelect");
+          if (gearSel) {
+            gearSel.addEventListener("change", async (e) => {
+              const newStatus = e.target.value;
+              if (!newStatus) return; // Ignore if gear icon selected
               
-              // Refresh to show/hide buttons based on new status
-              const filtered = applyFilters(ALL_JOBS);
-              renderJobs(filtered);
-            }
-          });
+              const jobId = job.id;
+              const oldStatus = st;
+
+              // optimistic update
+              job.application_status = newStatus;
+              job.status = newStatus;
+              row.dataset.status = newStatus;
+
+              const ok = await persistStatus(jobId, newStatus);
+              if (!ok) {
+                // revert
+                job.application_status = oldStatus;
+                job.status = oldStatus;
+                row.dataset.status = oldStatus;
+                alert('Failed to update status');
+              } else {
+                // Update status in ALL_JOBS arrays too
+                const updateJobInArray = (arr, id, status) => {
+                  const found = arr.find(j => j.id === id);
+                  if (found) {
+                    found.status = status;
+                    found.application_status = status;
+                  }
+                };
+                updateJobInArray(ALL_JOBS, jobId, newStatus);
+                updateJobInArray(ALL_JOBS_RAW, jobId, newStatus);
+                
+                // Refresh to show/hide buttons based on new status
+                const filtered = applyFilters(ALL_JOBS);
+                renderJobs(filtered);
+              }
+              
+              // Reset gear to show icon
+              e.target.value = "";
+            });
+          }
           
           // Add to Pipeline button handler
           const addBtn = row.querySelector(".addToPipelineBtn");
@@ -2514,7 +2757,7 @@
             });
           }
           
-          // Smart Action button handler (Select, Apply)
+          // Smart action button handler (Select for New, Apply for Ready)
           const smartBtn = row.querySelector(".smartActionBtn");
           if (smartBtn) {
             smartBtn.addEventListener("click", async (e) => {
@@ -2551,7 +2794,25 @@
                   job.status = 'Selected';
                   job.application_status = 'Selected';
                   if (parseData.summary) job.jd_summary = parseData.summary;
-                  
+                  if (parseData.match_score) job.match_score = parseData.match_score;
+                  if (parseData.analysis) job.analysis = parseData.analysis;
+
+                  // Enrich Workday jobs (fetch deadline, salary) in background
+                  if (ats === 'workday' && !job.deadline) {
+                    fetch(`/pipeline/enrich/${encodeURIComponent(jobId)}`, { method: 'POST' })
+                      .then(r => r.json())
+                      .then(data => {
+                        if (data.ok && data.enriched) {
+                          if (data.enriched.deadline) job.deadline = data.enriched.deadline;
+                          if (data.enriched.salary_range) job.salary_range = data.enriched.salary_range;
+                          if (data.enriched.time_left) job.time_left = data.enriched.time_left;
+                          // Re-render to show deadline
+                          const filtered = applyFilters(ALL_JOBS);
+                          renderJobs(filtered);
+                        }
+                      }).catch(() => {});
+                  }
+
                   btn.textContent = "✅ Done!";
                   setTimeout(() => {
                     const filtered = applyFilters(ALL_JOBS);
@@ -2561,25 +2822,13 @@
                 } else if (action === 'apply') {
                   btn.textContent = "⏳ Starting...";
                   
-                  // Start form filler
-                  const engineSelect = document.getElementById('engineSelect');
-                  const engine = engineSelect ? engineSelect.value : 'v6';
-                  
-                  const applyRes = await fetch(`/apply/${engine}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ job_url: jobUrl, profile: 'anton_kondakov' })
-                  });
-                  const applyData = await applyRes.json();
-                  
-                  if (applyData.ok) {
-                    alert(`🚀 Form Filler started!\n\nCheck Terminal window.`);
-                  } else {
-                    throw new Error(applyData.error || 'Failed to start');
-                  }
+                  // Open job URL for manual apply
+                  window.open(jobUrl, '_blank');
                   
                   btn.disabled = false;
                   btn.textContent = originalText;
+                  
+                  alert(`✅ Opened ${company} - ${position}\n\nDon't forget to mark as "Applied" after submitting!`);
                 }
               } catch (err) {
                 console.error('Smart action error:', err);
@@ -2589,7 +2838,7 @@
               }
             });
           }
-
+          
           // Prepare button handler (Selected status)
           const prepareBtn = row.querySelector(".prepareBtn");
           if (prepareBtn) {
@@ -2601,51 +2850,12 @@
               const roleFamily = job.role_family || 'product';
               
               e.target.disabled = true;
-              e.target.textContent = "⏳ Checking...";
+              e.target.textContent = "⏳ Preparing...";
               
               try {
-                // 0. Check if files already exist
-                const checkRes = await fetch('/check-existing-application', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ job_title: position, company: company })
-                });
-                const existingData = await checkRes.json();
-                
-                if (existingData.exists) {
-                  // Files exist - update to Ready and refresh (button will change to Apply)
-                  const jobId = job.id || jobKey;  // Use job.id for storage lookup
-                  await fetch('/pipeline/status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ job_id: jobId, status: 'Ready', folder_path: existingData.folder })
-                  });
-                  
-                  job.status = 'Ready';
-                  job.application_status = 'Ready';
-                  job.folder_path = existingData.folder;
-                  job.job_url = jobUrl;
-                  
-                  e.target.disabled = false;
-                  e.target.textContent = "📦 Prepare";
-                  
-                  // Refresh table - now will show Apply button
-                  const filtered = applyFilters(ALL_JOBS);
-                  renderJobs(filtered);
-                  
-                  // Show info about existing files
-                  alert(`✅ Found existing files!\n\n📁 ${existingData.folder_name}\n📄 CV: ${existingData.cv_filename || 'Base CV'}\n📝 CL: ${existingData.cover_letter_filename || 'N/A'}\n\nStatus changed to Ready. Click 🚀 Apply to start.`);
-                  return;
-                }
-                
-                // No existing files - generate new
-                e.target.textContent = "⏳ Generating...";
-                
-                // 1. Fetch JD (use stored if available)
+                // 1. Fetch JD
                 let jd = '';
-                if (job.jd_summary?.summary) {
-                  jd = job.jd_summary.summary;
-                } else if (jobUrl) {
+                if (jobUrl) {
                   const jdRes = await fetch('/fetch-job-description', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2688,16 +2898,12 @@
                 
                 // 5. Update status to Ready with folder path
                 const folderPath = clData.folder_path || '';
-                const jobId = job.id || jobKey;  // Use job.id for storage lookup
                 await fetch('/pipeline/status', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ job_id: jobId, status: 'Ready', folder_path: folderPath })
+                  body: JSON.stringify({ job_id: jobKey, status: 'Ready', folder_path: folderPath })
                 });
-                
-                // Add job_url to job object for Apply button
-                job.job_url = jobUrl;
-                showPrepareResult(company, position, cvFilename, clData, job);
+                showPrepareResult(company, position, cvFilename, clData);
                 
                 // Update local job status and refresh
                 job.status = 'Ready';
@@ -2797,30 +3003,7 @@
         }
 
         updateStatus(jobs);
-        applyCurrentSortIfAny();
-        
-        // Highlight newly added job if any
-        if (window.highlightJobAfterReload) {
-          const jobIdToHighlight = window.highlightJobAfterReload;
-          window.highlightJobAfterReload = null;
-          
-          setTimeout(() => {
-            const rows = document.querySelectorAll('#jobsTable tbody tr');
-            for (const row of rows) {
-              if (row.dataset.jobId === jobIdToHighlight || row.dataset.atsJobId === jobIdToHighlight) {
-                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                row.style.transition = 'background 0.3s';
-                row.style.background = 'linear-gradient(90deg, rgba(34,197,94,0.4) 0%, rgba(34,197,94,0.1) 100%)';
-                row.style.boxShadow = '0 0 10px rgba(34,197,94,0.5)';
-                setTimeout(() => { 
-                  row.style.background = ''; 
-                  row.style.boxShadow = '';
-                }, 5000);
-                break;
-              }
-            }
-          }, 300);
-        }
+        if (!skipSort) applyCurrentSortIfAny();
       }
 
       function escapeHtml(s) {
@@ -2957,17 +3140,17 @@
       }
       
       function updateAddSelectedButton() {
-        const btn = document.getElementById("addSelectedBtn");
+        const btn = document.getElementById("analyzeSelectedBtn");
         const count = reviewSelectedJobs.size;
-        btn.textContent = `➕ Add Selected (${count})`;
+        btn.textContent = `🔍 Analyze Selected (${count})`;
         btn.disabled = count === 0;
       }
-      
+
       function updateReviewPagination(data) {
         const statusEl = document.getElementById("reviewStatus");
         const start = (data.page - 1) * data.limit + 1;
         const end = Math.min(data.page * data.limit, data.total);
-        
+
         statusEl.innerHTML = `
           Showing ${start}-${end} of ${data.total} jobs
           &nbsp;&nbsp;
@@ -2976,43 +3159,245 @@
           <button class="ghost" ${!data.has_next ? 'disabled' : ''} onclick="loadReviewJobs(${data.page + 1})">Next ▶</button>
         `;
       }
-      
-      async function addSelectedToPipeline() {
+
+      // ==================== REVIEW ANALYSIS QUEUE ====================
+      const reviewAnalysisQueue = [];
+      let reviewQueueIdCounter = 1;
+
+      async function analyzeSelectedJobs() {
         if (reviewSelectedJobs.size === 0) return;
-        
-        const btn = document.getElementById("addSelectedBtn");
+
+        const btn = document.getElementById("analyzeSelectedBtn");
         btn.disabled = true;
-        btn.textContent = "Adding...";
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
+        btn.textContent = "🔍 Starting...";
+
+        // Add all selected jobs to the analysis queue
         for (const [jobId, job] of reviewSelectedJobs) {
-          try {
-            const res = await fetch("/pipeline/add", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ job: job })
-            });
-            
-            if (res.ok) {
-              successCount++;
-            } else {
-              errorCount++;
-            }
-          } catch (err) {
-            errorCount++;
-          }
+          const jobUrl = job.url || job.job_url;
+          if (!jobUrl) continue;
+
+          // Check if already in queue
+          const existing = reviewAnalysisQueue.find(item => item.jobId === jobId);
+          if (existing) continue;
+
+          const queueId = reviewQueueIdCounter++;
+          const item = {
+            id: queueId,
+            jobId: jobId,
+            url: jobUrl,
+            status: 'pending',
+            title: job.title || 'Unknown',
+            company: job.company || '',
+            score: null,
+            analysis: null,
+            originalJob: job,
+            error: null
+          };
+
+          reviewAnalysisQueue.push(item);
         }
-        
-        // Clear selection and refresh
+
+        // Clear selection
         reviewSelectedJobs.clear();
+        document.querySelectorAll(".reviewJobCheck").forEach(cb => cb.checked = false);
+        document.getElementById("reviewSelectAll").checked = false;
         updateAddSelectedButton();
-        
-        alert(`Added ${successCount} jobs to Pipeline` + (errorCount > 0 ? `, ${errorCount} errors` : ''));
-        
-        // Reload current page
-        loadReviewJobs(reviewPage);
+
+        // Render queue and start analysis
+        renderReviewQueue();
+
+        // Start analyzing all pending items (in parallel, max 3 at a time)
+        const pendingItems = reviewAnalysisQueue.filter(item => item.status === 'pending');
+        const batchSize = 3;
+
+        for (let i = 0; i < pendingItems.length; i += batchSize) {
+          const batch = pendingItems.slice(i, i + batchSize);
+          await Promise.all(batch.map(item => analyzeReviewQueueItem(item)));
+        }
+      }
+
+      async function analyzeReviewQueueItem(item) {
+        item.status = 'analyzing';
+        renderReviewQueue();
+
+        try {
+          // First check if already in pipeline
+          const checkRes = await fetch(`/job/find-by-url?url=${encodeURIComponent(item.url)}`);
+          const checkData = await checkRes.json();
+
+          if (checkData.ok && checkData.found) {
+            item.status = 'exists';
+            item.existingJob = checkData.job;
+            renderReviewQueue();
+            return;
+          }
+
+          // Start analysis
+          const analyzeRes = await fetch('/analyze-job-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: item.url })
+          });
+          const analysis = await analyzeRes.json();
+
+          if (analysis.ok) {
+            item.status = 'ready';
+            item.title = analysis.title || item.title;
+            item.company = analysis.company || item.company;
+            item.score = analysis.match_score || analysis.analysis?.match_score || 0;
+            item.analysis = analysis;
+          } else if (analysis.is_closed) {
+            item.status = 'closed';
+            item.error = analysis.error || 'Position closed';
+          } else if (analysis.is_confirmation_page) {
+            item.status = 'error';
+            item.error = 'Confirmation page - use original job URL';
+          } else {
+            item.status = 'error';
+            item.error = analysis.error || 'Analysis failed';
+          }
+        } catch (e) {
+          item.status = 'error';
+          item.error = e.message;
+        }
+
+        renderReviewQueue();
+      }
+
+      function renderReviewQueue() {
+        const queueDiv = document.getElementById('reviewAnalysisQueue');
+        const itemsDiv = document.getElementById('reviewQueueItems');
+
+        // Show/hide queue section
+        queueDiv.style.display = reviewAnalysisQueue.length > 0 ? 'block' : 'none';
+
+        itemsDiv.innerHTML = reviewAnalysisQueue.map(item => {
+          let statusHtml = '';
+          let bgColor = '#1e293b';
+          let actions = '';
+
+          switch (item.status) {
+            case 'pending':
+              statusHtml = '<span style="color: #9ca3af;">⏳ Pending...</span>';
+              break;
+            case 'analyzing':
+              statusHtml = '<span style="color: #60a5fa;">🤖 Analyzing...</span>';
+              break;
+            case 'ready':
+              const scoreColor = item.score >= 70 ? '#22c55e' : item.score >= 50 ? '#eab308' : '#ef4444';
+              statusHtml = `<span style="color: ${scoreColor}; font-weight: 600;">${item.score}%</span>`;
+              bgColor = '#1e3a2e';
+              actions = `
+                <button onclick="openReviewQueueAnalysis(${item.id})" style="padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">View</button>
+                <button onclick="addReviewQueueItemToPipeline(${item.id})" style="padding: 4px 10px; background: #22c55e; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Add</button>
+              `;
+              break;
+            case 'exists':
+              statusHtml = '<span style="color: #9ca3af;">Already in pipeline</span>';
+              bgColor = '#374151';
+              actions = `<button onclick="removeFromReviewQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+            case 'closed':
+              statusHtml = '<span style="color: #f87171;">❌ Closed</span>';
+              bgColor = '#3b1c1c';
+              actions = `<button onclick="removeFromReviewQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+            case 'error':
+              statusHtml = `<span style="color: #f87171;" title="${item.error || ''}">⚠️ Error</span>`;
+              bgColor = '#3b2c1c';
+              actions = `<button onclick="removeFromReviewQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+          }
+
+          return `
+            <div data-review-queue-id="${item.id}" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: ${bgColor}; border-radius: 6px; border: 1px solid #4b5563;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</div>
+                <div style="font-size: 11px; color: #9ca3af;">${item.company}</div>
+              </div>
+              <div style="min-width: 80px; text-align: right; font-size: 12px;">
+                ${statusHtml}
+              </div>
+              <div style="min-width: 100px; text-align: right;">
+                ${actions}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function openReviewQueueAnalysis(queueId) {
+        const item = reviewAnalysisQueue.find(i => i.id === queueId);
+        if (!item || !item.analysis) return;
+
+        // Open the existing modal with this analysis
+        window.currentAnalysis = item.analysis;
+        window.currentJobUrl = item.url;
+
+        // Show modal with analysis
+        const addJobModal = document.getElementById('addJobModal');
+        const addJobUrl = document.getElementById('addJobUrl');
+        addJobUrl.value = item.url;
+        addJobModal.style.display = 'flex';
+
+        // Trigger the display of analysis (reuse existing code)
+        displayAnalysisResults(item.analysis, item.url);
+      }
+
+      async function addReviewQueueItemToPipeline(queueId) {
+        const item = reviewAnalysisQueue.find(i => i.id === queueId);
+        if (!item) return;
+
+        // Set analysis data for addJobToPipeline to use
+        if (item.analysis) {
+          window.currentAnalysis = {
+            match_score: item.analysis.match_score,
+            analysis: item.analysis
+          };
+        }
+
+        // Add to pipeline via /onboard (which handles everything properly)
+        try {
+          const res = await fetch('/onboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: item.url,
+              match_score: item.score,
+              analysis: item.analysis
+            })
+          });
+          const data = await res.json();
+
+          if (data.ok) {
+            // Remove from queue
+            removeFromReviewQueue(queueId);
+            // Refresh review list
+            loadReviewJobs(reviewPage);
+            // Refresh pipeline
+            loadJobsOnce();
+          } else {
+            alert('Error: ' + (data.error || 'Failed to add'));
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        }
+
+        // Clear analysis data
+        window.currentAnalysis = null;
+      }
+
+      function removeFromReviewQueue(queueId) {
+        const idx = reviewAnalysisQueue.findIndex(i => i.id === queueId);
+        if (idx !== -1) {
+          reviewAnalysisQueue.splice(idx, 1);
+          renderReviewQueue();
+        }
+      }
+
+      function clearReviewQueue() {
+        reviewAnalysisQueue.length = 0;
+        renderReviewQueue();
       }
 
       // ---------- LOADING ----------
@@ -3428,7 +3813,9 @@
         ats: "",
         jobId: "",
         updated: "",
-        folder: "all"
+        added: "",
+        folder: "all",
+        match: ""
       };
       
       // Review column filters state
@@ -3513,8 +3900,11 @@
         updateAddSelectedButton();
       });
       
-      // Add Selected button
-      document.getElementById("addSelectedBtn").addEventListener("click", addSelectedToPipeline);
+      // Analyze Selected button
+      document.getElementById("analyzeSelectedBtn").addEventListener("click", analyzeSelectedJobs);
+
+      // Clear Review Queue button
+      document.getElementById("clearReviewQueueBtn").addEventListener("click", clearReviewQueue);
       
       // Column sorting for Review table
       document.querySelectorAll("#reviewTable th.sortable").forEach(th => {
@@ -4326,15 +4716,108 @@
       function showAnalysisModal(company, position, analysisData, jobData) {
         // Redirect to new prepare modal
         showPrepareModal(
-          company, 
-          position, 
-          jobData.job_url || '', 
-          analysisData.jd || '', 
+          company,
+          position,
+          jobData.job_url || '',
+          analysisData.jd || '',
           jobData.role_family || 'product',
           jobData
         );
       }
-      
+
+      // Show match analysis details in modal
+      function showMatchAnalysisModal(job) {
+        const modal = document.getElementById('matchAnalysisModal');
+        const title = document.getElementById('matchAnalysisTitle');
+        const content = document.getElementById('matchAnalysisContent');
+
+        const score = job.match_score || 0;
+        // Handle nested analysis structure (analysis.analysis) from /jd/parse response
+        const rawAnalysis = job.analysis || {};
+        const analysis = rawAnalysis.analysis || rawAnalysis;
+        const scoreColor = score >= 70 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
+
+        title.innerHTML = `<span style="color: ${scoreColor}; font-weight: 700;">${score}%</span> Match — ${escapeHtml(job.company || '')}`;
+
+        let html = `
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(job.title || 'Unknown Position')}</div>
+            <div style="color: var(--muted); font-size: 13px;">${escapeHtml(job.location || '')}</div>
+          </div>
+        `;
+
+        if (analysis.fit_level) {
+          const fitColors = { 'strong': '#22c55e', 'good': '#3b82f6', 'moderate': '#eab308', 'weak': '#ef4444' };
+          const fitColor = fitColors[analysis.fit_level] || 'var(--muted)';
+          html += `<div style="margin-bottom: 12px;"><strong>Fit Level:</strong> <span style="color: ${fitColor}; text-transform: capitalize;">${analysis.fit_level}</span></div>`;
+        }
+
+        if (analysis.role_type) {
+          html += `<div style="margin-bottom: 12px;"><strong>Role Type:</strong> ${escapeHtml(analysis.role_type)}</div>`;
+        }
+
+        if (analysis.analysis_summary || analysis.summary) {
+          const summaryText = analysis.analysis_summary || (typeof analysis.summary === 'string' ? analysis.summary : '');
+          if (summaryText) {
+            html += `<div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHtml(summaryText)}</div>`;
+          }
+        }
+
+        if (analysis.key_requirements && analysis.key_requirements.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong>Key Requirements:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.key_requirements.slice(0, 5).forEach(req => {
+            // Handle both string and object formats
+            const reqText = typeof req === 'string' ? req : (req.requirement || JSON.stringify(req));
+            const hasIcon = req.anton_has === 'yes' ? '✅' : req.anton_has === 'partial' ? '⚠️' : req.anton_has === 'no' ? '❌' : '';
+            html += `<li style="margin-bottom: 4px;">${hasIcon} ${escapeHtml(reqText)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.matching_experience && analysis.matching_experience.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #22c55e;">Your Matching Experience:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.matching_experience.slice(0, 5).forEach(exp => {
+            const expText = typeof exp === 'string' ? exp : JSON.stringify(exp);
+            html += `<li style="margin-bottom: 4px; color: #86efac;">${escapeHtml(expText)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.gaps && analysis.gaps.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #ef4444;">Gaps:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.gaps.slice(0, 5).forEach(gap => {
+            const gapText = typeof gap === 'string' ? gap : JSON.stringify(gap);
+            html += `<li style="margin-bottom: 4px; color: #fca5a5;">${escapeHtml(gapText)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.pros && analysis.pros.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #22c55e;">Pros:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.pros.forEach(pro => {
+            const proText = typeof pro === 'string' ? pro : JSON.stringify(pro);
+            html += `<li style="margin-bottom: 4px;">${escapeHtml(proText)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (analysis.cons && analysis.cons.length > 0) {
+          html += `<div style="margin-bottom: 12px;"><strong style="color: #ef4444;">Cons:</strong><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          analysis.cons.forEach(con => {
+            const conText = typeof con === 'string' ? con : JSON.stringify(con);
+            html += `<li style="margin-bottom: 4px;">${escapeHtml(conText)}</li>`;
+          });
+          html += `</ul></div>`;
+        }
+
+        if (!analysis.summary && !analysis.fit_level && !analysis.key_requirements) {
+          html += `<div style="color: var(--muted); text-align: center; padding: 20px;">No detailed analysis available for this job.</div>`;
+        }
+
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+      }
+
       // === CV Management Functions (Legacy - kept for compatibility) ===
       let availableCvs = [];
       let selectedCvPath = null;
@@ -4559,65 +5042,15 @@
       // === Prepare Result Modal ===
       let currentPrepareFolder = "";
       
-      function showPrepareResult(company, position, cvFilename, clData, jobData) {
-        console.log("showPrepareResult called:", company, position, clData, jobData);
+      function showPrepareResult(company, position, cvFilename, clData) {
+        console.log("showPrepareResult called:", company, position, clData);
         document.getElementById("prepareCompanyName").textContent = company;
         document.getElementById("preparePositionName").textContent = position;
-        document.getElementById("prepareCvName").textContent = cvFilename || "Base CV";
+        document.getElementById("prepareCvName").textContent = cvFilename || "Not selected";
+        document.getElementById("prepareTemplateName").textContent = clData.template_used || "Generated";
+        document.getElementById("prepareMission").textContent = clData.company_mission || "";
         document.getElementById("prepareFolderPath").textContent = clData.folder_path || "";
         currentPrepareFolder = clData.folder_path || "";
-        
-        // Store job URL for Apply button
-        window._currentPrepareJobUrl = jobData?.job_url || jobData?.url || '';
-        
-        // Cover Letter highlights - show what was customized
-        const missionEl = document.getElementById("prepareMission");
-        let highlights = [];
-        if (clData.company_mission) {
-          highlights.push(`<strong>Company Focus:</strong> ${clData.company_mission}`);
-        }
-        if (jobData?.jd_summary?.keywords?.length > 0) {
-          highlights.push(`<strong>Key Skills Matched:</strong> ${jobData.jd_summary.keywords.slice(0, 5).join(', ')}`);
-        }
-        if (clData.template_used) {
-          highlights.push(`<strong>Template:</strong> ${clData.template_used}`);
-        }
-        missionEl.innerHTML = highlights.length > 0 
-          ? highlights.join('<br style="margin-bottom: 8px;">') 
-          : "Cover letter generated with AI assistance";
-        
-        // JD Summary section
-        const jdSection = document.getElementById("prepareJdSection");
-        const keywordsEl = document.getElementById("prepareKeywords");
-        const reqEl = document.getElementById("prepareRequirements");
-        const scoreEl = document.getElementById("prepareMatchScore");
-        
-        if (jobData && jobData.jd_summary) {
-          const summary = jobData.jd_summary;
-          jdSection.style.display = "block";
-          
-          // Keywords as tags
-          const keywords = summary.keywords || [];
-          keywordsEl.innerHTML = keywords.slice(0, 8).map(kw => 
-            `<span style="padding: 3px 8px; background: rgba(99, 102, 241, 0.3); color: #a5b4fc; border-radius: 12px; font-size: 11px;">${kw}</span>`
-          ).join('');
-          
-          // Requirements (first 3)
-          const reqs = summary.requirements || [];
-          if (reqs.length > 0) {
-            reqEl.innerHTML = reqs.slice(0, 3).map(r => `• ${r}`).join('<br>');
-          } else {
-            reqEl.innerHTML = summary.summary || '';
-          }
-          
-          // Match score (placeholder - можно потом добавить реальный расчёт)
-          scoreEl.textContent = "75%";
-          scoreEl.style.color = "#10b981";
-        } else {
-          jdSection.style.display = "none";
-          scoreEl.textContent = "--";
-        }
-        
         document.getElementById("prepareResultModal").style.display = "flex";
       }
       
@@ -4635,41 +5068,6 @@
           });
         } catch (e) {
           console.error("Failed to open folder:", e);
-        }
-      }
-      
-      async function applyFromModal() {
-        if (!window._currentPrepareJobUrl) {
-          alert('No job URL available');
-          return;
-        }
-        
-        const btn = document.getElementById('btnApplyFromModal');
-        btn.disabled = true;
-        btn.textContent = '⏳ Starting...';
-        
-        try {
-          const engineSelect = document.getElementById('engineSelect');
-          const engine = engineSelect ? engineSelect.value : 'v6';
-          
-          const res = await fetch(`/apply/${engine}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ job_url: window._currentPrepareJobUrl, profile: 'anton_kondakov' })
-          });
-          const data = await res.json();
-          
-          if (data.ok) {
-            closePrepareModal();
-            alert('🚀 Form Filler started!\n\nCheck Terminal window.');
-          } else {
-            throw new Error(data.error || 'Failed to start');
-          }
-        } catch (err) {
-          alert('Error: ' + err.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = '🚀 Apply Now';
         }
       }
 
@@ -4698,7 +5096,195 @@
             `<tr><td colspan="10" style="text-align:center; padding: 40px; color: #ef4444;">Failed to load companies</td></tr>`;
         }
       }
-      
+
+      // Unsupported ATS tracking
+      let UNSUPPORTED_ATS_DATA = [];
+      let unsupportedAtsExpanded = false;
+
+      async function loadAtsInfo() {
+        try {
+          const res = await fetch('/ats-info');
+          const data = await res.json();
+          UNSUPPORTED_ATS_DATA = data.unsupported_ats || [];
+          renderUnsupportedAts();
+        } catch (err) {
+          console.error("Failed to load ATS info:", err);
+        }
+      }
+
+      function renderUnsupportedAts() {
+        const section = document.getElementById('unsupportedAtsSection');
+        const countEl = document.getElementById('unsupportedAtsCount');
+        const newEl = document.getElementById('unsupportedAtsNew');
+        const listEl = document.getElementById('unsupportedAtsList');
+
+        if (UNSUPPORTED_ATS_DATA.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+
+        section.style.display = 'block';
+        countEl.textContent = UNSUPPORTED_ATS_DATA.length;
+
+        // Check for any with parser in progress or newly detected
+        const inProgress = UNSUPPORTED_ATS_DATA.filter(a => a.parser_status === 'in_progress' || a.parser_status === 'generating');
+        const newSystems = UNSUPPORTED_ATS_DATA.filter(a => a.parser_status === 'not_started' || a.parser_status === 'data_collected');
+
+        if (inProgress.length > 0) {
+          newEl.style.display = 'inline';
+          newEl.textContent = `🔧 ${inProgress.length} IN PROGRESS`;
+          newEl.style.background = '#1e40af';
+          newEl.style.color = '#93c5fd';
+        } else if (newSystems.length > 0) {
+          newEl.style.display = 'inline';
+          newEl.textContent = `${newSystems.length} NEW`;
+          newEl.style.background = '#166534';
+          newEl.style.color = '#86efac';
+        } else {
+          newEl.style.display = 'none';
+        }
+
+        // Render list with action buttons
+        listEl.innerHTML = UNSUPPORTED_ATS_DATA.map(ats => {
+          const statusIcon = {
+            'not_started': '⬜',
+            'data_collected': '📊',
+            'in_progress': '🔧',
+            'generating': '🔧',
+            'generated': '📄',
+            'tested_ok': '✅',
+            'completed': '✅',
+            'needs_review': '⚠️',
+            'test_failed': '❌',
+            'generation_failed': '❌'
+          }[ats.parser_status] || '⬜';
+
+          const statusColor = {
+            'not_started': '#9ca3af',
+            'data_collected': '#a855f7',
+            'in_progress': '#60a5fa',
+            'generating': '#60a5fa',
+            'generated': '#fbbf24',
+            'tested_ok': '#22c55e',
+            'completed': '#22c55e',
+            'needs_review': '#f59e0b',
+            'test_failed': '#ef4444',
+            'generation_failed': '#ef4444'
+          }[ats.parser_status] || '#9ca3af';
+
+          // Show "Generate" button if we have data but no parser yet
+          const canGenerate = ats.endpoints_found > 0 &&
+            ['not_started', 'data_collected', 'test_failed', 'generation_failed', 'needs_review'].includes(ats.parser_status);
+
+          const actionBtn = canGenerate
+            ? `<button onclick="generateAtsParser('${ats.name}')" style="padding: 2px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">🤖 Generate</button>`
+            : '';
+
+          return `
+            <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1e293b;">
+              <span style="color: ${statusColor}; font-size: 13px;">${statusIcon}</span>
+              <span style="flex: 1; color: #e2e8f0;">${ats.name}</span>
+              <span style="color: #64748b; font-size: 10px;">${ats.companies_count || 0} co.</span>
+              <span style="color: #a855f7; font-size: 10px;">${ats.endpoints_found || 0} endpoints</span>
+              <span style="color: ${statusColor}; font-size: 10px; min-width: 70px;">${ats.parser_status?.replace('_', ' ') || 'not started'}</span>
+              <div style="min-width: 70px; text-align: right;">${actionBtn}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      async function generateAtsParser(atsName) {
+        if (!confirm(`Generate parser for "${atsName}" using Claude API?\n\nThis will use your ANTHROPIC_API_KEY.`)) return;
+
+        try {
+          const res = await fetch(`/ats-generate/${encodeURIComponent(atsName)}`, { method: 'POST' });
+          const data = await res.json();
+
+          if (data.error) {
+            alert('Error: ' + data.error);
+          } else {
+            alert(`Parser generation started for ${atsName}.\n\nCheck back in a few seconds for status update.`);
+            // Reload ATS info after a delay
+            setTimeout(loadAtsInfo, 5000);
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        }
+      }
+
+      async function batchMatch() {
+        const btn = document.getElementById('matchBtn');
+        const limit = prompt('How many jobs to score? (each uses 1 Claude API call)', '50');
+        if (!limit) return;
+        const num = parseInt(limit);
+        if (isNaN(num) || num < 1) return;
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Scoring...';
+        try {
+          const res = await fetch(`/pipeline/match-batch?limit=${num}`, { method: 'POST' });
+          const data = await res.json();
+          if (data.ok && data.total > 0) {
+            btn.textContent = `🎯 ${data.total} jobs...`;
+            // Estimate: ~3s per job (JD parse + AI analysis)
+            const waitMs = Math.min(data.total * 3000, 300000);
+            setTimeout(async () => {
+              btn.textContent = '🎯 Match';
+              btn.disabled = false;
+              await loadJobsOnce();
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            }, waitMs);
+          } else {
+            btn.textContent = data.remaining > 0 ? `✅ Done (${data.remaining} left)` : '✅ All scored';
+            btn.disabled = false;
+            setTimeout(() => { btn.textContent = '🎯 Match'; }, 3000);
+          }
+        } catch (e) {
+          btn.textContent = '❌ Error';
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = '🎯 Match'; }, 2000);
+        }
+      }
+
+      async function enrichDeadlines() {
+        const btn = document.getElementById('enrichBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Fetching...';
+        try {
+          const res = await fetch('/pipeline/enrich-batch', { method: 'POST' });
+          const data = await res.json();
+          if (data.ok && data.total > 0) {
+            btn.textContent = `⏰ ${data.total} jobs...`;
+            // Poll until done - reload after 30s
+            setTimeout(async () => {
+              btn.textContent = '⏰ Deadlines';
+              btn.disabled = false;
+              // Reload pipeline to show updated deadlines
+              await loadJobsOnce();
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            }, Math.min(data.total * 1500, 60000));
+          } else {
+            btn.textContent = '✅ All done';
+            btn.disabled = false;
+            setTimeout(() => { btn.textContent = '⏰ Deadlines'; }, 2000);
+          }
+        } catch (e) {
+          btn.textContent = '❌ Error';
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = '⏰ Deadlines'; }, 2000);
+        }
+      }
+
+      function toggleUnsupportedAts() {
+        unsupportedAtsExpanded = !unsupportedAtsExpanded;
+        const toggle = document.getElementById('unsupportedAtsToggle');
+        const list = document.getElementById('unsupportedAtsList');
+        toggle.style.transform = unsupportedAtsExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+        list.style.display = unsupportedAtsExpanded ? 'block' : 'none';
+      }
+
       function sortCompanies(col) {
         if (companiesSortCol === col) {
           companiesSortDir = companiesSortDir === "asc" ? "desc" : "asc";
@@ -4802,11 +5388,21 @@
           }
           const recentBadge = recentlyUpdated ? '<span style="background: #22c55e; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">JUST NOW</span>' : '';
           
+          // ATS badge with support indicator
+          const atsSupported = c.ats_supported;
+          const atsBadgeStyle = atsSupported
+            ? 'background: #166534; color: #86efac;'  // Green for supported
+            : 'background: #4b5563; color: #9ca3af;'; // Gray for unsupported
+          const atsTitle = atsSupported
+            ? `${c.ats} - Auto-fetch supported ✓`
+            : `${c.ats} - Manual add only`;
+          const atsSupportIcon = atsSupported ? '🔄' : '📝';
+
           return `
             <tr class="company-row" data-company="${c.company}" data-id="${c.id || ''}" style="${rowStyle}">
               <td><strong>${c.company}</strong>${recentBadge}</td>
               <td style="color: var(--muted); font-size: 12px;">${c.industry || c.tags?.join(', ') || ''}</td>
-              <td><span class="ats-badge">${c.ats}</span></td>
+              <td><span class="ats-badge" style="${atsBadgeStyle}" title="${atsTitle}">${atsSupportIcon} ${c.ats}</span></td>
               <td><span class="${totalBadgeClass}">${c.total_jobs || 0}</span></td>
               <td><span class="${jobsBadgeClass}">${c.jobs_count}</span></td>
               <td>${c.new_count || 0}</td>
@@ -5293,16 +5889,26 @@
         applyPipelineColumnFilters();
       });
       
-      document.getElementById("pipelineFilterUpdated")?.addEventListener("input", (e) => {
-        pipelineFilters.updated = e.target.value;
+      document.getElementById("pipelineFilterPosted")?.addEventListener("change", (e) => {
+        pipelineFilters.posted = e.target.value;
         applyPipelineColumnFilters();
       });
-      
+
+      document.getElementById("pipelineFilterDeadline")?.addEventListener("change", (e) => {
+        pipelineFilters.deadline = e.target.value;
+        applyPipelineColumnFilters();
+      });
+
       document.getElementById("pipelineFilterFolder")?.addEventListener("change", (e) => {
         pipelineFilters.folder = e.target.value;
         applyPipelineColumnFilters();
       });
-      
+
+      document.getElementById("pipelineFilterMatch")?.addEventListener("change", (e) => {
+        pipelineFilters.match = e.target.value;
+        applyPipelineColumnFilters();
+      });
+
       // Review column filter event listeners
       function applyReviewColumnFilters() {
         // Triggers server-side filtering via loadReviewJobs
@@ -5346,27 +5952,28 @@
       loadCompanies();
       loadStatsByDate();
       loadJobsFromCache();  // Load jobs for header stats
+      loadAtsInfo();  // Load unsupported ATS parser status
       
       // Pagination event listeners
       document.getElementById("paginationPrev").addEventListener("click", () => {
         if (pipelinePage > 1) {
           pipelinePage--;
-          renderJobs(pipelineFilteredJobs);
+          renderJobs(pipelineFilteredJobs, true); // skipSort to preserve page
         }
       });
-      
+
       document.getElementById("paginationNext").addEventListener("click", () => {
         const totalPages = Math.ceil(pipelineFilteredJobs.length / pipelinePageSize);
         if (pipelinePage < totalPages) {
           pipelinePage++;
-          renderJobs(pipelineFilteredJobs);
+          renderJobs(pipelineFilteredJobs, true); // skipSort to preserve page
         }
       });
-      
+
       document.getElementById("paginationSize").addEventListener("change", (e) => {
         pipelinePageSize = parseInt(e.target.value);
         pipelinePage = 1; // Reset to first page
-        renderJobs(pipelineFilteredJobs);
+        renderJobs(pipelineFilteredJobs, true); // skipSort to preserve sort
       });
 
       // Quick Filter Buttons
@@ -5472,14 +6079,84 @@
         updateStatus(filtered);
       });
 
-      // ==================== ANSWERS TAB ====================
+      // ==================== PROFILE TAB ====================
       let answerLibrary = {};
+      
+      // Target roles - stored in localStorage
+      let targetRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+      
+      const roleLabels = {
+        'product': 'Product Manager',
+        'tpm_program': 'TPM / Program Manager',
+        'project': 'Project Manager',
+        'engineering': 'Engineering',
+        'design': 'Design / UX',
+        'data': 'Data / Analytics',
+        'operations': 'Operations',
+        'marketing': 'Marketing',
+        'other': 'Other'
+      };
+      
+      function saveTargetRoles() {
+        localStorage.setItem('targetRoles', JSON.stringify(targetRoles));
+      }
+      
+      function renderTargetRoles() {
+        const container = document.getElementById('targetRolesList');
+        if (!container) return;
+        
+        container.innerHTML = targetRoles.map(role => `
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #3b82f6; color: white; border-radius: 20px; font-size: 13px;">
+            <span>${roleLabels[role] || role}</span>
+            <button onclick="removeTargetRole('${role}')" style="background: none; border: none; color: white; cursor: pointer; font-size: 14px; padding: 0; line-height: 1;">&times;</button>
+          </div>
+        `).join('');
+        
+        // Update add buttons visibility
+        document.querySelectorAll('.add-role-btn').forEach(btn => {
+          const role = btn.dataset.role;
+          if (targetRoles.includes(role)) {
+            btn.style.display = 'none';
+          } else {
+            btn.style.display = 'inline-block';
+          }
+        });
+      }
+      
+      function addTargetRole(role) {
+        if (!targetRoles.includes(role)) {
+          targetRoles.push(role);
+          saveTargetRoles();
+          renderTargetRoles();
+        }
+      }
+      
+      function removeTargetRole(role) {
+        // Don't allow removing all roles
+        if (targetRoles.length <= 1) {
+          alert('You must have at least one target role.');
+          return;
+        }
+        targetRoles = targetRoles.filter(r => r !== role);
+        saveTargetRoles();
+        renderTargetRoles();
+      }
+      
+      // Expose to global for inline onclick
+      window.removeTargetRole = removeTargetRole;
+      window.addTargetRole = addTargetRole;
       
       async function loadAnswerLibrary() {
         try {
           const resp = await fetch('/answers');
           answerLibrary = await resp.json();
           renderAnswers();
+          renderTargetRoles();
+          
+          // Setup add role buttons
+          document.querySelectorAll('.add-role-btn').forEach(btn => {
+            btn.onclick = () => addTargetRole(btn.dataset.role);
+          });
         } catch (e) {
           console.error('Failed to load answers:', e);
         }
@@ -5636,10 +6313,356 @@
         });
       });
       
+      // ==================== ANALYSIS QUEUE ====================
+      const analysisQueue = [];
+      let queueIdCounter = 1;
+      
+      const queueUrlInput = document.getElementById('queueUrlInput');
+      const queueAddBtn = document.getElementById('queueAddBtn');
+      const queueItemsDiv = document.getElementById('queueItems');
+      const analysisQueueDiv = document.getElementById('analysisQueue');
+      const clearQueueBtn = document.getElementById('clearQueueBtn');
+      
+      // Add to queue on Enter or button click
+      queueUrlInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addToQueue();
+      });
+      queueAddBtn.addEventListener('click', addToQueue);
+      clearQueueBtn.addEventListener('click', clearQueue);
+      
+      async function addToQueue() {
+        const url = queueUrlInput.value.trim();
+        if (!url) return;
+        
+        // Normalize URL for comparison (remove tracking params)
+        const normalizedUrl = url.split('?')[0].toLowerCase().replace(/\/$/, '');
+        
+        // Check for duplicates in queue
+        const existingInQueue = analysisQueue.find(item => {
+          const itemNormalized = item.url.split('?')[0].toLowerCase().replace(/\/$/, '');
+          return itemNormalized === normalizedUrl;
+        });
+        
+        if (existingInQueue) {
+          // Flash the existing item instead of adding duplicate
+          const existingEl = document.querySelector(`[data-queue-id="${existingInQueue.id}"]`);
+          if (existingEl) {
+            existingEl.style.animation = 'none';
+            existingEl.offsetHeight; // Trigger reflow
+            existingEl.style.animation = 'flash 0.5s';
+          }
+          queueUrlInput.value = '';
+          return;
+        }
+        
+        // Clear input immediately
+        queueUrlInput.value = '';
+        
+        // Create queue item with temp ID
+        const queueId = queueIdCounter++;
+        const item = {
+          id: queueId,
+          url: url,
+          status: 'fetching', // fetching -> analyzing -> ready | error
+          title: 'Loading...',
+          company: '',
+          score: null,
+          analysis: null,
+          error: null
+        };
+        
+        analysisQueue.push(item);
+        renderQueue();
+        
+        // Step 1: Quick fetch to get basic info
+        try {
+          // First check if already in pipeline
+          const checkRes = await fetch(`/job/find-by-url?url=${encodeURIComponent(url)}`);
+          const checkData = await checkRes.json();
+          
+          if (checkData.ok && checkData.found) {
+            item.status = 'exists';
+            item.title = checkData.job.title || 'Unknown';
+            item.company = checkData.job.company || '';
+            item.existingJob = checkData.job;
+            renderQueue();
+            return;
+          }
+          
+          // Step 2: Start analysis
+          item.status = 'analyzing';
+          item.title = 'Analyzing...';
+          renderQueue();
+          
+          const analyzeRes = await fetch('/analyze-job-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+          });
+          const analysis = await analyzeRes.json();
+          
+          if (analysis.ok) {
+            item.status = 'ready';
+            item.title = analysis.title || 'Unknown';
+            item.company = analysis.company || '';
+            item.score = analysis.match_score || analysis.analysis?.match_score || 0;
+            item.analysis = analysis;
+          } else if (analysis.is_closed) {
+            item.status = 'closed';
+            item.title = analysis.title || 'Position Closed';
+            item.company = analysis.company || '';
+            item.error = analysis.error;
+          } else if (analysis.is_confirmation_page) {
+            item.status = 'error';
+            item.title = 'Confirmation Page';
+            item.error = 'Use original job URL instead';
+          } else {
+            item.status = 'error';
+            item.title = 'Error';
+            item.error = analysis.error || 'Analysis failed';
+          }
+        } catch (e) {
+          item.status = 'error';
+          item.title = 'Error';
+          item.error = e.message;
+        }
+
+        renderQueue();
+      }
+      
+      function renderQueue() {
+        // Show/hide queue section
+        analysisQueueDiv.style.display = analysisQueue.length > 0 ? 'block' : 'none';
+        
+        queueItemsDiv.innerHTML = analysisQueue.map(item => {
+          let statusHtml = '';
+          let bgColor = '#1e293b';
+          let actions = '';
+          
+          switch (item.status) {
+            case 'fetching':
+              statusHtml = '<span style="color: #fbbf24;">⏳ Fetching...</span>';
+              break;
+            case 'analyzing':
+              statusHtml = '<span style="color: #60a5fa;">🤖 Analyzing...</span>';
+              break;
+            case 'ready':
+              const scoreColor = item.score >= 70 ? '#22c55e' : item.score >= 50 ? '#eab308' : '#ef4444';
+              statusHtml = `<span style="color: ${scoreColor}; font-weight: 600;">${item.score}%</span>`;
+              bgColor = '#1e3a2e';
+              actions = `
+                <button onclick="openQueueAnalysis(${item.id})" style="padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">View</button>
+                <button onclick="addQueueItemToPipeline(${item.id})" style="padding: 4px 10px; background: #22c55e; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Add</button>
+              `;
+              break;
+            case 'exists':
+              statusHtml = '<span style="color: #9ca3af;">Already in pipeline</span>';
+              bgColor = '#374151';
+              const existingJobId = item.existingJob ? (item.existingJob.ats_job_id || item.existingJob.id || '') : '';
+              actions = `
+                <button onclick="showJobInTable('${existingJobId}')" style="padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">Show</button>
+                <button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>
+              `;
+              break;
+            case 'closed':
+              statusHtml = '<span style="color: #f87171;">❌ Closed</span>';
+              bgColor = '#3b1c1c';
+              actions = `<button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+            case 'error':
+              statusHtml = `<span style="color: #f87171;" title="${item.error || ''}">⚠️ Error</span>`;
+              bgColor = '#3b2c1c';
+              actions = `<button onclick="removeFromQueue(${item.id})" style="padding: 4px 8px; background: #4b5563; color: #9ca3af; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">✕</button>`;
+              break;
+          }
+          
+          return `
+            <div data-queue-id="${item.id}" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: ${bgColor}; border-radius: 6px; border: 1px solid #4b5563;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</div>
+                <div style="font-size: 11px; color: #9ca3af;">${item.company || (item.status === 'ready' ? '' : '')}</div>
+              </div>
+              <div style="min-width: 80px; text-align: right; font-size: 12px;">
+                ${statusHtml}
+              </div>
+              <div style="min-width: 80px; text-align: right;">
+                ${actions}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      function openQueueAnalysis(queueId) {
+        const item = analysisQueue.find(i => i.id === queueId);
+        if (!item || !item.analysis) return;
+        
+        // Open the existing modal with this analysis
+        window.currentAnalysis = item.analysis;
+        window.currentJobUrl = item.url;
+        
+        // Show modal with analysis
+        const addJobModal = document.getElementById('addJobModal');
+        const addJobUrl = document.getElementById('addJobUrl');
+        addJobUrl.value = item.url;
+        addJobModal.style.display = 'flex';
+        
+        // Trigger the display of analysis (reuse existing code)
+        displayAnalysisResults(item.analysis, item.url);
+      }
+      
+      async function addQueueItemToPipeline(queueId) {
+        const item = analysisQueue.find(i => i.id === queueId);
+        if (!item) return;
+
+        // Add to pipeline via /onboard (similar to addReviewQueueItemToPipeline)
+        try {
+          const res = await fetch('/onboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: item.url,
+              match_score: item.score,
+              analysis: item.analysis
+            })
+          });
+          const data = await res.json();
+
+          if (data.ok) {
+            // Remove from queue only on success
+            removeFromQueue(queueId);
+            // Refresh pipeline
+            loadJobsOnce();
+          } else {
+            alert('Error: ' + (data.error || 'Failed to add'));
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        }
+      }
+      
+      function removeFromQueue(queueId) {
+        const idx = analysisQueue.findIndex(i => i.id === queueId);
+        if (idx !== -1) {
+          analysisQueue.splice(idx, 1);
+          renderQueue();
+        }
+      }
+
+      function showJobInTable(jobId) {
+        if (!jobId) return;
+        // Set filter to job ID
+        const filterInput = document.getElementById('pipelineFilterJobId');
+        if (filterInput) {
+          filterInput.value = jobId;
+          filterInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        // Scroll to table
+        document.getElementById('jobsTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function clearQueue() {
+        analysisQueue.length = 0;
+        renderQueue();
+      }
+      
+      // Helper function to display analysis results (extracted from main flow)
+      function displayAnalysisResults(analysis, url) {
+        const addJobStatus = document.getElementById("addJobStatus");
+        
+        const score = analysis.match_score || 0;
+        const roleType = analysis.analysis?.role_type || '';
+        const roleFamily = analysis.role_family || 'other';
+        const locationInfo = analysis.analysis?.location_info || '';
+        const summary = analysis.analysis?.summary || '';
+        const rec = analysis.recommendation_text || '';
+        
+        const scoreColor = score >= 75 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+        const scoreBg = score >= 75 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2';
+        
+        // Check if role is outside profile
+        const savedTargetRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+        const isOutsideProfile = !savedTargetRoles.includes(roleFamily);
+        
+        // Store for detail panel
+        window.currentAnalysis = analysis;
+        window.currentJobUrl = url;
+        
+        let compactHtml = `
+          <div style="padding: 16px; background: #f9fafb; border-radius: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0 0 4px; font-size: 16px; color: #111827;">${analysis.title || 'Unknown'}</h3>
+            <p style="margin: 0 0 8px; color: #6b7280; font-size: 13px;">${analysis.company || 'Unknown'}</p>
+            ${roleType ? `<p style="margin: 0 0 4px; color: #6366f1; font-size: 12px;">📋 ${roleType}</p>` : ''}
+            ${locationInfo ? `<p style="margin: 0; color: #059669; font-size: 12px;">📍 ${locationInfo}</p>` : ''}
+          </div>
+          
+          <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: center;">
+            <div style="text-align: center; padding: 12px 20px; background: ${scoreBg}; border-radius: 12px; border: 2px solid ${scoreColor};">
+              <div style="font-size: 28px; font-weight: bold; color: ${scoreColor};">${score}%</div>
+              <div style="font-size: 11px; color: #6b7280;">Match</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 14px; color: #111827; margin-bottom: 4px;">${rec}</div>
+              <div style="font-size: 12px; color: #6b7280; line-height: 1.4;">${summary.substring(0, 120)}${summary.length > 120 ? '...' : ''}</div>
+            </div>
+          </div>
+        `;
+        
+        if (isOutsideProfile) {
+          compactHtml += `
+            <div style="padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; margin-bottom: 16px;">
+              <div style="font-weight: 600; color: #92400e; margin-bottom: 4px;">⚠️ Role outside your target profile</div>
+              <div style="font-size: 12px; color: #78350f;">This is a "${roleType || roleFamily}" role. Your profile targets: Product, TPM, Program Manager roles.</div>
+              <button id="expandProfileBtn" style="margin-top: 8px; padding: 6px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                🔧 Expand my profile to include this
+              </button>
+            </div>
+          `;
+        }
+        
+        const addBtnColor = score >= 60 ? '#22c55e' : '#f59e0b';
+        const addBtnText = score >= 60 ? '✅ Add to Pipeline' : '⚠️ Add Anyway';
+        
+        compactHtml += `
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="confirmAddBtn" style="padding: 10px 20px; background: ${addBtnColor}; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+              ${addBtnText}
+            </button>
+            <button id="showDetailBtn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+              📊 Full Analysis →
+            </button>
+            <button id="skipBtn" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+              Skip
+            </button>
+          </div>
+        `;
+        
+        addJobStatus.style.display = 'block';
+        addJobStatus.style.background = 'transparent';
+        addJobStatus.innerHTML = compactHtml;
+        
+        // Event handlers
+        document.getElementById('confirmAddBtn').onclick = () => addJobToPipeline(url);
+        document.getElementById('skipBtn').onclick = () => { document.getElementById('addJobModal').style.display = 'none'; };
+        document.getElementById('showDetailBtn').onclick = () => showDetailedAnalysis(analysis, url);
+        
+        if (document.getElementById('expandProfileBtn')) {
+          document.getElementById('expandProfileBtn').onclick = () => {
+            const currentRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+            if (!currentRoles.includes(roleFamily)) {
+              currentRoles.push(roleFamily);
+              localStorage.setItem('targetRoles', JSON.stringify(currentRoles));
+              alert(`✅ Added "${roleFamily}" to your target roles!`);
+              document.getElementById('expandProfileBtn').closest('div').style.display = 'none';
+              if (typeof renderTargetRoles === 'function') renderTargetRoles();
+            }
+          };
+        }
+      }
+      
       // Add Job Modal
       const addJobModal = document.getElementById("addJobModal");
       const addJobBtn = document.getElementById("addJobBtn");
-      const addJobCancel = document.getElementById("addJobCancel");
       const addJobSubmit = document.getElementById("addJobSubmit");
       const addJobUrl = document.getElementById("addJobUrl");
       const addJobStatus = document.getElementById("addJobStatus");
@@ -5648,11 +6671,10 @@
         addJobModal.style.display = "flex";
         addJobUrl.value = "";
         addJobStatus.style.display = "none";
+        // Reset right panel to hidden (width 0)
+        document.getElementById('addJobRightPanel').style.width = '0';
+        document.getElementById('addJobRightPanel').style.overflow = 'hidden';
         addJobUrl.focus();
-      });
-      
-      addJobCancel.addEventListener("click", () => {
-        addJobModal.style.display = "none";
       });
       
       addJobModal.addEventListener("click", (e) => {
@@ -5671,10 +6693,10 @@
         }
         
         addJobSubmit.disabled = true;
-        addJobSubmit.textContent = "Searching...";
+        addJobSubmit.textContent = "Analyzing...";
         addJobStatus.style.display = "block";
         addJobStatus.style.background = "rgba(100,150,255,0.2)";
-        addJobStatus.textContent = "Checking if job exists in database...";
+        addJobStatus.innerHTML = "🔍 Checking if job exists...";
         
         try {
           // Step 1: Search for existing job
@@ -5684,102 +6706,450 @@
           if (searchData.ok && searchData.found) {
             // Job exists - show it with Open button
             const job = searchData.job;
-            const jobId = job.id || job.ats_job_id;
+            const jobId = job.ats_job_id || job.id || '';
             addJobStatus.style.background = "rgba(100,200,100,0.2)";
             addJobStatus.innerHTML = `
-              <strong>✅ Found in database:</strong><br>
+              <strong>✅ Already in pipeline:</strong><br>
               <span style="font-size: 14px;">${job.title || 'Unknown'}</span><br>
               <span style="color: #888;">${job.company || 'Unknown'} • ${job.location || ''}</span><br>
               <div style="margin-top: 8px;">
-                <button id="showInTableBtn"
-                        style="padding: 4px 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px;">
+                <button id="showInTableBtn" style="padding: 4px 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px;">
                   Show in Table →
                 </button>
-                <button onclick="document.getElementById('addJobModal').style.display='none'" 
-                        style="padding: 4px 12px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 4px 12px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
                   Close
                 </button>
               </div>
             `;
-            // Add click handler for Show in Table
-            document.getElementById('showInTableBtn').onclick = () => {
+            document.getElementById('showInTableBtn').onclick = function() {
               document.getElementById('addJobModal').style.display = 'none';
-              // Find and highlight row in table
-              const atsJobId = job.ats_job_id || '';
-              const jobId = job.id || '';
-              const rows = document.querySelectorAll('#jobsTable tbody tr');
-              for (const row of rows) {
-                if ((atsJobId && row.dataset.atsJobId === atsJobId) || 
-                    (jobId && row.dataset.jobId === jobId)) {
-                  // Scroll to row
-                  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  // Highlight row
-                  row.style.transition = 'background 0.3s';
-                  row.style.background = 'rgba(100,200,100,0.3)';
-                  setTimeout(() => { row.style.background = ''; }, 3000);
-                  break;
-                }
-              }
+              // Search by job ID
+              document.getElementById('globalSearchFilter').value = jobId;
+              document.getElementById('globalSearchFilter').dispatchEvent(new Event('input', { bubbles: true }));
             };
             addJobSubmit.disabled = false;
-            addJobSubmit.textContent = "Add Job";
+            addJobSubmit.textContent = "Analyze & Add";
             return;
           }
           
-          // Step 2: Job not found - add it
-          addJobStatus.textContent = "Job not found, adding to pipeline...";
-          addJobSubmit.textContent = "Adding...";
+          // Step 2: Analyze job with AI
+          addJobStatus.innerHTML = "🤖 Analyzing job match with AI...";
           
+          const analyzeRes = await fetch('/analyze-job-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+          });
+          const analysis = await analyzeRes.json();
+          
+          if (!analysis.ok) {
+            // Check if job is closed
+            if (analysis.is_closed) {
+              addJobStatus.style.background = "rgba(255,100,100,0.15)";
+              let closedHtml = `
+                <div style="padding: 12px; border: 2px solid #ef4444; border-radius: 8px; background: white;">
+                  <strong style="color: #ef4444; font-size: 16px;">❌ Position Closed</strong><br>
+                  <p style="margin: 8px 0; color: #374151;">${analysis.title || 'Unknown'} at ${analysis.company || 'Unknown'}</p>
+                  <p style="color: #6b7280; font-size: 13px;">${analysis.error}</p>
+              `;
+              
+              // Show screenshot if available
+              if (analysis.screenshot_base64) {
+                closedHtml += `
+                  <details style="margin-top: 12px;">
+                    <summary style="cursor: pointer; color: #3b82f6; font-size: 13px;">📸 View Screenshot</summary>
+                    <img src="data:image/jpeg;base64,${analysis.screenshot_base64}" style="max-width: 100%; margin-top: 8px; border-radius: 4px; border: 1px solid #e5e7eb;">
+                  </details>
+                `;
+              }
+              
+              closedHtml += `
+                  <div style="margin-top: 12px;">
+                    <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                      Close
+                    </button>
+                  </div>
+                </div>
+              `;
+              addJobStatus.innerHTML = closedHtml;
+              addJobSubmit.disabled = false;
+              addJobSubmit.textContent = "🔍 Analyze";
+              return;
+            }
+
+            // Check if this is a confirmation/thank-you page
+            if (analysis.is_confirmation_page) {
+              addJobStatus.style.background = "rgba(255,200,100,0.2)";
+              addJobStatus.innerHTML = `
+                <div style="padding: 12px; border: 2px solid #f59e0b; border-radius: 8px; background: white;">
+                  <strong style="color: #f59e0b; font-size: 16px;">⚠️ Confirmation Page Detected</strong><br>
+                  <p style="margin: 8px 0; color: #374151; font-size: 14px;">
+                    This URL appears to be an application confirmation or thank-you page, not the actual job listing.
+                  </p>
+                  <p style="margin: 8px 0; color: #6b7280; font-size: 13px;">
+                    Please find the original job posting URL (usually starts with the company name and contains the job description).
+                  </p>
+                  <div style="margin-top: 12px;">
+                    <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                      Close
+                    </button>
+                  </div>
+                </div>
+              `;
+              addJobSubmit.disabled = false;
+              addJobSubmit.textContent = "🔍 Analyze";
+              return;
+            }
+
+            // Analysis failed - offer to add anyway
+            addJobStatus.style.background = "rgba(255,200,100,0.2)";
+            addJobStatus.innerHTML = `
+              <strong>⚠️ Could not analyze:</strong> ${analysis.error || 'Unknown error'}<br>
+              <div style="margin-top: 8px;">
+                <button id="addAnywayBtn" style="padding: 6px 16px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px;">
+                  ➕ Add Anyway
+                </button>
+                <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 6px 16px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                  Cancel
+                </button>
+              </div>
+            `;
+            document.getElementById('addAnywayBtn').onclick = () => addJobToPipeline(url);
+            addJobSubmit.disabled = false;
+            addJobSubmit.textContent = "🔍 Analyze";
+            return;
+          }
+          
+          // Step 3: Show analysis results in new design
+          const score = analysis.analysis?.match_score || 0;
+          const fit = analysis.analysis?.fit_level || 'unknown';
+          const roleType = analysis.analysis?.role_type || '';
+          const roleFamily = analysis.role_family || 'other';
+          const locationInfo = analysis.analysis?.location_info || '';
+          const gaps = analysis.analysis?.gaps || [];
+          const redFlags = analysis.analysis?.red_flags || [];
+          const matching = analysis.analysis?.matching_experience || [];
+          const keyReqs = analysis.analysis?.key_requirements || [];
+          const pros = analysis.analysis?.pros || [];
+          const cons = analysis.analysis?.cons || [];
+          const summary = analysis.analysis?.summary || '';
+          const rec = analysis.recommendation_text || '';
+          
+          // Check if role is outside profile (using saved target roles from localStorage)
+          const savedTargetRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+          const isOutsideProfile = !savedTargetRoles.includes(roleFamily);
+          console.log('[AddJob] roleFamily:', roleFamily, 'targetRoles:', savedTargetRoles, 'isOutsideProfile:', isOutsideProfile);
+          
+          const scoreColor = score >= 75 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+          const scoreBg = score >= 75 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2';
+          
+          // Store for detail panel
+          window.currentAnalysis = analysis;
+          window.currentJobUrl = url;
+          
+          // Compact analysis in left panel
+          let compactHtml = `
+            <div style="padding: 16px; background: #f9fafb; border-radius: 12px; margin-bottom: 16px;">
+              <h3 style="margin: 0 0 4px; font-size: 16px; color: #111827;">${analysis.title || 'Unknown'}</h3>
+              <p style="margin: 0 0 8px; color: #6b7280; font-size: 13px;">${analysis.company || 'Unknown'}</p>
+              ${roleType ? `<p style="margin: 0 0 4px; color: #6366f1; font-size: 12px;">📋 ${roleType}</p>` : ''}
+              ${locationInfo ? `<p style="margin: 0; color: #059669; font-size: 12px;">📍 ${locationInfo}</p>` : ''}
+            </div>
+            
+            <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: center;">
+              <div style="text-align: center; padding: 12px 20px; background: ${scoreBg}; border-radius: 12px; border: 2px solid ${scoreColor};">
+                <div style="font-size: 28px; font-weight: bold; color: ${scoreColor};">${score}%</div>
+                <div style="font-size: 11px; color: #6b7280;">Match</div>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 14px; color: #111827; margin-bottom: 4px;">${rec}</div>
+                <div style="font-size: 12px; color: #6b7280; line-height: 1.4;">${summary.substring(0, 120)}${summary.length > 120 ? '...' : ''}</div>
+              </div>
+            </div>
+          `;
+          
+          // Warning if outside profile
+          if (isOutsideProfile) {
+            compactHtml += `
+              <div style="padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; margin-bottom: 16px;">
+                <div style="font-weight: 600; color: #92400e; margin-bottom: 4px;">⚠️ Role outside your target profile</div>
+                <div style="font-size: 12px; color: #78350f;">This is a "${roleType || roleFamily}" role. Your profile targets: Product, TPM, Program Manager roles.</div>
+                <button id="expandProfileBtn" style="margin-top: 8px; padding: 6px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                  🔧 Expand my profile to include this
+                </button>
+              </div>
+            `;
+          }
+          
+          // Action buttons
+          const addBtnColor = score >= 60 ? '#22c55e' : '#f59e0b';
+          const addBtnText = score >= 60 ? '✅ Add to Pipeline' : '⚠️ Add Anyway';
+          
+          compactHtml += `
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button id="confirmAddBtn" style="padding: 10px 20px; background: ${addBtnColor}; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+                ${addBtnText}
+              </button>
+              <button id="showDetailBtn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                📊 Full Analysis →
+              </button>
+              <button id="skipBtn" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                Skip
+              </button>
+            </div>
+          `;
+          
+          addJobStatus.style.display = 'block';
+          addJobStatus.style.background = 'transparent';
+          addJobStatus.innerHTML = compactHtml;
+          
+          // Event handlers
+          document.getElementById('confirmAddBtn').onclick = () => addJobToPipeline(url);
+          document.getElementById('skipBtn').onclick = () => { document.getElementById('addJobModal').style.display = 'none'; };
+          document.getElementById('showDetailBtn').onclick = () => showDetailedAnalysis(analysis, url);
+          
+          if (document.getElementById('expandProfileBtn')) {
+            document.getElementById('expandProfileBtn').onclick = () => {
+              // Add this role family to target roles
+              const currentRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+              if (!currentRoles.includes(roleFamily)) {
+                currentRoles.push(roleFamily);
+                localStorage.setItem('targetRoles', JSON.stringify(currentRoles));
+                
+                // Update UI
+                const roleLabel = {
+                  'product': 'Product Manager',
+                  'tpm_program': 'TPM / Program Manager', 
+                  'project': 'Project Manager',
+                  'engineering': 'Engineering',
+                  'design': 'Design / UX',
+                  'data': 'Data / Analytics',
+                  'operations': 'Operations',
+                  'other': 'Other'
+                }[roleFamily] || roleFamily;
+                
+                alert(`✅ Added "${roleLabel}" to your target roles!\n\nThis role family will now be included in your profile.`);
+                
+                // Hide the warning box
+                document.getElementById('expandProfileBtn').closest('div').style.display = 'none';
+                
+                // If Profile tab is loaded, refresh it
+                if (typeof renderTargetRoles === 'function') {
+                  renderTargetRoles();
+                }
+              } else {
+                alert('This role is already in your target profile.');
+              }
+            };
+          }
+          
+        } catch (err) {
+          addJobStatus.style.display = 'block';
+          addJobStatus.style.background = '#fee2e2';
+          addJobStatus.style.padding = '12px';
+          addJobStatus.style.borderRadius = '8px';
+          addJobStatus.innerHTML = `<span style="color: #dc2626;">❌ Error: ${err.message}</span>`;
+        } finally {
+          addJobSubmit.disabled = false;
+          addJobSubmit.textContent = "🔍 Analyze";
+        }
+      });
+      
+      // Show detailed analysis in right panel
+      function showDetailedAnalysis(analysis, url) {
+        const rightPanel = document.getElementById('addJobRightPanel');
+        const detailContent = document.getElementById('addJobDetailContent');
+        
+        const score = analysis.analysis?.match_score || 0;
+        const fit = analysis.analysis?.fit_level || 'unknown';
+        const roleType = analysis.analysis?.role_type || '';
+        const locationInfo = analysis.analysis?.location_info || '';
+        const gaps = analysis.analysis?.gaps || [];
+        const redFlags = analysis.analysis?.red_flags || [];
+        const matching = analysis.analysis?.matching_experience || [];
+        const keyReqs = analysis.analysis?.key_requirements || [];
+        const pros = analysis.analysis?.pros || [];
+        const cons = analysis.analysis?.cons || [];
+        const summary = analysis.analysis?.summary || '';
+        const rec = analysis.recommendation_text || '';
+        
+        const scoreColor = score >= 75 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+        
+        // Build requirements table - dark text for readability
+        let reqsHtml = '';
+        if (keyReqs.length > 0) {
+          reqsHtml = '<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px;">';
+          reqsHtml += '<tr style="background: #f3f4f6;"><th style="padding: 10px; text-align: left; border: 1px solid #e5e7eb; color: #111827; font-weight: 600;">Requirement</th><th style="padding: 10px; width: 70px; text-align: center; border: 1px solid #e5e7eb; color: #111827; font-weight: 600;">Match</th><th style="padding: 10px; text-align: left; border: 1px solid #e5e7eb; color: #111827; font-weight: 600;">Notes</th></tr>';
+          keyReqs.forEach(r => {
+            if (typeof r === 'object' && r.requirement) {
+              const hasIcon = r.anton_has === 'yes' ? '✅' : r.anton_has === 'partial' ? '⚠️' : '❌';
+              reqsHtml += `<tr><td style="padding: 10px; border: 1px solid #e5e7eb; color: #1f2937;">${r.requirement}</td><td style="padding: 10px; text-align: center; border: 1px solid #e5e7eb; font-size: 16px;">${hasIcon}</td><td style="padding: 10px; border: 1px solid #e5e7eb; color: #374151;">${r.comment || ''}</td></tr>`;
+            } else {
+              reqsHtml += `<tr><td style="padding: 10px; border: 1px solid #e5e7eb; color: #1f2937;" colspan="3">• ${r}</td></tr>`;
+            }
+          });
+          reqsHtml += '</table>';
+        }
+        
+        // Build list helper
+        const buildList = (items, color) => items.length ? 
+          `<ul style="margin: 8px 0; padding-left: 20px; font-size: 13px;">${items.map(i => `<li style="margin: 6px 0; color: ${color}; line-height: 1.4;">${i}</li>`).join('')}</ul>` : 
+          '<p style="color: #9ca3af; font-size: 13px;">None</p>';
+        
+        detailContent.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+            <div>
+              <h1 style="margin: 0; font-size: 24px; color: #111827;">${analysis.title || 'Unknown'}</h1>
+              <p style="margin: 6px 0; color: #6b7280; font-size: 16px;">${analysis.company || 'Unknown'}</p>
+              ${roleType ? `<p style="margin: 4px 0; color: #6366f1; font-size: 14px;">📋 ${roleType}</p>` : ''}
+              ${locationInfo ? `<p style="margin: 4px 0; color: #059669; font-size: 14px;">📍 ${locationInfo}</p>` : ''}
+            </div>
+            <button onclick="closeRightPanel()" style="padding: 10px 20px; background: #374151; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap;">← Close</button>
+          </div>
+          
+          <div style="display: flex; gap: 24px; margin-bottom: 28px;">
+            <div style="text-align: center; padding: 20px 32px; background: white; border-radius: 16px; border: 3px solid ${scoreColor}; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <div style="font-size: 42px; font-weight: bold; color: ${scoreColor};">${score}%</div>
+              <div style="font-size: 13px; color: #6b7280; margin-top: 4px;">Match Score</div>
+            </div>
+            <div style="flex: 1; padding: 20px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <div style="font-weight: 600; font-size: 18px; color: #111827; margin-bottom: 8px;">${rec}</div>
+              <div style="color: #4b5563; font-size: 14px; line-height: 1.6;">${summary}</div>
+            </div>
+          </div>
+          
+          <div style="background: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+            <h2 style="font-size: 16px; color: #111827; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">📋 Requirements Analysis</h2>
+            ${reqsHtml || '<p style="color: #9ca3af;">No requirements data</p>'}
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #059669; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">✅ Pros</h3>
+              ${buildList(pros, '#065f46')}
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #dc2626; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">❌ Cons</h3>
+              ${buildList(cons, '#991b1b')}
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #2563eb; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">💪 Matching Experience</h3>
+              ${buildList(matching, '#1e40af')}
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              <h3 style="font-size: 15px; color: #d97706; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;">⚠️ Gaps</h3>
+              ${buildList(gaps, '#92400e')}
+            </div>
+          </div>
+          
+          ${redFlags.length > 0 ? `
+            <div style="background: #fef2f2; padding: 20px; border-radius: 16px; border-left: 4px solid #ef4444; margin-bottom: 20px;">
+              <h3 style="font-size: 15px; color: #dc2626; margin: 0 0 12px;">🚩 Red Flags</h3>
+              ${buildList(redFlags, '#991b1b')}
+            </div>
+          ` : ''}
+          
+          ${!(JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]')).includes(analysis.role_family || 'other') ? `
+            <div id="rightPanelProfileWarning" style="padding: 16px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; margin-bottom: 20px;">
+              <div style="font-weight: 600; color: #92400e; margin-bottom: 6px; font-size: 15px;">⚠️ Role outside your target profile</div>
+              <div style="font-size: 13px; color: #78350f; margin-bottom: 12px;">This is a "${analysis.analysis?.role_type || analysis.role_family}" role. Your profile targets: Product, TPM, Program Manager roles.</div>
+              <button onclick="expandProfileFromDetail('${analysis.role_family || 'other'}')" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500;">
+                🔧 Expand my profile to include this
+              </button>
+            </div>
+          ` : ''}
+        `;
+        
+        // Show right panel with animation - wider panel (800px)
+        rightPanel.style.width = '800px';
+        rightPanel.style.overflow = 'auto';
+      }
+      
+      // Expand profile from detail panel
+      function expandProfileFromDetail(roleFamily) {
+        const currentRoles = JSON.parse(localStorage.getItem('targetRoles') || '["product", "tpm_program", "project"]');
+        if (!currentRoles.includes(roleFamily)) {
+          currentRoles.push(roleFamily);
+          localStorage.setItem('targetRoles', JSON.stringify(currentRoles));
+          
+          const roleLabel = {
+            'product': 'Product Manager',
+            'tpm_program': 'TPM / Program Manager',
+            'project': 'Project Manager',
+            'engineering': 'Engineering',
+            'design': 'Design / UX', 
+            'data': 'Data / Analytics',
+            'operations': 'Operations',
+            'other': 'Other'
+          }[roleFamily] || roleFamily;
+          
+          alert(`✅ Added "${roleLabel}" to your target roles!`);
+          
+          // Hide warning
+          const warning = document.getElementById('rightPanelProfileWarning');
+          if (warning) warning.style.display = 'none';
+          
+          // Refresh Profile tab if loaded
+          if (typeof renderTargetRoles === 'function') renderTargetRoles();
+        }
+      }
+      window.expandProfileFromDetail = expandProfileFromDetail;
+      
+      // Close right panel helper
+      function closeRightPanel() {
+        const panel = document.getElementById('addJobRightPanel');
+        panel.style.width = '0';
+        panel.style.overflow = 'hidden';
+      }
+      
+      // Helper function to add job to pipeline
+      async function addJobToPipeline(url) {
+        const addJobStatus = document.getElementById("addJobStatus");
+        const addJobModal = document.getElementById("addJobModal");
+
+        addJobStatus.innerHTML = "➕ Adding to pipeline...";
+
+        // Get analysis data if available (from pre-analysis)
+        const analysis = window.currentAnalysis;
+        const requestBody = { url: url };
+        if (analysis) {
+          // Extract match_score from nested analysis object
+          const score = analysis.analysis?.match_score || analysis.match_score || 0;
+          if (score > 0) {
+            requestBody.match_score = score;
+          }
+          requestBody.analysis = analysis.analysis || analysis;
+          console.log('[AddJob] Sending match_score:', requestBody.match_score, 'analysis:', requestBody.analysis);
+        }
+
+        try {
           const response = await fetch("/onboard", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: url })
+            body: JSON.stringify(requestBody)
           });
           
           const data = await response.json();
           
           if (data.ok) {
-            const addedJob = data.job;
             addJobStatus.style.background = "rgba(100,200,100,0.2)";
-            addJobStatus.innerHTML = `<strong>✅ Added:</strong> ${addedJob?.title || 'Unknown'} at ${addedJob?.company || 'Unknown'}`;
-            
-            // Store the added job ID to highlight after reload
-            window.highlightJobAfterReload = addedJob?.id || addedJob?.ats_job_id;
-            
-            // Close modal and reload with filters reset to show the new job
+            addJobStatus.innerHTML = `<strong>✅ Added:</strong> ${data.job?.title || 'Unknown'} at ${data.job?.company || 'Unknown'}`;
             setTimeout(() => {
               addJobModal.style.display = "none";
-              
-              // Reset filters to "All" to ensure new job is visible
-              document.getElementById("locationCategoryFilter").value = "all";
-              locationCategory = "all";
-              document.getElementById("globalSearch").value = "";
-              globalSearchText = "";
-              
-              // Set quick filter to "all"
-              document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
-              document.querySelector('.quick-filter-btn[data-filter="all"]')?.classList.add('active');
-              activeQuickFilter = "all";
-              
-              // Set sort by Updated descending (newest first) so new job appears on top
-              CURRENT_SORT.column = 'updated';
-              CURRENT_SORT.ascending = false;
-              
-              // Reload jobs
               loadJobsFromCache(true);
-            }, 1000);
+            }, 1500);
           } else {
             addJobStatus.style.background = "rgba(255,100,100,0.2)";
-            addJobStatus.textContent = `Error: ${data.message || 'Failed to add job'}`;
+            addJobStatus.innerHTML = `❌ Error: ${data.message || data.error || 'Failed to add'}`;
           }
         } catch (err) {
           addJobStatus.style.background = "rgba(255,100,100,0.2)";
-          addJobStatus.textContent = `Error: ${err.message}`;
-        } finally {
-          addJobSubmit.disabled = false;
-          addJobSubmit.textContent = "Add Job";
+          addJobStatus.innerHTML = `❌ Error: ${err.message}`;
         }
-      });
+      }
       
       // Enter key to submit
       addJobUrl.addEventListener("keypress", (e) => {
