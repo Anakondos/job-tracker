@@ -43,7 +43,7 @@ APPLICATIONS_PATH = get_applications_path()
 _current_dir = Path(__file__).parent.name
 ENV = os.getenv("JOB_TRACKER_ENV", "DEV" if "dev" in _current_dir.lower() else "PROD")
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -2967,6 +2967,99 @@ def enrich_batch_endpoint(background_tasks: BackgroundTasks):
 
     background_tasks.add_task(_do_batch_enrich)
     return {"ok": True, "message": f"Enriching {len(to_enrich)} Workday jobs in background", "total": len(to_enrich)}
+
+
+@app.post("/pipeline/match-batch")
+def match_batch_endpoint(background_tasks: BackgroundTasks, limit: int = Query(default=50)):
+    """
+    Batch compute match scores for pipeline jobs without scores.
+    Parses JD from URL and runs AI analysis against CV.
+    limit: max jobs to process (default 50, each costs ~1 API call)
+    """
+    from storage.job_storage import _load_jobs
+
+    jobs = _load_jobs()
+    to_score = [j for j in jobs if j.get("status") == "new"
+                and not j.get("match_score")
+                and (j.get("job_url") or j.get("url"))
+                and j.get("role_category") in ["primary", "adjacent"]]
+
+    # Limit to prevent excessive API costs
+    batch = to_score[:limit]
+    if not batch:
+        return {"ok": True, "message": "No jobs to score", "total": 0, "remaining": 0}
+
+    def _do_batch_match():
+        import time
+        from parsers.jd_parser import parse_and_store_jd
+        from api.prepare_application import analyze_job_with_ai
+        from storage.job_storage import _load_jobs as load_j, _save_jobs as save_j
+
+        all_jobs = load_j()
+        job_map = {j.get("id"): j for j in all_jobs}
+        scored = 0
+        errors = 0
+
+        for target in batch:
+            job_id = target.get("id")
+            job_url = target.get("job_url") or target.get("url", "")
+            title = target.get("title", "")
+            company = target.get("company", "")
+            ats = target.get("ats", "")
+
+            try:
+                # Step 1: Parse JD
+                result = parse_and_store_jd(
+                    job_id=job_id, url=job_url,
+                    title=title, company=company, ats=ats
+                )
+                if not result.get("ok"):
+                    errors += 1
+                    continue
+
+                jd_text = result.get("jd_text", "")
+                if not jd_text or len(jd_text) < 100:
+                    errors += 1
+                    continue
+
+                # Save jd_summary
+                if job_id in job_map:
+                    job_map[job_id]["jd_summary"] = result.get("summary", {})
+
+                # Step 2: AI match analysis
+                role_family = target.get("role_family", "tpm_program")
+                analysis = analyze_job_with_ai(title, company, jd_text, role_family)
+
+                if analysis and "match_score" in analysis:
+                    if job_id in job_map:
+                        job_map[job_id]["match_score"] = analysis["match_score"]
+                        job_map[job_id]["analysis"] = analysis
+                        scored += 1
+                        print(f"[Match] {company} | {title[:40]} → {analysis['match_score']}%")
+                else:
+                    errors += 1
+
+            except Exception as e:
+                print(f"[Match] Error for {job_id}: {e}")
+                errors += 1
+
+            time.sleep(1)  # Rate limit
+
+            # Save every 10 jobs
+            if (scored + errors) % 10 == 0:
+                save_j(list(job_map.values()))
+                print(f"[Match] Progress: {scored} scored, {errors} errors")
+
+        save_j(list(job_map.values()))
+        print(f"[Match] Done: {scored} scored, {errors} errors out of {len(batch)}")
+
+    background_tasks.add_task(_do_batch_match)
+    return {
+        "ok": True,
+        "message": f"Scoring {len(batch)} jobs in background",
+        "total": len(batch),
+        "remaining": len(to_score) - len(batch)
+    }
 
 
 class ParseJDRequest(BaseModel):

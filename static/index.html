@@ -914,6 +914,7 @@
         </div>
       </div>
       <div class="header-actions" style="display: flex; gap: 8px;">
+        <button class="refresh-btn" id="matchBtn" onclick="batchMatch()" style="background: #4c1d95; font-size: 12px; padding: 6px 12px;" title="AI match scoring for unscored jobs (uses Claude API)">🎯 Match</button>
         <button class="refresh-btn" id="enrichBtn" onclick="enrichDeadlines()" style="background: #1e3a5f; font-size: 12px; padding: 6px 12px;" title="Fetch deadlines and salary for Workday jobs">⏰ Deadlines</button>
         <button class="refresh-btn" id="refreshBtn">🔄 Refresh from ATS</button>
       </div>
@@ -5208,6 +5209,41 @@
           }
         } catch (e) {
           alert('Error: ' + e.message);
+        }
+      }
+
+      async function batchMatch() {
+        const btn = document.getElementById('matchBtn');
+        const limit = prompt('How many jobs to score? (each uses 1 Claude API call)', '50');
+        if (!limit) return;
+        const num = parseInt(limit);
+        if (isNaN(num) || num < 1) return;
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Scoring...';
+        try {
+          const res = await fetch(`/pipeline/match-batch?limit=${num}`, { method: 'POST' });
+          const data = await res.json();
+          if (data.ok && data.total > 0) {
+            btn.textContent = `🎯 ${data.total} jobs...`;
+            // Estimate: ~3s per job (JD parse + AI analysis)
+            const waitMs = Math.min(data.total * 3000, 300000);
+            setTimeout(async () => {
+              btn.textContent = '🎯 Match';
+              btn.disabled = false;
+              await loadJobsOnce();
+              const filtered = applyFilters(ALL_JOBS);
+              renderJobs(filtered);
+            }, waitMs);
+          } else {
+            btn.textContent = data.remaining > 0 ? `✅ Done (${data.remaining} left)` : '✅ All scored';
+            btn.disabled = false;
+            setTimeout(() => { btn.textContent = '🎯 Match'; }, 3000);
+          }
+        } catch (e) {
+          btn.textContent = '❌ Error';
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = '🎯 Match'; }, 2000);
         }
       }
 
