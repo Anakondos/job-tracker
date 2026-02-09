@@ -1,6 +1,18 @@
 # parsers/lever.py
 
 import requests
+from datetime import datetime, timezone
+
+
+def _ms_to_iso(ms_timestamp) -> str:
+    """Convert millisecond timestamp to ISO string."""
+    if isinstance(ms_timestamp, (int, float)) and ms_timestamp > 0:
+        ts = ms_timestamp / 1000 if ms_timestamp > 1e12 else ms_timestamp
+        try:
+            return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        except (OSError, ValueError):
+            pass
+    return ""
 
 
 def fetch_lever(company: str, base_url: str):
@@ -20,6 +32,7 @@ def fetch_lever(company: str, base_url: str):
         categories = job.get("categories") or {}
         location = categories.get("location") or ""
         dept = categories.get("team") or ""
+        created_iso = _ms_to_iso(job.get("createdAt"))
 
         jobs.append(
             {
@@ -30,8 +43,8 @@ def fetch_lever(company: str, base_url: str):
                 "location": location,
                 "department": dept,
                 "url": job.get("hostedUrl"),
-                "first_published": job.get("createdAt"),
-                "updated_at": job.get("createdAt"),  # Lever uses createdAt
+                "first_published": created_iso,
+                "updated_at": created_iso,
             }
         )
 

@@ -1915,8 +1915,8 @@
           }
 
           if (column === 'updated' || column === 'added') {
-            const ad = Date.parse(av) || 0;
-            const bd = Date.parse(bv) || 0;
+            const ad = (typeof av === 'number' && av > 1e9) ? av : (Date.parse(av) || 0);
+            const bd = (typeof bv === 'number' && bv > 1e9) ? bv : (Date.parse(bv) || 0);
             return asc ? ad - bd : bd - ad;
           }
 
@@ -2438,7 +2438,19 @@
           const addedAtRaw = job.first_seen || job.created_at || "";
           const addedAtStr = addedAtRaw ? formatDateShort(addedAtRaw) : "—";
           const pipelineDateRaw = job.added_to_pipeline || "";
-          const pipelineDateStr = pipelineDateRaw ? formatDateShort(pipelineDateRaw) : "";
+          // Plain text date for tooltip (no HTML)
+          let pipelineDateStr = "";
+          if (pipelineDateRaw) {
+            try {
+              const pd = new Date(pipelineDateRaw);
+              if (!isNaN(pd.getTime())) {
+                const m = (pd.getMonth()+1).toString().padStart(2,'0');
+                const d = pd.getDate().toString().padStart(2,'0');
+                const y = pd.getFullYear().toString().slice(-2);
+                pipelineDateStr = `${m}.${d}.${y}`;
+              }
+            } catch(e) {}
+          }
           
           row.dataset.company = (job.company || "").trim();
           row.dataset.industry = tagsStr;
