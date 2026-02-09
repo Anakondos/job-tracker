@@ -33,6 +33,9 @@ ATS_PATTERNS = {
     "workday": [
         r"([a-zA-Z0-9_-]+)\.wd\d+\.myworkdayjobs\.com",
     ],
+    "jibe": [
+        r"([a-zA-Z0-9_-]+)\.jibeapply\.com",
+    ],
 }
 
 # Стандартные careers URL паттерны
@@ -99,6 +102,7 @@ def build_board_url(ats: str, board_id: str) -> str:
         "smartrecruiters": f"https://jobs.smartrecruiters.com/{board_id}",
         "ashby": f"https://jobs.ashbyhq.com/{board_id}",
         "workday": "",
+        "jibe": f"https://{board_id}.jibeapply.com/jobs",
     }
     return urls.get(ats, "")
 
@@ -111,6 +115,7 @@ def build_api_url(ats: str, board_id: str) -> str:
         "smartrecruiters": f"https://api.smartrecruiters.com/v1/companies/{board_id}/postings",
         "ashby": f"https://api.ashbyhq.com/posting-api/job-board/{board_id}",
         "workday": "",
+        "jibe": f"https://{board_id}.jibeapply.com/api/jobs?page=1&limit=1",
     }
     return urls.get(ats, "")
 

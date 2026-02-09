@@ -65,6 +65,7 @@ from utils.job_utils import generate_job_id, classify_role, find_similar_jobs
 
 # ATS parser mapping - these ATS support automatic job fetching
 from parsers.icims import fetch_icims
+from parsers.jibe import fetch_jibe
 
 ATS_PARSERS = {
     "greenhouse": lambda url: fetch_greenhouse("", url),
@@ -75,6 +76,7 @@ ATS_PARSERS = {
     "atlassian": lambda url: fetch_atlassian("", url),
     "phenom": fetch_phenom_jobs,
     "icims": lambda url: fetch_icims("", url),
+    "jibe": lambda url: fetch_jibe("", url),
 }
 
 # List of supported ATS for UI display
@@ -532,7 +534,7 @@ _MAX_CONSECUTIVE_ERRORS = 3  # disable company after this many consecutive failu
 def _track_company_error(company: dict, error: str):
     """
     Track consecutive errors for a company.
-    After _MAX_CONSECUTIVE_ERRORS consecutive failures → auto-disable.
+    After _MAX_CONSECUTIVE_ERRORS consecutive failures → try repair first, then auto-disable.
     """
     company_id = company.get("id", "")
     if not company_id:
@@ -542,7 +544,44 @@ def _track_company_error(company: dict, error: str):
     count = _COMPANY_ERRORS[company_id]
 
     if count >= _MAX_CONSECUTIVE_ERRORS:
-        print(f"[Daemon] ⚠️ {company_id}: {count} consecutive errors → auto-disabling")
+        print(f"[Daemon] ⚠️ {company_id}: {count} consecutive errors → attempting repair...")
+
+        # Try repair before disabling
+        repair_result = try_repair_company({
+            "name": company.get("name", company_id),
+            "ats": company.get("ats", ""),
+            "board_url": company.get("board_url", ""),
+        })
+
+        if repair_result and repair_result.get("verified"):
+            new_ats = repair_result["ats"]
+            new_url = repair_result["board_url"]
+            print(f"[Daemon] 🔧 Repair found new URL for {company_id}: {new_ats} → {new_url}")
+
+            # Update companies.json with repaired data
+            try:
+                companies_path = Path("data/companies.json")
+                with open(companies_path, "r", encoding="utf-8") as f:
+                    companies = json.load(f)
+
+                for c in companies:
+                    if c.get("id") == company_id:
+                        c["ats"] = new_ats
+                        c["board_url"] = new_url
+                        c["repaired_at"] = datetime.now(timezone.utc).isoformat()
+                        break
+
+                with open(companies_path, "w", encoding="utf-8") as f:
+                    json.dump(companies, f, indent=2, ensure_ascii=False)
+
+                print(f"[Daemon] ✅ Repaired {company_id} → {new_ats}")
+                _COMPANY_ERRORS.pop(company_id, None)  # reset errors after repair
+                return  # Don't disable — repaired successfully
+            except Exception as e:
+                print(f"[Daemon] ❌ Failed to save repair for {company_id}: {e}")
+
+        # Repair failed → auto-disable
+        print(f"[Daemon] ❌ Repair failed for {company_id} → auto-disabling")
         _auto_disable_company(company_id, error, count)
         _COMPANY_ERRORS.pop(company_id, None)  # cleanup
 
@@ -795,6 +834,12 @@ def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[di
             jobs = fetch_workday_v2(company, url)
         elif ats == "atlassian":
             jobs = fetch_atlassian(company, url)
+        elif ats == "phenom":
+            jobs = fetch_phenom_jobs(url)
+        elif ats == "icims":
+            jobs = fetch_icims(company, url)
+        elif ats == "jibe":
+            jobs = fetch_jibe(company, url)
         else:
             jobs = []
 
@@ -3106,6 +3151,20 @@ def detect_ats_from_url(url: str) -> dict:
                 "job_id": job_id
             }
     
+    # Jibe (Google Hire): company.jibeapply.com/jobs/slug
+    if "jibeapply.com" in host:
+        company_slug = host.split(".")[0]
+        job_id_match = re.match(r"/jobs/(\d+)", path)
+        job_id = job_id_match.group(1) if job_id_match else ""
+        return {
+            "ats": "jibe",
+            "company": company_slug.replace("-", " ").title(),
+            "company_slug": company_slug,
+            "board_url": f"https://{company_slug}.jibeapply.com/jobs",
+            "job_id": job_id,
+            "job_url": url
+        }
+
     # iCIMS: external-company.icims.com/jobs/12345/title/job
     if "icims.com" in host:
         # Extract company from subdomain: external-firstcitizens.icims.com -> firstcitizens

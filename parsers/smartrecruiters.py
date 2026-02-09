@@ -1,17 +1,36 @@
 # parsers/smartrecruiters.py
 
+import re
 import requests
 from urllib.parse import urljoin
+
+
+def _normalize_sr_url(url: str) -> str:
+    """
+    Конвертируем любой SmartRecruiters URL в API URL.
+    jobs.smartrecruiters.com/BoschGroup → api.smartrecruiters.com/v1/companies/BoschGroup/postings
+    Если уже API URL — возвращаем как есть.
+    """
+    if "api.smartrecruiters.com" in url:
+        return url
+    # jobs.smartrecruiters.com/{slug} или careers.smartrecruiters.com/{slug}
+    m = re.search(r"smartrecruiters\.com/([^/?#]+)", url)
+    if m:
+        slug = m.group(1)
+        return f"https://api.smartrecruiters.com/v1/companies/{slug}/postings"
+    return url
 
 
 def fetch_smartrecruiters(company: str, api_url: str, base_url: str = None):
     """
     company  – имя компании для отображения
-    api_url  – SmartRecruiters endpoint:
+    api_url  – SmartRecruiters endpoint (любой формат):
                https://api.smartrecruiters.com/v1/companies/<slug>/postings
+               https://jobs.smartrecruiters.com/<slug>
     base_url – сайт вакансий, например:
                https://careers.smartrecruiters.com/Atlassian
     """
+    api_url = _normalize_sr_url(api_url)
 
     params = {"limit": 100, "offset": 0}
     jobs = []

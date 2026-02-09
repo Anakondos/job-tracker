@@ -145,10 +145,10 @@ def fetch_workday(
     
     jobs = []
     offset = 0
-    batch_size = 50  # Workday max seems to be 50
+    batch_size = 20  # Workday wd5/wd3 limit is 20; wd1/wd12 accept up to 50
     retries = 0
     max_retries = 3
-    
+
     while offset < limit:
         payload = {
             "appliedFacets": {},
@@ -156,10 +156,10 @@ def fetch_workday(
             "offset": offset,
             "searchText": ""
         }
-        
+
         try:
             r = session.post(api_url, json=payload, timeout=timeout)
-            
+
             # Handle rate limiting (429)
             if r.status_code == 429:
                 retries += 1
