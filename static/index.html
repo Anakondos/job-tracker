@@ -985,11 +985,25 @@
             <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 ashby</span>
             <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 workday</span>
             <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 smartrecruiters</span>
-            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px;">🔄 atlassian</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 atlassian</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 phenom</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">🔄 icims</span>
+            <span style="background: #166534; color: #86efac; padding: 2px 8px; border-radius: 4px;">🔄 jibe</span>
           </span>
           <span style="color: #64748b; margin-left: 12px;">|</span>
           <span style="color: #94a3b8; margin-left: 12px;">Manual only:</span>
           <span style="background: #4b5563; color: #9ca3af; padding: 2px 8px; border-radius: 4px; margin-left: 8px;">📝 other</span>
+        </div>
+
+        <!-- Unsupported ATS Parser Status (collapsible) -->
+        <div id="unsupportedAtsSection" style="margin-bottom: 12px; display: none;">
+          <div onclick="toggleUnsupportedAts()" style="cursor: pointer; padding: 8px 14px; background: #1e293b; border-radius: 8px 8px 0 0; border: 1px solid #334155; border-bottom: none; font-size: 12px; display: flex; align-items: center; gap: 8px;">
+            <span id="unsupportedAtsToggle" style="transition: transform 0.2s;">▶</span>
+            <span style="color: #f59e0b;">⚠️ Unsupported ATS systems:</span>
+            <span id="unsupportedAtsCount" style="background: #78350f; color: #fbbf24; padding: 1px 6px; border-radius: 4px; font-size: 11px;">0</span>
+            <span id="unsupportedAtsNew" style="background: #166534; color: #86efac; padding: 1px 6px; border-radius: 4px; font-size: 11px; display: none;">NEW</span>
+          </div>
+          <div id="unsupportedAtsList" style="display: none; padding: 10px 14px; background: #0f172a; border-radius: 0 0 8px 8px; border: 1px solid #334155; border-top: none; font-size: 11px; max-height: 200px; overflow-y: auto;"></div>
         </div>
 
         <div class="tableWrap">
@@ -1890,17 +1904,22 @@
           } else if (column === 'status') {
             av = (a.application_status || a.status || 'new').toLowerCase();
             bv = (b.application_status || b.status || 'new').toLowerCase();
+          } else if (column === 'match') {
+            // Numeric sort for match score
+            av = a.match_score || 0;
+            bv = b.match_score || 0;
+            return asc ? av - bv : bv - av;
           } else {
             av = '';
             bv = '';
           }
-          
+
           if (column === 'updated' || column === 'added') {
             const ad = Date.parse(av) || 0;
             const bd = Date.parse(bv) || 0;
             return asc ? ad - bd : bd - ad;
           }
-          
+
           const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
           return asc ? cmp : -cmp;
         });
@@ -2415,9 +2434,11 @@
           // Format date for display (Dec 19, 3d ago)
           const updatedAtStr = formatDateWithAge(updatedAtRaw);
           
-          // Added date (first_seen = when added to pipeline)
+          // Added date (first_seen = original ATS published date)
           const addedAtRaw = job.first_seen || job.created_at || "";
           const addedAtStr = addedAtRaw ? formatDateShort(addedAtRaw) : "—";
+          const pipelineDateRaw = job.added_to_pipeline || "";
+          const pipelineDateStr = pipelineDateRaw ? formatDateShort(pipelineDateRaw) : "";
           
           row.dataset.company = (job.company || "").trim();
           row.dataset.industry = tagsStr;
@@ -2457,9 +2478,9 @@
         <td class="td-title"><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || "")}</a>${sourceIcon}</td>
         <td class="td-location">${escapeHtml(job.location || "")}</td>
         <td class="td-date">${updatedAtStr}</td>
-        <td class="td-date">${addedAtStr}</td>
+        <td class="td-date" title="${pipelineDateStr ? 'Added to pipeline: ' + pipelineDateStr : ''}">${addedAtStr}</td>
         <td class="td-ats">${(() => {
-            const atsShort = {'greenhouse': 'GH', 'lever': 'LV', 'workday': 'WD', 'smartrecruiters': 'SR', 'ashby': 'AS', 'manual': '📌'};
+            const atsShort = {'greenhouse': 'GH', 'lever': 'LV', 'workday': 'WD', 'smartrecruiters': 'SR', 'ashby': 'AS', 'jibe': 'JB', 'phenom': 'PH', 'icims': 'IC', 'atlassian': 'AT', 'manual': '📌'};
             if (job.source === "onboard") return '📌';
             return atsShort[job.ats] || job.ats || '';
           })()}</td>
@@ -3136,6 +3157,9 @@
           } else if (analysis.is_closed) {
             item.status = 'closed';
             item.error = analysis.error || 'Position closed';
+          } else if (analysis.is_confirmation_page) {
+            item.status = 'error';
+            item.error = 'Confirmation page - use original job URL';
           } else {
             item.status = 'error';
             item.error = analysis.error || 'Analysis failed';
@@ -4980,7 +5004,130 @@
             `<tr><td colspan="10" style="text-align:center; padding: 40px; color: #ef4444;">Failed to load companies</td></tr>`;
         }
       }
-      
+
+      // Unsupported ATS tracking
+      let UNSUPPORTED_ATS_DATA = [];
+      let unsupportedAtsExpanded = false;
+
+      async function loadAtsInfo() {
+        try {
+          const res = await fetch('/ats-info');
+          const data = await res.json();
+          UNSUPPORTED_ATS_DATA = data.unsupported_ats || [];
+          renderUnsupportedAts();
+        } catch (err) {
+          console.error("Failed to load ATS info:", err);
+        }
+      }
+
+      function renderUnsupportedAts() {
+        const section = document.getElementById('unsupportedAtsSection');
+        const countEl = document.getElementById('unsupportedAtsCount');
+        const newEl = document.getElementById('unsupportedAtsNew');
+        const listEl = document.getElementById('unsupportedAtsList');
+
+        if (UNSUPPORTED_ATS_DATA.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+
+        section.style.display = 'block';
+        countEl.textContent = UNSUPPORTED_ATS_DATA.length;
+
+        // Check for any with parser in progress or newly detected
+        const inProgress = UNSUPPORTED_ATS_DATA.filter(a => a.parser_status === 'in_progress' || a.parser_status === 'generating');
+        const newSystems = UNSUPPORTED_ATS_DATA.filter(a => a.parser_status === 'not_started' || a.parser_status === 'data_collected');
+
+        if (inProgress.length > 0) {
+          newEl.style.display = 'inline';
+          newEl.textContent = `🔧 ${inProgress.length} IN PROGRESS`;
+          newEl.style.background = '#1e40af';
+          newEl.style.color = '#93c5fd';
+        } else if (newSystems.length > 0) {
+          newEl.style.display = 'inline';
+          newEl.textContent = `${newSystems.length} NEW`;
+          newEl.style.background = '#166534';
+          newEl.style.color = '#86efac';
+        } else {
+          newEl.style.display = 'none';
+        }
+
+        // Render list with action buttons
+        listEl.innerHTML = UNSUPPORTED_ATS_DATA.map(ats => {
+          const statusIcon = {
+            'not_started': '⬜',
+            'data_collected': '📊',
+            'in_progress': '🔧',
+            'generating': '🔧',
+            'generated': '📄',
+            'tested_ok': '✅',
+            'completed': '✅',
+            'needs_review': '⚠️',
+            'test_failed': '❌',
+            'generation_failed': '❌'
+          }[ats.parser_status] || '⬜';
+
+          const statusColor = {
+            'not_started': '#9ca3af',
+            'data_collected': '#a855f7',
+            'in_progress': '#60a5fa',
+            'generating': '#60a5fa',
+            'generated': '#fbbf24',
+            'tested_ok': '#22c55e',
+            'completed': '#22c55e',
+            'needs_review': '#f59e0b',
+            'test_failed': '#ef4444',
+            'generation_failed': '#ef4444'
+          }[ats.parser_status] || '#9ca3af';
+
+          // Show "Generate" button if we have data but no parser yet
+          const canGenerate = ats.endpoints_found > 0 &&
+            ['not_started', 'data_collected', 'test_failed', 'generation_failed', 'needs_review'].includes(ats.parser_status);
+
+          const actionBtn = canGenerate
+            ? `<button onclick="generateAtsParser('${ats.name}')" style="padding: 2px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">🤖 Generate</button>`
+            : '';
+
+          return `
+            <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1e293b;">
+              <span style="color: ${statusColor}; font-size: 13px;">${statusIcon}</span>
+              <span style="flex: 1; color: #e2e8f0;">${ats.name}</span>
+              <span style="color: #64748b; font-size: 10px;">${ats.companies_count || 0} co.</span>
+              <span style="color: #a855f7; font-size: 10px;">${ats.endpoints_found || 0} endpoints</span>
+              <span style="color: ${statusColor}; font-size: 10px; min-width: 70px;">${ats.parser_status?.replace('_', ' ') || 'not started'}</span>
+              <div style="min-width: 70px; text-align: right;">${actionBtn}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      async function generateAtsParser(atsName) {
+        if (!confirm(`Generate parser for "${atsName}" using Claude API?\n\nThis will use your ANTHROPIC_API_KEY.`)) return;
+
+        try {
+          const res = await fetch(`/ats-generate/${encodeURIComponent(atsName)}`, { method: 'POST' });
+          const data = await res.json();
+
+          if (data.error) {
+            alert('Error: ' + data.error);
+          } else {
+            alert(`Parser generation started for ${atsName}.\n\nCheck back in a few seconds for status update.`);
+            // Reload ATS info after a delay
+            setTimeout(loadAtsInfo, 5000);
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
+        }
+      }
+
+      function toggleUnsupportedAts() {
+        unsupportedAtsExpanded = !unsupportedAtsExpanded;
+        const toggle = document.getElementById('unsupportedAtsToggle');
+        const list = document.getElementById('unsupportedAtsList');
+        toggle.style.transform = unsupportedAtsExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+        list.style.display = unsupportedAtsExpanded ? 'block' : 'none';
+      }
+
       function sortCompanies(col) {
         if (companiesSortCol === col) {
           companiesSortDir = companiesSortDir === "asc" ? "desc" : "asc";
@@ -5648,6 +5795,7 @@
       loadCompanies();
       loadStatsByDate();
       loadJobsFromCache();  // Load jobs for header stats
+      loadAtsInfo();  // Load unsupported ATS parser status
       
       // Pagination event listeners
       document.getElementById("paginationPrev").addEventListener("click", () => {
@@ -6107,6 +6255,10 @@
             item.title = analysis.title || 'Position Closed';
             item.company = analysis.company || '';
             item.error = analysis.error;
+          } else if (analysis.is_confirmation_page) {
+            item.status = 'error';
+            item.title = 'Confirmation Page';
+            item.error = 'Use original job URL instead';
           } else {
             item.status = 'error';
             item.title = 'Error';
@@ -6117,7 +6269,7 @@
           item.title = 'Error';
           item.error = e.message;
         }
-        
+
         renderQueue();
       }
       
@@ -6206,22 +6358,30 @@
         const item = analysisQueue.find(i => i.id === queueId);
         if (!item) return;
 
-        // Set analysis data for addJobToPipeline to use
-        if (item.analysis) {
-          window.currentAnalysis = {
-            match_score: item.analysis.match_score,
-            analysis: item.analysis
-          };
+        // Add to pipeline via /onboard (similar to addReviewQueueItemToPipeline)
+        try {
+          const res = await fetch('/onboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: item.url,
+              match_score: item.score,
+              analysis: item.analysis
+            })
+          });
+          const data = await res.json();
+
+          if (data.ok) {
+            // Remove from queue only on success
+            removeFromQueue(queueId);
+            // Refresh pipeline
+            loadJobsOnce();
+          } else {
+            alert('Error: ' + (data.error || 'Failed to add'));
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
         }
-
-        // Add to pipeline
-        await addJobToPipeline(item.url);
-
-        // Clear analysis data
-        window.currentAnalysis = null;
-
-        // Remove from queue
-        removeFromQueue(queueId);
       }
       
       function removeFromQueue(queueId) {
@@ -6459,7 +6619,31 @@
               addJobSubmit.textContent = "🔍 Analyze";
               return;
             }
-            
+
+            // Check if this is a confirmation/thank-you page
+            if (analysis.is_confirmation_page) {
+              addJobStatus.style.background = "rgba(255,200,100,0.2)";
+              addJobStatus.innerHTML = `
+                <div style="padding: 12px; border: 2px solid #f59e0b; border-radius: 8px; background: white;">
+                  <strong style="color: #f59e0b; font-size: 16px;">⚠️ Confirmation Page Detected</strong><br>
+                  <p style="margin: 8px 0; color: #374151; font-size: 14px;">
+                    This URL appears to be an application confirmation or thank-you page, not the actual job listing.
+                  </p>
+                  <p style="margin: 8px 0; color: #6b7280; font-size: 13px;">
+                    Please find the original job posting URL (usually starts with the company name and contains the job description).
+                  </p>
+                  <div style="margin-top: 12px;">
+                    <button onclick="document.getElementById('addJobModal').style.display='none'" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                      Close
+                    </button>
+                  </div>
+                </div>
+              `;
+              addJobSubmit.disabled = false;
+              addJobSubmit.textContent = "🔍 Analyze";
+              return;
+            }
+
             // Analysis failed - offer to add anyway
             addJobStatus.style.background = "rgba(255,200,100,0.2)";
             addJobStatus.innerHTML = `

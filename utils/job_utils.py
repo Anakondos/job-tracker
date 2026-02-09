@@ -29,6 +29,11 @@ def generate_job_id(job: dict) -> str:
         "lever": "lv",
         "smartrecruiters": "sr",
         "workday": "wd",
+        "ashby": "ab",
+        "jibe": "jb",
+        "atlassian": "at",
+        "icims": "ic",
+        "phenom": "ph",
     }.get(ats, "xx")
     
     if ats_job_id:

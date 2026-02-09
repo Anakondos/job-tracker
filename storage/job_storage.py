@@ -133,17 +133,20 @@ def add_job(job: dict, status: str = STATUS_NEW) -> bool:
     job = normalize_job_location(job)
     
     now = _now_iso()
+    # Use original ATS date if available, otherwise use current time
+    original_date = job.get("first_published") or job.get("updated_at") or now
     job_record = {
         **job,
         "status": status,
         "status_history": [{"status": status, "date": now}],
-        "first_seen": now,
+        "first_seen": original_date,
+        "added_to_pipeline": now,
         "last_seen": now,
         "is_active_on_ats": True,
         "needs_attention": False,
         "notes": "",
     }
-    
+
     jobs.append(job_record)
     _save_jobs(jobs)
     return True
@@ -171,11 +174,14 @@ def add_jobs_bulk(new_jobs: List[dict], status: str = STATUS_NEW) -> int:
         # Normalize location
         job = normalize_job_location(job)
         
+        # Use original ATS date if available, otherwise use current time
+        original_date = job.get("first_published") or job.get("updated_at") or now
         job_record = {
             **job,
             "status": status,
             "status_history": [{"status": status, "date": now}],
-            "first_seen": now,
+            "first_seen": original_date,
+            "added_to_pipeline": now,
             "last_seen": now,
             "is_active_on_ats": True,
             "needs_attention": False,

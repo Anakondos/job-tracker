@@ -433,7 +433,7 @@ def refresh_company_sync(company: dict) -> dict:
 def update_cache_for_company(company_id: str, new_jobs: list) -> int:
     """Update jobs_all.json cache for a specific company. Returns count of new jobs added to pipeline."""
     from utils.cache_manager import get_cache_path
-    from utils.job_utils import classify_role
+    from utils.job_utils import classify_role, generate_job_id
     from utils.normalize import normalize_location
 
     cache_path = get_cache_path("all")
@@ -478,6 +478,9 @@ def update_cache_for_company(company_id: str, new_jobs: list) -> int:
                 job["role_category"] = role_info.get("role_category", "unknown")
                 job["role_family"] = role_info.get("role_family", "other")
                 job["role_id"] = role_info.get("role_id")
+            # Generate job ID if missing (required for pipeline)
+            if not job.get("id"):
+                job["id"] = generate_job_id(job)
 
         # Add new jobs
         all_jobs.extend(new_jobs)
@@ -1420,9 +1423,11 @@ def get_ats_info():
         except:
             pass
 
-    # Format unsupported ATS for response
+    # Format unsupported ATS for response (skip those already in SUPPORTED_ATS)
     unsupported_list = []
     for ats_key, ats_data in unsupported_ats.items():
+        if ats_key in ATS_PARSERS:
+            continue  # Already supported, skip
         unsupported_list.append({
             "name": ats_data.get("name", ats_key),
             "companies_count": len(ats_data.get("companies_using", [])),
@@ -1440,6 +1445,9 @@ def get_ats_info():
             "workday": "Workday - API support (limited)",
             "smartrecruiters": "SmartRecruiters - API support",
             "atlassian": "Atlassian - API support",
+            "phenom": "Phenom - API support",
+            "icims": "iCIMS - HTML parsing",
+            "jibe": "Jibe (Google Hire) - API support",
         },
         "auto_fill_supported": ["greenhouse", "lever", "ashby"],
         "unsupported_ats": unsupported_list,
