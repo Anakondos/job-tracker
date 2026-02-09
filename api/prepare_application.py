@@ -12,6 +12,21 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 
 
+# Ensure ANTHROPIC_API_KEY is loaded from .env
+_env_file = Path(__file__).parent.parent / ".env"
+if _env_file.exists():
+    try:
+        _content = _env_file.read_text()
+        for _line in _content.strip().split("\n"):
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+    except Exception as _e:
+        print(f"[PrepareApp] Error loading .env: {_e}")
+_api_key_loaded = bool(os.environ.get("ANTHROPIC_API_KEY"))
+print(f"[PrepareApp] Module init: API key loaded = {_api_key_loaded}")
+
 GOLD_CV_PATH = Path("/Users/anton/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV")
 # Fallback for other machine
 if not GOLD_CV_PATH.exists():
@@ -21,11 +36,16 @@ APPLICATIONS_PATH = GOLD_CV_PATH / "Applications"
 
 ROLE_CV_MAP = {
     "product": "CV_Anton_Kondakov_Product Manager.docx",
-    "tpm_program": "CV_Anton_Kondakov_TPM.docx", 
+    "tpm_program": "CV_Anton_Kondakov_TPM.docx",
     "project": "CV_Anton_Kondakov_Project Manager.docx",
     "scrum": "CV_Anton_Kondakov_Scrum Master.docx",
+    "delivery": "CV_Anton_Kondakov_DeliveryLead.docx",
+    "po": "CV_Anton_Kondakov_PO.docx",
     "other": "CV_Anton_Kondakov_Product Manager.docx",
 }
+
+# Additional CV source — latest tailored versions
+TAILORED_CV_PATH = Path("/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/CV/February_2026")
 
 
 @dataclass
@@ -70,7 +90,7 @@ class PrepareResult:
 
 
 def call_claude_api(prompt: str, max_tokens: int = 2000) -> Optional[str]:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
         print("[PrepareApp] No ANTHROPIC_API_KEY")
         return None
@@ -78,7 +98,7 @@ def call_claude_api(prompt: str, max_tokens: int = 2000) -> Optional[str]:
         resp = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": "claude-sonnet-4-20250514", "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}]},
+            json={"model": "claude-3-5-haiku-20241022", "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}]},
             timeout=60
         )
         if resp.status_code != 200:
@@ -146,82 +166,96 @@ def get_cv_for_role(role_family: str, job_title: str = "") -> tuple:
     return None, ""
 
 
-# Comprehensive candidate profile with full context (synced from CV Optimisation project)
+# Comprehensive candidate profile (synced from CV Optimisation project, Feb 2026)
 CANDIDATE_PROFILE = """
 CANDIDATE: Anton Kondakov
 LinkedIn: https://www.linkedin.com/in/antonkondakov/
+Location: Raleigh, NC | Remote / Relocation within US | US Green Card holder (ITAR/EAR eligible)
 
-CURRENT STATUS:
-Senior Technical Program Manager and Product Manager with 15+ years of experience in financial services
-and enterprise technology. Actively pursuing VP-level or senior individual contributor positions at major
-financial institutions or technology companies.
+SUMMARY:
+Senior Technical Program Manager and Product Manager with 15+ years leading complex programs
+for Fortune 500 in financial services, insurance, and enterprise tech. $71M+ career project budgets.
+Proven at cloud migrations, regulatory platforms, distributed team leadership.
+Impact: $1.2M+ cost savings, 25% uptime improvement, 98% on-time delivery, zero production incidents.
 
 WORK HISTORY (exact dates - no overlaps):
-- Luxoft USA / Deutsche Bank (Cary, NC): Feb 2020 – May 2025 - VP, Product Owner
-- Luxoft Poland / UBS: Apr 2016 – Jan 2020 - Senior Business Analyst
-- Luxoft Europe: Oct 2013 – Mar 2016 - Business Analyst
-- Earlier: Barclays Capital, various financial data roles
+1. DXC Technology – Global Insurance Platform (Jun 2025 – Present)
+   Senior TPM / Delivery Manager. AWS cloud migration, Angular modernization (v10→v18),
+   5 Agile teams (60+ engineers), PI Planning, London Market Insurance.
+2. Luxoft USA / Deutsche Bank (Cary, NC): Feb 2020 – May 2025
+   VP, Product Owner. GCP migration, regulatory platforms (MiFID II, CAT, EMIR),
+   50+ engineers across 15+ countries, $1.2M annual savings.
+3. Luxoft Poland / UBS Bank: Apr 2016 – Jan 2020
+   Senior Business Analyst → Product Owner. Trade reporting, EMIR compliance,
+   cross-functional coordination across 8 teams.
+4. Luxoft Europe / Barclays Capital: Oct 2013 – Mar 2016
+   Business Analyst. Financial data systems, regulatory reporting.
 
 CORE EXPERTISE:
-- Regulatory Compliance Platforms: MiFID II, CAT, EMIR, GDPR - 100% compliance track record
-- Cloud Transformations: GCP, AWS, Azure - led migrations saving $1.2M annually
-- Enterprise System Integrations: 20+ downstream systems, 50M+ daily API requests
-- Team Leadership: Managed distributed teams of 50+ engineers across 15+ countries
-- Domain: Investment Banking, Commercial Insurance (London Market), Enterprise SaaS
-
-KEY ACHIEVEMENTS (use round numbers):
-- Cloud Migration: $1.2M annual savings, 40% latency reduction
-- System Reliability: 25% improvement, 99% uptime
-- Team Scale: 50+ engineers, 15+ countries
-- Regulatory: 100% compliance across MiFID II, CAT, EMIR
+- Program & Project Management: Full SDLC, roadmapping, scope/schedule/budget, risk mitigation
+- Technical Delivery: Cloud migrations (AWS, GCP, Azure), distributed systems, platform modernization
+- Large Complex Programs: Own business/technical vision, unblock teams, land business impact
+- Methodologies: Agile (Scrum, Kanban, SAFe), Waterfall, Hybrid, PI Planning, CI/CD
+- Stakeholder Management: Executive reporting, cross-functional collaboration, client-facing delivery
+- Compliance & Governance: MiFID II, CAT, EMIR, SOX, GDPR, audit readiness
 
 TECHNICAL SKILLS:
-- Cloud: GCP, AWS, Azure (Google Cloud Architect certified)
+- Cloud: AWS (ECS, Lambda, Terraform), GCP (BigQuery, Vertex AI), Azure
 - Tools: ServiceNow, Jira, MS Project, Confluence, Datadog, Splunk
-- Programming: Java, Python, Angular
+- Programming: Java, Python, Angular, REST APIs
 - Infrastructure: Terraform, CI/CD (Jenkins, GitHub Actions, ArgoCD)
 - AI/ML: Amazon Q Developer, Vertex AI, BigQuery ML
+- Data: SQL, Tableau, Power BI, BigQuery
 
 CERTIFICATIONS:
 - SAFe 5 POPM (Product Owner/Product Manager)
 - PSM I (Professional Scrum Master)
 - Google Cloud Architect
-- MBA: Master's in Management - Presidential Program, International Institute of Management LINK / The Open University Business School (UK)
+- MBA: International Institute of Management LINK / The Open University Business School (UK)
 
 LOCATION & AUTHORIZATION:
 - Based in Raleigh, NC (Research Triangle)
-- Open to: Charlotte, RTP, Remote USA
-- US Work Authorized - NO sponsorship required
+- Open to: Charlotte, RTP, Durham, Remote USA, relocation within US
+- US Work Authorized (Green Card) - NO sponsorship required, ITAR/EAR eligible
 - Available: Immediately
 
 TARGET ROLES (what Anton IS looking for):
-- Technical Program Manager (TPM)
-- Product Manager / Senior Product Manager
-- Program Manager / Delivery Manager
-- Product Owner
-- Scrum Master / Agile Coach
+- Technical Program Manager (TPM) — STRONGEST FIT
+- Senior Product Manager / Product Manager
+- Program Manager / Delivery Manager / Portfolio Manager (projects, not investments)
+- Product Owner (technical platforms)
+- Scrum Master / Agile Coach / Delivery Lead
 - VP-level or Senior IC positions
+- Consulting: Tech Delivery Senior Manager, Client Engagement Manager
 
 TARGET INDUSTRIES:
-- Financial Services (FinTech, Banking, Insurance)
+- Financial Services (FinTech, Banking, Insurance) — STRONGEST
 - Enterprise Technology / SaaS
-- Aerospace & Defense (program/portfolio management)
-- Healthcare Technology (if leveraging compliance expertise)
+- Aerospace & Defense (program/portfolio management, ITAR eligible)
+- Healthcare Technology (compliance expertise transfers)
+- Consulting (Deloitte, PwC, Accenture — delivery/engagement management)
 
-NOT LOOKING FOR (important for analysis):
-- Financial Portfolio Manager (investments/asset management) - DIFFERENT ROLE
-- Sales roles
-- Pure software engineering (coding-focused)
-- Contract/temporary positions (prefers full-time)
+NOT A MATCH (important for analysis):
+- Financial Portfolio Manager (investments/asset management) — DIFFERENT ROLE
+- Sales, BD, Account Executive roles
+- Pure software engineering (coding-focused, SWE, SDE)
+- Data Scientist / ML Engineer (hands-on modeling, not managing)
+- Contract/temporary positions (prefers full-time W2)
 - Roles requiring relocation outside US
+- Junior/mid-level roles (needs Senior+ or Manager+)
+- Roles in India, EMEA-only, or non-US locations
 
 ANALYSIS RULES:
 1. "Portfolio Manager" in Tech/Aerospace = Project Portfolio Management = GOOD MATCH
 2. "Portfolio Manager" in Bank/Investment = Financial Asset Management = NOT A MATCH
 3. Always check company industry context before scoring
-4. Regulatory compliance experience is a strong differentiator
-5. Cloud transformation experience = infrastructure delivery expertise
-6. M&A integration work = change management capability
+4. Regulatory compliance (MiFID II, CAT, EMIR) is a STRONG differentiator
+5. Cloud transformation = infrastructure delivery expertise
+6. London Market Insurance = commercial insurance domain knowledge
+7. If role says "India", "Bengaluru", "Gurugram" etc — location mismatch, score LOW
+8. If role says "Remote" with no US restriction — check if US-eligible
+9. Senior/Staff/Principal/VP = appropriate level. Associate/Junior = too junior
+10. "Agile Delivery Lead" matches well — Anton has SAFe POPM + PSM I + delivery experience
 """
 
 

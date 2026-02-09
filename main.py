@@ -4,9 +4,18 @@ from __future__ import annotations
 
 import os
 
-# Load .env file
+# Load .env file (explicit path for nohup/daemon compatibility)
+from pathlib import Path as _Path
+_env_path = _Path(__file__).parent / ".env"
+if _env_path.exists():
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ[_k.strip()] = _v.strip()
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(_env_path)
 
 import asyncio
 from datetime import datetime, timezone, timedelta
@@ -2699,11 +2708,15 @@ def pipeline_all_endpoint(
                     j["folder_path"] = "~/" + "/".join(parts[3:])
     
     stats = get_job_stats()
-    return {
-        "count": len(all_jobs), 
-        "jobs": all_jobs,
-        "breakdown": stats["status_breakdown"]
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content={
+            "count": len(all_jobs),
+            "jobs": all_jobs,
+            "breakdown": stats["status_breakdown"]
+        },
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"}
+    )
 
 
 
@@ -5788,7 +5801,7 @@ Respond in JSON format:
                 "content-type": "application/json"
             },
             json={
-                "model": "claude-sonnet-4-20250514",
+                "model": "claude-3-5-haiku-20241022",
                 "max_tokens": 1000,
                 "messages": [{"role": "user", "content": prompt}]
             },
