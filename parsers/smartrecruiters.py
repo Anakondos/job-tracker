@@ -1,6 +1,7 @@
 # parsers/smartrecruiters.py
 
 import re
+import time
 import requests
 from urllib.parse import urljoin
 
@@ -36,9 +37,19 @@ def fetch_smartrecruiters(company: str, api_url: str, base_url: str = None):
     jobs = []
 
     while True:
-        r = requests.get(api_url, params=params, timeout=25)
-        r.raise_for_status()
-        data = r.json()
+        for attempt in range(3):
+            try:
+                r = requests.get(api_url, params=params, timeout=30)
+                r.raise_for_status()
+                data = r.json()
+                break
+            except (requests.Timeout, requests.ConnectionError) as e:
+                if attempt < 2:
+                    slug = api_url.split("/companies/")[-1].split("/")[0] if "/companies/" in api_url else "unknown"
+                    print(f"[SmartRecruiters] Retry {attempt+1} for {slug}: {e}")
+                    time.sleep(2)
+                else:
+                    raise
 
         postings = data.get("content") or []
         if not postings:

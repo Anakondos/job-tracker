@@ -1,5 +1,6 @@
 # parsers/greenhouse.py
 
+import time
 import requests
 
 
@@ -11,9 +12,19 @@ def fetch_greenhouse(company: str, base_url: str):
     token = base_url.rstrip("/").split("/")[-1]
     api_url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
 
-    r = requests.get(api_url, timeout=20)
-    r.raise_for_status()
-    data = r.json()
+    for attempt in range(3):
+        try:
+            r = requests.get(api_url, timeout=30)
+            r.raise_for_status()
+            data = r.json()
+            break
+        except (requests.Timeout, requests.ConnectionError) as e:
+            if attempt < 2:
+                print(f"[Greenhouse] Retry {attempt+1} for {token}: {e}")
+                time.sleep(2)
+            else:
+                print(f"[Greenhouse] Failed after 3 retries for {token}: {e}")
+                raise
 
     jobs = []
     for job in data.get("jobs", []):

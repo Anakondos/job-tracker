@@ -74,7 +74,7 @@ ATS_PARSERS = {
     "ashby": fetch_ashby_jobs,
     "workday": lambda url: fetch_workday_v2("", url),
     "atlassian": lambda url: fetch_atlassian("", url),
-    "phenom": fetch_phenom_jobs,
+    "phenom": lambda url: fetch_phenom_jobs("", url),
     "icims": lambda url: fetch_icims("", url),
     "jibe": lambda url: fetch_jibe("", url),
 }

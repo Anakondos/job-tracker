@@ -1,5 +1,6 @@
 # parsers/lever.py
 
+import time
 import requests
 from datetime import datetime, timezone
 
@@ -23,9 +24,20 @@ def fetch_lever(company: str, base_url: str):
     slug = base_url.rstrip("/").split("/")[-1]
     api_url = f"https://api.lever.co/v0/postings/{slug}?mode=json"
 
-    r = requests.get(api_url, timeout=20)
-    r.raise_for_status()
-    data = r.json()
+    # Retry logic for timeouts
+    for attempt in range(3):
+        try:
+            r = requests.get(api_url, timeout=30)
+            r.raise_for_status()
+            data = r.json()
+            break
+        except (requests.Timeout, requests.ConnectionError) as e:
+            if attempt < 2:
+                print(f"[Lever] Retry {attempt+1} for {slug}: {e}")
+                time.sleep(2)
+            else:
+                print(f"[Lever] Failed after 3 retries for {slug}: {e}")
+                raise
 
     jobs = []
     for job in data:
