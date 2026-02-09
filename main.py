@@ -2907,6 +2907,68 @@ def enrich_job_endpoint(job_id: str):
     return {"ok": False, "error": f"Enrichment not supported for ATS: {ats}"}
 
 
+@app.post("/pipeline/enrich-batch")
+def enrich_batch_endpoint(background_tasks: BackgroundTasks):
+    """
+    Batch enrich all unenriched Workday jobs in pipeline.
+    Runs in background to avoid timeout.
+    """
+    from storage.job_storage import _load_jobs, _save_jobs
+
+    jobs = _load_jobs()
+    to_enrich = [j for j in jobs if j.get("ats") == "workday"
+                 and not j.get("enriched")
+                 and "myworkdayjobs.com" in (j.get("job_url") or j.get("url", ""))]
+
+    if not to_enrich:
+        return {"ok": True, "message": "No jobs to enrich", "total": 0}
+
+    def _do_batch_enrich():
+        import time
+        from parsers.workday import fetch_workday_job_detail
+        from storage.job_storage import _load_jobs as load_j, _save_jobs as save_j
+
+        all_jobs = load_j()
+        job_map = {j.get("id"): j for j in all_jobs}
+        enriched_count = 0
+        error_count = 0
+
+        for target in to_enrich:
+            job_id = target.get("id")
+            job_url = target.get("job_url") or target.get("url", "")
+            try:
+                detail = fetch_workday_job_detail(job_url, timeout=10)
+                if detail and job_id in job_map:
+                    j = job_map[job_id]
+                    if detail.get("deadline"):
+                        j["deadline"] = detail["deadline"]
+                    if detail.get("start_date") and not j.get("updated_at"):
+                        j["updated_at"] = detail["start_date"]
+                        j["first_published"] = detail["start_date"]
+                    if detail.get("time_left"):
+                        j["time_left"] = detail["time_left"]
+                    if detail.get("salary_range"):
+                        j["salary_range"] = detail["salary_range"]
+                    j["enriched"] = True
+                    enriched_count += 1
+                else:
+                    error_count += 1
+            except Exception:
+                error_count += 1
+            time.sleep(0.5)
+
+            # Save every 20 jobs
+            if (enriched_count + error_count) % 20 == 0:
+                save_j(list(job_map.values()))
+                print(f"[Enrich] Progress: {enriched_count} enriched, {error_count} errors")
+
+        save_j(list(job_map.values()))
+        print(f"[Enrich] Done: {enriched_count} enriched, {error_count} errors out of {len(to_enrich)}")
+
+    background_tasks.add_task(_do_batch_enrich)
+    return {"ok": True, "message": f"Enriching {len(to_enrich)} Workday jobs in background", "total": len(to_enrich)}
+
+
 class ParseJDRequest(BaseModel):
     job_id: str
     url: str
