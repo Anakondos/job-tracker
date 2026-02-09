@@ -2864,6 +2864,49 @@ def pipeline_get_job_endpoint(job_id: str):
         return {"ok": False, "error": "Job not found"}
 
 
+@app.post("/pipeline/enrich/{job_id}")
+def enrich_job_endpoint(job_id: str):
+    """
+    Enrich a pipeline job with extra data from ATS job detail API.
+    Currently supports Workday: fetches deadline, salary, posted date.
+    """
+    from storage.job_storage import get_job_by_id, _load_jobs, _save_jobs
+
+    job = get_job_by_id(job_id)
+    if not job:
+        return {"ok": False, "error": "Job not found"}
+
+    ats = job.get("ats", "")
+    job_url = job.get("job_url") or job.get("url", "")
+
+    if ats == "workday" and "myworkdayjobs.com" in job_url:
+        from parsers.workday import fetch_workday_job_detail
+        detail = fetch_workday_job_detail(job_url)
+        if detail:
+            # Update job in storage
+            jobs = _load_jobs()
+            for j in jobs:
+                if j.get("id") == job_id:
+                    if detail.get("deadline"):
+                        j["deadline"] = detail["deadline"]
+                    if detail.get("start_date") and not j.get("updated_at"):
+                        j["updated_at"] = detail["start_date"]
+                        j["first_published"] = detail["start_date"]
+                    if detail.get("time_left"):
+                        j["time_left"] = detail["time_left"]
+                    if detail.get("salary_range"):
+                        j["salary_range"] = detail["salary_range"]
+                    if detail.get("posted_on"):
+                        j["posted_on_raw"] = detail["posted_on"]
+                    j["enriched"] = True
+                    _save_jobs(jobs)
+                    return {"ok": True, "enriched": detail, "job": j}
+            return {"ok": False, "error": "Job not found in storage"}
+        return {"ok": False, "error": "Could not fetch job details from Workday"}
+
+    return {"ok": False, "error": f"Enrichment not supported for ATS: {ats}"}
+
+
 class ParseJDRequest(BaseModel):
     job_id: str
     url: str

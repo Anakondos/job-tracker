@@ -1216,8 +1216,8 @@
               <th class="sortable center" onclick="sortTable('match')" title="AI Match Score">% <span class="sortIcon" id="sortIcon-match">⬍</span></th>
               <th class="sortable" onclick="sortTable('title')">Title <span class="sortIcon" id="sortIcon-title">⬍</span></th>
               <th class="sortable" onclick="sortTable('location')">Location <span class="sortIcon" id="sortIcon-location">⬍</span></th>
-              <th class="sortable" onclick="sortTable('updated')">Updated <span class="sortIcon" id="sortIcon-updated">⬍</span></th>
-              <th class="sortable" onclick="sortTable('added')">Added <span class="sortIcon" id="sortIcon-added">⬍</span></th>
+              <th class="sortable" onclick="sortTable('added')" title="When job was published on ATS">Posted <span class="sortIcon" id="sortIcon-added">⬍</span></th>
+              <th class="sortable" onclick="sortTable('deadline')" title="Application deadline">Deadline <span class="sortIcon" id="sortIcon-deadline">⬍</span></th>
               <th class="sortable center" onclick="sortTable('ats')" title="ATS">ATS <span class="sortIcon" id="sortIcon-ats">⬍</span></th>
               <th>Actions</th>
               <th class="center">📁</th>
@@ -1238,8 +1238,24 @@
               </th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="Title" class="column-filter"></th>
               <th><input type="text" id="pipelineFilterLocation" placeholder="Location" class="column-filter"></th>
-              <th></th>
-              <th></th>
+              <th>
+                <select id="pipelineFilterPosted" class="column-filter" style="width:45px;">
+                  <option value="">All</option>
+                  <option value="today">Today</option>
+                  <option value="3d">3d</option>
+                  <option value="7d">7d</option>
+                  <option value="30d">30d</option>
+                </select>
+              </th>
+              <th>
+                <select id="pipelineFilterDeadline" class="column-filter" style="width:45px;">
+                  <option value="">All</option>
+                  <option value="has">Has</option>
+                  <option value="urgent">≤3d</option>
+                  <option value="soon">≤7d</option>
+                  <option value="expired">Exp</option>
+                </select>
+              </th>
               <th>
                 <select id="pipelineFilterAts" class="column-filter">
                   <option value="">All</option>
@@ -1248,6 +1264,9 @@
                   <option value="workday">WD</option>
                   <option value="smartrecruiters">SR</option>
                   <option value="ashby">AS</option>
+                  <option value="icims">IC</option>
+                  <option value="phenom">PH</option>
+                  <option value="jibe">JB</option>
                   <option value="manual">📌</option>
                 </select>
               </th>
@@ -1883,12 +1902,12 @@
         // Sort the data array for proper pagination
         pipelineFilteredJobs.sort((a, b) => {
           let av, bv;
-          if (column === 'updated') {
-            av = a.updated_at || '';
-            bv = b.updated_at || '';
-          } else if (column === 'added') {
+          if (column === 'added') {
             av = a.first_seen || a.created_at || '';
             bv = b.first_seen || b.created_at || '';
+          } else if (column === 'deadline') {
+            av = a.deadline || a.end_date || '';
+            bv = b.deadline || b.end_date || '';
           } else if (column === 'company') {
             av = (a.company || '').toLowerCase();
             bv = (b.company || '').toLowerCase();
@@ -1914,7 +1933,7 @@
             bv = '';
           }
 
-          if (column === 'updated' || column === 'added') {
+          if (column === 'added' || column === 'deadline') {
             const ad = (typeof av === 'number' && av > 1e9) ? av : (Date.parse(av) || 0);
             const bd = (typeof bv === 'number' && bv > 1e9) ? bv : (Date.parse(bv) || 0);
             return asc ? ad - bd : bd - ad;
@@ -2261,19 +2280,50 @@
         if (pipelineFilters.ats) {
           filtered = filtered.filter(j => pipelineFilters.ats === "manual" ? j.source === "onboard" : j.ats === pipelineFilters.ats);
         }
-        if (pipelineFilters.updated) {
-          const search = pipelineFilters.updated.toLowerCase();
-          filtered = filtered.filter(j => {
-            const updated = formatDateWithAge(j.updated_at || j.first_seen || "").toLowerCase();
-            return updated.includes(search);
-          });
+        // Posted date filter (how recently published)
+        if (pipelineFilters.posted) {
+          const now = new Date();
+          let cutoffDays = 0;
+          if (pipelineFilters.posted === 'today') cutoffDays = 1;
+          else if (pipelineFilters.posted === '3d') cutoffDays = 3;
+          else if (pipelineFilters.posted === '7d') cutoffDays = 7;
+          else if (pipelineFilters.posted === '30d') cutoffDays = 30;
+          if (cutoffDays > 0) {
+            const cutoff = new Date(now.getTime() - cutoffDays * 24*60*60*1000);
+            filtered = filtered.filter(j => {
+              const d = new Date(j.first_seen || j.created_at || 0);
+              return d >= cutoff;
+            });
+          }
         }
-        if (pipelineFilters.added) {
-          const search = pipelineFilters.added.toLowerCase();
-          filtered = filtered.filter(j => {
-            const added = formatDateShort(j.first_seen || j.created_at || "").toLowerCase();
-            return added.includes(search);
-          });
+        // Deadline filter
+        if (pipelineFilters.deadline) {
+          const now = new Date();
+          if (pipelineFilters.deadline === 'has') {
+            filtered = filtered.filter(j => j.deadline || j.end_date);
+          } else if (pipelineFilters.deadline === 'urgent') {
+            filtered = filtered.filter(j => {
+              const dl = j.deadline || j.end_date;
+              if (!dl) return false;
+              const d = new Date(dl);
+              const days = Math.ceil((d - now) / (1000*60*60*24));
+              return days >= 0 && days <= 3;
+            });
+          } else if (pipelineFilters.deadline === 'soon') {
+            filtered = filtered.filter(j => {
+              const dl = j.deadline || j.end_date;
+              if (!dl) return false;
+              const d = new Date(dl);
+              const days = Math.ceil((d - now) / (1000*60*60*24));
+              return days >= 0 && days <= 7;
+            });
+          } else if (pipelineFilters.deadline === 'expired') {
+            filtered = filtered.filter(j => {
+              const dl = j.deadline || j.end_date;
+              if (!dl) return false;
+              return new Date(dl) < now;
+            });
+          }
         }
         if (pipelineFilters.jobId) {
           const searchId = pipelineFilters.jobId.toLowerCase();
@@ -2456,8 +2506,8 @@
           row.dataset.industry = tagsStr;
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
-          row.dataset.updated = updatedAtRaw.trim(); // Use raw ISO for sorting
           row.dataset.added = addedAtRaw.trim(); // Use raw ISO for sorting
+          row.dataset.deadline = (job.deadline || job.end_date || "").trim();
           row.dataset.ats = job.source === "onboard" ? "manual" : (job.ats || "").trim();
           row.dataset.status = (st || "New").trim();
           row.dataset.jobId = job.id || "";
@@ -2489,8 +2539,20 @@
         </td>
         <td class="td-title"><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || "")}</a>${sourceIcon}</td>
         <td class="td-location">${escapeHtml(job.location || "")}</td>
-        <td class="td-date">${updatedAtStr}</td>
-        <td class="td-date" title="${pipelineDateStr ? 'Added to pipeline: ' + pipelineDateStr : ''}">${addedAtStr}</td>
+        <td class="td-date" title="${pipelineDateStr ? 'Found: ' + pipelineDateStr : ''}">${addedAtStr}</td>
+        <td class="td-date">${(() => {
+            const dl = job.deadline || job.end_date;
+            if (!dl) return '<span style="color:#64748b">—</span>';
+            try {
+              const dd = new Date(dl);
+              const now = new Date();
+              const daysLeft = Math.ceil((dd - now) / (1000*60*60*24));
+              const dlStr = (dd.getMonth()+1).toString().padStart(2,'0') + '.' + dd.getDate().toString().padStart(2,'0') + '.' + dd.getFullYear().toString().slice(-2);
+              if (daysLeft < 0) return `<span style="color:#ef4444" title="Expired">❌ ${dlStr}</span>`;
+              const color = daysLeft <= 2 ? '#ef4444' : daysLeft <= 5 ? '#f59e0b' : '#22c55e';
+              return `<span style="color:${color}" title="${job.time_left || daysLeft + ' days left'}">⏰ ${dlStr}</span>`;
+            } catch(e) { return '—'; }
+          })()}</td>
         <td class="td-ats">${(() => {
             const atsShort = {'greenhouse': 'GH', 'lever': 'LV', 'workday': 'WD', 'smartrecruiters': 'SR', 'ashby': 'AS', 'jibe': 'JB', 'phenom': 'PH', 'icims': 'IC', 'atlassian': 'AT', 'manual': '📌'};
             if (job.source === "onboard") return '📌';
@@ -2732,6 +2794,22 @@
                   if (parseData.summary) job.jd_summary = parseData.summary;
                   if (parseData.match_score) job.match_score = parseData.match_score;
                   if (parseData.analysis) job.analysis = parseData.analysis;
+
+                  // Enrich Workday jobs (fetch deadline, salary) in background
+                  if (ats === 'workday' && !job.deadline) {
+                    fetch(`/pipeline/enrich/${encodeURIComponent(jobId)}`, { method: 'POST' })
+                      .then(r => r.json())
+                      .then(data => {
+                        if (data.ok && data.enriched) {
+                          if (data.enriched.deadline) job.deadline = data.enriched.deadline;
+                          if (data.enriched.salary_range) job.salary_range = data.enriched.salary_range;
+                          if (data.enriched.time_left) job.time_left = data.enriched.time_left;
+                          // Re-render to show deadline
+                          const filtered = applyFilters(ALL_JOBS);
+                          renderJobs(filtered);
+                        }
+                      }).catch(() => {});
+                  }
 
                   btn.textContent = "✅ Done!";
                   setTimeout(() => {
@@ -5744,13 +5822,13 @@
         applyPipelineColumnFilters();
       });
       
-      document.getElementById("pipelineFilterUpdated")?.addEventListener("input", (e) => {
-        pipelineFilters.updated = e.target.value;
+      document.getElementById("pipelineFilterPosted")?.addEventListener("change", (e) => {
+        pipelineFilters.posted = e.target.value;
         applyPipelineColumnFilters();
       });
 
-      document.getElementById("pipelineFilterAdded")?.addEventListener("input", (e) => {
-        pipelineFilters.added = e.target.value;
+      document.getElementById("pipelineFilterDeadline")?.addEventListener("change", (e) => {
+        pipelineFilters.deadline = e.target.value;
         applyPipelineColumnFilters();
       });
 
