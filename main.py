@@ -467,10 +467,23 @@ def update_cache_for_company(company_id: str, new_jobs: list) -> int:
         all_jobs = [j for j in all_jobs if j.get("company_id") != company_id]
         print(f"[update_cache] {company_id}: after removing old jobs: {len(all_jobs)}")
 
+        # Resolve company name from companies.json
+        company_name = ""
+        try:
+            from company_storage import load_companies
+            for c in load_companies():
+                if c.get("id") == company_id:
+                    company_name = c.get("name", "")
+                    break
+        except Exception:
+            pass
+
         # Normalize and classify new jobs
         print(f"[update_cache] {company_id}: normalizing {len(new_jobs)} new jobs...")
         for job in new_jobs:
             job["company_id"] = company_id
+            if not job.get("company") and company_name:
+                job["company"] = company_name
             if "location_norm" not in job:
                 job["location_norm"] = normalize_location(job.get("location", ""))
             if "role_category" not in job:
