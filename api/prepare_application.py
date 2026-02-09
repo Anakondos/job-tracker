@@ -146,56 +146,82 @@ def get_cv_for_role(role_family: str, job_title: str = "") -> tuple:
     return None, ""
 
 
-# Comprehensive candidate profile (used when CV extraction fails)
+# Comprehensive candidate profile with full context (synced from CV Optimisation project)
 CANDIDATE_PROFILE = """
 CANDIDATE: Anton Kondakov
-TITLE: Senior Product Manager / Technical Program Manager / Product Owner / Scrum Master
+LinkedIn: https://www.linkedin.com/in/antonkondakov/
 
-EXPERIENCE SUMMARY (15+ years):
-- Product Management: 9+ years leading B2B SaaS products, enterprise platforms, regulatory systems
-- Technical Program Management: 5+ years managing complex cross-functional programs
-- Scrum Master / Agile Coach: 9+ years facilitating Agile teams, SAFe implementation
-- Team Leadership: Managed teams of 5-15 across multiple time zones
+CURRENT STATUS:
+Senior Technical Program Manager and Product Manager with 15+ years of experience in financial services
+and enterprise technology. Actively pursuing VP-level or senior individual contributor positions at major
+financial institutions or technology companies.
 
-KEY COMPANIES:
-- Deutsche Bank (VP, Product Owner) - RegTech, MiFID II, CAT reporting
-- UBS (Senior Business Analyst) - Trade reporting, EMIR compliance
-- Barclays Capital - Financial data systems
-- Current: Senior Product Manager (AI/ML platforms)
+WORK HISTORY (exact dates - no overlaps):
+- Luxoft USA / Deutsche Bank (Cary, NC): Feb 2020 – May 2025 - VP, Product Owner
+- Luxoft Poland / UBS: Apr 2016 – Jan 2020 - Senior Business Analyst
+- Luxoft Europe: Oct 2013 – Mar 2016 - Business Analyst
+- Earlier: Barclays Capital, various financial data roles
 
-MAJOR ACHIEVEMENTS:
-- Cloud Migration: Led AWS migration saving $1.2M annually, 40% latency reduction
-- Regulatory Platforms: Built MiFID II/CAT/EMIR compliant reporting (100% regulatory compliance)
-- ML Analytics: Developed predictive models achieving 88% forecast accuracy
-- API Platform: Designed REST APIs serving 50M+ daily requests
-- Cost Optimization: Reduced infrastructure costs by $500K through optimization
+CORE EXPERTISE:
+- Regulatory Compliance Platforms: MiFID II, CAT, EMIR, GDPR - 100% compliance track record
+- Cloud Transformations: GCP, AWS, Azure - led migrations saving $1.2M annually
+- Enterprise System Integrations: 20+ downstream systems, 50M+ daily API requests
+- Team Leadership: Managed distributed teams of 50+ engineers across 15+ countries
+- Domain: Investment Banking, Commercial Insurance (London Market), Enterprise SaaS
+
+KEY ACHIEVEMENTS (use round numbers):
+- Cloud Migration: $1.2M annual savings, 40% latency reduction
+- System Reliability: 25% improvement, 99% uptime
+- Team Scale: 50+ engineers, 15+ countries
+- Regulatory: 100% compliance across MiFID II, CAT, EMIR
 
 TECHNICAL SKILLS:
-- Cloud: AWS (certified path), GCP, Azure
-- Tools: JIRA (advanced admin), Confluence, ServiceNow, Datadog, Splunk
-- Data: SQL, Python, Tableau, Power BI
-- CI/CD: Jenkins, GitHub Actions, ArgoCD
-- AI/ML: Amazon Q Developer, ML model deployment
+- Cloud: GCP, AWS, Azure (Google Cloud Architect certified)
+- Tools: ServiceNow, Jira, MS Project, Confluence, Datadog, Splunk
+- Programming: Java, Python, Angular
+- Infrastructure: Terraform, CI/CD (Jenkins, GitHub Actions, ArgoCD)
+- AI/ML: Amazon Q Developer, Vertex AI, BigQuery ML
 
 CERTIFICATIONS:
 - SAFe 5 POPM (Product Owner/Product Manager)
 - PSM I (Professional Scrum Master)
-- Google Cloud Digital Leader
-- AWS Cloud Practitioner (in progress)
+- Google Cloud Architect
+- MBA: Master's in Management - Presidential Program, International Institute of Management LINK / The Open University Business School (UK)
 
-METHODOLOGIES:
-- Agile/Scrum (9+ years), SAFe (PI Planning, ART sync), Kanban
-- SDLC, DevOps practices, SRE principles
+LOCATION & AUTHORIZATION:
+- Based in Raleigh, NC (Research Triangle)
+- Open to: Charlotte, RTP, Remote USA
+- US Work Authorized - NO sponsorship required
+- Available: Immediately
 
-LOCATION: Raleigh, NC (Open to Charlotte, RTP, Remote USA)
-WORK AUTHORIZATION: US Authorized, no sponsorship required
-AVAILABILITY: Immediate
+TARGET ROLES (what Anton IS looking for):
+- Technical Program Manager (TPM)
+- Product Manager / Senior Product Manager
+- Program Manager / Delivery Manager
+- Product Owner
+- Scrum Master / Agile Coach
+- VP-level or Senior IC positions
 
-LOOKING FOR:
-- Senior PM, TPM, Program Manager, Product Owner, Scrum Master roles
-- Fintech, Enterprise SaaS, B2B platforms, RegTech
-- Companies with strong engineering culture
-- Remote or NC-based positions
+TARGET INDUSTRIES:
+- Financial Services (FinTech, Banking, Insurance)
+- Enterprise Technology / SaaS
+- Aerospace & Defense (program/portfolio management)
+- Healthcare Technology (if leveraging compliance expertise)
+
+NOT LOOKING FOR (important for analysis):
+- Financial Portfolio Manager (investments/asset management) - DIFFERENT ROLE
+- Sales roles
+- Pure software engineering (coding-focused)
+- Contract/temporary positions (prefers full-time)
+- Roles requiring relocation outside US
+
+ANALYSIS RULES:
+1. "Portfolio Manager" in Tech/Aerospace = Project Portfolio Management = GOOD MATCH
+2. "Portfolio Manager" in Bank/Investment = Financial Asset Management = NOT A MATCH
+3. Always check company industry context before scoring
+4. Regulatory compliance experience is a strong differentiator
+5. Cloud transformation experience = infrastructure delivery expertise
+6. M&A integration work = change management capability
 """
 
 
@@ -223,35 +249,54 @@ ADDITIONAL CONTEXT:
     
     prompt = f"""{candidate_info}
 
-JOB: {company} - {job_title} ({role_family})
-JD: {jd[:5000]}
+=== JOB TO ANALYZE ===
+Company: {company}
+Title: {job_title}
+Role Category: {role_family}
 
-Analyze this job for Anton. Compare JD requirements against his ACTUAL CV above.
+Job Description:
+{jd[:6000]}
+
+=== ANALYSIS INSTRUCTIONS ===
+
+You are analyzing this job for Anton Kondakov. Use the FULL CONTEXT above to make accurate decisions.
+
+CRITICAL RULES:
+1. CHECK COMPANY CONTEXT: "Portfolio Manager" at Frontgrade (Aerospace) = Program Management (GOOD MATCH)
+   vs "Portfolio Manager" at Goldman Sachs = Investment Management (NOT A MATCH)
+2. Anton has 15+ years in Tech/Financial Services - regulatory compliance is his differentiator
+3. His cloud transformation and distributed team leadership transfers across industries
+4. Location must be: Remote USA, NC-based, or relocatable within US
+
+SCORING GUIDE:
+- 80-100%: Strong match - most requirements met, industry aligned, clear path
+- 65-79%: Good match - solid fit with minor gaps, worth applying
+- 50-64%: Moderate - some transferable skills, significant adaptation needed
+- Below 50%: Poor match - wrong industry, wrong role type, or major gaps
 
 Return ONLY valid JSON:
 {{
-  "match_score": <0-100 based on REAL experience match from CV>,
+  "match_score": <0-100>,
   "fit_level": "<excellent|good|moderate|low>",
-  "analysis_summary": "<2-3 sentences - be specific about what matches/doesn't from CV>",
-  "role_type": "<actual role type: Scrum Master, Product Manager, TPM, etc>",
+  "analysis_summary": "<2-3 sentences explaining the match, be specific>",
+  "role_type": "<what this role actually is: TPM, Product Manager, Financial Analyst, etc>",
+  "industry_context": "<company industry and how it relates to Anton's background>",
   "location_info": "<location, remote status, salary if mentioned>",
   "key_requirements": [
-    {{"requirement": "<from JD>", "anton_has": "<yes|partial|no>", "comment": "<cite CV evidence>"}}
+    {{"requirement": "<from JD>", "anton_has": "<yes|partial|no>", "evidence": "<specific experience>"}}
   ],
-  "matching_experience": ["<specific CV items that match>"],
-  "gaps": ["<what's missing vs JD>"],
-  "red_flags": ["<concerns>"],
+  "matching_experience": ["<specific relevant experience>"],
+  "gaps": ["<what's genuinely missing>"],
+  "red_flags": ["<serious concerns if any>"],
   "pros": ["<reasons to apply>"],
-  "cons": ["<reasons to skip>"],
+  "cons": ["<reasons to hesitate>"],
   "recommendation": "<STRONG APPLY|APPLY|MAYBE|SKIP>",
-  "recommendation_reason": "<why>",
+  "recommendation_reason": "<clear explanation>",
   "cv_decision": "<base|optimize>",
   "cv_reason": "<why>",
-  "keywords_to_add": ["<keywords from JD not in CV>"],
-  "cover_letter_focus": ["<points to emphasize>"]
-}}
-
-IMPORTANT: Base match_score on ACTUAL CV content, not assumptions. If Anton's CV shows 9+ years Scrum Master experience and job needs 5+ years, that's a YES match."""
+  "keywords_to_add": ["<relevant keywords from JD>"],
+  "cover_letter_focus": ["<key points to emphasize>"]
+}}"""
 
     response = call_claude_api(prompt, 1500)
     if not response:
