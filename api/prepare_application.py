@@ -293,20 +293,46 @@ Job Description:
 
 === ANALYSIS INSTRUCTIONS ===
 
-You are analyzing this job for Anton Kondakov. Use the FULL CONTEXT above to make accurate decisions.
+You are analyzing this job for Anton Kondakov. Be BRUTALLY HONEST — inflated scores waste the candidate's time on bad-fit jobs.
 
 CRITICAL RULES:
 1. CHECK COMPANY CONTEXT: "Portfolio Manager" at Frontgrade (Aerospace) = Program Management (GOOD MATCH)
    vs "Portfolio Manager" at Goldman Sachs = Investment Management (NOT A MATCH)
-2. Anton has 15+ years in Tech/Financial Services - regulatory compliance is his differentiator
-3. His cloud transformation and distributed team leadership transfers across industries
-4. Location must be: Remote USA, NC-based, or relocatable within US
+2. BE BRUTALLY HONEST about gaps. If JD asks for Tableau and Anton has zero Tableau → that's "no", not "partial"
+3. "Transferable skills" alone should NEVER push score above 55%. Cloud migration ≠ Tableau. Enterprise PM ≠ Mobile UX.
+4. Location: "Remote USA" or "NC-based" = match. Specific city only (SF, NYC, Seattle) without remote option = DEDUCT 15 pts
+5. Domain-specific tools/platforms (Tableau, Salesforce, Slack APIs, etc.) with zero experience = DEDUCT 20 pts cumulative
+6. Do NOT inflate score to be encouraging. A low score helps Anton skip bad matches and focus on real opportunities.
 
-SCORING GUIDE:
-- 80-100%: Strong match - most requirements met, industry aligned, clear path
-- 65-79%: Good match - solid fit with minor gaps, worth applying
-- 50-64%: Moderate - some transferable skills, significant adaptation needed
-- Below 50%: Poor match - wrong industry, wrong role type, or major gaps
+SCORING METHOD — FOLLOW THIS EXACTLY:
+Step 1: List the top 5-8 HARD REQUIREMENTS from the JD (must-haves, not nice-to-haves).
+Step 2: For each, honestly assess: does Anton have DIRECT experience with THIS SPECIFIC THING?
+        - "yes" = he has done this exact thing (not something vaguely similar in a different domain)
+        - "partial" = related but different domain/technology/product area
+        - "no" = no relevant experience at all
+Step 3: Calculate base_ratio = (yes_count * 1.0 + partial_count * 0.3) / total_requirements
+Step 4: base_score = base_ratio * 100
+Step 5: Apply adjustments:
+  - Domain-specific platform/product Anton never used (e.g., Tableau, Salesforce, ServiceNow dev): -15 to -25 pts
+  - Location mismatch (city-only, not remote-friendly): -15 pts
+  - If mostly "partial" matches (transferable only): cap at 55% MAX
+  - Nice-to-have matches from preferred section: +3 to +5 pts max total
+  - Industry alignment (FinServ, Insurance, Enterprise Tech): +5 pts
+  - Seniority level match: +5 pts
+
+FINAL SCORE RANGES:
+- 80-100%: DIRECT experience with 80%+ hard requirements AND matching domain. Rare — reserve for TPM/PM at FinServ/enterprise tech.
+- 65-79%: Direct experience with 60%+ requirements, minor adaptation needed.
+- 50-64%: Some direct matches but significant domain/technology gaps.
+- 35-49%: Mostly transferable skills, wrong domain or product area.
+- Below 35%: Wrong role type, wrong location, or fundamental mismatch.
+
+CALIBRATION EXAMPLES:
+- TPM at FinServ, cloud migration, distributed teams, regulatory → 85-95% (direct match)
+- PM requiring Tableau/Salesforce/specific platform Anton never used → 35-50% (domain mismatch)
+- Delivery Manager, Agile, enterprise tech, no specific platform → 75-85% (strong match)
+- Role requiring mobile UX + consumer product experience → 30-45% (wrong domain)
+- PM at enterprise SaaS, general requirements, no niche platform → 65-75% (good transferable)
 
 Return ONLY valid JSON:
 {{

@@ -195,10 +195,11 @@
       /* Column widths via colgroup - optimized to fit without scroll */
       #jobsTable .col-id { width: 45px; }
       #jobsTable .col-checkbox { width: 28px; }
-      #jobsTable .col-company { width: 90px; }
+      #jobsTable .col-company { width: 85px; }
       #jobsTable .col-match { width: 28px; }
-      #jobsTable .col-title { width: 200px; max-width: 200px; }
-      #jobsTable .col-location { width: 95px; }
+      #jobsTable .col-title { width: 180px; max-width: 180px; }
+      #jobsTable .col-location { width: 80px; }
+      #jobsTable .col-geo { width: 55px; }
       #jobsTable .col-updated { width: 60px; }
       #jobsTable .col-added { width: 60px; }
       #jobsTable .col-ats { width: 28px; }
@@ -282,6 +283,8 @@
       .action-select { background: #3b82f6; }
       .action-prepare { background: #b45309; }
       .action-apply { background: #16a34a; }
+      .action-applied { background: #7c3aed; }
+      .action-interview { background: #d97706; }
       .removeFromPipelineBtn {
         background: #5a2a2a;
         color: white;
@@ -292,8 +295,22 @@
         font-size: 12px;
       }
       .status-icon { font-size: 11px; }
-      .status-applied { color: #a855f7; }
-      .status-interview { color: #f59e0b; }
+
+      /* Exclude button */
+      .excludeBtn {
+        background: none;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        font-size: 11px;
+        padding: 2px 3px;
+        opacity: 0.5;
+        transition: opacity 0.15s, color 0.15s;
+      }
+      .excludeBtn:hover {
+        opacity: 1;
+        color: #ef4444;
+      }
 
       /* Gear select */
       .gearSelect {
@@ -644,7 +661,8 @@
         background: rgba(16, 185, 129, 0.15);
       }
       tr[data-status="Applied"] {
-        background: rgba(96, 165, 250, 0.1);
+        background: rgba(124, 58, 237, 0.12);
+        border-left: 3px solid #7c3aed;
       }
       tr[data-status="Interview"] {
         background: rgba(34, 197, 94, 0.15);
@@ -1008,6 +1026,23 @@
           <div id="unsupportedAtsList" style="display: none; padding: 10px 14px; background: #0f172a; border-radius: 0 0 8px 8px; border: 1px solid #334155; border-top: none; font-size: 11px; max-height: 200px; overflow-y: auto;"></div>
         </div>
 
+        <!-- Discovery Section -->
+        <div id="discoverySection" style="margin: 15px 0; padding: 12px; background: #1a1f2e; border-radius: 8px; border: 1px solid #2d3548;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h3 style="margin:0; font-size:14px; color: #e2e8f0;">
+              🔍 Company Discovery
+              <span id="discoveryBadge" style="background:#3b82f6; color:white; padding:1px 7px; border-radius:10px; font-size:11px; margin-left:6px;">0</span>
+            </h3>
+            <div style="display: flex; gap: 6px;">
+              <button id="discoverySearchBtn" onclick="discoverySearch()" style="background:#6366f1; color:white; border:none; border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer;">🤖 AI Search</button>
+              <button id="discoveryBuiltInBtn" onclick="discoveryBuiltIn()" style="background:#0891b2; color:white; border:none; border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer;">🏢 Built In NC</button>
+              <button onclick="discoveryRefresh()" style="background:#334155; color:#94a3b8; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">🔄</button>
+            </div>
+          </div>
+          <div id="discoveryStatus" style="font-size:11px; color:#64748b; margin-bottom:6px;"></div>
+          <div id="discoveryCandidates" style="display:flex; flex-wrap:wrap; gap:6px; max-height:300px; overflow-y:auto;"></div>
+        </div>
+
         <div class="tableWrap">
           <table id="companiesTable">
             <thead>
@@ -1019,6 +1054,7 @@
                 <th class="sortable" style="width: 80px" onclick="sortCompanies('jobs_count')" title="PM/TPM jobs in pipeline">Jobs <span class="sortIcon" id="sortIcon-c-jobs_count">⬍</span></th>
                 <th class="sortable" style="width: 60px" onclick="sortCompanies('new_count')">New <span class="sortIcon" id="sortIcon-c-new_count">⬍</span></th>
                 <th class="sortable" style="width: 70px" onclick="sortCompanies('applied_count')">Applied <span class="sortIcon" id="sortIcon-c-applied_count">⬍</span></th>
+                <th class="sortable center" style="width: 90px" onclick="sortCompanies('geo_us')" title="US / Remote jobs">USA/Rmt <span class="sortIcon" id="sortIcon-c-geo_us">⬍</span></th>
                 <th class="sortable" style="width: 80px" onclick="sortCompanies('last_ok')">Status <span class="sortIcon" id="sortIcon-c-last_ok">⬍</span></th>
                 <th class="sortable" style="width: 75px" onclick="sortCompanies('last_checked')">Updated <span class="sortIcon" id="sortIcon-c-last_checked">⬍</span></th>
                 <th style="width: 60px">Actions</th>
@@ -1040,6 +1076,7 @@
                 <th><input type="number" id="filterJobsMin" placeholder="Min" class="column-filter" style="width: 50px"></th>
                 <th></th>
                 <th></th>
+                <th></th>
                 <th>
                   <select id="filterStatus" class="column-filter">
                     <option value="">All</option>
@@ -1053,7 +1090,7 @@
               </tr>
             </thead>
             <tbody id="companiesBody">
-              <tr><td colspan="10" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
+              <tr><td colspan="11" style="text-align:center; padding: 40px; color: var(--muted);">Loading companies...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1204,6 +1241,7 @@
             <col class="col-match">
             <col class="col-title">
             <col class="col-location">
+            <col class="col-geo">
             <col class="col-updated">
             <col class="col-added">
             <col class="col-ats">
@@ -1218,6 +1256,7 @@
               <th class="sortable center" onclick="sortTable('match')" title="AI Match Score">% <span class="sortIcon" id="sortIcon-match">⬍</span></th>
               <th class="sortable" onclick="sortTable('title')">Title <span class="sortIcon" id="sortIcon-title">⬍</span></th>
               <th class="sortable" onclick="sortTable('location')">Location <span class="sortIcon" id="sortIcon-location">⬍</span></th>
+              <th class="sortable center" onclick="sortTable('geo')" title="USA / Remote">Geo <span class="sortIcon" id="sortIcon-geo">⬍</span></th>
               <th class="sortable" onclick="sortTable('added')" title="When job was published on ATS">Posted <span class="sortIcon" id="sortIcon-added">⬍</span></th>
               <th class="sortable" onclick="sortTable('deadline')" title="Application deadline">Deadline <span class="sortIcon" id="sortIcon-deadline">⬍</span></th>
               <th class="sortable center" onclick="sortTable('ats')" title="ATS">ATS <span class="sortIcon" id="sortIcon-ats">⬍</span></th>
@@ -1240,6 +1279,15 @@
               </th>
               <th><input type="text" id="pipelineFilterTitle" placeholder="Title" class="column-filter"></th>
               <th><input type="text" id="pipelineFilterLocation" placeholder="Location" class="column-filter"></th>
+              <th>
+                <select id="pipelineFilterGeo" class="column-filter" style="width:50px;">
+                  <option value="">All</option>
+                  <option value="us">🇺🇸 US</option>
+                  <option value="nc">NC</option>
+                  <option value="remote">Remote</option>
+                  <option value="other">Other</option>
+                </select>
+              </th>
               <th>
                 <select id="pipelineFilterPosted" class="column-filter" style="width:45px;">
                   <option value="">All</option>
@@ -1280,6 +1328,7 @@
                   <option value="Ready">Rdy</option>
                   <option value="Applied">App</option>
                   <option value="Interview">Int</option>
+                  <option value="Excluded">Excl</option>
                 </select>
               </th>
               <th>
@@ -1738,11 +1787,15 @@
         <label>
           ATS
           <select id="newCompanyAts">
+            <option value="auto">🔍 Auto-detect from URL</option>
             <option value="greenhouse">Greenhouse</option>
             <option value="lever">Lever</option>
             <option value="smartrecruiters">SmartRecruiters</option>
             <option value="ashby">Ashby</option>
             <option value="workday">Workday</option>
+            <option value="icims">iCIMS</option>
+            <option value="phenom">Phenom</option>
+            <option value="jibe">Jibe (Google)</option>
           </select>
         </label>
         <label>
@@ -1919,6 +1972,22 @@
           } else if (column === 'location') {
             av = (a.location || '').toLowerCase();
             bv = (b.location || '').toLowerCase();
+          } else if (column === 'geo') {
+            // Sort order: nc > us > remote > other
+            const geoOrder = (j) => {
+              const ln = j.location_norm || {};
+              const st = (ln.state || '').toUpperCase();
+              const isUS = ln.is_us || false;
+              if (st === 'NC') return 1;
+              if (st) return 2;
+              if (isUS && ln.remote) return 3;
+              if (isUS) return 4;
+              if (ln.remote) return 5;
+              return 6;
+            };
+            av = geoOrder(a);
+            bv = geoOrder(b);
+            return asc ? av - bv : bv - av;
           } else if (column === 'ats') {
             av = a.source === 'onboard' ? 'manual' : (a.ats || '').toLowerCase();
             bv = b.source === 'onboard' ? 'manual' : (b.ats || '').toLowerCase();
@@ -2356,6 +2425,21 @@
           filtered = filtered.filter(j => !j.match_score || j.match_score === 0);
         }
 
+        // Filter by Geo column
+        if (pipelineFilters.geo) {
+          filtered = filtered.filter(j => {
+            const ln = j.location_norm || {};
+            const state = (ln.state || '').toUpperCase();
+            const isRemote = ln.remote || false;
+            const isUS = ln.is_us || false;
+            if (pipelineFilters.geo === 'nc') return state === 'NC';
+            if (pipelineFilters.geo === 'us') return isUS;
+            if (pipelineFilters.geo === 'remote') return isRemote;
+            if (pipelineFilters.geo === 'other') return !isUS && !isRemote;
+            return true;
+          });
+        }
+
         return filtered;
       }
 
@@ -2508,6 +2592,16 @@
           row.dataset.industry = tagsStr;
           row.dataset.title = (job.title || "").trim();
           row.dataset.location = (job.location || "").trim();
+          // Geo bucket for sorting/filtering
+          const _ln = job.location_norm || {};
+          const _state = (_ln.state || '').toUpperCase();
+          const _isRemote = _ln.remote || false;
+          const _isUS = _ln.is_us || false;
+          let _geo = 'other';
+          if (_state === 'NC') _geo = 'nc';
+          else if (_state || _isUS) _geo = 'us';
+          else if (_isRemote) _geo = 'remote';
+          row.dataset.geo = _geo;
           row.dataset.added = addedAtRaw.trim(); // Use raw ISO for sorting
           row.dataset.deadline = (job.deadline || job.end_date || "").trim();
           row.dataset.ats = job.source === "onboard" ? "manual" : (job.ats || "").trim();
@@ -2541,6 +2635,19 @@
         </td>
         <td class="td-title"><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || "")}</a>${sourceIcon}</td>
         <td class="td-location">${escapeHtml(job.location || "")}</td>
+        <td class="td-geo center">${(() => {
+            const ln = job.location_norm || {};
+            const state = (ln.state || '').toUpperCase();
+            const isRemote = ln.remote || false;
+            const isUS = ln.is_us || false;
+            if (state === 'NC') return '<span title="North Carolina" style="color:#22c55e">🏠NC</span>';
+            if (state && isRemote) return `<span title="${ln.state_full || state} + Remote">🇺🇸${state}+R</span>`;
+            if (state) return `<span title="US - ${ln.state_full || state}">🇺🇸${state}</span>`;
+            if (isUS && isRemote) return '<span title="Remote USA" style="color:#60a5fa">🏠R-US</span>';
+            if (isUS) return '<span title="USA">🇺🇸US</span>';
+            if (isRemote) return '<span title="Remote Global">🌐R</span>';
+            return '<span style="color:#64748b">—</span>';
+          })()}</td>
         <td class="td-date" title="${pipelineDateStr ? 'Found: ' + pipelineDateStr : ''}">${addedAtStr}</td>
         <td class="td-date">${(() => {
             const dl = job.deadline || job.end_date;
@@ -2572,9 +2679,9 @@
             } else if (st === 'Ready') {
               return `<button class="smartActionBtn action-apply" ${btnData} data-action="apply" title="Start form filler">🚀 Apply</button>`;
             } else if (stLower === 'applied') {
-              return `<span class="status-icon status-applied">⏳</span>`;
+              return `<button class="smartActionBtn action-applied" ${btnData} title="Applied — waiting for response">📨 Applied</button>`;
             } else if (stLower === 'interview') {
-              return `<span class="status-icon status-interview">🎯</span>`;
+              return `<button class="smartActionBtn action-interview" ${btnData} title="Interview stage">🎯 Interview</button>`;
             } else {
               return '';
             }
@@ -2585,9 +2692,10 @@
           ${isManual
             ? `<button class="removeFromPipelineBtn" data-jobid="${escapeAttr(job.id || '')}" title="Remove from Pipeline">✖</button>`
             : ''}
+          <button class="excludeBtn" data-jobid="${escapeAttr(job.id || '')}" title="Exclude — won't appear again">✖</button>
           <select class="gearSelect" data-jobkey="${escapeAttr(jobKey)}" title="Change status: ${st}">
             <option value="">⚙</option>
-            ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"]
+            ${["New", "Selected", "Ready", "Applied", "Interview", "Offer", "Rejected", "Excluded", "Withdrawn", "Closed"]
               .map(x => `<option value="${x}">${x}</option>`)
               .join("")}
           </select>
@@ -2713,6 +2821,32 @@
             });
           }
           
+          // Exclude button handler - quick reject with memory
+          const excludeBtn = row.querySelector(".excludeBtn");
+          if (excludeBtn) {
+            excludeBtn.addEventListener("click", async (e) => {
+              const jobId = e.target.dataset.jobid;
+              if (!jobId) return;
+
+              const ok = await persistStatus(jobId, "Excluded");
+              if (ok) {
+                // Remove row from display (excluded jobs hidden)
+                row.style.opacity = '0.3';
+                row.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                  // Remove from arrays
+                  const idx = ALL_JOBS.findIndex(j => j.id === jobId);
+                  if (idx >= 0) ALL_JOBS[idx].status = 'excluded';
+                  if (idx >= 0) ALL_JOBS[idx].application_status = 'Excluded';
+                  const idxRaw = ALL_JOBS_RAW.findIndex(j => j.id === jobId);
+                  if (idxRaw >= 0) ALL_JOBS_RAW[idxRaw].status = 'excluded';
+                  if (idxRaw >= 0) ALL_JOBS_RAW[idxRaw].application_status = 'Excluded';
+                  applyPipelineColumnFilters();
+                }, 300);
+              }
+            });
+          }
+
           // Cover Letter button handler
           const clBtn = row.querySelector(".coverLetterBtn");
           if (clBtn) {
@@ -3788,6 +3922,7 @@
       renderStateList("");
       updateStatus();
       updateSortIcons();
+      discoveryRefresh();
 
       // ========== TABS & COMPANIES ==========
       
@@ -3815,7 +3950,8 @@
         updated: "",
         added: "",
         folder: "all",
-        match: ""
+        match: "",
+        geo: ""
       };
       
       // Review column filters state
@@ -3952,6 +4088,7 @@
             if (ALL_JOBS.length > 0) {
               updateStatus();
             }
+            discoveryRefresh();
           } else if (tab === "jobs") {
             if (ALL_JOBS_RAW.length > 0) {
               // Jobs already loaded - just filter and render
@@ -5285,13 +5422,181 @@
         list.style.display = unsupportedAtsExpanded ? 'block' : 'none';
       }
 
+      // ===== Discovery Functions =====
+      async function discoveryRefresh() {
+        const container = document.getElementById('discoveryCandidates');
+        const badge = document.getElementById('discoveryBadge');
+        const status = document.getElementById('discoveryStatus');
+        try {
+          const resp = await fetch('/discovery/candidates');
+          const data = await resp.json();
+          const candidates = (data.candidates || []).filter(c => c.status !== 'approved' && c.status !== 'rejected');
+          // Sort: ready_to_approve first, then parse_error (retryable), then rest
+          const statusOrder = {'ready_to_approve':0, 'validated':1, 'supported':1, 'parse_error':2, 'unsupported_ats':3, 'needs_careers_url':4, 'no_ats_detected':5, 'no_relevant_roles':6, 'pending_validation':7};
+          candidates.sort((a,b) => (statusOrder[a.status]??9) - (statusOrder[b.status]??9));
+
+          badge.textContent = candidates.length;
+          badge.style.background = candidates.some(c => c.status === 'ready_to_approve') ? '#16a34a' : '#3b82f6';
+
+          const counts = data.status_counts || {};
+          const parts = [];
+          if (counts.ready_to_approve) parts.push(`✅ ${counts.ready_to_approve} ready`);
+          if (counts.validated || counts.supported) parts.push(`🔵 ${(counts.validated||0)+(counts.supported||0)} validated`);
+          if (counts.pending_validation) parts.push(`⏳ ${counts.pending_validation} pending`);
+          if (counts.needs_careers_url) parts.push(`🔗 ${counts.needs_careers_url} need URL`);
+          if (counts.no_ats_detected) parts.push(`⚪ ${counts.no_ats_detected} no ATS`);
+          if (counts.parse_error) parts.push(`🔴 ${counts.parse_error} errors`);
+          if (counts.approved) parts.push(`✓ ${counts.approved} approved`);
+          if (counts.rejected) parts.push(`✗ ${counts.rejected} rejected`);
+          status.textContent = parts.join(' · ');
+
+          if (candidates.length === 0) {
+            container.innerHTML = '<div style="color:#64748b; font-size:12px; padding:8px;">No candidates. Click AI Search or Built In NC to discover companies.</div>';
+            return;
+          }
+
+          container.innerHTML = candidates.map(c => {
+            const statusColors = {
+              'ready_to_approve': {bg:'#052e16', border:'#16a34a', icon:'🟢'},
+              'validated': {bg:'#0c1a3d', border:'#3b82f6', icon:'🔵'},
+              'supported': {bg:'#0c1a3d', border:'#3b82f6', icon:'🔵'},
+              'pending_validation': {bg:'#1a1a2e', border:'#475569', icon:'⏳'},
+              'no_ats_detected': {bg:'#1a1a1a', border:'#475569', icon:'⚪'},
+              'needs_careers_url': {bg:'#1a1a2e', border:'#6366f1', icon:'🔗'},
+              'parse_error': {bg:'#2a0a0a', border:'#dc2626', icon:'🔴'},
+              'unsupported_ats': {bg:'#2a1a0a', border:'#d97706', icon:'🟡'},
+              'no_relevant_roles': {bg:'#1a1a1a', border:'#475569', icon:'⚫'},
+            };
+            const st = statusColors[c.status] || {bg:'#1a1a2e', border:'#475569', icon:'❓'};
+            const atsLabel = c.ats && c.ats !== 'unknown' ? c.ats : '';
+            const rolesLabel = c.relevant_roles_count ? `${c.relevant_roles_count} roles` : '';
+            const industryLabel = (c.industry || c.tags?.[0] || '').substring(0, 20);
+            const hqLabel = c.hq_state || '';
+            const meta = [atsLabel, rolesLabel, hqLabel, industryLabel].filter(Boolean).join(' · ');
+
+            const approveBtn = (c.status === 'ready_to_approve' || c.status === 'validated' || c.status === 'supported')
+              ? `<button onclick="discoveryApprove('${c.id}')" style="background:#16a34a;color:white;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">✅ Approve</button>`
+              : '';
+            const retryBtn = ['parse_error','no_relevant_roles','no_ats_detected','unsupported_ats','needs_careers_url'].includes(c.status)
+              ? `<button onclick="discoveryRetry('${c.id}')" style="background:#6366f1;color:white;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">🔄 Retry</button>`
+              : '';
+            const rejectBtn = `<button onclick="discoveryReject('${c.id}')" style="background:#dc2626;color:white;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">✗ Reject</button>`;
+
+            return `<div style="background:${st.bg}; border:1px solid ${st.border}; border-radius:6px; padding:6px 10px; font-size:12px; min-width:220px; max-width:320px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#e2e8f0;">${st.icon} ${c.name || c.id}</strong>
+                <span style="color:#64748b; font-size:10px;">${c.status.replace(/_/g,' ')}</span>
+              </div>
+              <div style="color:#94a3b8; font-size:10px; margin:3px 0;">${meta}</div>
+              ${c.notes ? `<div style="color:#fbbf24; font-size:9px; margin:2px 0; opacity:0.8;">💡 ${c.notes.substring(0,60)}</div>` : ''}
+              ${c.retry_result ? `<div style="color:#a78bfa; font-size:9px; margin:2px 0;">↪ ${c.retry_result.substring(0,60)}</div>` : ''}
+              <div style="display:flex; gap:4px; margin-top:4px;">${approveBtn}${retryBtn}${rejectBtn}</div>
+            </div>`;
+          }).join('');
+        } catch(e) {
+          container.innerHTML = `<div style="color:#ef4444; font-size:11px;">Error: ${e.message}</div>`;
+        }
+      }
+
+      async function discoverySearch() {
+        const btn = document.getElementById('discoverySearchBtn');
+        const status = document.getElementById('discoveryStatus');
+        btn.disabled = true; btn.textContent = '🤖 Searching...';
+        status.textContent = 'Running AI discovery + seed list...';
+        try {
+          const resp = await fetch('/discovery/auto', {method: 'POST'});
+          const data = await resp.json();
+          if (data.ok) {
+            const steps = data.steps || [];
+            const search = steps[0]?.search || {};
+            const validate = steps[1]?.validate || {};
+            const preview = steps[2]?.preview || {};
+            status.textContent = `Found ${search.added||0} new, ${validate.supported||0} with ATS, ${data.ready_to_approve||0} ready to approve`;
+          } else {
+            status.textContent = `Error: ${data.error || 'unknown'}`;
+          }
+          await discoveryRefresh();
+        } catch(e) {
+          status.textContent = `Error: ${e.message}`;
+        } finally {
+          btn.disabled = false; btn.textContent = '🤖 AI Search';
+        }
+      }
+
+      async function discoveryBuiltIn() {
+        const btn = document.getElementById('discoveryBuiltInBtn');
+        const status = document.getElementById('discoveryStatus');
+        btn.disabled = true; btn.textContent = '🏢 Scanning...';
+        status.textContent = 'Scraping Built In NC companies...';
+        try {
+          const resp = await fetch('/discovery/builtin', {method: 'POST'});
+          const data = await resp.json();
+          if (data.ok) {
+            status.textContent = `Built In: scraped ${data.scraped||0} companies, ${data.new_candidates||0} new, ${data.with_ats||0} with supported ATS`;
+          } else {
+            status.textContent = `Error: ${data.error || 'unknown'}`;
+          }
+          await discoveryRefresh();
+        } catch(e) {
+          status.textContent = `Error: ${e.message}`;
+        } finally {
+          btn.disabled = false; btn.textContent = '🏢 Built In NC';
+        }
+      }
+
+      async function discoveryApprove(candidateId) {
+        const status = document.getElementById('discoveryStatus');
+        status.textContent = `Approving ${candidateId}...`;
+        try {
+          const resp = await fetch(`/discovery/approve/${candidateId}`, {method: 'POST'});
+          const data = await resp.json();
+          if (data.ok) {
+            const parsing = data.parsing || {};
+            status.textContent = `✅ Approved ${data.company?.name || candidateId}: ${parsing.jobs||0} jobs found, ${parsing.jobs_added||0} added`;
+            await discoveryRefresh();
+            // Refresh companies table too
+            if (typeof updateStatus === 'function') updateStatus();
+          } else {
+            status.textContent = `Error: ${data.error || 'approve failed'}`;
+          }
+        } catch(e) {
+          status.textContent = `Error: ${e.message}`;
+        }
+      }
+
+      async function discoveryReject(candidateId) {
+        try {
+          await fetch(`/discovery/reject/${candidateId}`, {method: 'POST'});
+          await discoveryRefresh();
+        } catch(e) {
+          console.error('Discovery reject error:', e);
+        }
+      }
+
+      async function discoveryRetry(candidateId) {
+        const status = document.getElementById('discoveryStatus');
+        status.textContent = `Retrying parse for ${candidateId}...`;
+        try {
+          const resp = await fetch(`/discovery/retry/${candidateId}`, {method: 'POST'});
+          const data = await resp.json();
+          if (data.ok) {
+            status.textContent = `🔄 ${candidateId}: ${data.jobs_found} jobs found, ${data.jobs_added} added → ${data.new_status}`;
+          } else {
+            status.textContent = `Retry failed: ${data.error}`;
+          }
+          await discoveryRefresh();
+        } catch(e) {
+          status.textContent = `Error: ${e.message}`;
+        }
+      }
+
       function sortCompanies(col) {
         if (companiesSortCol === col) {
           companiesSortDir = companiesSortDir === "asc" ? "desc" : "asc";
         } else {
           companiesSortCol = col;
           // Default: desc for numbers and dates, asc for text
-          companiesSortDir = ["total_jobs", "jobs_count", "new_count", "applied_count", "last_ok", "last_checked"].includes(col) ? "desc" : "asc";
+          companiesSortDir = ["total_jobs", "jobs_count", "new_count", "applied_count", "geo_us", "last_ok", "last_checked"].includes(col) ? "desc" : "asc";
         }
         
         // Apply filters first, then sort
@@ -5309,6 +5614,13 @@
             return companiesSortDir === "asc" ? oa - ob : ob - oa;
           }
           
+          // Geo column - sort by US job count
+          if (col === "geo_us") {
+            const ga = (a.geo || {}).us || 0;
+            const gb = (b.geo || {}).us || 0;
+            return companiesSortDir === "asc" ? ga - gb : gb - ga;
+          }
+
           // Date column
           if (col === "last_checked") {
             const da = va ? new Date(va).getTime() : 0;
@@ -5334,7 +5646,7 @@
       }
       
       function updateCompanySortIcons() {
-        const cols = ["company", "industry", "ats", "total_jobs", "jobs_count", "new_count", "applied_count", "last_ok", "last_checked"];
+        const cols = ["company", "industry", "ats", "total_jobs", "jobs_count", "new_count", "applied_count", "geo_us", "last_ok", "last_checked"];
         cols.forEach(c => {
           const icon = document.getElementById(`sortIcon-c-${c}`);
           if (icon) {
@@ -5351,7 +5663,7 @@
         const tbody = document.getElementById("companiesBody");
         
         if (!companies.length) {
-          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 40px; color: var(--muted);">No companies found</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 40px; color: var(--muted);">No companies found</td></tr>`;
           return;
         }
         
@@ -5407,6 +5719,18 @@
               <td><span class="${jobsBadgeClass}">${c.jobs_count}</span></td>
               <td>${c.new_count || 0}</td>
               <td>${c.applied_count || 0}</td>
+              <td class="center" style="font-size: 11px;">${(() => {
+                const g = c.geo || {};
+                const us = g.us || 0;
+                const rmt = g.remote || 0;
+                const oth = g.other || 0;
+                if (!us && !rmt && !oth) return '<span style="color:#64748b">—</span>';
+                let parts = [];
+                if (us) parts.push('<span style="color:#22c55e" title="US-based jobs">🇺🇸' + us + '</span>');
+                if (rmt) parts.push('<span style="color:#60a5fa" title="Remote Global">🌐' + rmt + '</span>');
+                if (oth) parts.push('<span style="color:#64748b" title="Non-US">' + oth + '</span>');
+                return parts.join(' ');
+              })()}</td>
               <td class="${statusClass}"${errorTip}>${statusIcon}</td>
               <td style="font-size: 11px; color: var(--muted);">${updatedStr}</td>
               <td><button class="refresh-company-btn" data-id="${c.id || c.company}" data-company="${c.company}" data-total="${c.total_jobs || 0}" title="Refresh this company" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">🔄</button></td>
@@ -5417,9 +5741,10 @@
         // Add click handlers for company rows
         tbody.querySelectorAll(".company-row").forEach(row => {
           row.addEventListener("click", (e) => {
-            // Don't trigger if clicking on refresh button
-            if (e.target.classList.contains('refresh-company-btn')) return;
+            // Don't trigger if clicking on refresh button or its children
+            if (e.target.closest('.refresh-company-btn')) return;
             const company = row.dataset.company;
+            console.log("[company-row click] target:", e.target.tagName, e.target.className, "company:", company);
             showJobsForCompany(company);
           });
         });
@@ -5540,22 +5865,72 @@
       }
       
       function showJobsForCompany(company) {
+        console.log("[showJobsForCompany] called with:", company);
         // Set company filter in Pipeline table
         document.getElementById("pipelineFilterCompany").value = company;
         pipelineFilters.company = company;
-        
+
+        // Reset ALL filters to show ALL jobs for this company
+        locationCategory = "all";
+        const locSelect = document.getElementById("locationCategory");
+        if (locSelect) locSelect.value = "all";
+        selectedStates = [];
+        document.querySelectorAll("#statePanel input[type='checkbox']").forEach(cb => cb.checked = false);
+        activeQuickFilter = "all";
+        document.querySelectorAll(".quick-filter-btn").forEach(b => {
+          b.classList.toggle("active", b.dataset.filter === "all");
+        });
+        dateRangeDays = "all";
+        const dateSelect = document.getElementById("dateRangeSelect");
+        if (dateSelect) dateSelect.value = "all";
+        globalSearchText = "";
+        const searchInput = document.getElementById("globalSearch");
+        if (searchInput) searchInput.value = "";
+        // Reset status filter
+        const statusSelect = document.getElementById("pipelineFilterStatus");
+        if (statusSelect) statusSelect.value = "all";
+        // Reset ATS filter
+        const atsSelect = document.getElementById("pipelineFilterAtsQuick");
+        if (atsSelect) atsSelect.value = "";
+        // Reset other pipeline column filters
+        pipelineFilters.title = "";
+        pipelineFilters.location = "";
+        const titleInput = document.getElementById("pipelineFilterTitle");
+        if (titleInput) titleInput.value = "";
+        const locationInput = document.getElementById("pipelineFilterLocation");
+        if (locationInput) locationInput.value = "";
+        // Reset geo filter
+        if (pipelineFilters.geo) {
+          pipelineFilters.geo = "";
+          const geoSelect = document.getElementById("pipelineFilterGeo");
+          if (geoSelect) geoSelect.value = "";
+        }
+        // Reset match filter
+        if (pipelineFilters.match) {
+          pipelineFilters.match = "";
+          const matchSelect = document.getElementById("pipelineFilterMatch");
+          if (matchSelect) matchSelect.value = "";
+        }
+        // Reset pagination
+        pipelinePage = 1;
+
+        // Save tab to localStorage so it persists
+        localStorage.setItem('activeTab', 'jobs');
+
         // Switch to Jobs tab
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
         document.querySelector('[data-tab="jobs"]').classList.add("active");
-        
+
         document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
         document.getElementById("tab-jobs").classList.add("active");
-        
+
         // If jobs already loaded, filter. Otherwise load from cache.
         if (ALL_JOBS_RAW.length > 0) {
           const filtered = applyFilters(ALL_JOBS);
+          console.log("[showJobsForCompany] filtered:", filtered.length, "from", ALL_JOBS.length);
           renderJobs(filtered);
         } else {
+          console.log("[showJobsForCompany] no jobs loaded, loading from cache");
           loadJobsFromCache();
         }
       }
@@ -5906,6 +6281,11 @@
 
       document.getElementById("pipelineFilterMatch")?.addEventListener("change", (e) => {
         pipelineFilters.match = e.target.value;
+        applyPipelineColumnFilters();
+      });
+
+      document.getElementById("pipelineFilterGeo")?.addEventListener("change", (e) => {
+        pipelineFilters.geo = e.target.value;
         applyPipelineColumnFilters();
       });
 
@@ -7205,19 +7585,21 @@
         document.getElementById("newCompanyName").value = "";
         document.getElementById("newCompanyUrl").value = "";
         document.getElementById("newCompanyIndustry").value = "";
-        document.getElementById("newCompanyAts").value = "greenhouse";
+        document.getElementById("newCompanyAts").value = "auto";
       }
       
       document.getElementById("confirmAddCompany").addEventListener("click", async () => {
         const name = document.getElementById("newCompanyName").value.trim();
-        const ats = document.getElementById("newCompanyAts").value;
+        let ats = document.getElementById("newCompanyAts").value;
         const board_url = document.getElementById("newCompanyUrl").value.trim();
         const industry = document.getElementById("newCompanyIndustry").value.trim();
-        
+
         if (!name || !board_url) {
           alert("Please fill in Company Name and Board URL");
           return;
         }
+        // Auto-detect: send empty string so backend auto-detects
+        if (ats === 'auto') ats = '';
         
         const btn = document.getElementById("confirmAddCompany");
         btn.disabled = true;
@@ -7232,6 +7614,10 @@
           const data = await res.json();
           
           if (data.status === "ok") {
+            const c = data.company || {};
+            const autoMsg = data.ats_auto_detected ? ` (auto-detected: ${c.ats})` : '';
+            const enabledMsg = c.enabled ? '✅ Parsing started' : '⚠️ ATS not supported — added but not parsing';
+            alert(`Added ${c.name}${autoMsg}\n${enabledMsg}`);
             modal.classList.remove("open");
             clearAddCompanyForm();
             await loadCompanies();

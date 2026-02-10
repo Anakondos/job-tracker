@@ -85,19 +85,28 @@ def normalize_location(location: Optional[str]) -> dict:
             "states": [],
             "remote": False,
             "remote_scope": None,
+            "is_us": False,
         }
 
-    # Check if location contains a non-US country - skip US state matching
     raw_lower = raw.lower()
+
+    # Check if location contains a non-US country - skip US state matching
     # Use word boundaries to avoid false matches like "Indianapolis" -> "india"
     is_non_us = any(
-        re.search(r'\b' + re.escape(country) + r'\b', raw_lower) 
+        re.search(r'\b' + re.escape(country) + r'\b', raw_lower)
         for country in NON_US_COUNTRIES
     )
-    
-    # Quick return for obvious non-US locations
-    if is_non_us and "united states" not in raw_lower and "usa" not in raw_lower:
-        # Extract city (first part before comma)
+
+    # Detect explicit US markers
+    has_us_marker = bool(
+        re.search(r'\bunited states\b', raw_lower)
+        or re.search(r'\busa\b', raw_lower)
+        or re.search(r'\bu\.s\.a?\b', raw_lower)
+        or re.search(r'\bnorth america\b', raw_lower)
+    )
+
+    # Quick return for obvious non-US locations (unless also mentions US)
+    if is_non_us and not has_us_marker:
         city = None
         if "," in raw:
             city = raw.split(",")[0].strip()
@@ -109,6 +118,7 @@ def normalize_location(location: Optional[str]) -> dict:
             "states": [],
             "remote": "remote" in raw_lower,
             "remote_scope": "global" if "remote" in raw_lower else None,
+            "is_us": False,
         }
 
     parts = RE_SEPARATORS.split(raw)
@@ -118,18 +128,25 @@ def normalize_location(location: Optional[str]) -> dict:
     cities = []
     detected_remote = False
     remote_scope = None
+    is_us = has_us_marker  # Start with explicit US markers
 
     for part in parts:
-        part_lower = part.lower()
+        part_lower = part.lower().strip()
+
+        # Skip empty, noise, and country-only parts
+        if not part_lower or part_lower in ("united states", "usa", "us", "u.s.", "u.s.a", "north america"):
+            is_us = True
+            continue
 
         # Detect remote flags & scope
         # Remote USA patterns
-        if re.search(r"\bremote\s*[-\(\)]*\s*usa\b", part_lower) \
-           or re.search(r"\bus[-\(\)]*\s*remote\b", part_lower) \
-           or re.search(r"\bunited states[, ]*remote\b", part_lower) \
-           or re.search(r"\bremote\s*\(usa\)", part_lower):
+        if re.search(r"\bremote\s*[-\(\)]*\s*(?:usa|u\.?s\.?a?|united\s+states)\b", part_lower) \
+           or re.search(r"\b(?:usa?|united\s+states)[-\(\)]*\s*remote\b", part_lower) \
+           or re.search(r"\bremote\s*\((?:usa?|united\s+states)\)", part_lower) \
+           or re.search(r"\bhome[-\s]*united\s+states\b", part_lower):
             detected_remote = True
             remote_scope = "usa"
+            is_us = True
             continue
 
         # Global remote patterns
@@ -141,50 +158,101 @@ def normalize_location(location: Optional[str]) -> dict:
                 remote_scope = "global"
             continue
 
-        # Try city,state pattern
+        # Pattern: "City, STATE_CODE" (e.g. "Raleigh, NC" or "Maine, USA")
         m = RE_CITY_STATE.match(part)
         if m:
-            city = m.group("city").strip()
-            state_name = m.group("state").strip().lower()
-            city = city if city else None
-            cities.append(city)
+            city_part = m.group("city").strip()
+            state_part = m.group("state").strip()
+            state_lower = state_part.lower()
 
-            if state_name in STATE_MAP:
-                states.add(STATE_MAP[state_name])
-            elif re.fullmatch(r"[A-Z]{2}", state_name.upper()):
-                states.add(state_name.upper())
-            else:
-                # try to map full state names
-                found = False
-                for full_name, code in STATE_MAP.items():
-                    if full_name.startswith(state_name):
-                        states.add(code)
-                        found = True
-                        break
-                if not found and len(state_name) == 2:
-                    states.add(state_name.upper())
+            # Handle compound: "NC United States" or "Illinois, United States"
+            # Strip US markers from state_part
+            cleaned_state = re.sub(r'\s*,?\s*(?:united\s+states|usa|u\.?s\.?a?)\s*$', '', state_part, flags=re.IGNORECASE).strip()
+            if cleaned_state != state_part:
+                is_us = True
+                state_part = cleaned_state
+                state_lower = state_part.lower()
+
+            # Check if state_part is a US country marker (City, USA / City, United States)
+            if state_lower in ("usa", "us", "united states", "u.s.", "u.s.a", ""):
+                is_us = True
+                # city_part might be a state name: "Maine, USA" -> state=ME
+                if city_part.lower() in STATE_MAP:
+                    states.add(STATE_MAP[city_part.lower()])
+                else:
+                    cities.append(city_part)
+                continue
+
+            # Check if state_part is a full state name
+            if state_lower in STATE_MAP:
+                states.add(STATE_MAP[state_lower])
+                is_us = True
+                if city_part:
+                    cities.append(city_part)
+                continue
+
+            # Check if state_part is a 2-letter code
+            code_upper = state_part.upper()
+            if len(code_upper) == 2 and code_upper in STATE_MAP.values():
+                states.add(code_upper)
+                is_us = True
+                if city_part:
+                    cities.append(city_part)
+                continue
+
+            # Try prefix match for full state names
+            found = False
+            for full_name, code in STATE_MAP.items():
+                if full_name.startswith(state_lower):
+                    states.add(code)
+                    is_us = True
+                    found = True
+                    break
+            if found:
+                if city_part:
+                    cities.append(city_part)
+                continue
+
+            # Unrecognized comma pattern — treat as city
+            cities.append(city_part)
             continue
 
-        # Extract 2-letter state codes in part
+        # Extract 2-letter state codes in part (standalone)
         codes = RE_STATE_CODE.findall(part)
         for code in codes:
             if code in STATE_MAP.values():
                 states.add(code)
+                is_us = True
 
-        # Extract full state names and convert
+        # Extract full state names mentioned in part
         for full_name, code in STATE_MAP.items():
             if full_name in part_lower:
                 states.add(code)
+                is_us = True
 
-        # Extract city if part looks like a city (poor heuristic)
-        if "," not in part and part_lower not in ["remote", "usa", "us", "united states"]:
+        # N Locations pattern (e.g. "2 Locations", "5 Locations")
+        if re.match(r"^\d+\s+locations?$", part_lower):
+            continue
+
+        # Remaining text → city candidate
+        if "," not in part and part_lower not in ("remote", "usa", "us", "united states"):
             cities.append(part)
+
+    # If we found states, it's US
+    if states:
+        is_us = True
+
+    # If remote detected with US context but no explicit scope, set to usa
+    if detected_remote and is_us and not remote_scope:
+        remote_scope = "usa"
+    # If remote + US marker but no states, mark as remote usa
+    if detected_remote and is_us and remote_scope == "global":
+        remote_scope = "usa"
 
     # Pick first city if any
     city = cities[0] if cities else None
 
     # Determine state and full state
-    # For multi-location jobs, use first state
     state = None
     state_full = None
     if states:
@@ -202,6 +270,7 @@ def normalize_location(location: Optional[str]) -> dict:
         "states": sorted(list(states)),
         "remote": detected_remote,
         "remote_scope": remote_scope,
+        "is_us": is_us,
     }
 
 

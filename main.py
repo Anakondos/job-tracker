@@ -479,18 +479,27 @@ def update_cache_for_company(company_id: str, new_jobs: list) -> int:
         # Resolve company name from companies.json
         company_name = ""
         try:
-            from company_storage import load_companies
-            for c in load_companies():
-                if c.get("id") == company_id:
-                    company_name = c.get("name", "")
-                    break
-        except Exception:
-            pass
+            companies_path = Path("data/companies.json")
+            if companies_path.exists():
+                with open(companies_path) as f:
+                    all_companies = json.load(f)
+                for c in all_companies:
+                    if c.get("id") == company_id:
+                        company_name = c.get("name", "")
+                        break
+        except Exception as e:
+            print(f"[update_cache] WARNING: failed to resolve company name for {company_id}: {e}")
 
         # Normalize and classify new jobs
-        print(f"[update_cache] {company_id}: normalizing {len(new_jobs)} new jobs...")
+        print(f"[update_cache] {company_id}: normalizing {len(new_jobs)} new jobs, company_name='{company_name}'")
         for job in new_jobs:
             job["company_id"] = company_id
+            if not job.get("company"):
+                if company_name:
+                    job["company"] = company_name
+                else:
+                    print(f"[update_cache] WARNING: no company_name for {company_id}, job has no company field!")
+            # Always ensure company is set (even if parser set it wrong)
             if not job.get("company") and company_name:
                 job["company"] = company_name
             if "location_norm" not in job:
@@ -1339,7 +1348,7 @@ def get_companies(
     
     filtered_jobs = [j for j in all_pipeline_jobs if job_matches_my_roles(j) and job_matches_my_location(j)]
     
-    # Build company stats: company_name -> {jobs_count, applied_count, new_count, status_counts}
+    # Build company stats: company_name -> {jobs_count, applied_count, new_count, status_counts, geo}
     company_stats = {}
     for job in filtered_jobs:
         company_name = job.get("company", "")
@@ -1349,11 +1358,12 @@ def get_companies(
                 "new_count": 0,
                 "applied_count": 0,
                 "interview_count": 0,
+                "geo": {"us": 0, "remote": 0, "other": 0},
             }
-        
+
         stats = company_stats[company_name]
         stats["jobs_count"] += 1
-        
+
         status = job.get("status", "New")
         if status == STATUS_NEW:
             stats["new_count"] += 1
@@ -1361,6 +1371,18 @@ def get_companies(
             stats["applied_count"] += 1
         elif status == STATUS_INTERVIEW:
             stats["interview_count"] += 1
+
+        # Geo classification for company summary
+        ln = job.get("location_norm") or {}
+        state = (ln.get("state") or "").upper()
+        is_remote = ln.get("remote", False)
+        is_us_flag = ln.get("is_us", False)
+        if state or is_us_flag:
+            stats["geo"]["us"] += 1
+        elif is_remote:
+            stats["geo"]["remote"] += 1
+        else:
+            stats["geo"]["other"] += 1
     
     items: list[dict] = []
 
@@ -1376,9 +1398,10 @@ def get_companies(
         # Get stats for this company
         stats = company_stats.get(company_name, {
             "jobs_count": 0,
-            "new_count": 0, 
+            "new_count": 0,
             "applied_count": 0,
             "interview_count": 0,
+            "geo": {"us": 0, "remote": 0, "other": 0},
         })
 
         ats_type = cfg.get("ats", "")
@@ -1403,6 +1426,8 @@ def get_companies(
                 "new_count": stats["new_count"],
                 "applied_count": stats["applied_count"],
                 "interview_count": stats["interview_count"],
+                "hq_state": cfg.get("hq_state", ""),
+                "geo": stats.get("geo", {"us": 0, "remote": 0, "other": 0}),
             }
         )
 
@@ -2149,6 +2174,165 @@ def discovery_reject(candidate_id: str):
     return {"ok": True, "rejected": candidate_id}
 
 
+@app.post("/discovery/retry/{candidate_id}")
+def discovery_retry(candidate_id: str):
+    """
+    Retry parsing for a parse_error candidate.
+    Tries refresh_company_sync to re-fetch jobs.
+    """
+    staging_path = Path("data/discovered_companies.json")
+    if not staging_path.exists():
+        return {"ok": False, "error": "No staging file"}
+
+    with open(staging_path, "r", encoding="utf-8") as f:
+        candidates = json.load(f)
+
+    candidate = None
+    for c in candidates:
+        if c.get("id") == candidate_id:
+            candidate = c
+            break
+
+    if not candidate:
+        return {"ok": False, "error": f"Candidate '{candidate_id}' not found"}
+
+    ats = candidate.get("ats", "unknown")
+    board_url = candidate.get("board_url", "")
+
+    import requests as _req
+    from bs4 import BeautifulSoup as _BS
+    from utils.job_utils import classify_role
+
+    # Step 1: Try current ATS if known
+    jobs_found = 0
+    if board_url and ats != "unknown":
+        parser = ATS_PARSERS.get(ats)
+        if parser:
+            try:
+                print(f"[Discovery Retry] Trying current ATS {ats}: {board_url}")
+                jobs = parser(board_url)
+                jobs_found = len(jobs) if isinstance(jobs, list) else 0
+            except Exception as e:
+                print(f"[Discovery Retry] Current ATS failed: {e}")
+
+    # Step 2: If 0 jobs — try to re-detect ATS from company website
+    new_ats = ""
+    new_board = ""
+    if jobs_found == 0:
+        company_name = candidate.get("name", candidate_id)
+        print(f"[Discovery Retry] 0 jobs on {ats}, scanning for new ATS for {company_name}...")
+
+        # Build list of domains to try
+        slug = candidate_id.replace("-", "").lower()
+        domains_to_try = []
+
+        # Try website from builtin profile
+        builtin_url = candidate.get("builtin_url") or candidate.get("careers_url", "")
+        if builtin_url and "builtin.com" in builtin_url:
+            try:
+                prof_resp = _req.get(builtin_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                if prof_resp.status_code == 200:
+                    for a in _BS(prof_resp.text, "html.parser").find_all("a", href=True):
+                        h = a["href"]
+                        if h.startswith("http") and "builtin.com" not in h and len(h) > 10:
+                            domains_to_try.append(h.rstrip("/"))
+                            break
+            except:
+                pass
+
+        # Common patterns
+        domains_to_try.extend([
+            f"https://www.{slug}.com",
+            f"https://{slug}.com",
+        ])
+
+        # Scan each domain's /careers page for ATS links
+        ats_domains = ["greenhouse.io", "lever.co", "myworkdayjobs.com", "smartrecruiters.com",
+                       "ashbyhq.com", "icims.com", "phenom.com"]
+        for base in domains_to_try[:3]:
+            for path in ["/careers", "/jobs", "/company/careers", ""]:
+                try:
+                    test_url = base + path
+                    resp = _req.get(test_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, allow_redirects=True)
+                    if resp.status_code != 200:
+                        continue
+                    # Scan page for ATS links
+                    for link_match in set(__import__('re').findall(r'https?://[^"\'<>\s]+', resp.text)):
+                        for ats_domain in ats_domains:
+                            if ats_domain in link_match:
+                                # Clean URL
+                                clean_url = link_match.split("&amp;")[0].split("\\u0026")[0].split("?")[0].rstrip("/\\")
+                                ats_info = detect_ats_from_url(clean_url)
+                                detected_ats = ats_info.get("ats", "")
+                                if detected_ats and detected_ats != "universal":
+                                    new_ats = detected_ats
+                                    new_board = ats_info.get("board_url", clean_url)
+                                    print(f"[Discovery Retry] Found new ATS: {new_ats} → {new_board}")
+                                    break
+                        if new_ats:
+                            break
+                    if new_ats:
+                        break
+                except:
+                    pass
+            if new_ats:
+                break
+
+        # If found new ATS, try parsing it
+        if new_ats:
+            new_parser = ATS_PARSERS.get(new_ats)
+            if new_parser:
+                try:
+                    jobs = new_parser(new_board)
+                    jobs_found = len(jobs) if isinstance(jobs, list) else 0
+                    if jobs_found > 0:
+                        candidate["ats"] = new_ats
+                        candidate["board_url"] = new_board
+                        candidate["previous_ats"] = ats
+                        print(f"[Discovery Retry] ✅ Migrated {company_name}: {ats}→{new_ats}, {jobs_found} jobs")
+                except Exception as e:
+                    print(f"[Discovery Retry] New ATS parse failed: {e}")
+
+    # Count relevant roles
+    relevant = 0
+    if jobs_found > 0:
+        try:
+            parser_to_use = ATS_PARSERS.get(candidate.get("ats", ats))
+            jobs_data = parser_to_use(candidate.get("board_url", board_url)) if parser_to_use else []
+            for j in (jobs_data or []):
+                role_info = classify_role(j.get("title", ""))
+                if role_info.get("category") in ("primary", "adjacent"):
+                    relevant += 1
+        except:
+            pass
+
+    # Update candidate
+    if jobs_found > 0:
+        candidate["status"] = "ready_to_approve"
+        candidate["relevant_roles_count"] = relevant
+        candidate["total_jobs"] = jobs_found
+        candidate["supported"] = True
+        candidate["retry_result"] = f"{jobs_found} total, {relevant} PM/TPM"
+    else:
+        candidate["status"] = "no_relevant_roles"
+        candidate["retry_result"] = f"0 jobs (checked {ats}" + (f" + scanned website → {new_ats or 'nothing found'}" if not jobs_found else "") + ")"
+
+    candidate["retried_at"] = datetime.now().isoformat()
+
+    with open(staging_path, "w", encoding="utf-8") as f:
+        json.dump(candidates, f, indent=2, ensure_ascii=False)
+
+    return {
+        "ok": True,
+        "jobs_found": jobs_found,
+        "relevant": relevant,
+        "new_status": candidate["status"],
+        "ats_migrated": bool(new_ats),
+        "new_ats": new_ats or None,
+        "new_board": new_board or None,
+    }
+
+
 @app.post("/discovery/auto")
 def discovery_auto():
     """
@@ -2202,6 +2386,197 @@ def discovery_auto():
     results["total_staging"] = len(candidates)
 
     return results
+
+
+@app.post("/discovery/builtin")
+def discovery_builtin(pages: int = 3):
+    """
+    Scrape tech companies from Built In NC area, detect their ATS,
+    and add new ones to discovery staging.
+    """
+    import re as _re
+    import requests
+    from bs4 import BeautifulSoup
+
+    base_url = "https://builtin.com/companies?city=Wake+Forest&state=North+Carolina&country=USA&longitude=-78.52796&latitude=35.92348&page={}"
+
+    staging_path = Path("data/discovered_companies.json")
+    companies_path = Path("data/companies.json")
+
+    # Load existing data
+    existing_companies = []
+    if companies_path.exists():
+        with open(companies_path) as f:
+            existing_companies = json.load(f)
+    existing_ids = {c.get("id", "").lower() for c in existing_companies}
+    existing_names = {c.get("name", "").lower() for c in existing_companies}
+
+    staging = []
+    if staging_path.exists():
+        with open(staging_path) as f:
+            staging = json.load(f)
+    staging_ids = {c.get("id", "").lower() for c in staging}
+
+    scraped = 0
+    new_candidates = 0
+    with_ats = 0
+    errors = []
+
+    for page_num in range(1, min(pages + 1, 6)):  # Max 5 pages
+        try:
+            print(f"[BuiltIn] Fetching page {page_num}...")
+            resp = requests.get(base_url.format(page_num), headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Accept": "text/html"
+            }, timeout=15)
+            if resp.status_code != 200:
+                errors.append(f"Page {page_num}: HTTP {resp.status_code}")
+                continue
+
+            soup = BeautifulSoup(resp.text, "html.parser")
+
+            # Find company links — pattern: /company/{slug}
+            company_links = soup.find_all("a", href=_re.compile(r"^/company/[a-z0-9-]+$"))
+            seen_on_page = set()
+
+            for link in company_links:
+                href = link.get("href", "")
+                slug = href.replace("/company/", "").strip("/")
+                if not slug or slug in seen_on_page:
+                    continue
+                seen_on_page.add(slug)
+                scraped += 1
+
+                # Get company name from link text
+                name = link.get_text(strip=True)
+                if not name or len(name) < 2:
+                    name = slug.replace("-", " ").title()
+
+                # Skip if already known
+                slug_lower = slug.lower()
+                name_lower = name.lower()
+                if slug_lower in existing_ids or name_lower in existing_names or slug_lower in staging_ids:
+                    continue
+
+                # Try to find careers page for this company
+                careers_url = ""
+                ats_detected = ""
+                board_url = ""
+                supported = False
+
+                # Strategy: probe common ATS APIs to find real job boards
+                clean_slug = slug.replace("-", "").lower()
+                name_nospace = name.replace(" ", "").lower()
+                name_slug = slug  # builtin slug is usually good
+
+                # ATS probes: (url_to_test, ats_type, board_url_template)
+                # Use actual API endpoints that return errors for non-existent companies
+                ats_probes = [
+                    # Greenhouse: API returns 404 for invalid boards
+                    (f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", "greenhouse", f"https://boards.greenhouse.io/{slug}"),
+                    (f"https://boards-api.greenhouse.io/v1/boards/{clean_slug}/jobs", "greenhouse", f"https://boards.greenhouse.io/{clean_slug}"),
+                    # Lever: API returns 404 for invalid companies
+                    (f"https://api.lever.co/v0/postings/{slug}?limit=1", "lever", f"https://jobs.lever.co/{slug}"),
+                    (f"https://api.lever.co/v0/postings/{clean_slug}?limit=1", "lever", f"https://jobs.lever.co/{clean_slug}"),
+                    # Ashby: API returns actual job data or empty
+                    (f"https://api.ashbyhq.com/posting-api/job-board/{slug}", "ashby", f"https://jobs.ashbyhq.com/{slug}"),
+                    (f"https://api.ashbyhq.com/posting-api/job-board/{clean_slug}", "ashby", f"https://jobs.ashbyhq.com/{clean_slug}"),
+                    # SmartRecruiters: API returns jobs or 404
+                    (f"https://api.smartrecruiters.com/v1/companies/{name_nospace}/postings?limit=1", "smartrecruiters", f"https://jobs.smartrecruiters.com/{name_nospace}"),
+                ]
+                try:
+                    for probe_url, probe_ats, probe_board in ats_probes:
+                        try:
+                            resp_probe = requests.get(probe_url, timeout=6, headers={"Accept": "application/json"})
+                            if resp_probe.status_code == 200:
+                                # Verify it has actual content (not empty board)
+                                try:
+                                    probe_data = resp_probe.json()
+                                    has_jobs = False
+                                    if probe_ats == "greenhouse":
+                                        has_jobs = len(probe_data.get("jobs", [])) > 0
+                                    elif probe_ats == "lever":
+                                        has_jobs = len(probe_data) > 0 if isinstance(probe_data, list) else False
+                                    elif probe_ats == "ashby":
+                                        has_jobs = len(probe_data.get("jobs", [])) > 0
+                                    elif probe_ats == "smartrecruiters":
+                                        has_jobs = len(probe_data.get("content", [])) > 0
+
+                                    if has_jobs:
+                                        careers_url = probe_board
+                                        ats_detected = probe_ats
+                                        board_url = probe_board
+                                        supported = True
+                                        break
+                                except:
+                                    pass
+                        except:
+                            pass
+
+                    # If no probe worked, try Built In profile for ATS links
+                    if not careers_url:
+                        try:
+                            profile_resp = requests.get(f"https://builtin.com/company/{slug}", headers={
+                                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                            }, timeout=10)
+                            if profile_resp.status_code == 200:
+                                profile_soup = BeautifulSoup(profile_resp.text, "html.parser")
+                                for a in profile_soup.find_all("a", href=True):
+                                    href_val = a.get("href", "")
+                                    if any(d in href_val for d in ["greenhouse.io", "lever.co", "myworkdayjobs.com", "smartrecruiters.com", "ashbyhq.com"]):
+                                        careers_url = href_val
+                                        ats_info = detect_ats_from_url(careers_url)
+                                        ats_detected = ats_info.get("ats", "unknown")
+                                        board_url = ats_info.get("board_url", "")
+                                        supported = ats_detected in list(ATS_PARSERS.keys())
+                                        break
+                        except:
+                            pass
+
+                except Exception as e:
+                    print(f"[BuiltIn] Error checking {name}: {e}")
+
+                # Create candidate
+                candidate = {
+                    "id": slug,
+                    "name": name,
+                    "careers_url": careers_url,
+                    "ats": ats_detected or "unknown",
+                    "board_url": board_url,
+                    "supported": supported,
+                    "industry": "",
+                    "tags": [],
+                    "hq_state": "NC",
+                    "discovery_source": "builtin",
+                    "builtin_url": f"https://builtin.com/company/{slug}",
+                    "status": "ready_to_approve" if supported else ("unsupported_ats" if ats_detected and ats_detected != "unknown" else "needs_careers_url"),
+                    "discovered_at": datetime.now().isoformat()
+                }
+                staging.append(candidate)
+                staging_ids.add(slug_lower)
+                new_candidates += 1
+                if supported:
+                    with_ats += 1
+                    print(f"[BuiltIn] ✅ {name}: {ats_detected} ({board_url})")
+                else:
+                    print(f"[BuiltIn] ⚪ {name}: {ats_detected or 'no ATS'}")
+
+        except Exception as e:
+            errors.append(f"Page {page_num}: {str(e)}")
+
+    # Save staging
+    with open(staging_path, "w", encoding="utf-8") as f:
+        json.dump(staging, f, ensure_ascii=False, indent=2)
+
+    print(f"[BuiltIn] Done: scraped={scraped}, new={new_candidates}, with_ats={with_ats}")
+    return {
+        "ok": True,
+        "scraped": scraped,
+        "new_candidates": new_candidates,
+        "with_ats": with_ats,
+        "errors": errors,
+        "total_staging": len(staging)
+    }
 
 
 @app.get("/profiles/{name}")
@@ -2830,6 +3205,7 @@ def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
         "interview": "interview", "Interview": "interview",
         "offer": "offer", "Offer": "offer",
         "rejected": "rejected", "Rejected": "rejected",
+        "excluded": "excluded", "Excluded": "excluded",
         "withdrawn": "withdrawn", "Withdrawn": "withdrawn",
         "closed": "closed", "Closed": "closed",
     }
@@ -2841,26 +3217,58 @@ def pipeline_status_update_endpoint(payload: PipelineStatusUpdate):
     job = job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path)
     
     if job:
-        # Auto-parse JD when status changes to Selected and JD not yet parsed
-        if normalized_status == "Selected" and not job.get("jd_summary"):
-            try:
-                from parsers.jd_parser import parse_and_store_jd, has_jd
-                job_url = job.get("job_url") or job.get("url") or ""
-                if job_url and not has_jd(payload.job_id):
-                    print(f"[Pipeline] Auto-parsing JD for {job.get('company')} - {job.get('title')}")
-                    result = parse_and_store_jd(
-                        job_id=payload.job_id,
-                        url=job_url,
-                        title=job.get("title", ""),
-                        company=job.get("company", ""),
-                        ats=job.get("ats", "greenhouse")
-                    )
-                    if result.get("ok") and result.get("summary"):
-                        job["jd_summary"] = result["summary"]
-                        # Save updated job
-                        job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path, jd_summary=result["summary"])
-            except Exception as e:
-                print(f"[Pipeline] JD parsing failed: {e}")
+        # Auto-parse JD and run match scoring when status changes to Selected
+        if normalized_status == "Selected":
+            jd_text_for_scoring = None
+
+            # Step 1: Parse JD if not yet done
+            if not job.get("jd_summary"):
+                try:
+                    from parsers.jd_parser import parse_and_store_jd, has_jd
+                    job_url = job.get("job_url") or job.get("url") or ""
+                    if job_url and not has_jd(payload.job_id):
+                        print(f"[Pipeline] Auto-parsing JD for {job.get('company')} - {job.get('title')}")
+                        result = parse_and_store_jd(
+                            job_id=payload.job_id,
+                            url=job_url,
+                            title=job.get("title", ""),
+                            company=job.get("company", ""),
+                            ats=job.get("ats", "greenhouse")
+                        )
+                        if result.get("ok") and result.get("summary"):
+                            job["jd_summary"] = result["summary"]
+                            jd_text_for_scoring = result.get("jd_text", "")
+                            job_update_status(payload.job_id, normalized_status, payload.notes, payload.folder_path, jd_summary=result["summary"])
+                except Exception as e:
+                    print(f"[Pipeline] JD parsing failed: {e}")
+
+            # Step 2: Run match scoring if JD exists but no score yet
+            if not job.get("match_score") and job.get("jd_summary"):
+                try:
+                    from api.prepare_application import analyze_job_with_ai
+                    # Get JD text - either from fresh parse or from stored file
+                    if not jd_text_for_scoring:
+                        from parsers.jd_parser import get_stored_jd
+                        jd_text_for_scoring = get_stored_jd(payload.job_id) or ""
+                    if jd_text_for_scoring and len(jd_text_for_scoring) > 100:
+                        role_family = job.get("role_family", "tpm_program")
+                        print(f"[Pipeline] Auto-scoring match for {job.get('company')} - {job.get('title')}")
+                        analysis = analyze_job_with_ai(job.get("title", ""), job.get("company", ""), jd_text_for_scoring, role_family)
+                        if analysis and "match_score" in analysis:
+                            job["match_score"] = analysis["match_score"]
+                            job["analysis"] = analysis
+                            # Save match score
+                            from storage.job_storage import _load_jobs, _save_jobs
+                            all_jobs = _load_jobs()
+                            for j in all_jobs:
+                                if j.get("id") == payload.job_id:
+                                    j["match_score"] = analysis["match_score"]
+                                    j["analysis"] = analysis
+                                    break
+                            _save_jobs(all_jobs)
+                            print(f"[Pipeline] Match score: {analysis['match_score']}%")
+                except Exception as e:
+                    print(f"[Pipeline] Match scoring failed: {e}")
         
         return {"ok": True, "job": job}
     else:
@@ -2983,19 +3391,26 @@ def enrich_batch_endpoint(background_tasks: BackgroundTasks):
 
 
 @app.post("/pipeline/match-batch")
-def match_batch_endpoint(background_tasks: BackgroundTasks, limit: int = Query(default=50)):
+def match_batch_endpoint(background_tasks: BackgroundTasks, limit: int = Query(default=50), days: int = Query(default=0)):
     """
     Batch compute match scores for pipeline jobs without scores.
     Parses JD from URL and runs AI analysis against CV.
     limit: max jobs to process (default 50, each costs ~1 API call)
+    days: only score jobs added in last N days (0 = all)
     """
     from storage.job_storage import _load_jobs
+    from datetime import datetime, timedelta
 
     jobs = _load_jobs()
     to_score = [j for j in jobs if j.get("status") == "new"
                 and not j.get("match_score")
                 and (j.get("job_url") or j.get("url"))
                 and j.get("role_category") in ["primary", "adjacent"]]
+
+    # Filter by recency if days specified
+    if days > 0:
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        to_score = [j for j in to_score if (j.get("added_at") or j.get("first_published") or "") >= cutoff]
 
     # Limit to prevent excessive API costs
     batch = to_score[:limit]
@@ -3056,10 +3471,10 @@ def match_batch_endpoint(background_tasks: BackgroundTasks, limit: int = Query(d
                 print(f"[Match] Error for {job_id}: {e}")
                 errors += 1
 
-            time.sleep(1)  # Rate limit
+            time.sleep(0.3)  # Rate limit (Haiku is fast)
 
-            # Save every 10 jobs
-            if (scored + errors) % 10 == 0:
+            # Save every 20 jobs
+            if (scored + errors) % 20 == 0:
                 save_j(list(job_map.values()))
                 print(f"[Match] Progress: {scored} scored, {errors} errors")
 

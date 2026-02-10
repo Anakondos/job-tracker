@@ -17,6 +17,8 @@ Statuses:
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, List, Set
@@ -25,6 +27,7 @@ from utils.location_utils import normalize_job_location
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 JOBS_FILE = DATA_DIR / "jobs_new.json"  # Unified with pipeline
+REJECTED_FILE = DATA_DIR / "rejected_jobs.json"  # Memory of rejected/excluded job IDs
 
 # Статусы
 STATUS_NEW = "new"
@@ -49,6 +52,78 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# ============ Rejected Jobs Memory ============
+# Stores ats_job_id + title of jobs user marked as rejected/excluded/withdrawn.
+# These jobs won't be re-added to pipeline on next parse cycle.
+
+SKIP_STATUSES = {STATUS_REJECTED, STATUS_EXCLUDED, STATUS_WITHDRAWN}
+
+def _load_rejected() -> dict:
+    """Load rejected jobs memory: {ats_job_id: {title, company, date, reason}}"""
+    if not REJECTED_FILE.exists():
+        return {}
+    try:
+        with REJECTED_FILE.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
+def _save_rejected(data: dict):
+    """Save rejected jobs memory with atomic write + fsync (iCloud safe)"""
+    REJECTED_FILE.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=str(REJECTED_FILE.parent), suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, str(REJECTED_FILE))
+        dir_fd = os.open(str(REJECTED_FILE.parent), os.O_RDONLY)
+        os.fsync(dir_fd)
+        os.close(dir_fd)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+
+
+def add_to_rejected(job: dict, reason: str = "excluded"):
+    """Remember a job as rejected so it won't be re-added."""
+    ats_job_id = job.get("ats_job_id") or job.get("id") or ""
+    if not ats_job_id:
+        return
+    rejected = _load_rejected()
+    rejected[str(ats_job_id)] = {
+        "title": job.get("title", ""),
+        "company": job.get("company", ""),
+        "date": _now_iso(),
+        "reason": reason,
+    }
+    _save_rejected(rejected)
+
+
+def is_rejected(ats_job_id: str) -> bool:
+    """Check if a job ID was previously rejected/excluded."""
+    if not ats_job_id:
+        return False
+    rejected = _load_rejected()
+    return str(ats_job_id) in rejected
+
+
+def get_rejected_ids() -> set:
+    """Get all rejected job IDs."""
+    return set(_load_rejected().keys())
+
+
+def remove_from_rejected(ats_job_id: str):
+    """Remove a job from rejected memory (e.g., if user re-opens it)."""
+    rejected = _load_rejected()
+    if str(ats_job_id) in rejected:
+        del rejected[str(ats_job_id)]
+        _save_rejected(rejected)
+
+
 def _load_jobs() -> List[dict]:
     """Load all jobs from storage"""
     if not JOBS_FILE.exists():
@@ -61,10 +136,23 @@ def _load_jobs() -> List[dict]:
 
 
 def _save_jobs(jobs: List[dict]):
-    """Save all jobs to storage"""
+    """Save all jobs to storage with atomic write + fsync (iCloud safe)"""
     JOBS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with JOBS_FILE.open("w", encoding="utf-8") as f:
-        json.dump(jobs, f, ensure_ascii=False, indent=2)
+    fd, tmp_path = tempfile.mkstemp(dir=str(JOBS_FILE.parent), suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(jobs, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, str(JOBS_FILE))
+        # fsync directory to ensure rename is persisted
+        dir_fd = os.open(str(JOBS_FILE.parent), os.O_RDONLY)
+        os.fsync(dir_fd)
+        os.close(dir_fd)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
 
 
 # ============ Query Functions ============
@@ -117,14 +205,19 @@ def job_exists(job_id: str) -> bool:
 def add_job(job: dict, status: str = STATUS_NEW) -> bool:
     """
     Add a new job to storage.
-    Returns True if added, False if already exists.
+    Returns True if added, False if already exists or was previously rejected.
     """
     job_id = job.get("id")
     if not job_id:
         return False
-    
+
+    # Check rejected memory - skip previously rejected/excluded jobs
+    ats_job_id = job.get("ats_job_id") or ""
+    if ats_job_id and is_rejected(str(ats_job_id)):
+        return False
+
     jobs = _load_jobs()
-    
+
     # Check if already exists
     if any(j.get("id") == job_id for j in jobs):
         return False
@@ -155,20 +248,26 @@ def add_job(job: dict, status: str = STATUS_NEW) -> bool:
 def add_jobs_bulk(new_jobs: List[dict], status: str = STATUS_NEW) -> int:
     """
     Add multiple jobs at once. More efficient than calling add_job repeatedly.
-    Returns count of actually added jobs.
+    Returns count of actually added jobs. Skips previously rejected/excluded jobs.
     """
     if not new_jobs:
         return 0
-    
+
     jobs = _load_jobs()
     existing_ids = {j.get("id") for j in jobs}
-    
+    rejected_ids = get_rejected_ids()
+
     now = _now_iso()
     added = 0
-    
+
     for job in new_jobs:
         job_id = job.get("id")
         if not job_id or job_id in existing_ids:
+            continue
+
+        # Skip previously rejected/excluded jobs
+        ats_job_id = job.get("ats_job_id") or ""
+        if ats_job_id and str(ats_job_id) in rejected_ids:
             continue
         
         # Normalize location
@@ -223,10 +322,19 @@ def update_status(job_id: str, new_status: str, notes: str = "", folder_path: st
             # Clear attention flag unless closing
             if new_status != STATUS_CLOSED:
                 job["needs_attention"] = False
-            
+
+            # Remember rejected/excluded/withdrawn jobs to prevent re-adding
+            if new_status in SKIP_STATUSES:
+                add_to_rejected(job, reason=new_status)
+            elif old_status in SKIP_STATUSES and new_status not in SKIP_STATUSES:
+                # If user re-opens a previously rejected job, remove from memory
+                ats_jid = job.get("ats_job_id") or ""
+                if ats_jid:
+                    remove_from_rejected(str(ats_jid))
+
             _save_jobs(jobs)
             return job
-    
+
     return None
 
 
