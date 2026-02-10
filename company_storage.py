@@ -52,9 +52,12 @@ def load_profile(profile_name: str):
     # Преобразуем в формат для парсеров
     def to_parser_format(c):
         return {
+            "id": c.get("id", ""),
             "company": c.get("name", ""),
+            "name": c.get("name", ""),
             "ats": c.get("ats", ""),
             "url": c.get("board_url", ""),
+            "board_url": c.get("board_url", ""),
             "api_url": c.get("api_url"),
             "industry": c.get("industry", ""),
             "tags": c.get("tags", []),
