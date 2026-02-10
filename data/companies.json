@@ -578,7 +578,7 @@
     "id": "miro",
     "name": "Miro",
     "ats": "greenhouse",
-    "board_url": "https://boards.greenhouse.io/miro",
+    "board_url": "https://boards.greenhouse.io/realtimeboardglobal",
     "api_url": null,
     "tags": [
       "collaboration",
@@ -588,8 +588,8 @@
     "priority": 0,
     "hq_state": null,
     "region": "global",
-    "status": "no_public_ats",
-    "enabled": false
+    "status": "active",
+    "enabled": true
   },
   {
     "id": "asana",
@@ -2666,5 +2666,291 @@
     "hq_state": "RI",
     "region": "us",
     "enabled": true
+  },
+  {
+    "id": "block",
+    "name": "Block",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/block",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "payments"
+    ]
+  },
+  {
+    "id": "snap",
+    "name": "Snap Inc",
+    "ats": "workday",
+    "board_url": "https://snapchat.wd1.myworkdayjobs.com/snap",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "social",
+      "ar"
+    ]
+  },
+  {
+    "id": "toast",
+    "name": "Toast",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/toast",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "restaurant-tech"
+    ]
+  },
+  {
+    "id": "pinterest",
+    "name": "Pinterest",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/pinterest",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "social",
+      "advertising"
+    ]
+  },
+  {
+    "id": "grafana-labs",
+    "name": "Grafana Labs",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/grafanalabs",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "observability",
+      "open-source"
+    ]
+  },
+  {
+    "id": "airtable",
+    "name": "Airtable",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/airtable",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "productivity",
+      "no-code"
+    ]
+  },
+  {
+    "id": "dbt-labs",
+    "name": "dbt Labs",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/dbtlabsinc",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "data",
+      "analytics"
+    ]
+  },
+  {
+    "id": "supabase",
+    "name": "Supabase",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/supabase",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "database",
+      "open-source"
+    ]
+  },
+  {
+    "id": "waymo",
+    "name": "Waymo",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/waymo",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "autonomous",
+      "alphabet"
+    ]
+  },
+  {
+    "id": "doordash",
+    "name": "DoorDash",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/doordashusa",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "delivery",
+      "marketplace"
+    ]
+  },
+  {
+    "id": "instacart",
+    "name": "Instacart",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/instacart",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "delivery",
+      "grocery"
+    ]
+  },
+  {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/anthropic",
+    "industry": "AI",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "ai",
+      "safety"
+    ]
+  },
+  {
+    "id": "scale-ai",
+    "name": "Scale AI",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/scaleai",
+    "industry": "AI",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "ai",
+      "data"
+    ]
+  },
+  {
+    "id": "lyft",
+    "name": "Lyft",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/lyft",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "rideshare",
+      "transportation"
+    ]
+  },
+  {
+    "id": "grammarly",
+    "name": "Grammarly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/grammarly",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "ai",
+      "productivity"
+    ]
+  },
+  {
+    "id": "discord",
+    "name": "Discord",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/discord",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "social",
+      "gaming"
+    ]
+  },
+  {
+    "id": "spotify",
+    "name": "Spotify",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/spotify",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "music",
+      "streaming"
+    ]
+  },
+  {
+    "id": "twitch",
+    "name": "Twitch",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/twitch",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "streaming",
+      "amazon"
+    ]
+  },
+  {
+    "id": "wiz",
+    "name": "Wiz",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/wizinc",
+    "industry": "Cybersecurity",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "security",
+      "cloud"
+    ]
+  },
+  {
+    "id": "navan",
+    "name": "Navan",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/tripactions",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "travel",
+      "expense"
+    ]
+  },
+  {
+    "id": "lendingtree",
+    "name": "LendingTree",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/lendingtree",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "charlotte-nc"
+    ]
+  },
+  {
+    "id": "credit-karma",
+    "name": "Credit Karma",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/creditkarma",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "charlotte-nc"
+    ]
   }
 ]
