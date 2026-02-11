@@ -932,7 +932,9 @@
         </div>
       </div>
       <div class="header-actions" style="display: flex; gap: 8px;">
-        <button class="refresh-btn" id="matchBtn" onclick="batchMatch()" style="background: #4c1d95; font-size: 12px; padding: 6px 12px;" title="AI match scoring for unscored jobs (uses Claude API)">🎯 Match</button>
+        <button class="refresh-btn" id="fetchJdBtn" onclick="fetchJdBatch()" style="background: #065f46; font-size: 12px; padding: 6px 12px;" title="Download JDs from ATS APIs (FREE, no AI)">📥 Fetch JDs</button>
+        <button class="refresh-btn" id="kwScoreBtn" onclick="runKwScore()" style="background: #78350f; font-size: 12px; padding: 6px 12px;" title="Keyword match scoring (FREE, no AI)">📊 KW Score</button>
+        <button class="refresh-btn" id="matchBtn" onclick="batchMatch()" style="background: #4c1d95; font-size: 12px; padding: 6px 12px;" title="AI match scoring for unscored jobs (uses Claude API)">🎯 AI Match</button>
         <button class="refresh-btn" id="enrichBtn" onclick="enrichDeadlines()" style="background: #1e3a5f; font-size: 12px; padding: 6px 12px;" title="Fetch deadlines and salary for Workday jobs">⏰ Deadlines</button>
         <button class="refresh-btn" id="refreshBtn">🔄 Refresh from ATS</button>
       </div>
@@ -5388,6 +5390,65 @@
           }
         } catch (e) {
           alert('Error: ' + e.message);
+        }
+      }
+
+      async function fetchJdBatch() {
+        const btn = document.getElementById('fetchJdBtn');
+        const limit = prompt('How many JDs to fetch? (FREE, no API cost)', '200');
+        if (!limit) return;
+        const num = parseInt(limit);
+        if (isNaN(num) || num < 1) return;
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Fetching...';
+        try {
+          const res = await fetch(`/pipeline/fetch-jd-batch?limit=${num}`, { method: 'POST' });
+          const data = await res.json();
+          if (data.ok && data.total > 0) {
+            btn.textContent = `📥 ${data.total} JDs...`;
+            // Estimate ~2s per JD
+            const waitMs = Math.min(data.total * 2000, 600000);
+            setTimeout(async () => {
+              btn.textContent = '📥 Fetch JDs';
+              btn.disabled = false;
+              // Auto-run keyword scorer after fetch
+              await runKwScore();
+            }, waitMs);
+          } else {
+            btn.textContent = `✅ All cached (${data.cached})`;
+            btn.disabled = false;
+            setTimeout(() => { btn.textContent = '📥 Fetch JDs'; }, 3000);
+          }
+        } catch (e) {
+          btn.textContent = '❌ Error';
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = '📥 Fetch JDs'; }, 2000);
+        }
+      }
+
+      async function runKwScore() {
+        const btn = document.getElementById('kwScoreBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Scoring...';
+        try {
+          const res = await fetch('/pipeline/kw-score', { method: 'POST' });
+          const data = await res.json();
+          if (data.ok) {
+            btn.textContent = `✅ ${data.apply || 0}A ${data.consider || 0}C`;
+            // Reload data
+            await loadJobsOnce();
+            const filtered = applyFilters(ALL_JOBS);
+            renderJobs(filtered);
+          } else {
+            btn.textContent = '❌ Error';
+          }
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = '📊 KW Score'; }, 4000);
+        } catch (e) {
+          btn.textContent = '❌ Error';
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = '📊 KW Score'; }, 2000);
         }
       }
 

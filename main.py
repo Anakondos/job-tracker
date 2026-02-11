@@ -3390,6 +3390,63 @@ def enrich_batch_endpoint(background_tasks: BackgroundTasks):
     return {"ok": True, "message": f"Enriching {len(to_enrich)} Workday jobs in background", "total": len(to_enrich)}
 
 
+@app.post("/pipeline/fetch-jd-batch")
+def fetch_jd_batch_endpoint(background_tasks: BackgroundTasks, limit: int = Query(default=200)):
+    """
+    Batch fetch JD text from ATS APIs. FREE, no Claude API calls.
+    Downloads JD HTML/text and saves to data/jd/{job_id}.txt
+    """
+    from storage.job_storage import _load_jobs
+    from parsers.jd_parser import fetch_jd_from_url
+
+    jd_dir = Path("data/jd")
+    jd_dir.mkdir(exist_ok=True)
+    cached = {f.stem for f in jd_dir.glob("*.txt")}
+
+    jobs = _load_jobs()
+    to_fetch = [
+        j for j in jobs
+        if j.get("id") and j["id"] not in cached
+        and (j.get("job_url") or j.get("url"))
+        and j.get("role_category") in ("primary", "adjacent")
+    ]
+    # Newest first
+    to_fetch.sort(key=lambda j: j.get("first_seen") or j.get("added_at") or "", reverse=True)
+    batch = to_fetch[:limit]
+
+    if not batch:
+        return {"ok": True, "message": "All JDs already cached", "total": 0, "cached": len(cached)}
+
+    def _do_fetch():
+        import time
+        success = 0
+        errors = 0
+        for job in batch:
+            job_id = job.get("id", "")
+            url = job.get("job_url") or job.get("url", "")
+            ats = job.get("ats", "")
+            try:
+                jd_text = fetch_jd_from_url(url, ats)
+                if jd_text and len(jd_text) > 50:
+                    (jd_dir / f"{job_id}.txt").write_text(jd_text, encoding="utf-8")
+                    success += 1
+                else:
+                    errors += 1
+            except Exception:
+                errors += 1
+            time.sleep(0.3)
+        print(f"[FetchJD] Done: {success} success, {errors} errors")
+
+    background_tasks.add_task(_do_fetch)
+    return {
+        "ok": True,
+        "message": f"Fetching {len(batch)} JDs in background (FREE)",
+        "total": len(batch),
+        "remaining": len(to_fetch) - len(batch),
+        "cached": len(cached),
+    }
+
+
 @app.post("/pipeline/kw-score")
 def kw_score_endpoint():
     """
