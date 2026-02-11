@@ -2982,5 +2982,113 @@
       "compliance",
       "tax"
     ]
+  },
+  {
+    "id": "credible",
+    "name": "Credible",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/credible",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "sugarcrm",
+    "name": "Sugarcrm",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/sugarcrm",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "green-irony",
+    "name": "Green Irony",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/greenirony",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "appian",
+    "name": "Appian",
+    "ats": "greenhouse",
+    "board_url": "https://job-boards.greenhouse.io/appian",
+    "industry": "IT",
+    "tags": ["enterprise", "low-code", "software"],
+    "priority": 0,
+    "hq_state": "VA",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "kyndryl",
+    "name": "Kyndryl",
+    "ats": "workday",
+    "board_url": "https://kyndryl.wd5.myworkdayjobs.com/KyndrylProfessionalCareers",
+    "industry": "IT",
+    "tags": ["infrastructure", "enterprise", "consulting"],
+    "priority": 0,
+    "hq_state": "NY",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "centene",
+    "name": "Centene",
+    "ats": "workday",
+    "board_url": "https://centene.wd5.myworkdayjobs.com/Centene_External",
+    "industry": "Healthcare",
+    "tags": ["healthcare", "insurance", "enterprise"],
+    "priority": 0,
+    "hq_state": "MO",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "spreedly",
+    "name": "Spreedly",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/spreedly",
+    "industry": "Fintech",
+    "tags": ["fintech", "payments", "api"],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "lpl-financial",
+    "name": "LPL Financial",
+    "ats": "workday",
+    "board_url": "https://lplfinancial.wd1.myworkdayjobs.com/External",
+    "industry": "Financial",
+    "tags": ["financial", "wealth-management", "broker-dealer"],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "freddie-mac",
+    "name": "Freddie Mac",
+    "ats": "phenom",
+    "board_url": "https://careers.freddiemac.com",
+    "industry": "Financial",
+    "tags": ["mortgage", "financial", "government"],
+    "priority": 0,
+    "hq_state": "VA",
+    "region": "us",
+    "enabled": true
   }
 ]

@@ -869,7 +869,7 @@ def _fetch_for_company(profile: str, cfg: dict, _retry: bool = False) -> list[di
         elif ats == "atlassian":
             jobs = fetch_atlassian(company, url)
         elif ats == "phenom":
-            jobs = fetch_phenom_jobs(url)
+            jobs = fetch_phenom_jobs(company, url)
         elif ats == "icims":
             jobs = fetch_icims(company, url)
         elif ats == "jibe":
