@@ -46,7 +46,7 @@ ROLE_KEYWORDS = {
     "primary": {  # Best fit roles
         "keywords": [
             "Technical Program Manager", "TPM", "Program Manager",
-            "Product Manager", "Product Owner", "POPM",
+            "Product Manager", "Product Management", "Product Owner", "POPM",
             "Delivery Manager", "Engagement Manager",
             "Senior Technical Project Manager",
         ],
@@ -71,22 +71,25 @@ ROLE_KEYWORDS = {
 
 # Domain Keywords - industries and areas of expertise
 DOMAIN_KEYWORDS = {
-    "strong_match": {  # Direct experience
+    "strong_match": {  # Direct experience — specific financial terms
         "keywords": [
             "banking", "investment banking", "financial services", "fintech",
-            "cash equities", "trading", "trade processing", "transaction",
-            "regulatory", "compliance", "MiFID II", "CAT reporting", "EMIR", "audit",
-            "insurance", "london market", "reinsurance",
+            "cash equities", "trading platform", "trade processing", "trade settlement",
+            "regulatory reporting", "regulatory compliance", "MiFID II", "CAT reporting", "EMIR",
+            "insurance industry", "insurance carrier", "london market", "reinsurance",
             "cloud migration", "GCP migration", "AWS migration", "platform modernization",
         ],
         "weight": 25
     },
-    "partial_match": {  # Adjacent experience
+    "partial_match": {  # Adjacent experience + generic finance terms
         "keywords": [
             "cards", "payments", "debit", "credit card",
             "retail banking", "consumer banking", "wealth management",
             "asset management", "investment operations",
             "enterprise", "fortune 500", "global",
+            # Generic terms that need context (moved from strong to avoid false positives)
+            "compliance", "regulatory", "audit", "transaction",
+            "trading", "insurance", "financial",
         ],
         "weight": 15
     },
@@ -105,7 +108,7 @@ DOMAIN_KEYWORDS = {
             "semiconductor manufacturing", "ASIC design", "chip design",
             "silicon wafer", "wafer fabrication", "GPU cluster",
             "ML research", "model training", "AI research", "deep learning research",
-            "crypto trading", "blockchain development", "DeFi protocol", "NFT", "staking", "web3",
+            "crypto", "cryptocurrency", "blockchain", "DeFi", "NFT", "staking", "web3",
             "Workday HCM", "Workday Security", "HRIS implementation",
             "Tableau developer", "Tableau expertise",
             "game development", "gaming studio",
@@ -358,7 +361,8 @@ def analyze_jd(jd_text: str, job_title: str = "", company: str = "",
 
     no_match = find_matching_keywords(combined, DOMAIN_KEYWORDS["no_match"]["keywords"])
     if no_match:
-        domain_score += DOMAIN_KEYWORDS["no_match"]["weight"]
+        # Wrong domain overrides any positive domain match
+        domain_score = DOMAIN_KEYWORDS["no_match"]["weight"]
         red_flags_found.append(f"Wrong domain: {', '.join(no_match)}")
 
     # =========================================
@@ -456,7 +460,11 @@ def analyze_jd(jd_text: str, job_title: str = "", company: str = "",
     # CALCULATE TOTAL SCORE
     # =========================================
     total_score = role_score + domain_score + skills_score + location_score + salary_score
-    penalty = len([f for f in red_flags_found if "Wrong domain" in f or "Missing required" in f]) * 10
+
+    # Penalties: wrong domain is severe, missing skills moderate
+    wrong_domain_flags = [f for f in red_flags_found if "Wrong domain" in f]
+    missing_skill_flags = [f for f in red_flags_found if "Missing required" in f]
+    penalty = len(wrong_domain_flags) * 25 + len(missing_skill_flags) * 10
     total_score = min(100, max(0, total_score - penalty))
 
     # =========================================
@@ -469,9 +477,10 @@ def analyze_jd(jd_text: str, job_title: str = "", company: str = "",
     else:
         recommendation = "SKIP"
 
-    critical_flags = [f for f in red_flags_found if "Wrong domain" in f]
-    if critical_flags:
+    # Force SKIP for wrong domain — always disqualify
+    if wrong_domain_flags:
         recommendation = "SKIP"
+        total_score = min(total_score, 40)  # Cap score for wrong domain
 
     # =========================================
     # ANALYSIS TEXT
