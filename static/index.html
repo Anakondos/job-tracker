@@ -2183,29 +2183,43 @@
       }
 
       function isUSHeuristic(job) {
-        // Use normalized location if available
         const ln = job.location_norm || {};
-        if (ln.state) {
-          return true; // Has US state code
+        const l = (job.location || "").toLowerCase();
+
+        // Non-US country keywords — reject early if location clearly non-US
+        // Uses word boundary (\b) to avoid "Indiana" matching "India", "Huntingburg" matching "UK"
+        const nonUSCountries = [
+          "\\bindia\\b", "\\bisrael\\b", "\\bireland\\b", "\\bportugal\\b", "\\bgermany\\b", "\\bsingapore\\b",
+          "\\bjapan\\b", "\\bchina\\b", "\\bbrazil\\b", "\\bmexico\\b", "\\bcanada\\b", "\\bengland\\b",
+          "\\bfrance\\b", "\\bspain\\b", "\\bitaly\\b", "\\baustralia\\b", "\\bnetherlands\\b", "\\bsweden\\b",
+          "\\bpoland\\b", "\\bczech\\b", "\\bromania\\b", "\\bhungary\\b", "\\bphilippines\\b", "\\bmalaysia\\b",
+          "\\bkorea\\b", "\\btaiwan\\b", "\\bhong kong\\b", "\\buae\\b", "\\bdubai\\b", "\\bqatar\\b", "\\bsaudi\\b",
+          "\\bargentina\\b", "\\bcolombia\\b", "\\bchile\\b", "\\bperu\\b", "\\bcosta rica\\b",
+        ];
+        const hasNonUS = nonUSCountries.some(c => new RegExp(c, "i").test(l));
+
+        // If location_norm has US state — it's US (unless location text says otherwise)
+        if (ln.state && !hasNonUS) {
+          return true;
         }
         // Check states array (for multi-location jobs)
-        if (ln.states && ln.states.length > 0) {
-          return true; // Has US states
+        if (ln.states && ln.states.length > 0 && !hasNonUS) {
+          return true;
         }
-        // Check remote_scope for US remote jobs (e.g. "Remote, North America" with remote_scope: "usa")
-        if (ln.remote && ln.remote_scope) {
+        // Check remote_scope for US remote jobs — but NOT if location is clearly non-US
+        if (ln.remote && ln.remote_scope && !hasNonUS) {
           const scope = ln.remote_scope.toLowerCase();
           if (scope === "usa" || scope === "us") {
             return true;
           }
         }
-        
-        // Fallback to text heuristic
-        const l = (job.location || "").toLowerCase();
+
+        // Fallback to text heuristic — but also guard against non-US
+        if (hasNonUS) return false;
+
         return (
           l.includes("united states") ||
           l.includes(" usa") ||
-          l.includes(" us") ||
           l.includes(", us") ||
           l.includes("remote - us") ||
           l.includes("remote (us)") ||
