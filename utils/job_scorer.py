@@ -93,7 +93,7 @@ DOMAIN_KEYWORDS = {
     "weak_match": {  # Limited/no experience
         "keywords": [
             "healthcare", "pharma", "medical", "life sciences",
-            "telecom", "media", "retail", "e-commerce",
+            "telecom", "media", "retail", "e-commerce", "sporting goods", "consumer",
             "government", "public sector",
             "manufacturing", "industrial", "automotive", "aerospace",
             "energy", "utilities", "oil and gas",
@@ -152,6 +152,8 @@ SKILLS_KEYWORDS = {
             "ServiceNow developer", "Flow Designer", "Glide scripting",
             "Charles River", "Aladdin", "Bloomberg AIM", "Simcorp",
             "CBAP required", "PMP required",
+            "Salesforce expertise", "Salesforce product", "Sales Cloud",
+            "Marketing Cloud", "hands-on Salesforce",
         ],
         "weight": -10
     }
@@ -442,11 +444,12 @@ def analyze_jd(jd_text: str, job_title: str = "", company: str = "",
             red_flags_found.append(f"Low salary: ${salary_range[0]:,} - ${salary_range[1]:,}")
 
     # =========================================
-    # 6. RED FLAGS CHECK
+    # 6. RED FLAGS CHECK (word boundary matching)
     # =========================================
     for category, flags in RED_FLAGS.items():
         for flag in flags:
-            if flag.lower() in text:
+            pattern = r'\b' + re.escape(flag.lower()) + r'\b'
+            if re.search(pattern, text):
                 red_flags_found.append(f"{category}: {flag}")
 
     # =========================================
