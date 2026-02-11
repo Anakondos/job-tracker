@@ -2952,5 +2952,35 @@
       "fintech",
       "charlotte-nc"
     ]
+  },
+  {
+    "id": "splunk",
+    "name": "Splunk",
+    "ats": "phenom",
+    "board_url": "https://careers.cisco.com/global/en/splunk",
+    "industry": "Data",
+    "tags": [
+      "data",
+      "analytics",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "avalara",
+    "name": "Avalara",
+    "ats": "jibe",
+    "board_url": "https://careers.avalara.com",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "compliance",
+      "tax"
+    ]
   }
 ]
