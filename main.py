@@ -3390,6 +3390,42 @@ def enrich_batch_endpoint(background_tasks: BackgroundTasks):
     return {"ok": True, "message": f"Enriching {len(to_enrich)} Workday jobs in background", "total": len(to_enrich)}
 
 
+@app.post("/pipeline/kw-score")
+def kw_score_endpoint():
+    """
+    Run keyword scorer on all pipeline jobs. FREE, no API calls.
+    Uses cached JD text files if available, otherwise title+location only.
+    """
+    from utils.job_scorer import score_jobs_batch
+    from storage.job_storage import _load_jobs, _save_jobs
+
+    jobs = _load_jobs()
+    unscored = [j for j in jobs if not j.get("kw_score")]
+    if not unscored:
+        return {"ok": True, "message": "All jobs already scored", "total": 0}
+
+    score_jobs_batch(unscored)
+    scored = sum(1 for j in unscored if j.get("kw_score"))
+
+    # Merge back
+    job_map = {j["id"]: j for j in unscored if j.get("id")}
+    for j in jobs:
+        if j.get("id") in job_map:
+            j.update(job_map[j["id"]])
+    _save_jobs(jobs)
+
+    from collections import Counter
+    recs = Counter(j.get("kw_recommendation", "?") for j in unscored if j.get("kw_score"))
+    return {
+        "ok": True,
+        "message": f"Scored {scored} jobs",
+        "total": scored,
+        "apply": recs.get("APPLY", 0),
+        "consider": recs.get("CONSIDER", 0),
+        "skip": recs.get("SKIP", 0),
+    }
+
+
 @app.post("/pipeline/match-batch")
 def match_batch_endpoint(background_tasks: BackgroundTasks, limit: int = Query(default=50), days: int = Query(default=0)):
     """

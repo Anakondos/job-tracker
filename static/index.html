@@ -1995,9 +1995,9 @@
             av = (a.application_status || a.status || 'new').toLowerCase();
             bv = (b.application_status || b.status || 'new').toLowerCase();
           } else if (column === 'match') {
-            // Numeric sort for match score
-            av = a.match_score || 0;
-            bv = b.match_score || 0;
+            // Numeric sort for match score (AI or keyword fallback)
+            av = a.match_score || a.kw_score || 0;
+            bv = b.match_score || b.kw_score || 0;
             return asc ? av - bv : bv - av;
           } else {
             av = '';
@@ -2412,17 +2412,18 @@
           filtered = filtered.filter(j => !j.folder_path);
         }
 
-        // Filter by match score
+        // Filter by match score (AI or keyword fallback)
+        const getScore = j => j.match_score || j.kw_score || 0;
         if (pipelineFilters.match === "has") {
-          filtered = filtered.filter(j => j.match_score && j.match_score > 0);
+          filtered = filtered.filter(j => getScore(j) > 0);
         } else if (pipelineFilters.match === "high") {
-          filtered = filtered.filter(j => (j.match_score || 0) >= 70);
+          filtered = filtered.filter(j => getScore(j) >= 70);
         } else if (pipelineFilters.match === "med") {
-          filtered = filtered.filter(j => (j.match_score || 0) >= 50 && (j.match_score || 0) < 70);
+          filtered = filtered.filter(j => getScore(j) >= 50 && getScore(j) < 70);
         } else if (pipelineFilters.match === "low") {
-          filtered = filtered.filter(j => j.match_score && j.match_score < 50);
+          filtered = filtered.filter(j => getScore(j) > 0 && getScore(j) < 50);
         } else if (pipelineFilters.match === "none") {
-          filtered = filtered.filter(j => !j.match_score || j.match_score === 0);
+          filtered = filtered.filter(j => getScore(j) === 0);
         }
 
         // Filter by Geo column
@@ -2609,7 +2610,7 @@
           row.dataset.jobId = job.id || "";
           row.dataset.atsJobId = job.ats_job_id || "";
           row.dataset.url = url;
-          row.dataset.match = job.match_score || 0;
+          row.dataset.match = job.match_score || job.kw_score || 0;
 
           // Determine role category for showing Add to Pipeline button
           const roleCategory = job.role_category || (job.role_excluded ? 'excluded' : (job.role_id ? 'primary' : 'unknown'));
@@ -2627,10 +2628,17 @@
         <td class="td-company">${escapeHtml(job.company || "")}</td>
         <td class="td-match">
           ${(() => {
-            const score = job.match_score;
-            if (!score && score !== 0) return '<span class="match-empty">—</span>';
-            const colorClass = score >= 70 ? 'match-high' : score >= 50 ? 'match-mid' : 'match-low';
-            return `<span class="matchScoreBtn ${colorClass}" data-jobid="${escapeAttr(job.id || '')}" title="${score}% match - click for details">${score}</span>`;
+            const aiScore = job.match_score;
+            const kwScore = job.kw_score;
+            if (aiScore) {
+              const colorClass = aiScore >= 70 ? 'match-high' : aiScore >= 50 ? 'match-mid' : 'match-low';
+              return `<span class="matchScoreBtn ${colorClass}" data-jobid="${escapeAttr(job.id || '')}" title="${aiScore}% AI match - click for details">${aiScore}</span>`;
+            }
+            if (kwScore) {
+              const colorClass = kwScore >= 75 ? 'match-high' : kwScore >= 55 ? 'match-mid' : 'match-low';
+              return `<span class="matchScoreBtn ${colorClass}" data-jobid="${escapeAttr(job.id || '')}" title="${kwScore}% keyword match (${job.kw_recommendation || ''})" style="opacity:0.7">${kwScore}</span>`;
+            }
+            return '<span class="match-empty">—</span>';
           })()}
         </td>
         <td class="td-title"><a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(job.title || "")}</a>${sourceIcon}</td>
@@ -4868,13 +4876,15 @@
         const title = document.getElementById('matchAnalysisTitle');
         const content = document.getElementById('matchAnalysisContent');
 
-        const score = job.match_score || 0;
+        const score = job.match_score || job.kw_score || 0;
+        const isKwOnly = !job.match_score && job.kw_score;
         // Handle nested analysis structure (analysis.analysis) from /jd/parse response
         const rawAnalysis = job.analysis || {};
         const analysis = rawAnalysis.analysis || rawAnalysis;
         const scoreColor = score >= 70 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
+        const scoreLabel = isKwOnly ? 'Keyword' : 'AI';
 
-        title.innerHTML = `<span style="color: ${scoreColor}; font-weight: 700;">${score}%</span> Match — ${escapeHtml(job.company || '')}`;
+        title.innerHTML = `<span style="color: ${scoreColor}; font-weight: 700;">${score}%</span> ${scoreLabel} Match — ${escapeHtml(job.company || '')}`;
 
         let html = `
           <div style="margin-bottom: 16px;">
@@ -4882,6 +4892,38 @@
             <div style="color: var(--muted); font-size: 13px;">${escapeHtml(job.location || '')}</div>
           </div>
         `;
+
+        // Show keyword breakdown if no AI analysis
+        if (isKwOnly && job.kw_breakdown) {
+          const bd = job.kw_breakdown;
+          html += `<div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+            <div style="font-weight: 600; margin-bottom: 8px;">📊 Keyword Score Breakdown</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 13px;">
+              <span>Role: ${bd.role || 0}/25</span><span>Domain: ${bd.domain || 0}/25</span>
+              <span>Skills: ${bd.skills || 0}/25</span><span>Location: ${bd.location || 0}/15</span>
+              <span>Salary: ${bd.salary || 0}/10</span><span style="font-weight:600;">Rec: ${job.kw_recommendation || '?'}</span>
+            </div>
+          </div>`;
+
+          if (job.kw_matched) {
+            const matched = job.kw_matched;
+            const allMatched = Object.entries(matched).map(([k, v]) => `${k}: ${v.join(', ')}`);
+            if (allMatched.length > 0) {
+              html += `<div style="margin-bottom: 12px;"><strong style="color: #22c55e;">Matched Keywords:</strong>
+                <div style="font-size: 12px; color: #86efac; margin-top: 4px;">${allMatched.join('<br>')}</div></div>`;
+            }
+          }
+
+          if (job.kw_red_flags && job.kw_red_flags.length > 0) {
+            html += `<div style="margin-bottom: 12px;"><strong style="color: #ef4444;">Red Flags:</strong><ul style="margin: 4px 0 0 20px;">`;
+            job.kw_red_flags.forEach(f => { html += `<li style="color: #fca5a5; font-size: 12px;">${escapeHtml(f)}</li>`; });
+            html += `</ul></div>`;
+          }
+
+          if (job.kw_salary && job.kw_salary[1] > 0) {
+            html += `<div style="margin-bottom: 12px;"><strong>Salary:</strong> $${job.kw_salary[0].toLocaleString()} - $${job.kw_salary[1].toLocaleString()}</div>`;
+          }
+        }
 
         if (analysis.fit_level) {
           const fitColors = { 'strong': '#22c55e', 'good': '#3b82f6', 'moderate': '#eab308', 'weak': '#ef4444' };
