@@ -247,6 +247,14 @@ class Profile:
         "field of study": "education.0.discipline",
         # Common questions
         "how did you hear": "common_answers.how_heard",
+        "full name": "personal.full_name",
+        "name": "personal.full_name",
+        "location": "personal.location",
+        "current location": "personal.location",
+        "where are you located": "personal.location",
+        "website": "links.linkedin",
+        "portfolio": "links.linkedin",
+        "personal website": "links.linkedin",
     }
     
     # Yes/No question patterns
@@ -292,10 +300,25 @@ class Profile:
         "how did you hear": "LinkedIn",
         "how did you find": "LinkedIn",
         "where did you hear": "LinkedIn",
+        "how were you referred": "LinkedIn",
+        "referred by": "LinkedIn",
+        "referral source": "LinkedIn",
+        "source of application": "LinkedIn",
         "salary": "150000",
         "desired salary": "150000",
         "expected salary": "150000",
         "compensation": "150000",
+        "salary expectation": "150000",
+        "annual salary": "150000",
+        "notice period": "2 weeks",
+        "when can you start": "2 weeks",
+        "earliest start": "2 weeks",
+        "availability": "2 weeks",
+        "start date": "2 weeks",
+        "website": "https://linkedin.com/in/antonkondakov",
+        "portfolio": "https://linkedin.com/in/antonkondakov",
+        "personal website": "https://linkedin.com/in/antonkondakov",
+        "additional information": "I am excited about this opportunity and believe my 15+ years of experience in technical program management align well with this role.",
     }
     
     # Demographic defaults
@@ -709,13 +732,20 @@ class FormFillerV5:
     """
     
     # Repeatable sections configuration (Work Experience, Education)
+    # Greenhouse uses patterns like: company-name-0, title-0, school--0, degree--0
     REPEATABLE_SECTIONS = {
         'work_experience': {
             'profile_key': 'work_experience',
-            'add_button_selector': 'button.add-another-button',
-            'button_index': 0,
+            'add_button_selectors': [
+                'button:has-text("Add another")',
+                'a:has-text("Add another")',
+                '.add-section a', '.add-section button',
+                '#add_work_experience',
+            ],
+            'section_text': 'work experience',
             'field_patterns': {
                 'company-name-{N}': 'company',
+                'job_application_answers_attributes_{N}_text_value': 'company',
                 'title-{N}': 'title',
                 'start-date-month-{N}': 'start_month',
                 'start-date-year-{N}': 'start_year',
@@ -727,12 +757,21 @@ class FormFillerV5:
         },
         'education': {
             'profile_key': 'education',
-            'add_button_selector': 'button.add-another-button',
-            'button_index': 1,
+            'add_button_selectors': [
+                'button:has-text("Add another")',
+                'a:has-text("Add another")',
+                '.add-section a', '.add-section button',
+                '#add_education',
+            ],
+            'section_text': 'education',
             'field_patterns': {
                 'school--{N}': 'school',
                 'degree--{N}': 'degree',
                 'discipline--{N}': 'discipline',
+                'start-date-month--{N}': 'start_month',
+                'start-date-year--{N}': 'start_year',
+                'end-date-month--{N}': 'end_month',
+                'end-date-year--{N}': 'end_year',
             },
             'skip_end_date_if_current': False,
         }
@@ -797,8 +836,9 @@ class FormFillerV5:
                 # After login, wait and rescan
                 browser.wait_for_stable()
             
-            # Initial scan, resolve, fill
+            # Initial scan, prescan dropdowns, resolve, fill
             self._scan_fields()
+            self._prescan_all_options()
             self._resolve_all_answers()
             
             if mode == FillMode.PRE_FLIGHT:
@@ -1117,32 +1157,41 @@ class FormFillerV5:
         self.fields = []
         self._seen_selectors = set()
         self._active_frame = self.page  # Track which frame has the form
-        
+
         # Scan main page first
+        print("   Scanning main page...", flush=True)
         elements = self.page.query_selector_all("input, select, textarea")
         main_count = self._scan_elements(elements, "main")
-        
+        print(f"   Main page: {main_count} fields", flush=True)
+
         # Scan all iframes (important for Greenhouse, Lever embedded forms)
         frames = self.page.frames
         if len(frames) > 1:
-            print(f"   📄 Checking {len(frames)} frames...")
-            
+            print(f"   📄 Checking {len(frames)} frames...", flush=True)
+
             for i, frame in enumerate(frames):
                 if frame == self.page.main_frame:
                     continue  # Already scanned
-                
+
                 try:
                     frame_url = frame.url[:40] if frame.url else "(empty)"
+                    print(f"      Frame {i}: {frame_url}...", flush=True)
                     elements = frame.query_selector_all("input, select, textarea")
                     count = self._scan_elements(elements, f"frame[{i}]")
-                    
+
                     if count > 0:
-                        print(f"      ✅ Frame {i} ({frame_url}): {count} fields")
+                        print(f"      ✅ Frame {i}: {count} fields")
                         # Remember which frame has the form
                         if count > main_count:
                             self._active_frame = frame
-                except:
+                except Exception as e:
+                    print(f"      ⚠️ Frame {i} error: {e}", flush=True)
                     continue
+
+        # Print scan summary
+        print(f"   Total fields: {len(self.fields)}", flush=True)
+        for f in self.fields:
+            print(f"      {f.field_type.value:12} | {f.label[:40]:<40} | {f.selector[:30]}", flush=True)
     
     def _scan_elements(self, elements, source):
         """Scan elements from a specific source (main or frame)."""
@@ -1179,9 +1228,10 @@ class FormFillerV5:
             if input_type in ("hidden", "submit", "button"):
                 return None
             
-            # Build selector
+            # Build selector (escape special CSS chars in IDs like question_123[])
             if el_id:
-                selector = f"#{el_id}"
+                escaped_id = re.sub(r'([\[\](){}!@#$%^&*+=|~`<>?,/\\])', r'\\\1', el_id)
+                selector = f"#{escaped_id}"
             elif el_name:
                 selector = f"[name='{el_name}']"
             else:
@@ -1200,14 +1250,17 @@ class FormFillerV5:
             # Detect type
             field_type, detection_method = self._detect_type(el, tag, input_type)
             
-            # Get options for select/autocomplete
+            # Get options for select fields only during scan
+            # Autocomplete options will be discovered in prescan phase (faster)
             options = []
             if field_type == FieldType.SELECT:
-                options = el.evaluate(
-                    "e => Array.from(e.options).map(o => o.text).filter(t => t && t !== 'Select...')"
-                )
-            elif field_type == FieldType.AUTOCOMPLETE:
-                options = self._probe_autocomplete_options(el, selector)
+                try:
+                    options = el.evaluate(
+                        "e => Array.from(e.options).map(o => o.text).filter(t => t && t !== 'Select...')"
+                    )
+                except:
+                    pass
+            # NOTE: autocomplete options are NOT probed here - they're done in _prescan_all_options()
             
             return FormField(
                 selector=selector,
@@ -1229,27 +1282,65 @@ class FormFillerV5:
     def _find_label(self, el: ElementHandle, el_id: str) -> str:
         """
         Find label text for field using multiple strategies.
-        
+
         Priority:
-        1. Standard label[for] attribute
+        1. Standard label[for] attribute (in active frame + page)
+        1b. Select2 parent <label> direct text (Greenhouse custom questions)
         2. aria-label / placeholder
         3. Context Discovery (traverse DOM for nearby text)
         4. Name/ID as fallback
         """
         label = ""
         el_name = el.get_attribute("name") or ""
-        
-        # Strategy 1: By for attribute
+
+        # Strategy 1: By for attribute - search in element's own frame first
         if el_id:
-            label_el = self.page.query_selector(f"label[for='{el_id}']")
+            # Try element's owner frame first (handles iframes)
+            frame = el.owner_frame() or self.page
+            label_el = frame.query_selector(f"label[for='{el_id}']")
+            if not label_el and frame != self.page:
+                label_el = self.page.query_selector(f"label[for='{el_id}']")
             if label_el:
                 label = label_el.inner_text().strip()
-        
+
+        # Strategy 1b: Select2 parent <label> direct text nodes
+        # In Greenhouse, Select2 inputs (s2id_autogen*) are inside a <label> tag
+        # whose direct text nodes contain the actual question text.
+        # e.g. <label>Question text? *<span class="asterisk">*</span><br><input...><div class="select2-container">...</div></label>
+        if not label and el_id and el_id.startswith("s2id_autogen"):
+            try:
+                parent_label_text = el.evaluate('''el => {
+                    // Find the select2-container ancestor
+                    let container = el.closest('.select2-container');
+                    if (!container) container = el;
+
+                    // Walk up to find a <label> parent
+                    let parent = container.parentElement;
+                    for (let i = 0; i < 3 && parent; i++) {
+                        if (parent.tagName === 'LABEL') {
+                            // Extract only direct text nodes (not children like Select2)
+                            let text = '';
+                            for (const node of parent.childNodes) {
+                                if (node.nodeType === 3) { // TEXT_NODE
+                                    text += node.textContent.trim() + ' ';
+                                }
+                            }
+                            return text.trim();
+                        }
+                        parent = parent.parentElement;
+                    }
+                    return '';
+                }''')
+                if parent_label_text and len(parent_label_text) > 3:
+                    label = parent_label_text
+            except Exception:
+                pass
+
         # Strategy 2: aria/placeholder
         if not label:
             label = el.get_attribute("aria-label") or \
                     el.get_attribute("placeholder") or ""
-        
+
         # Strategy 3: Context Discovery (for Shadow DOM)
         if not label or len(label) < 5:
             try:
@@ -1258,15 +1349,15 @@ class FormFillerV5:
                     label = context
             except Exception as e:
                 pass  # Fallback to other methods
-        
+
         # Strategy 4: Name/ID fallback
         if not label:
             label = el_name or el_id or ""
-        
+
         # Append name attribute if different (helps with mapping)
         if el_name and el_name.lower() not in label.lower():
             label = f"{label} [{el_name}]"
-        
+
         return label
     
     def _discover_field_context(self, field_id: str) -> str:
@@ -1397,9 +1488,130 @@ class FormFillerV5:
         return options[:50]  # Limit
     
     # ─────────────────────────────────────────────────────────────────────
+    # PRESCAN (ported from V3.5)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def _prescan_all_options(self):
+        """
+        Pre-scan all autocomplete/select fields to discover options BEFORE filling.
+        Ported from V3.5's prescan_options() — key to higher fill rates.
+
+        Opens each dropdown, reads options, finds exact matches, then closes.
+        This prevents the issue of typing wrong text and getting no results.
+        """
+        print("\n🔍 Pre-scanning dropdown options...")
+        # Search in active frame AND all frames
+        context = getattr(self, '_active_frame', self.page)
+        prescan_count = 0
+
+        # Build lookup of field selectors to frames for fill later
+        self._field_frames = {}
+
+        for field in self.fields:
+            if field.field_type not in (FieldType.AUTOCOMPLETE, FieldType.SELECT):
+                continue
+
+            # Skip if already has options (from initial scan)
+            if field.options:
+                prescan_count += 1
+                continue
+
+            # Skip location/school - these are SEARCH type, don't prescan
+            label_lower = field.label.lower()
+            if any(kw in label_lower for kw in ['location', 'city', 'school', 'university']):
+                print(f"   [SEARCH] {field.label[:35]}: skipping prescan (API-driven)")
+                continue
+
+            # Skip Select2 fields - they need special _fill_select2 handling
+            if 's2id' in (field.element_id or ''):
+                print(f"   [SELECT2] {field.label[:35]}: will use Select2 handler")
+                continue
+
+            print(f"   Prescanning: {field.label[:35]}...", flush=True)
+
+            try:
+                el = context.query_selector(field.selector)
+                if not el:
+                    # Try all frames
+                    for frame in self.page.frames:
+                        try:
+                            el = frame.query_selector(field.selector)
+                            if el:
+                                break
+                        except:
+                            continue
+                if not el or not el.is_visible():
+                    print(f"      ⚠️ Not visible, skipping")
+                    continue
+
+                # Close any open dropdowns
+                self.page.keyboard.press('Escape')
+                time.sleep(0.1)
+
+                el.scroll_into_view_if_needed()
+                el.click(timeout=3000)  # Short timeout for prescan clicks
+                time.sleep(0.5)
+
+                # Read options via aria-controls (V5 method)
+                controls_id = el.get_attribute('aria-controls')
+                options = []
+
+                if controls_id:
+                    listbox = context.query_selector(f'#{controls_id}')
+                    if not listbox:
+                        # Try in all frames
+                        for frame in self.page.frames:
+                            try:
+                                listbox = frame.query_selector(f'#{controls_id}')
+                                if listbox:
+                                    break
+                            except:
+                                continue
+                    if listbox:
+                        opt_els = listbox.query_selector_all('[role="option"]')
+                        for opt in opt_els[:50]:
+                            text = opt.inner_text().strip()
+                            if text and text not in ('No options', 'No results'):
+                                options.append(text)
+
+                # Fallback: global selectors with SHORT timeout
+                if not options:
+                    try:
+                        self.page.wait_for_selector('.select__menu, [role="listbox"]', timeout=1000)
+                        opt_els = self.page.query_selector_all('.select__option, [role="option"]')
+                        for opt in opt_els[:50]:
+                            text = opt.inner_text().strip()
+                            if text and text not in ('No options', 'No results'):
+                                options.append(text)
+                    except:
+                        pass
+
+                # Close dropdown
+                self.page.keyboard.press('Escape')
+                time.sleep(0.1)
+
+                if options:
+                    field.options = options
+                    is_fixed = len(options) <= 25
+                    status = "FIXED" if is_fixed else "SEARCH"
+                    print(f"      [{status}] {len(options)} options found")
+                    prescan_count += 1
+                else:
+                    print(f"      No options found")
+
+            except Exception as e:
+                print(f"      ⚠️ Error: {str(e)[:50]}")
+                try:
+                    self.page.keyboard.press('Escape')
+                except:
+                    pass
+
+        print(f"   📊 Pre-scanned {prescan_count} dropdowns")
+
+    # ─────────────────────────────────────────────────────────────────────
     # LAYER 2: RESOLUTION
     # ─────────────────────────────────────────────────────────────────────
-    
+
     def _resolve_all_answers(self):
         """Find answers for all fields."""
         print("\n📋 Resolving answers...")
@@ -1468,7 +1680,13 @@ class FormFillerV5:
             if matched:
                 answer, source, confidence = matched, AnswerSource.DEFAULT, 0.7
         
-        # 6. Ollama for custom questions
+        # 6. Text defaults (years of experience, salary, etc.)
+        if not answer:
+            text_default = self.profile.find_text_default(field.label)
+            if text_default:
+                answer, source, confidence = text_default, AnswerSource.DEFAULT, 0.75
+
+        # 7. Ollama for custom questions
         if not answer and self.ollama.available:
             profile_context = self._get_profile_context_for_ai()
             ollama_answer = self.ollama.generate(field.label, profile_context, field.options)
@@ -1477,7 +1695,21 @@ class FormFillerV5:
                     ollama_answer = self.ollama.match_option(ollama_answer, field.options)
                 answer, source, confidence = ollama_answer, AnswerSource.AI, 0.6
                 print(f"   🤖 Ollama: '{field.label[:30]}' → '{ollama_answer[:30]}'")
-        
+
+        # 8. Claude AI fallback for remaining unknown fields
+        if not answer and self.ai.available:
+            profile_context = self._get_profile_context_for_ai()
+            try:
+                if field.options:
+                    claude_answer = self.ai.choose_option(field.label, field.options, profile_context)
+                else:
+                    claude_answer = self.ai.generate(field.label, profile_context)
+                if claude_answer:
+                    answer, source, confidence = claude_answer, AnswerSource.AI, 0.55
+                    print(f"   🧠 Claude: '{field.label[:30]}' → '{claude_answer[:30]}'")
+            except Exception as e:
+                print(f"   ⚠️ Claude fallback error: {e}")
+
         # Set result
         if answer:
             field.answer = answer
@@ -1492,13 +1724,25 @@ class FormFillerV5:
         p = self.profile.data.get("personal", {})
         w = self.profile.data.get("work_experience", [{}])[0]
         certs = self.profile.data.get("certifications", [])
-        
+        common = self.profile.data.get("common_answers", {})
+        demo = self.profile.data.get("demographics", {})
+        wa = self.profile.data.get("work_authorization", {})
+
         return f"""Name: {p.get('first_name', '')} {p.get('last_name', '')}
+Location: {p.get('location', '')}, {p.get('state', '')}, US
 Current Role: {w.get('title', '')} at {w.get('company', '')}
 Experience: {w.get('description', '')}
 Years: 15+ years in PM/TPM
 Tools: GCP, AWS, Jira, Confluence, SharePoint, Python, SQL
-Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
+Certifications: {', '.join(certs) if certs else 'SAFe, PSM, GCP'}
+Work Authorization: Authorized to work in US: {wa.get('authorized_us', 'Yes')}, Needs sponsorship: {wa.get('requires_sponsorship', 'No')}
+Willing to relocate: Yes
+18 or older: Yes
+Previously employed at company: No
+Government official: No
+Gender: {demo.get('gender', 'Decline')}
+Veteran: {demo.get('veteran_status', 'Not a protected veteran')}
+Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
     
     def _match_option(self, field: FormField) -> Optional[str]:
         """Try to match profile data to dropdown options."""
@@ -1589,10 +1833,11 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         """Resolve file upload field based on job title."""
         label_lower = field.label.lower()
         field_id = (field.element_id or "").lower()
-        
+        field_name = (field.name or "").lower()
+
         # Get job title from page
         job_title = self.page.title() if self.page else ""
-        
+
         # Get CV and Cover Letter paths based on role
         cv_path, cover_letter_path = self.profile.get_files_for_role(job_title)
         
@@ -1619,8 +1864,8 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             else:
                 field.status = FillStatus.NEEDS_INPUT
                 field.error_message = "Cover letter not found for this role"
-        elif is_resume or "attach" in label_lower or "upload" in label_lower or "browse" in label_lower:
-            # Resume/CV field (including generic "Attach")
+        elif is_resume or "attach" in label_lower or "upload" in label_lower or "browse" in label_lower or field_name == "file":
+            # Resume/CV field (including generic "file" input and "Attach")
             if cv_path and cv_path.exists():
                 field.answer = str(cv_path)
                 field.answer_source = AnswerSource.PROFILE
@@ -1630,7 +1875,14 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 field.status = FillStatus.ERROR
                 field.error_message = "CV not found for this role"
         else:
-            field.status = FillStatus.NEEDS_INPUT
+            # Unknown file field — assume resume as default
+            if cv_path and cv_path.exists():
+                field.answer = str(cv_path)
+                field.answer_source = AnswerSource.PROFILE
+                field.status = FillStatus.READY
+                print(f"   📄 Default file → Resume: {cv_path.name}")
+            else:
+                field.status = FillStatus.NEEDS_INPUT
     
     # ─────────────────────────────────────────────────────────────────────
     # LAYER 3: INPUT
@@ -1639,37 +1891,47 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _fill_all_fields(self, mode: FillMode):
         """Fill all fields with answers."""
         print("\n📝 Filling fields...")
-        
+
         for field in self.fields:
             if field.status == FillStatus.READY:
                 self._fill_field(field)
             elif field.status == FillStatus.NEEDS_INPUT and mode == FillMode.INTERACTIVE:
                 self._interactive_fill(field)
-            else:
+            elif field.status == FillStatus.NEEDS_INPUT:
                 field.status = FillStatus.SKIPPED
+            # Don't overwrite FILLED/VERIFIED/ERROR status from previous iteration
     
     def _fill_field(self, field: FormField) -> bool:
-        """Fill single field. Uses _active_frame to support iframes."""
+        """Fill single field. Uses _active_frame to support iframes. Timeout protected."""
         try:
             # Use active frame (main page or iframe with form)
             context = getattr(self, '_active_frame', self.page)
             el = context.query_selector(field.selector)
-            
-            # Fallback: try main page if not found in active frame
+
+            # Fallback: try all frames if not found
             if not el:
                 el = self.page.query_selector(field.selector)
-            
+            if not el:
+                for frame in self.page.frames:
+                    try:
+                        el = frame.query_selector(field.selector)
+                        if el:
+                            break
+                    except:
+                        continue
             if not el:
                 field.status = FillStatus.ERROR
                 field.error_message = "Element not found"
                 return False
-            
-            self.browser.highlight_element(field.selector, "green")
-            el.scroll_into_view_if_needed()
+
+            try:
+                el.scroll_into_view_if_needed()
+            except:
+                pass
             time.sleep(0.1)
-            
+
             success = False
-            
+
             if field.field_type == FieldType.FILE:
                 success = self._fill_file(el, field)
             elif field.field_type == FieldType.SELECT:
@@ -1682,20 +1944,20 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 success = self._fill_phone(el, field)
             else:
                 success = self._fill_text(el, field)
-            
+
             if success:
                 field.status = FillStatus.FILLED
                 print(f"   ✅ {field.label[:35]:<35} = {field.answer[:20]} [{field.answer_source.value}]")
             else:
                 field.status = FillStatus.ERROR
                 print(f"   ❌ {field.label[:35]} - fill failed")
-            
-            self.browser.unhighlight_element(field.selector)
+
             return success
-            
+
         except Exception as e:
             field.status = FillStatus.ERROR
-            field.error_message = str(e)
+            field.error_message = str(e)[:100]
+            print(f"   ❌ {field.label[:35]} - error: {str(e)[:50]}")
             return False
     
     def _fill_text(self, el: ElementHandle, field: FormField) -> bool:
@@ -1735,42 +1997,86 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             return False
     
     def _fill_select(self, el: ElementHandle, field: FormField) -> bool:
-        """Fill native select."""
-        el.select_option(label=field.answer)
-        # Blur to trigger validation
-        el.evaluate("e => e.blur()")
-        return True
+        """Fill native select with fuzzy matching."""
+        try:
+            # Try exact label match
+            el.select_option(label=field.answer)
+            el.evaluate("e => e.blur()")
+            return True
+        except:
+            pass
+
+        # Fuzzy match: get all options and find best match
+        try:
+            options = el.evaluate(
+                "e => Array.from(e.options).map(o => ({value: o.value, text: o.text}))"
+            )
+            answer_lower = field.answer.lower().strip()
+
+            for opt in options:
+                opt_text = opt.get('text', '').lower()
+                if answer_lower in opt_text or opt_text in answer_lower:
+                    el.select_option(value=opt['value'])
+                    el.evaluate("e => e.blur()")
+                    return True
+
+            # Word overlap matching
+            answer_words = set(answer_lower.split())
+            for opt in options:
+                opt_text = opt.get('text', '').lower()
+                opt_words = set(opt_text.split())
+                if len(answer_words & opt_words) >= 1:
+                    el.select_option(value=opt['value'])
+                    el.evaluate("e => e.blur()")
+                    return True
+
+            # Last resort: first non-empty option
+            for opt in options:
+                if opt.get('value') and opt.get('text', '').strip():
+                    el.select_option(value=opt['value'])
+                    el.evaluate("e => e.blur()")
+                    return True
+        except Exception as e:
+            print(f"      ⚠️ Select error: {e}")
+
+        return False
     
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
         """
-        Fill autocomplete/combobox using aria-controls method.
-
-        Key principles (from manual testing):
-        1. Use aria-controls to find the CORRECT listbox (not global selectors)
-        2. Press Escape before clicking to close any open dropdowns
-        3. scroll_into_view_if_needed before clicking
-        4. For Location fields - wait 2 seconds for API response
-        5. For School fields - use search with fallback to "0 - Other"
+        Fill autocomplete/combobox. Supports:
+        - React Select (aria-controls)
+        - Select2 (#s2id_autogen* selectors)
+        - Location fields (API-driven)
+        - School fields (search with fallback)
         """
-        # Get the frame context (for iframe support)
         frame = el.owner_frame() or self.page
-
         label_lower = field.label.lower()
 
         # Check field type for special handling
         is_location = 'location' in label_lower or 'city' in label_lower
         is_school = 'school' in label_lower or 'university' in label_lower or 'college' in label_lower
-        
+
+        # ── SELECT2 DETECTION ──
+        # Select2 uses hidden inputs like #s2id_autogen1
+        # The actual clickable element is the .select2-choice container
+        is_select2 = 's2id' in (field.element_id or '') or 's2id' in field.selector
+        if is_select2:
+            return self._fill_select2(el, field, frame)
+
         # Close any open dropdowns first
         self.page.keyboard.press('Escape')
         time.sleep(0.1)
-        
+
         # Scroll into view
-        el.scroll_into_view_if_needed()
+        try:
+            el.scroll_into_view_if_needed()
+        except:
+            pass
         time.sleep(0.1)
-        
+
         # For Location: type first, then wait for API
         if is_location:
+            print(f"      📍 Location: typing '{field.answer[:30]}'...")
             el.click()
             time.sleep(0.3)
             self.page.keyboard.type(field.answer[:30], delay=30)
@@ -1795,94 +2101,346 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         if is_school:
             return self._fill_school_autocomplete(el, field, frame)
 
-        # Click to open dropdown
-        el.click()
-        time.sleep(0.4)
-        
-        # Use aria-controls to find the CORRECT listbox
-        controls_id = el.get_attribute('aria-controls')
-        options = []
-        
-        if controls_id:
-            listbox = frame.query_selector(f'#{controls_id}')
-            if listbox:
-                options = listbox.query_selector_all('[role="option"]')
-        
-        # Fallback to global selectors if aria-controls didn't work
-        if not options:
-            try:
-                frame.wait_for_selector('[role="listbox"], .select__menu', timeout=1500)
-                options = frame.query_selector_all('[role="option"], .select__option')
-            except:
-                pass
-        
-        answer_lower = field.answer.lower().strip()
-        
-        # Strategy based on option count
-        if options and len(options) <= 15:
-            # Few options - find best match and click
-            for opt in options:
-                opt_text = opt.inner_text().strip()
-                opt_lower = opt_text.lower()
-                
-                # Exact or substring match
-                if answer_lower in opt_lower or opt_lower in answer_lower:
-                    opt.click()
-                    time.sleep(0.2)
-                    return True
-                
-                # Word overlap (for multi-word answers)
-                answer_words = set(answer_lower.replace('-', ' ').split())
-                opt_words = set(opt_lower.replace('-', ' ').split())
-                if len(answer_words & opt_words) >= 1:
-                    opt.click()
-                    time.sleep(0.2)
-                    return True
-            
-            # No match - click first option
-            if options:
-                options[0].click()
-                time.sleep(0.2)
-                return True
-        
-        elif options and len(options) > 15:
-            # Many options - type to filter
-            self.page.keyboard.press('Escape')
-            time.sleep(0.1)
+        # STRATEGY: Use prescan data if we have options from prescan
+        if field.options and len(field.options) <= 25:
+            # Fixed dropdown — find exact match from prescan data and click it
             el.click()
-            time.sleep(0.2)
-            
-            # Type to filter (use keyboard.type for React compatibility)
-            self.page.keyboard.type(field.answer[:30], delay=20)
-            
-            # Check if this is a Location field - needs extra wait for API
-            is_location = 'location' in field.label.lower() or 'city' in field.label.lower()
-            wait_time = 2.0 if is_location else 0.5
-            time.sleep(wait_time)
-            
-            # Re-check options using aria-controls
+            time.sleep(0.4)
+
+            # Read live options
+            controls_id = el.get_attribute('aria-controls')
+            live_options = []
             if controls_id:
                 listbox = frame.query_selector(f'#{controls_id}')
                 if listbox:
-                    options = listbox.query_selector_all('[role="option"]')
-            
-            if options:
-                options[0].click()
+                    live_options = listbox.query_selector_all('[role="option"]')
+            if not live_options:
+                try:
+                    frame.wait_for_selector('[role="listbox"], .select__menu', timeout=1500)
+                    live_options = frame.query_selector_all('[role="option"], .select__option')
+                except:
+                    pass
+
+            answer_lower = field.answer.lower().strip()
+
+            # Score-based matching (like V3.5)
+            best_score = 0
+            best_opt = None
+            for opt in live_options:
+                opt_text = opt.inner_text().strip()
+                opt_lower = opt_text.lower()
+                score = 0
+                if opt_lower == answer_lower:
+                    score = 100  # Exact match
+                elif answer_lower in opt_lower:
+                    score = 80  # Our answer is substring
+                elif opt_lower in answer_lower:
+                    score = 70  # Option is substring of answer
+                else:
+                    # Word overlap
+                    answer_words = set(answer_lower.replace('-', ' ').split())
+                    opt_words = set(opt_lower.replace('-', ' ').split())
+                    overlap = len(answer_words & opt_words)
+                    if overlap >= 2:
+                        score = 60
+                    elif overlap >= 1:
+                        score = 40
+                if score > best_score:
+                    best_score = score
+                    best_opt = opt
+
+            if best_opt:
+                best_opt.click()
                 time.sleep(0.2)
                 return True
-            
-            # Fallback: keyboard navigation
-            self.page.keyboard.press('ArrowDown')
-            self.page.keyboard.press('Tab')  # Tab instead of Enter (safer)
-        
-        else:
-            # No options found - type and tab out
-            self.page.keyboard.type(field.answer[:30], delay=20)
-            time.sleep(0.3)
-            self.page.keyboard.press('Tab')
-        
+
+            # No match - click first option as fallback
+            if live_options:
+                live_options[0].click()
+                time.sleep(0.2)
+                return True
+
+            self.page.keyboard.press('Escape')
+            return True
+
+        # SEARCH dropdown or no prescan data — type to filter
+        el.click()
+        time.sleep(0.3)
+        controls_id = el.get_attribute('aria-controls')
+
+        # Type to filter
+        self.page.keyboard.type(field.answer[:30], delay=20)
+        time.sleep(0.8)
+
+        # Read filtered options
+        live_options = []
+        if controls_id:
+            listbox = frame.query_selector(f'#{controls_id}')
+            if listbox:
+                live_options = listbox.query_selector_all('[role="option"]')
+        if not live_options:
+            live_options = frame.query_selector_all('[role="option"], .select__option')
+
+        if live_options:
+            # Check first option isn't "no results"
+            first_text = live_options[0].inner_text().strip().lower()
+            if 'no result' not in first_text and 'no option' not in first_text:
+                live_options[0].click()
+                time.sleep(0.2)
+                return True
+
+        # Fallback: keyboard navigation
+        self.page.keyboard.press('ArrowDown')
+        self.page.keyboard.press('Tab')
         time.sleep(0.2)
         return True
+
+    def _fill_select2(self, el: ElementHandle, field: FormField, frame) -> bool:
+        """
+        Fill Select2 dropdown (Greenhouse EEO/demographics/custom questions).
+
+        Select2 DOM structure:
+        - .select2-container (id=s2id_job_application_gender)
+          - a.select2-choice  ← CLICK THIS
+          - input#s2id_autogen2 ← the input we detected
+        - .select2-drop (appears after click)
+          - .select2-results
+            - li.select2-result ← the options to click
+        """
+        print(f"      🔽 Select2: {field.label[:30]}...", flush=True)
+
+        try:
+            # Open dropdown by clicking .select2-choice via JavaScript
+            opened = frame.evaluate(f'''() => {{
+                const input = document.querySelector('{field.selector}');
+                if (!input) return false;
+                // Find parent select2-container
+                let container = input.closest('.select2-container');
+                if (!container) {{
+                    // Walk up manually
+                    let parent = input.parentElement;
+                    for (let i = 0; i < 5; i++) {{
+                        if (!parent) break;
+                        if (parent.classList && parent.classList.contains('select2-container')) {{
+                            container = parent;
+                            break;
+                        }}
+                        parent = parent.parentElement;
+                    }}
+                }}
+                if (!container) return false;
+                const choice = container.querySelector('a.select2-choice, .select2-choices');
+                if (choice) {{
+                    choice.dispatchEvent(new MouseEvent('mousedown', {{bubbles: true}}));
+                    return true;
+                }}
+                return false;
+            }}''')
+
+            if not opened:
+                print(f"      ⚠️ Could not find Select2 container")
+                return False
+
+            time.sleep(0.5)
+
+            # Wait for and read options from .select2-drop
+            try:
+                frame.wait_for_selector('.select2-drop:not(.select2-display-none) .select2-results', timeout=2000)
+            except:
+                # Try alternative: just check if results exist
+                pass
+
+            options = frame.query_selector_all('.select2-drop:not(.select2-display-none) .select2-results li.select2-result')
+            if not options:
+                options = frame.query_selector_all('.select2-results li.select2-result')
+            if not options:
+                options = frame.query_selector_all('.select2-results li')
+
+            # Filter out disabled/header items
+            valid_options = []
+            for opt in options:
+                try:
+                    cls = opt.get_attribute('class') or ''
+                    if 'select2-disabled' in cls or 'select2-result-unselectable' in cls:
+                        continue
+                    text = opt.inner_text().strip()
+                    if text:
+                        valid_options.append((opt, text))
+                except:
+                    continue
+
+            if not valid_options:
+                print(f"      ⚠️ No Select2 options found")
+                self.page.keyboard.press('Escape')
+                return False
+
+            option_texts = [t for _, t in valid_options]
+            answer_lower = field.answer.lower().strip()
+            print(f"      Looking for: '{answer_lower[:30]}' in {len(valid_options)} options")
+
+            # Score-based matching
+            best_score, best_opt, best_text = self._select2_match(answer_lower, valid_options)
+
+            if best_score >= 40:
+                best_opt.click()
+                time.sleep(0.3)
+                print(f"      ✅ Select2 matched (score={best_score})")
+                return True
+
+            # No match from pre-resolved answer — try re-resolving with actual options
+            # This handles cases where label was wrong during resolution or AI gave freetext
+            print(f"      🔄 Re-resolving with actual {len(option_texts)} options...")
+            new_answer = self._resolve_select2_from_options(field, option_texts)
+            if new_answer:
+                new_lower = new_answer.lower().strip()
+                best_score2, best_opt2, best_text2 = self._select2_match(new_lower, valid_options)
+                if best_score2 >= 40:
+                    best_opt2.click()
+                    time.sleep(0.3)
+                    field.answer = new_answer
+                    print(f"      ✅ Select2 re-resolved: '{best_text2[:30]}' (score={best_score2})")
+                    return True
+
+            # Final fallback — click first non-placeholder option
+            fallback_idx = 0
+            for idx, (_, text) in enumerate(valid_options):
+                tl = text.lower()
+                if tl not in ('--', 'please select', 'select', 'select...', ''):
+                    fallback_idx = idx
+                    break
+            valid_options[fallback_idx][0].click()
+            time.sleep(0.3)
+            print(f"      ⚠️ Select2 fallback: '{valid_options[fallback_idx][1][:30]}'")
+            return True
+
+        except Exception as e:
+            print(f"      ⚠️ Select2 error: {str(e)[:60]}")
+            try:
+                self.page.keyboard.press('Escape')
+            except:
+                pass
+            return False
+
+    def _select2_match(self, answer_lower: str, valid_options: list) -> tuple:
+        """Score-based matching for Select2 options. Returns (score, element, text)."""
+        best_score = 0
+        best_opt = None
+        best_text = ""
+        for opt_el, opt_text in valid_options:
+            opt_lower = opt_text.lower()
+            score = 0
+            if opt_lower == answer_lower:
+                score = 100
+            elif answer_lower in opt_lower:
+                score = 80
+            elif opt_lower in answer_lower:
+                score = 70
+            else:
+                answer_words = set(answer_lower.split())
+                opt_words = set(opt_lower.split())
+                overlap = len(answer_words & opt_words)
+                if overlap >= 2:
+                    score = 60
+                elif overlap >= 1:
+                    score = 40
+            if score > best_score:
+                best_score = score
+                best_opt = opt_el
+                best_text = opt_text
+        return best_score, best_opt, best_text
+
+    def _resolve_select2_from_options(self, field: FormField, option_texts: list) -> str:
+        """
+        Re-resolve a Select2 answer using the actual dropdown options.
+        Uses profile matching, defaults, and AI to pick the best option.
+        """
+        label = field.label.lower()
+        opt_lower = [t.lower() for t in option_texts]
+
+        # 1. Yes/No questions — check known patterns
+        yes_patterns = ['authorize', 'authorized', 'legal right', 'legally',
+                       '18 years', 'age', 'willing to relocat', 'relocated',
+                       'background check', 'drug test', 'submit verification']
+        no_patterns = ['require sponsor', 'sponsorship', 'non-compete',
+                      'previously been employed', 'worked for our company',
+                      'different name', 'convicted']
+
+        has_yes = any('yes' in o for o in opt_lower)
+        has_no = any('no' in o for o in opt_lower)
+
+        if has_yes and has_no:
+            if any(p in label for p in yes_patterns):
+                return 'Yes'
+            if any(p in label for p in no_patterns):
+                return 'No'
+
+        # 2. State/location questions
+        if any(k in label for k in ['state', 'province', 'reside', 'location', 'where']):
+            profile_state = ""
+            if self.profile:
+                profile_state = self.profile.get("personal.state")
+            if profile_state:
+                # Try full state name match
+                state_map = {"NC": "North Carolina", "CA": "California", "NY": "New York",
+                            "TX": "Texas", "WA": "Washington", "FL": "Florida",
+                            "GA": "Georgia", "MA": "Massachusetts", "IL": "Illinois",
+                            "PA": "Pennsylvania", "OH": "Ohio", "MI": "Michigan",
+                            "VA": "Virginia", "CO": "Colorado", "AZ": "Arizona",
+                            "OR": "Oregon", "MN": "Minnesota", "WI": "Wisconsin"}
+                full_state = state_map.get(profile_state, profile_state)
+                for t in option_texts:
+                    if full_state.lower() in t.lower() or profile_state.lower() in t.lower():
+                        return t
+                # Also try city + state combo
+                profile_city = self.profile.get("personal.city") if self.profile else ""
+                if profile_city:
+                    for t in option_texts:
+                        if profile_city.lower() in t.lower():
+                            return t
+
+        # 3. Pronouns
+        if 'pronoun' in label:
+            for t in option_texts:
+                if 'he/him' in t.lower():
+                    return t
+
+        # 4. How did you hear / source
+        if any(k in label for k in ['how did you', 'learn about', 'hear about', 'source']):
+            for t in option_texts:
+                tl = t.lower()
+                if any(k in tl for k in ['linkedin', 'job board', 'online']):
+                    return t
+            # Return "Other" if available
+            for t in option_texts:
+                if t.lower() in ('other', 'other (please specify)'):
+                    return t
+
+        # 5. Previously employed
+        if any(k in label for k in ['previously', 'former', 'employed']):
+            for t in option_texts:
+                if t.lower().startswith('no'):
+                    return t
+
+        # 6. Decline/prefer not for demographic-ish questions
+        if any(k in label for k in ['gender', 'race', 'ethnic', 'veteran', 'disability']):
+            for t in option_texts:
+                tl = t.lower()
+                if 'decline' in tl or 'prefer not' in tl or 'do not want' in tl or 'not a protected' in tl:
+                    return t
+
+        # 7. Claude AI as last resort — ask to pick from specific options
+        if self.ai and self.ai.available:
+            try:
+                clean_options = [t for t in option_texts if t.lower() not in ('--', 'please select', 'select', '')]
+                if clean_options:
+                    context = self._get_profile_context_for_ai()
+                    ai_pick = self.ai.choose_option(field.label, clean_options, context)
+                    if ai_pick:
+                        return ai_pick
+            except Exception as e:
+                print(f"      ⚠️ AI re-resolve error: {str(e)[:40]}")
+
+        return ""
 
     def _fill_school_autocomplete(self, el: ElementHandle, field: FormField, frame) -> bool:
         """
@@ -2033,14 +2591,20 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _blur_all_fields(self):
         """Click outside all fields to trigger blur/validation."""
         try:
+            context = getattr(self, '_active_frame', self.page)
             # Click on body to blur any focused field
-            self.page.click('body', position={'x': 10, 'y': 10})
+            try:
+                context.click('body', position={'x': 10, 'y': 10})
+            except:
+                self.page.click('body', position={'x': 10, 'y': 10})
             time.sleep(0.3)
-            
+
             # Also blur each field explicitly
             for field in self.fields:
                 if field.selector:
-                    el = self.page.query_selector(field.selector)
+                    el = context.query_selector(field.selector)
+                    if not el:
+                        el = self.page.query_selector(field.selector)
                     if el:
                         try:
                             el.evaluate("e => e.blur()")
@@ -2064,7 +2628,10 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _validate_field(self, field: FormField) -> bool:
         """Validate single field by reading back value."""
         try:
-            el = self.page.query_selector(field.selector)
+            context = getattr(self, '_active_frame', self.page)
+            el = context.query_selector(field.selector)
+            if not el:
+                el = self.page.query_selector(field.selector)
             if not el:
                 return False
             
@@ -2150,10 +2717,14 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 else:
                     continue
             
-            el = self.page.query_selector(selector)
+            # Search in active frame first (iframe support), then main page
+            context = getattr(self, '_active_frame', self.page)
+            el = context.query_selector(selector)
+            if not el and context != self.page:
+                el = self.page.query_selector(selector)
             if not el:
                 continue
-            
+
             try:
                 tag = el.evaluate("e => e.tagName.toLowerCase()")
                 el_type = el.get_attribute('type') or 'text'
@@ -2248,28 +2819,45 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         return filled_any
     
     def click_add_another(self, section_name: str) -> bool:
-        """Click 'Add another' button for a section."""
+        """Click 'Add another' button for a section. Searches in iframe too."""
         config = self.REPEATABLE_SECTIONS.get(section_name)
         if not config:
             return False
-        
-        button_index = config['button_index']
-        buttons = self.page.query_selector_all(config['add_button_selector'])
-        
-        if button_index < len(buttons):
-            buttons[button_index].click()
-            time.sleep(0.5)
-            self.browser.wait_for_stable()
-            return True
-        
-        # Fallback: try finding by text
-        add_link = self.page.query_selector(f'a:has-text("Add another"), button:has-text("Add another")')
-        if add_link:
-            add_link.click()
-            time.sleep(0.5)
-            self.browser.wait_for_stable()
-            return True
-        
+
+        contexts = [getattr(self, '_active_frame', self.page), self.page]
+        section_text = config.get('section_text', section_name.replace('_', ' '))
+
+        for context in contexts:
+            # Try configured selectors
+            for selector in config.get('add_button_selectors', []):
+                try:
+                    btn = context.query_selector(selector)
+                    if btn and btn.is_visible():
+                        btn.click()
+                        time.sleep(0.5)
+                        self.browser.wait_for_stable()
+                        return True
+                except:
+                    continue
+
+            # Text-based search within the section
+            try:
+                all_links = context.query_selector_all('a, button')
+                for link in all_links:
+                    try:
+                        if not link.is_visible():
+                            continue
+                        text = link.inner_text().strip().lower()
+                        if 'add another' in text or 'add a' in text:
+                            link.click()
+                            time.sleep(0.5)
+                            self.browser.wait_for_stable()
+                            return True
+                    except:
+                        continue
+            except:
+                continue
+
         return False
     
     def fill_repeatable_section(self, section_name: str):
