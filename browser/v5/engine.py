@@ -40,6 +40,7 @@ DATA_DIR.mkdir(exist_ok=True)
 PROFILE_PATH = BROWSER_DIR / "profiles" / "anton_tpm.json"
 # Use shared learned database with V3.5
 LEARNED_DB_PATH = BROWSER_DIR / "learned_database.json"
+KNOWLEDGE_BASE_PATH = BROWSER_DIR / "knowledge_base.json"
 FIELD_PATTERNS_PATH = DATA_DIR / "field_patterns.json"
 
 
@@ -525,6 +526,61 @@ class LearnedDB:
         print(f"   💾 Learned: '{label[:30]}' → '{answer[:25]}'")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# KNOWLEDGE BASE - Experience snippets + common answers for AI context
+# ═══════════════════════════════════════════════════════════════════════════
+
+class KnowledgeBase:
+    """Knowledge base with experience snippets and common answers."""
+
+    def __init__(self, path: Path = KNOWLEDGE_BASE_PATH):
+        self.path = path
+        try:
+            self.data = json.loads(path.read_text())
+        except Exception:
+            self.data = {}
+        self.snippets = self.data.get("experience_snippets", {})
+        self.common_answers = self.data.get("common_answers", {})
+        self.skills = self.data.get("skills", {})
+        self.achievements = self.data.get("achievements", [])
+        print(f"   📚 KnowledgeBase loaded: {len(self.snippets)} snippets, {len(self.common_answers)} common answers")
+
+    def find_relevant_snippets(self, question: str) -> List[str]:
+        """Find relevant experience snippets for a question."""
+        question_lower = question.lower()
+        found = []
+
+        for keyword, snippet in self.snippets.items():
+            # Check if keyword appears in question
+            if keyword.lower() in question_lower:
+                found.append(snippet)
+            # Also check individual words from multi-word keywords
+            elif len(keyword.split()) > 1:
+                words = keyword.lower().split()
+                if any(w in question_lower for w in words if len(w) > 3):
+                    found.append(snippet)
+
+        return found[:3]  # Max 3 snippets
+
+    def get_context_for_question(self, question: str) -> str:
+        """Get formatted context with relevant snippets for AI prompt."""
+        snippets = self.find_relevant_snippets(question)
+        if snippets:
+            return "Relevant experience:\n" + "\n".join(f"- {s}" for s in snippets)
+        return ""
+
+    def find_common_answer(self, question: str) -> Optional[str]:
+        """Find pre-written answer for common questions (salary, why interested, etc.)."""
+        question_lower = question.lower()
+
+        for answer_key, answer_data in self.common_answers.items():
+            keywords = answer_data.get("keywords", [])
+            for kw in keywords:
+                if kw.lower() in question_lower:
+                    return answer_data.get("answer")
+
+        return None
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # OLLAMA HELPER - Local LLM for custom questions
@@ -789,6 +845,7 @@ class FormFillerV5:
         self.browser_mode = browser_mode
         self.profile = Profile()
         self.learned_db = LearnedDB()
+        self.kb = KnowledgeBase()
         self.ai = AIHelper()
         self.ollama = OllamaHelper()
         self.logger = FormLogger()
@@ -1706,7 +1763,14 @@ class FormFillerV5:
             if val:
                 answer, source, confidence = val, AnswerSource.PROFILE, 0.9
                 field.profile_key = key
-        
+
+        # 2.5 Common answers from KnowledgeBase (salary, why interested, etc.)
+        if not answer and not is_dropdown:
+            common = self.kb.find_common_answer(field.label)
+            if common:
+                answer, source, confidence = common, AnswerSource.DEFAULT, 0.88
+                print(f"   📚 KB common: '{field.label[:30]}' → '{common[:40]}...'")
+
         # 3. Yes/No patterns
         if not answer:
             yn = self.profile.find_yes_no(field.label)
@@ -1731,9 +1795,12 @@ class FormFillerV5:
             if text_default:
                 answer, source, confidence = text_default, AnswerSource.DEFAULT, 0.75
 
-        # 7. Ollama for custom questions
+        # 7. Ollama for custom questions (with KB context)
         if not answer and self.ollama.available:
             profile_context = self._get_profile_context_for_ai()
+            kb_context = self.kb.get_context_for_question(field.label)
+            if kb_context:
+                profile_context += f"\n\n{kb_context}"
             ollama_answer = self.ollama.generate(field.label, profile_context, field.options)
             if ollama_answer:
                 if field.options:
@@ -1741,9 +1808,12 @@ class FormFillerV5:
                 answer, source, confidence = ollama_answer, AnswerSource.AI, 0.6
                 print(f"   🤖 Ollama: '{field.label[:30]}' → '{ollama_answer[:30]}'")
 
-        # 8. Claude AI fallback for remaining unknown fields
+        # 8. Claude AI fallback for remaining unknown fields (with KB context)
         if not answer and self.ai.available:
             profile_context = self._get_profile_context_for_ai()
+            kb_context = self.kb.get_context_for_question(field.label)
+            if kb_context:
+                profile_context += f"\n\n{kb_context}"
             try:
                 if field.options:
                     claude_answer = self.ai.choose_option(field.label, field.options, profile_context)
