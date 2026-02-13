@@ -1285,7 +1285,8 @@ class FormFillerV5:
 
         Priority:
         1. Standard label[for] attribute (in active frame + page)
-        1b. Select2 parent <label> direct text (Greenhouse custom questions)
+        1b. Parent <label> direct text (Greenhouse wraps fields in <label> tags)
+        1c. div.field > label sibling (Greenhouse custom questions in div.field)
         2. aria-label / placeholder
         3. Context Discovery (traverse DOM for nearby text)
         4. Name/ID as fallback
@@ -1303,29 +1304,33 @@ class FormFillerV5:
             if label_el:
                 label = label_el.inner_text().strip()
 
-        # Strategy 1b: Select2 parent <label> direct text nodes
-        # In Greenhouse, Select2 inputs (s2id_autogen*) are inside a <label> tag
+        # Strategy 1b: Parent <label> direct text nodes
+        # In Greenhouse, fields (inputs, textareas, Select2) are inside a <label> tag
         # whose direct text nodes contain the actual question text.
-        # e.g. <label>Question text? *<span class="asterisk">*</span><br><input...><div class="select2-container">...</div></label>
-        if not label and el_id and el_id.startswith("s2id_autogen"):
+        # e.g. <label>Question text? *<span class="asterisk">*</span><br><input...></label>
+        # This works for ALL field types, not just Select2.
+        if not label:
             try:
                 parent_label_text = el.evaluate('''el => {
-                    // Find the select2-container ancestor
-                    let container = el.closest('.select2-container');
-                    if (!container) container = el;
+                    // For Select2 inputs, start from the container
+                    let start = el.closest('.select2-container') || el;
 
-                    // Walk up to find a <label> parent
-                    let parent = container.parentElement;
-                    for (let i = 0; i < 3 && parent; i++) {
+                    // Walk up to find a <label> parent (max 4 levels)
+                    let parent = start.parentElement;
+                    for (let i = 0; i < 4 && parent; i++) {
                         if (parent.tagName === 'LABEL') {
-                            // Extract only direct text nodes (not children like Select2)
+                            // Extract only direct text nodes (not children text)
                             let text = '';
                             for (const node of parent.childNodes) {
                                 if (node.nodeType === 3) { // TEXT_NODE
                                     text += node.textContent.trim() + ' ';
                                 }
                             }
-                            return text.trim();
+                            text = text.trim();
+                            // Filter out noise: just asterisks, very short text
+                            if (text && text !== '*' && text.length > 3) {
+                                return text;
+                            }
                         }
                         parent = parent.parentElement;
                     }
@@ -1333,6 +1338,38 @@ class FormFillerV5:
                 }''')
                 if parent_label_text and len(parent_label_text) > 3:
                     label = parent_label_text
+            except Exception:
+                pass
+
+        # Strategy 1c: div.field > label sibling
+        # Some Greenhouse forms use: <div class="field"><label>Question</label><input></div>
+        if not label:
+            try:
+                sibling_label = el.evaluate('''el => {
+                    // Walk up to find div.field
+                    let parent = el.parentElement;
+                    for (let i = 0; i < 5 && parent; i++) {
+                        if (parent.classList && parent.classList.contains('field')) {
+                            // Get first direct label child that doesn't contain our input
+                            const labels = parent.querySelectorAll(':scope > label');
+                            for (const lbl of labels) {
+                                if (!lbl.contains(el)) {
+                                    let text = '';
+                                    for (const node of lbl.childNodes) {
+                                        if (node.nodeType === 3) text += node.textContent.trim() + ' ';
+                                    }
+                                    text = text.trim();
+                                    if (text && text !== '*' && text.length > 3) return text;
+                                }
+                            }
+                            break;
+                        }
+                        parent = parent.parentElement;
+                    }
+                    return '';
+                }''')
+                if sibling_label and len(sibling_label) > 3:
+                    label = sibling_label
             except Exception:
                 pass
 
