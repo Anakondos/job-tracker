@@ -886,9 +886,13 @@ class FormFillerV5:
         with BrowserManager(mode=self.browser_mode) as browser:
             self.browser = browser
             self.page = browser.page
-            
+
             browser.goto(url)
             browser.wait_for_stable()
+
+            # Start logging session
+            company = self._extract_company_from_url(url)
+            self.logger.start_session(url=url, company=company)
             
             # Wait for iframes to load (Greenhouse, Lever forms are in iframes)
             self._wait_for_iframes()
@@ -946,6 +950,14 @@ class FormFillerV5:
             self._blur_all_fields()
             self._validate_all_fields()
             
+            # Feedback loop: save verified AI answers to learned DB
+            self._save_verified_ai_answers()
+
+            # End logging session
+            log_path = self.logger.end_session(status="completed")
+            if log_path:
+                print(f"   📄 Log saved: {log_path}")
+
             # Keep browser open for review
             if mode == FillMode.INTERACTIVE:
                 print("\n👀 Review the form in browser.")
@@ -954,7 +966,7 @@ class FormFillerV5:
                     input()
                 except:
                     time.sleep(60)
-            
+
             return self._generate_report(url)
     
     def _scan_for_new_fields(self) -> List[FormField]:
@@ -2067,12 +2079,32 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 field.status = FillStatus.ERROR
                 print(f"   ❌ {field.label[:35]} - fill failed")
 
+            # Log field fill
+            self.logger.log_field(
+                field_id=field.element_id or field.selector,
+                field_type=field.field_type.value,
+                question=field.label,
+                value=field.answer or "",
+                source=field.answer_source.value if field.answer_source else "none",
+                success=success,
+                error=field.error_message
+            )
+
             return success
 
         except Exception as e:
             field.status = FillStatus.ERROR
             field.error_message = str(e)[:100]
             print(f"   ❌ {field.label[:35]} - error: {str(e)[:50]}")
+            self.logger.log_field(
+                field_id=field.element_id or field.selector,
+                field_type=field.field_type.value,
+                question=field.label,
+                value="",
+                source="error",
+                success=False,
+                error=str(e)[:100]
+            )
             return False
     
     def _fill_text(self, el: ElementHandle, field: FormField) -> bool:
@@ -3041,7 +3073,38 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 report.errors += 1
         
         return report
-    
+
+    def _extract_company_from_url(self, url: str) -> str:
+        """Extract company name from Greenhouse/Lever URL."""
+        url_lower = url.lower()
+        # Greenhouse: ?for=companyname or boards.greenhouse.io/companyname
+        import re as _re
+        m = _re.search(r'for=([a-z0-9_-]+)', url_lower)
+        if m:
+            return m.group(1)
+        m = _re.search(r'boards\.greenhouse\.io/([a-z0-9_-]+)', url_lower)
+        if m:
+            return m.group(1)
+        m = _re.search(r'jobs\.lever\.co/([a-z0-9_-]+)', url_lower)
+        if m:
+            return m.group(1)
+        return ""
+
+    def _save_verified_ai_answers(self):
+        """Feedback loop: save verified AI answers to learned DB for future use."""
+        saved_count = 0
+        for field in self.fields:
+            if (field.status == FillStatus.VERIFIED and
+                    field.answer_source == AnswerSource.AI and
+                    field.answer and
+                    len(field.label) > 5):
+                # Save AI-generated answer that was verified as correct
+                is_dropdown = field.field_type in (FieldType.SELECT, FieldType.AUTOCOMPLETE)
+                self.learned_db.save_answer(field.label, field.answer, is_dropdown)
+                saved_count += 1
+        if saved_count:
+            print(f"   🔄 Feedback: saved {saved_count} verified AI answers to learned DB")
+
     def _detect_ats(self, url: str) -> str:
         """Detect ATS type from URL."""
         url_lower = url.lower()
