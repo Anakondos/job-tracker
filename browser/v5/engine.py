@@ -191,6 +191,71 @@ class FillReport:
         lines.append("═══════════════════════════════════════════════════════════")
         return "\n".join(lines)
 
+    def detailed_report(self) -> str:
+        """Generate detailed field-by-field text report."""
+        lines = [
+            "╔══════════════════════════════════════════════════════════════════════════════════════════════╗",
+            f"║  FORM FILL REPORT — {self.title[:60]:<60}        ║",
+            f"║  ATS: {self.ats_type:<15}  URL: {self.url[:55]:<55} ║",
+            "╠══════════════════════════════════════════════════════════════════════════════════════════════╣",
+        ]
+
+        # Source stats
+        source_counts = {}
+        for f in self.fields:
+            src = f.answer_source.value if f.answer_source else "none"
+            source_counts[src] = source_counts.get(src, 0) + 1
+
+        # Group fields by category
+        status_icons = {
+            FillStatus.VERIFIED: "✅",
+            FillStatus.FILLED: "📝",
+            FillStatus.ERROR: "❌",
+            FillStatus.SKIPPED: "⏭️",
+            FillStatus.NEEDS_INPUT: "❓",
+            FillStatus.READY: "🔵",
+        }
+
+        for i, f in enumerate(self.fields, 1):
+            icon = status_icons.get(f.status, "?")
+            src = f.answer_source.value if f.answer_source else "-"
+            answer = (f.answer or "")
+            label = (f.label or "").split(" [")[0]  # Remove [name=...] suffix
+
+            # Truncate for display
+            label_display = label[:55]
+            answer_display = answer[:50]
+
+            lines.append(
+                f"║ {i:>2}. {icon} {f.field_type.value:12} │ {label_display:<55} │ {answer_display:<50} │ {src:<8} ║"
+            )
+
+        lines.append("╠══════════════════════════════════════════════════════════════════════════════════════════════╣")
+
+        # Summary
+        lines.append(f"║  📊 RESULTS: {self.verified_fields} verified, {self.filled_fields} filled, {self.errors} errors, {self.skipped} skipped / {self.total_fields} total")
+
+        # Source breakdown
+        src_parts = [f"{src}: {cnt}" for src, cnt in sorted(source_counts.items(), key=lambda x: -x[1])]
+        lines.append(f"║  📦 SOURCES: {', '.join(src_parts)}")
+
+        # Errors
+        error_fields = [f for f in self.fields if f.status == FillStatus.ERROR]
+        if error_fields:
+            lines.append(f"║  ❌ ERRORS:")
+            for f in error_fields:
+                lines.append(f"║     • {f.label[:50]}: {f.error_message}")
+
+        # Needs input
+        needs = [f for f in self.fields if f.status == FillStatus.NEEDS_INPUT]
+        if needs:
+            lines.append(f"║  ⚠️ NEEDS INPUT:")
+            for f in needs:
+                lines.append(f"║     • {f.label[:60]}")
+
+        lines.append("╚══════════════════════════════════════════════════════════════════════════════════════════════╝")
+        return "\n".join(lines)
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # PROFILE
@@ -967,8 +1032,10 @@ class FormFillerV5:
                 except:
                     time.sleep(60)
 
-            return self._generate_report(url)
-    
+            report = self._generate_report(url)
+            print(report.detailed_report())
+            return report
+
     def _scan_for_new_fields(self) -> List[FormField]:
         """
         Scan for fields that appeared after initial scan.
