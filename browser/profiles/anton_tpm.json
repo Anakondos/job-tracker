@@ -25,7 +25,7 @@
     "by_role": {
       "TPM": {
         "cv": "CV_Anton_Kondakov_TPM.pdf",
-        "cover_letter": "Cover_Letter_Anton_Kondakov_TPM.dotx"
+        "cover_letter": "Cover_Letter_Anton_Kondakov_TPM.docx"
       },
       "Product Manager": {
         "cv": "CV_Anton_Kondakov_Product Manager.pdf",
@@ -57,9 +57,9 @@
   
   "work_experience": [
     {
-      "company": "DXC - London Market",
-      "title": "Senior Delivery Manager / Scrum Center of Excellence Lead",
-      "start_month": "July",
+      "company": "DXC Technology",
+      "title": "Senior Technical Program Manager / Delivery Manager",
+      "start_month": "June",
       "start_year": "2025",
       "end_month": "",
       "end_year": "",
@@ -90,7 +90,9 @@
   
   "education": [
     {
-      "school": "Moscow Institute of Physics and Technology State University",
+      "school": "Moscow State University of Instrument Engineering and Informatics",
+      "school_search": "Moscow State",
+      "school_fallback": "Other",
       "degree": "Master's Degree",
       "discipline": "Computer Science",
       "start_month": "September",
@@ -100,9 +102,12 @@
     },
     {
       "school": "International Institute of Management LINK / The Open University Business School",
+      "school_search": "Open University",
+      "school_fallback": "Other",
       "degree": "Master of Business Administration (M.B.A.)",
+      "degree_search": "Business",
       "discipline": "Business Administration",
-      "start_month": "January",
+      "start_month": "September",
       "start_year": "2012",
       "end_month": "July",
       "end_year": "2013"

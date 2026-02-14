@@ -1,12 +1,14 @@
 {
-  "field_answers": {
-    "current role": "checked",
-    "how many years of experience do you have in product management or product centric roles e.g., roles where you owned a roadmap, defined user requirements, or led cross functional launches": "With over 8 years of experience in product-centric roles, I have successfully owned roadmaps, defined user requirements, and led cross-functional launches across various industries. In my current role as Senior Delivery Manager / Scrum Center of Excellenc",
-    "do you have experience with the multi currency feature of netsuite or any other erp if yes, list out the multi currency setups you’ve configured.": "Yes, I have experience with the multi-currency feature of NetSuite, having configured multiple setups for various clients across different regions, including setting up exchange rates, currency conversion, and tax calculations to ensure accurate financial reporting. Specifically, I've worked on configuring multi-currency environments for European and Asian markets, leveraging my technical expertise in ERP systems."
+  "answers": {
+    "please list all of your professional credentials organizations, licenses, certificates below. [job a": "SAFe POPM (2025), PSM I (2016), Google Cloud Architect (2020), Google Cloud Digital Leader (2024), Agile Program Manager (2024), MBA, MS Computer Science.",
+    "if you are related to any current toshiba employees, please list their name. [job application[answer": "I am not related to any current Toshiba employees.",
+    "what ai development tools are you currently using to aid development [job application[answers attrib": "Currently using GitHub Copilot, Claude, and AI-powered development tools. Led AI-driven modernization initiatives across enterprise platforms with 60+ engineers, achieving 30% delivery velocity improvement.",
+    "resume/cv": "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Applications/Toshiba_Global_Commerce_Soluti_AI-Driven_UIUX_Developer_20260213/CV_Anton_Kondakov_Toshiba_Global_Commerce_Soluti.docx",
+    "cover letter": "/Users/antonkondakov/Library/Mobile Documents/com~apple~CloudDocs/Dev/AI_projects/Gold CV/Applications/Toshiba_Global_Commerce_Soluti_AI-Driven_UIUX_Developer_20260213/Cover_Letter_Toshiba_Global_Commerce_Soluti.docx"
   },
-  "profile_mappings": {},
-  "stats": {
-    "total_fields": 3,
-    "sessions": 0
+  "dropdown_choices": {
+    "upon employment, can you submit verification of your legal right to work for toshiba in the united s": "Yes, I am authorized to work in the United States and do not require sponsorship. I can provide all necessary verification documentation upon employment.",
+    "have you ever worked for our company under a different name": "No, I have not previously worked for your company under any name. This would be my first opportunity to contribute to your organization.",
+    "do you have a track record of designing ux directly in code": "No direct UX coding experience. My background focuses on program management, cloud architecture, and Agile delivery across enterprise platforms with 60+ engineers."
   }
 }
