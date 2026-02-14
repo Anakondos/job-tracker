@@ -2,6 +2,8 @@
 Job cache manager with TTL
 """
 import json
+import os
+import tempfile
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -69,10 +71,18 @@ def save_cache(cache_key: str, jobs: List[Dict]) -> bool:
     }
     
     cache_path = get_cache_path(cache_key)
-    
+
     try:
-        with cache_path.open("w", encoding="utf-8") as f:
+        # Atomic write with fsync (iCloud safe)
+        fd, tmp_path = tempfile.mkstemp(dir=str(cache_path.parent), suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(cache_data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, str(cache_path))
+        dir_fd = os.open(str(cache_path.parent), os.O_RDONLY)
+        os.fsync(dir_fd)
+        os.close(dir_fd)
         print(f"✅ Cached {len(jobs)} jobs for '{cache_key}'")
         
         # Also compute and save stats
@@ -110,8 +120,12 @@ def compute_and_save_stats(jobs: List[Dict]) -> Dict:
     }
     
     try:
-        with STATS_FILE.open("w", encoding="utf-8") as f:
+        fd, tmp_path = tempfile.mkstemp(dir=str(STATS_FILE.parent), suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(stats, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, str(STATS_FILE))
         print(f"✅ Stats saved: Total={total}, Role={role_count}, US={us_count}, MyArea={my_area_count}")
     except Exception as e:
         print(f"❌ Stats save error: {e}")

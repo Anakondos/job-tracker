@@ -1,0 +1,191 @@
+{
+  "name": "Anton Kondakov",
+  "target_title": "Senior Technical Program Manager",
+  "years_experience": 15,
+  "seniority_level": "senior",
+  "location": {
+    "city": "Raleigh",
+    "state": "NC",
+    "open_to_remote": true,
+    "open_to_relocation": true
+  },
+
+  "core_skills": {
+    "program_management": [
+      "program management",
+      "project management",
+      "portfolio management",
+      "roadmap",
+      "roadmapping",
+      "full sdlc",
+      "sdlc",
+      "risk management",
+      "risk mitigation",
+      "dependency tracking",
+      "scope management",
+      "budget management",
+      "vendor management",
+      "vendor coordination",
+      "release coordination",
+      "release management",
+      "change management",
+      "escalation management",
+      "stakeholder management",
+      "cross-functional",
+      "cross functional"
+    ],
+    "agile_methodologies": [
+      "agile",
+      "scrum",
+      "kanban",
+      "safe",
+      "scaled agile",
+      "pi planning",
+      "sprint",
+      "sprint planning",
+      "sprint management",
+      "retrospective",
+      "backlog",
+      "backlog grooming",
+      "backlog refinement",
+      "user stories",
+      "acceptance criteria",
+      "waterfall",
+      "hybrid"
+    ],
+    "cloud_infrastructure": [
+      "aws",
+      "gcp",
+      "google cloud",
+      "azure",
+      "cloud migration",
+      "cloud platform",
+      "ecs",
+      "lambda",
+      "s3",
+      "rds",
+      "cloud run",
+      "bigquery",
+      "dataflow",
+      "terraform",
+      "infrastructure as code"
+    ],
+    "devops_cicd": [
+      "ci/cd",
+      "cicd",
+      "ci cd",
+      "jenkins",
+      "github actions",
+      "docker",
+      "kubernetes",
+      "k8s",
+      "deployment",
+      "devops",
+      "containerization",
+      "microservices"
+    ],
+    "data_platforms": [
+      "data platform",
+      "data pipeline",
+      "data analytics",
+      "analytics",
+      "real-time",
+      "real time",
+      "ml",
+      "machine learning",
+      "etl",
+      "data lake",
+      "data warehouse",
+      "bigquery",
+      "data engineering"
+    ],
+    "technical_tools": [
+      "jira",
+      "confluence",
+      "servicenow",
+      "ms project",
+      "azure devops",
+      "github",
+      "sql",
+      "oracle",
+      "postgresql"
+    ],
+    "compliance_governance": [
+      "regulatory",
+      "compliance",
+      "mifid",
+      "sox",
+      "gdpr",
+      "audit",
+      "itil",
+      "change management",
+      "governance"
+    ]
+  },
+
+  "industry_experience": {
+    "strong_match": [
+      "financial services",
+      "fintech",
+      "banking",
+      "capital markets",
+      "investment banking",
+      "insurance",
+      "payments",
+      "trading"
+    ],
+    "good_match": [
+      "enterprise technology",
+      "enterprise software",
+      "saas",
+      "cloud",
+      "devtools",
+      "infrastructure",
+      "platform",
+      "cybersecurity",
+      "security"
+    ],
+    "moderate_match": [
+      "healthcare",
+      "consulting",
+      "telecom",
+      "retail tech",
+      "edtech",
+      "ai",
+      "data"
+    ]
+  },
+
+  "experience_highlights": {
+    "team_size": "50+ engineers, 100+ for M&A",
+    "scope": "global, 15+ countries, multi-timezone",
+    "achievements": [
+      "cloud migration 15 apps 50+ microservices",
+      "$1.2M annual cost savings",
+      "25% uptime improvement",
+      "98% on-time delivery",
+      "zero production incidents",
+      "3x deployment frequency",
+      "50% incident reduction",
+      "M&A integration 8 asset classes",
+      "data platform 200TB+",
+      "automated release 4 hours to 15 minutes"
+    ],
+    "companies_worked": ["DXC Technology", "Luxoft", "Deutsche Bank", "UBS"],
+    "fortune_500": true
+  },
+
+  "seniority_keywords": {
+    "ideal": ["senior", "lead", "staff", "principal", "head of", "director"],
+    "acceptable": ["manager", "ii", "iii", "2", "3"],
+    "too_junior": ["junior", "associate", "intern", "entry level", "coordinator", "analyst i", "specialist"]
+  },
+
+  "scoring_weights": {
+    "role_match": 0.30,
+    "skills_match": 0.25,
+    "seniority_match": 0.15,
+    "industry_match": 0.15,
+    "location_match": 0.15
+  }
+}

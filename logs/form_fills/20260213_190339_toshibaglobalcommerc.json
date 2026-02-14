@@ -1,0 +1,331 @@
+{
+  "timestamp": "2026-02-13T19:01:44.185409",
+  "url": "https://boards.greenhouse.io/embed/job_app?token=5036797007&for=toshibaglobalcommercesolutions",
+  "title": "",
+  "job_id": null,
+  "company": "toshibaglobalcommercesolutions",
+  "status": "completed",
+  "fields_total": 35,
+  "fields_filled": 35,
+  "fields_skipped": 0,
+  "fields_error": 0,
+  "field_logs": [
+    {
+      "field_id": "first_name",
+      "field_type": "text",
+      "question": "First Name * [job_application[first_name]]",
+      "value_filled": "Anton",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "last_name",
+      "field_type": "text",
+      "question": "Last Name * [job_application[last_name]]",
+      "value_filled": "Kondakov",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "email",
+      "field_type": "text",
+      "question": "Email * [job_application[email]]",
+      "value_filled": "anton.kondakov.PM@gmail.com",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "phone",
+      "field_type": "text",
+      "question": "Phone * [job_application[phone]]",
+      "value_filled": "(910) 536-0602",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen14",
+      "field_type": "autocomplete",
+      "question": "School",
+      "value_filled": "Moscow State University of Instrument Engineering ",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen15",
+      "field_type": "autocomplete",
+      "question": "Degree",
+      "value_filled": "Master's Degree",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen16",
+      "field_type": "autocomplete",
+      "question": "Discipline",
+      "value_filled": "Computer Science",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_0_text_value",
+      "field_type": "text",
+      "question": "What is your preferred first name? [job_application[answers_attributes][0][text_value]]",
+      "value_filled": "Anton",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_1_text_value",
+      "field_type": "text",
+      "question": "Website [job_application[answers_attributes][1][text_value]]",
+      "value_filled": "https://linkedin.com/in/antonkondakov",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen1",
+      "field_type": "autocomplete",
+      "question": "Are you 18 years of age or older?",
+      "value_filled": "Yes",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen2",
+      "field_type": "autocomplete",
+      "question": "Upon employment, can you submit verification of your legal right to work for Toshiba in the United S",
+      "value_filled": "Yes, I am authorized to work in the United States ",
+      "source": "learned",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_4_text_value",
+      "field_type": "textarea",
+      "question": "Please list all of your professional credentials (organizations, licenses, certificates) below. [job",
+      "value_filled": "SAFe POPM (2025), PSM I (2016), Google Cloud Archi",
+      "source": "learned",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_5_text_value",
+      "field_type": "text",
+      "question": "Please list any additional address information here, such as an apartment number, lot/space number, ",
+      "value_filled": "2000 Sweet Samson St",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_6_text_value",
+      "field_type": "text",
+      "question": "What city do you currently reside in? [job_application[answers_attributes][6][text_value]]",
+      "value_filled": "Wake Forest",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen3",
+      "field_type": "autocomplete",
+      "question": "What state and country do you currently reside in?",
+      "value_filled": "USA-NC",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_8_text_value",
+      "field_type": "text",
+      "question": "What is your zip code? [job_application[answers_attributes][8][text_value]]",
+      "value_filled": "27587",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen4",
+      "field_type": "autocomplete",
+      "question": "If you are not based in the same city as the role you have applied for, are you willing to relocate?",
+      "value_filled": "Yes",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_10_text_value",
+      "field_type": "text",
+      "question": "If you are employed, what is the name of your current company? [job_application[answers_attributes][",
+      "value_filled": "DXC Technology",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_11_text_value",
+      "field_type": "text",
+      "question": "If you are employed, what is your current title? [job_application[answers_attributes][11][text_value",
+      "value_filled": "Senior Technical Program Manager / Delivery Manage",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen5",
+      "field_type": "autocomplete",
+      "question": "Do you currently work under any agreement, such as a non-compete agreement, which would restrict you",
+      "value_filled": "No",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen6",
+      "field_type": "autocomplete",
+      "question": "Have you previously been employed by a Toshiba company?",
+      "value_filled": "No",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen7",
+      "field_type": "autocomplete",
+      "question": "Have you ever worked for our company under a different name?",
+      "value_filled": "No, I have not previously worked for your company ",
+      "source": "learned",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_15_text_value",
+      "field_type": "text",
+      "question": "If you are related to any current Toshiba employees, please list their name. [job_application[answer",
+      "value_filled": "I am not related to any current Toshiba employees.",
+      "source": "learned",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_16_text_value",
+      "field_type": "textarea",
+      "question": "Is there any reason why you would not be able to perform the duties of the job to which you have app",
+      "value_filled": "No, there is no reason I would be unable to perfor",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_17_text_value",
+      "field_type": "text",
+      "question": "I hereby certify that my answers to the foregoing questions and statements are true and complete wit",
+      "value_filled": "Anton Kondakov",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_18_text_value",
+      "field_type": "text",
+      "question": "What is your current street address? [job_application[answers_attributes][18][text_value]]",
+      "value_filled": "2000 Sweet Samson St",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_19_text_value",
+      "field_type": "text",
+      "question": "What AI Development tools are you currently using to aid development? [job_application[answers_attri",
+      "value_filled": "Currently using GitHub Copilot, Claude, and AI-pow",
+      "source": "learned",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen8",
+      "field_type": "autocomplete",
+      "question": "Do you have a track record of designing UX directly in code?",
+      "value_filled": "No direct UX coding experience. My background focu",
+      "source": "learned",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "job_application_answers_attributes_21_text_value",
+      "field_type": "text",
+      "question": "What is your desired salary? [job_application[answers_attributes][21][text_value]]",
+      "value_filled": "Given my extensive experience leading large-scale ",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen9",
+      "field_type": "autocomplete",
+      "question": "Gender",
+      "value_filled": "Male",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen10",
+      "field_type": "autocomplete",
+      "question": "Are you Hispanic/Latino?",
+      "value_filled": "No",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen12",
+      "field_type": "autocomplete",
+      "question": "Veteran Status",
+      "value_filled": "I am not a protected veteran",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen13",
+      "field_type": "autocomplete",
+      "question": "Disability Status",
+      "value_filled": "No, I do not",
+      "source": "default",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "[name='file']",
+      "field_type": "file",
+      "question": "file",
+      "value_filled": "/Users/antonkondakov/Library/Mobile Documents/com~",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen11",
+      "field_type": "autocomplete",
+      "question": "Please identify your race",
+      "value_filled": "White",
+      "source": "default",
+      "success": true,
+      "error": ""
+    }
+  ],
+  "errors": [],
+  "duration_seconds": 114.826578
+}

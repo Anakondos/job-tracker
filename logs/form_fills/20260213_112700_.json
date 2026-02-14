@@ -1,0 +1,133 @@
+{
+  "timestamp": "2026-02-13T11:21:11.784652",
+  "url": "--url",
+  "title": "",
+  "job_id": null,
+  "company": "",
+  "status": "completed",
+  "fields_total": 13,
+  "fields_filled": 12,
+  "fields_skipped": 1,
+  "fields_error": 0,
+  "field_logs": [
+    {
+      "field_id": "s2id_autogen14",
+      "field_type": "autocomplete",
+      "question": "School",
+      "value_filled": "Moscow State University of Instrument Engineering ",
+      "source": "profile",
+      "success": false,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen15",
+      "field_type": "autocomplete",
+      "question": "Degree",
+      "value_filled": "Master's Degree",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen16",
+      "field_type": "autocomplete",
+      "question": "Discipline",
+      "value_filled": "Computer Science",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen17",
+      "field_type": "autocomplete",
+      "question": "School",
+      "value_filled": "Moscow State University of Instrument Engineering ",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen18",
+      "field_type": "autocomplete",
+      "question": "Degree",
+      "value_filled": "Master's Degree",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen19",
+      "field_type": "autocomplete",
+      "question": "Discipline",
+      "value_filled": "Computer Science",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen20",
+      "field_type": "autocomplete",
+      "question": "School",
+      "value_filled": "Moscow State University of Instrument Engineering ",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen21",
+      "field_type": "autocomplete",
+      "question": "Degree",
+      "value_filled": "Master's Degree",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen22",
+      "field_type": "autocomplete",
+      "question": "Discipline",
+      "value_filled": "Computer Science",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen23",
+      "field_type": "autocomplete",
+      "question": "School",
+      "value_filled": "Moscow State University of Instrument Engineering ",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen24",
+      "field_type": "autocomplete",
+      "question": "Degree",
+      "value_filled": "Master's Degree",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "s2id_autogen25",
+      "field_type": "autocomplete",
+      "question": "Discipline",
+      "value_filled": "Computer Science",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    },
+    {
+      "field_id": "[name='file']",
+      "field_type": "file",
+      "question": "file",
+      "value_filled": "/Users/antonkondakov/Library/Mobile Documents/com~",
+      "source": "profile",
+      "success": true,
+      "error": ""
+    }
+  ],
+  "errors": [],
+  "duration_seconds": 349.130213
+}

@@ -1,9 +1,11 @@
 # parsers/jibe.py
 """
-Jibe (Google Hire) ATS Parser.
+Jibe (iCIMS) ATS Parser.
 
 Jibe sits as a frontend over iCIMS and provides a clean JSON API.
-API endpoint: https://{client}.jibeapply.com/api/jobs?page={page}&limit={limit}
+Supports two URL patterns:
+  - Standard: https://{client}.jibeapply.com/api/jobs
+  - Custom domain: https://{custom-domain}/api/jobs (e.g. jobs.zs.com, careers.icims.com)
 
 Response format:
 {
@@ -18,20 +20,27 @@ from typing import List, Dict, Optional
 from urllib.parse import urlparse
 
 
-def _extract_jibe_client(url: str) -> Optional[str]:
+def _get_api_base(url: str) -> Optional[str]:
     """
-    Extract client code from Jibe URL.
+    Build Jibe API base URL from board URL.
 
-    Examples:
-      https://firstcitizens.jibeapply.com/jobs  -> firstcitizens
-      https://firstcitizens.jibeapply.com       -> firstcitizens
+    Supports:
+      https://firstcitizens.jibeapply.com/jobs  -> https://firstcitizens.jibeapply.com/api/jobs
+      https://jobs.zs.com                       -> https://jobs.zs.com/api/jobs
+      https://careers.icims.com                 -> https://careers.icims.com/api/jobs
     """
     parsed = urlparse(url)
-    host = parsed.netloc or ""
-    match = re.match(r'^([^.]+)\.jibeapply\.com$', host)
-    if match:
-        return match.group(1)
-    return None
+    if not parsed.netloc:
+        return None
+    scheme = parsed.scheme or "https"
+    return f"{scheme}://{parsed.netloc}/api/jobs"
+
+
+def _get_jobs_base_url(url: str) -> str:
+    """Get base URL for constructing job links."""
+    parsed = urlparse(url)
+    scheme = parsed.scheme or "https"
+    return f"{scheme}://{parsed.netloc}"
 
 
 def fetch_jibe(company: str, board_url: str, limit: int = 2000, timeout: int = 30) -> List[Dict]:
@@ -41,18 +50,19 @@ def fetch_jibe(company: str, board_url: str, limit: int = 2000, timeout: int = 3
     Args:
         company: Company name (for job records)
         board_url: Jibe URL, e.g. https://firstcitizens.jibeapply.com/jobs
+                   or custom domain like https://jobs.zs.com
         limit: Maximum number of jobs to fetch
         timeout: Request timeout in seconds
 
     Returns:
         List of job dicts with normalized fields
     """
-    client = _extract_jibe_client(board_url)
-    if not client:
-        print(f"[Jibe] Cannot extract client from URL: {board_url}")
+    api_base = _get_api_base(board_url)
+    if not api_base:
+        print(f"[Jibe] Cannot build API URL from: {board_url}")
         return []
 
-    api_base = f"https://{client}.jibeapply.com/api/jobs"
+    base_url = _get_jobs_base_url(board_url)
     jobs = []
     page = 1
     page_size = 100
@@ -101,7 +111,7 @@ def fetch_jibe(company: str, board_url: str, limit: int = 2000, timeout: int = 3
             # Job URL — use apply_url or construct from slug
             apply_url = d.get("apply_url", "")
             if not apply_url and slug:
-                apply_url = f"https://{client}.jibeapply.com/jobs/{slug}"
+                apply_url = f"{base_url}/jobs/{slug}"
 
             # Dates
             posted_date = d.get("posted_date", "")

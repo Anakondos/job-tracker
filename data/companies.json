@@ -1,0 +1,3094 @@
+[
+  {
+    "id": "brex",
+    "name": "Brex",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/brex",
+    "api_url": null,
+    "tags": [
+      "fintech",
+      "card",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "datadog",
+    "name": "Datadog",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/datadog",
+    "api_url": null,
+    "tags": [
+      "observability",
+      "saas",
+      "us"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "okta",
+    "name": "Okta",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/okta",
+    "api_url": null,
+    "tags": [
+      "security",
+      "identity",
+      "us"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "twilio",
+    "name": "Twilio",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/twilio",
+    "api_url": null,
+    "tags": [
+      "communications",
+      "api",
+      "global"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "stripe",
+    "name": "Stripe",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/stripe",
+    "api_url": null,
+    "tags": [
+      "payments",
+      "fintech",
+      "global"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "coinbase",
+    "name": "Coinbase",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/coinbase",
+    "api_url": null,
+    "tags": [
+      "crypto",
+      "exchange",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "robinhood",
+    "name": "Robinhood",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/robinhood",
+    "api_url": null,
+    "tags": [
+      "trading",
+      "retail",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "marqeta",
+    "name": "Marqeta",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/marqeta",
+    "api_url": null,
+    "tags": [
+      "cards",
+      "payments"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "nerdwallet",
+    "name": "NerdWallet",
+    "ats": "ashby",
+    "board_url": "https://api.ashbyhq.com/posting-api/job-board/nerdwallet",
+    "api_url": null,
+    "tags": [
+      "consumer",
+      "finance"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "active",
+    "enabled": true
+  },
+  {
+    "id": "cloudflare",
+    "name": "Cloudflare",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/cloudflare",
+    "api_url": null,
+    "tags": [
+      "infra",
+      "security"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "figma",
+    "name": "Figma",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/figma",
+    "api_url": null,
+    "tags": [
+      "design",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "notion",
+    "name": "Notion",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/notion",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "dropbox",
+    "name": "Dropbox",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/dropbox",
+    "api_url": null,
+    "tags": [
+      "storage",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "reddit",
+    "name": "Reddit",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/reddit",
+    "api_url": null,
+    "tags": [
+      "social",
+      "community"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "duolingo",
+    "name": "Duolingo",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/duolingo",
+    "api_url": null,
+    "tags": [
+      "edtech",
+      "language"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "airbnb",
+    "name": "Airbnb",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/airbnb",
+    "api_url": null,
+    "tags": [
+      "marketplace",
+      "travel"
+    ],
+    "industry": "Tech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "chime",
+    "name": "Chime",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/chime",
+    "api_url": null,
+    "tags": [
+      "neobank"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "webflow",
+    "name": "Webflow",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/webflow",
+    "api_url": null,
+    "tags": [
+      "nocode",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "loom",
+    "name": "Loom",
+    "ats": "ashby",
+    "board_url": "https://api.ashbyhq.com/posting-api/job-board/loom",
+    "api_url": null,
+    "tags": [
+      "video",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_jobs_on_ats",
+    "enabled": false
+  },
+  {
+    "id": "zoom",
+    "name": "Zoom",
+    "ats": "workday",
+    "board_url": "https://zoom.wd5.myworkdayjobs.com/Zoom",
+    "tags": [
+      "video",
+      "saas",
+      "bigtech"
+    ],
+    "industry": "Tech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "nvidia",
+    "name": "Nvidia",
+    "ats": "workday",
+    "board_url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
+    "tags": [
+      "tech",
+      "hardware",
+      "ai",
+      "gpu"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "cisco",
+    "name": "Cisco",
+    "ats": "workday",
+    "board_url": "https://cisco.wd5.myworkdayjobs.com/Cisco_Careers",
+    "tags": [
+      "tech",
+      "networking",
+      "enterprise"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "salesforce",
+    "name": "Salesforce",
+    "ats": "workday",
+    "board_url": "https://salesforce.wd12.myworkdayjobs.com/External_Career_Site",
+    "tags": [
+      "crm",
+      "saas",
+      "bigtech"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "atlassian",
+    "name": "Atlassian",
+    "ats": "atlassian",
+    "board_url": "https://www.atlassian.com/company/careers/all-jobs",
+    "tags": [
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "bosch",
+    "name": "Bosch",
+    "ats": "smartrecruiters",
+    "board_url": "https://jobs.smartrecruiters.com/BoschGroup",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/BoschGroup/postings",
+    "tags": [
+      "hardware",
+      "global"
+    ],
+    "industry": "Other",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true,
+    "status": "needs_investigation"
+  },
+  {
+    "id": "ramp",
+    "name": "Ramp",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/ramp",
+    "api_url": null,
+    "tags": [
+      "fintech",
+      "card",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "plaid",
+    "name": "Plaid",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/plaid",
+    "api_url": null,
+    "tags": [
+      "fintech",
+      "api",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "affirm",
+    "name": "Affirm",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/affirm",
+    "api_url": null,
+    "tags": [
+      "bnpl",
+      "consumer",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "sofi",
+    "name": "SoFi",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/sofi",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/SoFi/postings",
+    "tags": [
+      "loans",
+      "bank",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "enabled": true,
+    "status": "active"
+  },
+  {
+    "id": "betterment",
+    "name": "Betterment",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/betterment",
+    "api_url": null,
+    "tags": [
+      "investment",
+      "roboadvisor",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "wealthfront",
+    "name": "Wealthfront",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/wealthfront",
+    "api_url": null,
+    "tags": [
+      "investment",
+      "roboadvisor",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "active",
+    "enabled": true
+  },
+  {
+    "id": "upgrade",
+    "name": "Upgrade",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/upgrade",
+    "api_url": null,
+    "tags": [
+      "loans",
+      "cards",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "varo_bank",
+    "name": "Varo Bank",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/varomoney",
+    "api_url": null,
+    "tags": [
+      "neobank",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "current",
+    "name": "Current",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/current81",
+    "api_url": null,
+    "tags": [
+      "neobank",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "active",
+    "enabled": true
+  },
+  {
+    "id": "mercury",
+    "name": "Mercury",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/mercury",
+    "api_url": null,
+    "tags": [
+      "banking",
+      "startup",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "ramp_network",
+    "name": "Ramp Network",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/rampnetwork",
+    "api_url": null,
+    "tags": [
+      "crypto",
+      "payments",
+      "global"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "miro",
+    "name": "Miro",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/realtimeboardglobal",
+    "api_url": null,
+    "tags": [
+      "collaboration",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "status": "active",
+    "enabled": true
+  },
+  {
+    "id": "asana",
+    "name": "Asana",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/asana",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "snowflake",
+    "name": "Snowflake",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/snowflake",
+    "api_url": null,
+    "tags": [
+      "data",
+      "saas",
+      "us"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "mongodb",
+    "name": "MongoDB",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/mongodb",
+    "api_url": null,
+    "tags": [
+      "database",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "confluent",
+    "name": "Confluent",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/confluent",
+    "api_url": null,
+    "tags": [
+      "data",
+      "streaming",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "gitlab",
+    "name": "GitLab",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/gitlab",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "hashicorp",
+    "name": "HashiCorp",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/hashicorp",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "cloud"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "no_jobs_on_ats"
+  },
+  {
+    "id": "elastic",
+    "name": "Elastic",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/elastic",
+    "api_url": null,
+    "tags": [
+      "search",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "snyk",
+    "name": "Snyk",
+    "ats": "ashby",
+    "board_url": "https://api.ashbyhq.com/posting-api/job-board/snyk",
+    "api_url": null,
+    "tags": [
+      "security",
+      "devtools"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "no_jobs_on_ats"
+  },
+  {
+    "id": "zapier",
+    "name": "Zapier",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/zapier",
+    "api_url": null,
+    "tags": [
+      "automation",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "launchdarkly",
+    "name": "LaunchDarkly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/launchdarkly",
+    "api_url": null,
+    "tags": [
+      "feature-flags",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "calendly",
+    "name": "Calendly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/calendly",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "zoominfo",
+    "name": "ZoomInfo",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/zoominfo",
+    "api_url": null,
+    "tags": [
+      "sales",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "servicetitan",
+    "name": "ServiceTitan",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/servicetitan",
+    "api_url": null,
+    "tags": [
+      "field-service",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "gusto",
+    "name": "Gusto",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/gusto",
+    "api_url": null,
+    "tags": [
+      "payroll",
+      "hr",
+      "us"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "rippling",
+    "name": "Rippling",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/rippling",
+    "api_url": null,
+    "tags": [
+      "hr",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "drift",
+    "name": "Drift",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/drift",
+    "api_url": null,
+    "tags": [
+      "marketing",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "hubspot",
+    "name": "HubSpot",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/hubspotjobs",
+    "api_url": null,
+    "tags": [
+      "crm",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "active",
+    "enabled": true
+  },
+  {
+    "id": "shopify",
+    "name": "Shopify",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/shopify",
+    "api_url": null,
+    "tags": [
+      "ecommerce",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "canada",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "wealthsimple",
+    "name": "Wealthsimple",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/wealthsimple",
+    "api_url": null,
+    "tags": [
+      "investment",
+      "canada"
+    ],
+    "industry": "Fintech",
+    "priority": 0,
+    "hq_state": null,
+    "region": "canada",
+    "enabled": true
+  },
+  {
+    "id": "intercom",
+    "name": "Intercom",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/intercom",
+    "api_url": null,
+    "tags": [
+      "saas",
+      "support",
+      "product",
+      "global"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "vercel",
+    "name": "Vercel",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/vercel",
+    "api_url": null,
+    "tags": [
+      "saas",
+      "frontend",
+      "developer-tools"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "netlify",
+    "name": "Netlify",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/netlify",
+    "api_url": null,
+    "tags": [
+      "saas",
+      "frontend",
+      "hosting"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "algolia",
+    "name": "Algolia",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/algolia",
+    "api_url": null,
+    "tags": [
+      "search",
+      "saas",
+      "api"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true,
+    "status": "active"
+  },
+  {
+    "id": "circleci",
+    "name": "CircleCI",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/circleci",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "ci",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "digitalocean",
+    "name": "DigitalOcean",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/digitalocean",
+    "api_url": null,
+    "tags": [
+      "cloud",
+      "infra",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "fastly",
+    "name": "Fastly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/fastly",
+    "api_url": null,
+    "tags": [
+      "cdn",
+      "edge",
+      "infra"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "pagerduty",
+    "name": "PagerDuty",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/pagerduty",
+    "api_url": null,
+    "tags": [
+      "incident",
+      "saas",
+      "devops"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "sentry",
+    "name": "Sentry",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/sentry",
+    "api_url": null,
+    "tags": [
+      "observability",
+      "errors",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true,
+    "status": "active"
+  },
+  {
+    "id": "postman",
+    "name": "Postman",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/postman",
+    "api_url": null,
+    "tags": [
+      "api",
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/openai",
+    "api_url": null,
+    "tags": [
+      "ai",
+      "research",
+      "platform"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "databricks",
+    "name": "Databricks",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/databricks",
+    "api_url": null,
+    "tags": [
+      "data",
+      "lakehouse",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "snowplow",
+    "name": "Snowplow",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/snowplow",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "data",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "retool",
+    "name": "Retool",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/retool",
+    "api_url": null,
+    "tags": [
+      "internal-tools",
+      "lowcode",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "enabled": false,
+    "status": "ats_migration"
+  },
+  {
+    "id": "linear",
+    "name": "Linear",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/linear",
+    "api_url": null,
+    "tags": [
+      "productivity",
+      "pm-tools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "vanta",
+    "name": "Vanta",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/vanta",
+    "api_url": null,
+    "tags": [
+      "security",
+      "compliance",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "abnormal_security",
+    "name": "Abnormal Security",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/abnormalsecurity",
+    "api_url": null,
+    "tags": [
+      "security",
+      "email",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "tailscale",
+    "name": "Tailscale",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/tailscale",
+    "api_url": null,
+    "tags": [
+      "networking",
+      "security",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global"
+  },
+  {
+    "id": "honeycomb",
+    "name": "Honeycomb",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/honeycomb",
+    "api_url": null,
+    "tags": [
+      "observability",
+      "devtools",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "sourcegraph",
+    "name": "Sourcegraph",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/sourcegraph",
+    "api_url": null,
+    "tags": [
+      "devtools",
+      "code-search",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "cockroach_labs",
+    "name": "Cockroach Labs",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/cockroachlabs",
+    "api_url": null,
+    "tags": [
+      "database",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "segment",
+    "name": "Segment",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/segment",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "data",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "heap",
+    "name": "Heap",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/heap",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "product",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "status": "no_public_ats",
+    "enabled": false
+  },
+  {
+    "id": "amplitude",
+    "name": "Amplitude",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/amplitude",
+    "api_url": null,
+    "tags": [
+      "analytics",
+      "product",
+      "saas"
+    ],
+    "industry": "IT",
+    "priority": 0,
+    "hq_state": null,
+    "region": "us"
+  },
+  {
+    "id": "capital_one",
+    "name": "Capital One",
+    "ats": "workday",
+    "board_url": "https://capitalone.wd12.myworkdayjobs.com/Capital_One",
+    "industry": "Fintech",
+    "tags": [
+      "fintech",
+      "banking",
+      "financial"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "workday_inc",
+    "name": "Workday",
+    "ats": "workday",
+    "board_url": "https://workday.wd5.myworkdayjobs.com/Workday",
+    "industry": "IT",
+    "tags": [
+      "tech",
+      "hr",
+      "enterprise",
+      "saas"
+    ],
+    "enabled": true
+  },
+  {
+    "id": "adobe",
+    "name": "Adobe",
+    "ats": "workday",
+    "board_url": "https://adobe.wd5.myworkdayjobs.com/external_experienced",
+    "tags": [
+      "tech",
+      "creative",
+      "software"
+    ],
+    "industry": "IT",
+    "enabled": true
+  },
+  {
+    "id": "mastercard",
+    "name": "Mastercard",
+    "ats": "workday",
+    "board_url": "https://mastercard.wd1.myworkdayjobs.com/CorporateCareers",
+    "industry": "Fintech",
+    "enabled": true,
+    "tags": [
+      "payments",
+      "cards",
+      "fintech"
+    ],
+    "hq_state": "NY"
+  },
+  {
+    "id": "morgan_stanley",
+    "name": "Morgan Stanley",
+    "ats": "workday",
+    "board_url": "https://ms.wd5.myworkdayjobs.com/External",
+    "industry": "Fintech",
+    "enabled": true,
+    "tags": [
+      "banking",
+      "finance",
+      "investment"
+    ],
+    "hq_state": "NY"
+  },
+  {
+    "id": "t_rowe_price",
+    "name": "T. Rowe Price",
+    "ats": "workday",
+    "board_url": "https://troweprice.wd5.myworkdayjobs.com/TROWEPRICE",
+    "industry": "Fintech",
+    "enabled": true,
+    "tags": [
+      "investment",
+      "finance"
+    ],
+    "hq_state": "MD"
+  },
+  {
+    "id": "pnc",
+    "name": "PNC",
+    "ats": "workday",
+    "board_url": "https://pnc.wd5.myworkdayjobs.com/External",
+    "industry": "Fintech",
+    "enabled": true,
+    "tags": [
+      "banking",
+      "finance"
+    ],
+    "hq_state": "PA"
+  },
+  {
+    "id": "truist",
+    "name": "Truist",
+    "ats": "workday",
+    "board_url": "https://truist.wd1.myworkdayjobs.com/Careers",
+    "industry": "Fintech",
+    "enabled": true,
+    "tags": [
+      "banking",
+      "finance"
+    ],
+    "hq_state": "NC"
+  },
+  {
+    "id": "visa",
+    "name": "Visa",
+    "ats": "smartrecruiters",
+    "board_url": "https://jobs.smartrecruiters.com/Visa",
+    "api_url": "https://api.smartrecruiters.com/v1/companies/Visa/postings",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "needs_investigation",
+    "tags": [
+      "payments",
+      "cards",
+      "fintech"
+    ],
+    "hq_state": "CA"
+  },
+  {
+    "id": "wells_fargo",
+    "name": "Wells Fargo",
+    "ats": "workday",
+    "board_url": "https://wf.wd1.myworkdayjobs.com/WellsFargoJobs",
+    "industry": "Banking",
+    "tags": [
+      "banking",
+      "financial",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "bank_of_america",
+    "name": "Bank of America",
+    "ats": "workday",
+    "board_url": "https://ghr.wd1.myworkdayjobs.com/Lateral-US",
+    "industry": "Banking",
+    "tags": [
+      "banking",
+      "financial",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "raymond_james",
+    "name": "Raymond James",
+    "ats": "workday",
+    "board_url": "https://raymondjames.wd1.myworkdayjobs.com/RaymondJamesCareers",
+    "industry": "Fintech",
+    "tags": [
+      "investment",
+      "wealth-management",
+      "financial"
+    ],
+    "priority": 0,
+    "hq_state": "FL",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "capital_group",
+    "name": "Capital Group",
+    "ats": "workday",
+    "board_url": "https://capgroup.wd1.myworkdayjobs.com/capitalgroupcareers",
+    "industry": "Fintech",
+    "tags": [
+      "investment",
+      "asset-management"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "hitachi",
+    "name": "Hitachi",
+    "ats": "workday",
+    "board_url": "https://hitachi.wd1.myworkdayjobs.com/hitachi",
+    "industry": "Technology",
+    "tags": [
+      "technology",
+      "infrastructure",
+      "energy"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "toshibaglobalcommercesolutions",
+    "name": "Toshiba Global Commerce Solutions",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/toshibaglobalcommercesolutions",
+    "industry": "Hardware",
+    "tags": [
+      "hardware",
+      "retail"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "micro1",
+    "name": "Micro1",
+    "ats": "universal",
+    "board_url": "https://jobs.micro1.ai",
+    "industry": "IT",
+    "tags": [
+      "ai",
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "metacareers",
+    "name": "Metacareers",
+    "ats": "universal",
+    "board_url": "https://www.metacareers.com",
+    "industry": "IT",
+    "tags": [
+      "bigtech",
+      "social",
+      "platform"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "paycomonline",
+    "name": "Paycom",
+    "ats": "universal",
+    "board_url": "https://www.paycomonline.net",
+    "industry": "Enterprise SaaS",
+    "tags": [
+      "hr",
+      "payroll",
+      "saas"
+    ],
+    "priority": 0,
+    "hq_state": "OK",
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "flexerasoftware",
+    "name": "Flexerasoftware",
+    "ats": "workday",
+    "board_url": "https://flexerasoftware.wd1.myworkdayjobs.com/FlexeraSoftware",
+    "industry": "DevTools",
+    "tags": [
+      "software",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "IL",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "apply",
+    "name": "Apply",
+    "ats": "universal",
+    "board_url": "https://apply.deloitte.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "duplicate"
+  },
+  {
+    "id": "deloitte",
+    "name": "Deloitte",
+    "ats": "phenom",
+    "board_url": "https://apply.deloitte.com",
+    "industry": "Consulting",
+    "tags": [
+      "consulting",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "NY",
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats",
+    "notes": "Uses custom/Phenom - needs manual check"
+  },
+  {
+    "id": "careers-aptiveresources",
+    "name": "Aptivere sources",
+    "ats": "icims",
+    "board_url": "https://careers-aptiveresources.icims.com/jobs",
+    "industry": "Other",
+    "tags": [
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "eeho",
+    "name": "Eeho",
+    "ats": "universal",
+    "board_url": "https://eeho.fa.us2.oraclecloud.com",
+    "industry": "Other",
+    "tags": [
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "pluralsight",
+    "name": "Pluralsight",
+    "ats": "workday",
+    "board_url": "https://pluralsight.wd1.myworkdayjobs.com/Careers",
+    "industry": "EdTech",
+    "tags": [
+      "edtech",
+      "platform"
+    ],
+    "priority": 0,
+    "hq_state": "UT",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "dickssportinggoods",
+    "name": "Dickssportinggoods",
+    "ats": "workday",
+    "board_url": "https://dickssportinggoods.wd1.myworkdayjobs.com/dsg",
+    "industry": "Retail",
+    "tags": [
+      "retail",
+      "ecommerce"
+    ],
+    "priority": 0,
+    "hq_state": "PA",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "wd1",
+    "name": "Wd1",
+    "ats": "universal",
+    "board_url": "https://wd1.myworkdaysite.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "not_a_company"
+  },
+  {
+    "id": "gilead",
+    "name": "Gilead",
+    "ats": "workday",
+    "board_url": "https://gilead.wd1.myworkdayjobs.com/gileadcareers",
+    "industry": "Biotech",
+    "tags": [
+      "biotech"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "pendo",
+    "name": "Pendo",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/pendo",
+    "industry": "Enterprise SaaS",
+    "tags": [
+      "analytics",
+      "saas",
+      "pm-tools"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "bandwidth",
+    "name": "Bandwidth",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/bandwidth",
+    "industry": "Telecommunications",
+    "tags": [
+      "communications",
+      "api"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "teksystems",
+    "name": "TekSystems",
+    "ats": "phenom",
+    "board_url": "https://careers.teksystems.com",
+    "industry": "IT",
+    "tags": [
+      "consulting",
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": "MD",
+    "region": "global",
+    "enabled": true,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "boards",
+    "name": "Boards",
+    "ats": "universal",
+    "board_url": "https://boards.greenhouse.io",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "not_a_company"
+  },
+  {
+    "id": "buildops",
+    "name": "BuildOps",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/buildops",
+    "tags": [
+      "construction-tech",
+      "saas"
+    ],
+    "hq_state": "CA",
+    "region": "us",
+    "industry": "Other",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "grail",
+    "name": "GRAIL",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/grailbio",
+    "tags": [
+      "healthtech",
+      "biotech"
+    ],
+    "hq_state": "CA",
+    "region": "us",
+    "industry": "Biotech",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "k4connect",
+    "name": "K4Connect",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/k4connect",
+    "tags": [
+      "healthtech",
+      "iot"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "",
+    "priority": 0,
+    "enabled": false,
+    "status": "ats_404"
+  },
+  {
+    "id": "fmsystems",
+    "name": "FM:Systems",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/fmsystems",
+    "tags": [
+      "workplace",
+      "saas"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "",
+    "priority": 0,
+    "enabled": false,
+    "status": "ats_404"
+  },
+  {
+    "id": "analytics8",
+    "name": "Analytics8",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/analytics8",
+    "tags": [
+      "data",
+      "consulting"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "",
+    "priority": 0,
+    "enabled": false,
+    "status": "ats_404"
+  },
+  {
+    "id": "endpoint-clinical",
+    "name": "Endpoint Clinical",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/endpointclinical",
+    "tags": [
+      "healthtech",
+      "pharma"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "Healthcare",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "celonis",
+    "name": "Celonis",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/celonis",
+    "tags": [
+      "data",
+      "analytics",
+      "enterprise"
+    ],
+    "hq_state": "NY",
+    "region": "global",
+    "industry": "Enterprise SaaS",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "commercetools",
+    "name": "commercetools",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/commercetools",
+    "tags": [
+      "ecommerce",
+      "saas"
+    ],
+    "hq_state": null,
+    "region": "global",
+    "industry": "E-commerce",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "click-therapeutics",
+    "name": "Click Therapeutics",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/clicktherapeutics",
+    "tags": [
+      "healthtech",
+      "digital-health"
+    ],
+    "hq_state": "NY",
+    "region": "us",
+    "industry": "Healthcare",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "qualtrics",
+    "name": "Qualtrics",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/qualtrics",
+    "tags": [
+      "analytics",
+      "enterprise",
+      "saas"
+    ],
+    "hq_state": "UT",
+    "region": "us",
+    "industry": "Enterprise SaaS",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "opendoor",
+    "name": "Opendoor",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/opendoor",
+    "tags": [
+      "proptech",
+      "real-estate"
+    ],
+    "hq_state": "CA",
+    "region": "us",
+    "industry": "Other",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "sas",
+    "name": "SAS Institute",
+    "ats": "icims",
+    "board_url": "https://globalcareers-sas.icims.com/jobs",
+    "tags": [
+      "analytics",
+      "enterprise",
+      "data"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "Data",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "redhat",
+    "name": "Red Hat",
+    "ats": "workday",
+    "board_url": "https://redhat.wd5.myworkdayjobs.com/jobs",
+    "tags": [
+      "opensource",
+      "cloud",
+      "enterprise"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "IT",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "ibm",
+    "name": "IBM",
+    "ats": "universal",
+    "board_url": "https://www.ibm.com/careers/search",
+    "tags": [
+      "enterprise",
+      "cloud",
+      "ai"
+    ],
+    "hq_state": "NY",
+    "region": "us",
+    "industry": "IT",
+    "priority": 0,
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "insightsoftware",
+    "name": "insightsoftware",
+    "ats": "smartrecruiters",
+    "board_url": "https://jobs.smartrecruiters.com/insightsoftware",
+    "tags": [
+      "fintech",
+      "enterprise",
+      "analytics"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "Enterprise SaaS",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "greenlight-guru",
+    "name": "Greenlight Guru",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/greenlightguru",
+    "tags": [
+      "healthtech",
+      "medtech",
+      "saas"
+    ],
+    "hq_state": "IN",
+    "region": "us",
+    "industry": "Healthcare",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "protect-ai",
+    "name": "Protect AI",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/protectai",
+    "tags": [
+      "ai",
+      "security",
+      "ml"
+    ],
+    "hq_state": "WA",
+    "region": "us",
+    "industry": "",
+    "priority": 0,
+    "enabled": false,
+    "status": "ats_404"
+  },
+  {
+    "id": "pwc",
+    "name": "PwC",
+    "ats": "workday",
+    "board_url": "https://pwc.wd3.myworkdayjobs.com/Global_Experienced_Careers",
+    "tags": [
+      "consulting",
+      "enterprise",
+      "professional-services"
+    ],
+    "hq_state": "NY",
+    "region": "global",
+    "industry": "Consulting",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "ul-solutions",
+    "name": "UL Solutions",
+    "ats": "universal",
+    "board_url": "https://www.ul.com/careers",
+    "tags": [
+      "safety",
+      "consulting",
+      "enterprise"
+    ],
+    "hq_state": "IL",
+    "region": "us",
+    "industry": "Other",
+    "priority": 0,
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "cox-enterprises",
+    "name": "Cox Enterprises",
+    "ats": "phenom",
+    "board_url": "https://jobs.coxenterprises.com",
+    "tags": [
+      "media",
+      "automotive",
+      "communications"
+    ],
+    "hq_state": "GA",
+    "region": "us",
+    "industry": "Telecommunications",
+    "priority": 0,
+    "enabled": false,
+    "status": "cloudflare_blocked"
+  },
+  {
+    "id": "kevel",
+    "name": "Kevel",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/kevel",
+    "tags": [
+      "adtech",
+      "saas"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "",
+    "priority": 0,
+    "enabled": false,
+    "status": "ats_404"
+  },
+  {
+    "id": "imaginovation",
+    "name": "Imaginovation",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/imaginovation",
+    "tags": [
+      "software",
+      "consulting"
+    ],
+    "hq_state": "NC",
+    "region": "us",
+    "industry": "",
+    "priority": 0,
+    "enabled": false,
+    "status": "ats_404"
+  },
+  {
+    "id": "alchemy",
+    "name": "Alchemy",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/alchemy",
+    "tags": [
+      "blockchain",
+      "web3",
+      "devtools"
+    ],
+    "hq_state": "CA",
+    "region": "us",
+    "industry": "IT",
+    "priority": 0,
+    "enabled": true
+  },
+  {
+    "id": "external-firstcitizens",
+    "name": "External First Citizens",
+    "ats": "universal",
+    "board_url": "https://external-firstcitizens.icims.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "duplicate"
+  },
+  {
+    "id": "firstcitizens",
+    "name": "First Citizens Bank",
+    "ats": "jibe",
+    "board_url": "https://firstcitizens.jibeapply.com/jobs",
+    "industry": "Banking",
+    "tags": [
+      "banking",
+      "finance"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "collibra",
+    "name": "Collibra",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/collibra",
+    "industry": "Data",
+    "tags": [
+      "data",
+      "enterprise",
+      "saas"
+    ],
+    "priority": 0,
+    "hq_state": "NY",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "evercommerce",
+    "name": "Evercommerce",
+    "ats": "workday",
+    "board_url": "https://evercommerce.wd1.myworkdayjobs.com/evercommerce_careers",
+    "industry": "Enterprise SaaS",
+    "tags": [
+      "saas",
+      "enterprise",
+      "payments"
+    ],
+    "priority": 0,
+    "hq_state": "CO",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "job-boards",
+    "name": "Job-Boards",
+    "ats": "universal",
+    "board_url": "https://job-boards.greenhouse.io",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "not_a_company"
+  },
+  {
+    "id": "cyclotroninc",
+    "name": "Cyclotroninc",
+    "ats": "universal",
+    "board_url": "https://cyclotroninc.applytojob.com",
+    "industry": "Other",
+    "tags": [
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "accelonconsulting",
+    "name": "Accelonconsulting",
+    "ats": "universal",
+    "board_url": "https://accelonconsulting.zohorecruit.in",
+    "industry": "Consulting",
+    "tags": [
+      "consulting",
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "blackbaud",
+    "name": "Blackbaud",
+    "ats": "workday",
+    "board_url": "https://blackbaud.wd1.myworkdayjobs.com/externalcareers",
+    "industry": "Enterprise SaaS",
+    "tags": [
+      "saas",
+      "enterprise",
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": "SC",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "proofpoint",
+    "name": "Proofpoint",
+    "ats": "workday",
+    "board_url": "https://proofpoint.wd5.myworkdayjobs.com/ProofpointCareers",
+    "industry": "Security",
+    "tags": [
+      "cybersecurity",
+      "security",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "wellsfargo",
+    "name": "Wellsfargo",
+    "ats": "universal",
+    "board_url": "https://wellsfargo.talentnet.community",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "duplicate"
+  },
+  {
+    "id": "tevpro",
+    "name": "Tevpro",
+    "ats": "universal",
+    "board_url": "https://tevpro.applytojob.com",
+    "industry": "Other",
+    "tags": [
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "selectgroup",
+    "name": "Selectgroup",
+    "ats": "universal",
+    "board_url": "https://www.selectgroup.com",
+    "industry": "Consulting",
+    "tags": [
+      "consulting",
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "careers.azx.io",
+    "name": "Careers.Azx.Io",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/careers.azx.io",
+    "industry": "Other",
+    "tags": [
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "deel",
+    "name": "Deel",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/deel",
+    "industry": "Enterprise SaaS",
+    "tags": [
+      "hr",
+      "payroll",
+      "saas",
+      "global"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "netflix",
+    "name": "Netflix",
+    "ats": "universal",
+    "board_url": "https://jobs.netflix.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false
+  },
+  {
+    "id": "ashbyhq",
+    "name": "Ashbyhq",
+    "ats": "universal",
+    "board_url": "https://jobs.ashbyhq.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false
+  },
+  {
+    "id": "themortonway",
+    "name": "Themortonway",
+    "ats": "universal",
+    "board_url": "https://jobs.themortonway.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false
+  },
+  {
+    "id": "frontgrade",
+    "name": "Frontgrade",
+    "ats": "universal",
+    "board_url": "https://careers.frontgrade.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false
+  },
+  {
+    "id": "horizontaltalent",
+    "name": "Horizontaltalent",
+    "ats": "universal",
+    "board_url": "https://www.horizontaltalent.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": false
+  },
+  {
+    "id": "archgroup",
+    "name": "Archgroup",
+    "ats": "workday",
+    "board_url": "https://archgroup.wd1.myworkdayjobs.com/Careers",
+    "industry": "Other",
+    "tags": [
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": null,
+    "region": "global",
+    "enabled": true
+  },
+  {
+    "id": "higharc",
+    "name": "Higharc",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/higharc",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "epic-games",
+    "name": "Epic Games",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/epicgames",
+    "industry": "Gaming",
+    "tags": [
+      "gaming",
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "ncino",
+    "name": "nCino (Wilmington NC)",
+    "ats": "workday",
+    "board_url": "https://ncino.wd5.myworkdayjobs.com/nCinoCareers",
+    "industry": "Fintech",
+    "tags": [
+      "fintech",
+      "banking",
+      "saas"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "cargurus",
+    "name": "Cargurus",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/cargurus",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "nasuni",
+    "name": "Nasuni",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/nasuni",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "flatiron-health",
+    "name": "Flatiron Health",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/flatironhealth",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "fidelity-investments",
+    "name": "Fidelity Investments (Durham)",
+    "ats": "workday",
+    "board_url": "https://fmr.wd1.myworkdayjobs.com/FidelityCareers",
+    "industry": "Fintech",
+    "tags": [
+      "fintech",
+      "investment"
+    ],
+    "priority": 0,
+    "hq_state": "MA",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "metlife",
+    "name": "MetLife (Cary)",
+    "ats": "avature",
+    "board_url": "https://jobs.metlife.com",
+    "industry": "Fintech",
+    "tags": [
+      "fintech",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "NY",
+    "region": "us",
+    "enabled": false,
+    "status": "unsupported_ats"
+  },
+  {
+    "id": "duke-energy",
+    "name": "Duke Energy",
+    "ats": "workday",
+    "board_url": "https://dukeenergy.wd1.myworkdayjobs.com/search",
+    "industry": "Other",
+    "tags": [
+      "enterprise",
+      "software"
+    ],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "palantir",
+    "name": "Palantir",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/palantir",
+    "industry": "Data",
+    "tags": [
+      "data",
+      "analytics",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "CO",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "q2",
+    "name": "Q2",
+    "ats": "workday",
+    "board_url": "https://q2ebanking.wd5.myworkdayjobs.com/Q2",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "sierra-space",
+    "name": "Sierra Space",
+    "ats": "workday",
+    "board_url": "https://snc.wd1.myworkdayjobs.com/SNC_External_Career_Site",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "pfizer",
+    "name": "Pfizer",
+    "ats": "workday",
+    "board_url": "https://pfizer.wd1.myworkdayjobs.com/PfizerCareers",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "rubrik-inc",
+    "name": "Rubrik Inc",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/rubrik",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "icims",
+    "name": "iCIMS",
+    "ats": "jibe",
+    "board_url": "https://careers.icims.com",
+    "industry": "Enterprise SaaS",
+    "tags": [
+      "saas",
+      "hr"
+    ],
+    "priority": 0,
+    "hq_state": "NJ",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "zs",
+    "name": "ZS Associates",
+    "ats": "jibe",
+    "board_url": "https://jobs.zs.com",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "roku",
+    "name": "Roku",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/roku",
+    "industry": "Consumer Tech",
+    "tags": [
+      "streaming",
+      "hardware"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "elliott-davis",
+    "name": "Elliott Davis",
+    "ats": "workday",
+    "board_url": "https://elliottdavis.wd5.myworkdayjobs.com/ED",
+    "industry": "Consulting",
+    "tags": [
+      "consulting",
+      "accounting"
+    ],
+    "priority": 0,
+    "hq_state": "SC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "cvs-health",
+    "name": "CVS Health",
+    "ats": "phenom",
+    "board_url": "https://jobs.cvshealth.com",
+    "industry": "Healthcare",
+    "tags": [
+      "healthcare",
+      "retail",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "RI",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "block",
+    "name": "Block",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/block",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "payments"
+    ]
+  },
+  {
+    "id": "snap",
+    "name": "Snap Inc",
+    "ats": "workday",
+    "board_url": "https://snapchat.wd1.myworkdayjobs.com/snap",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "social",
+      "ar"
+    ]
+  },
+  {
+    "id": "toast",
+    "name": "Toast",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/toast",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "restaurant-tech"
+    ]
+  },
+  {
+    "id": "pinterest",
+    "name": "Pinterest",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/pinterest",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "social",
+      "advertising"
+    ]
+  },
+  {
+    "id": "grafana-labs",
+    "name": "Grafana Labs",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/grafanalabs",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "observability",
+      "open-source"
+    ]
+  },
+  {
+    "id": "airtable",
+    "name": "Airtable",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/airtable",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "productivity",
+      "no-code"
+    ]
+  },
+  {
+    "id": "dbt-labs",
+    "name": "dbt Labs",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/dbtlabsinc",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "data",
+      "analytics"
+    ]
+  },
+  {
+    "id": "supabase",
+    "name": "Supabase",
+    "ats": "ashby",
+    "board_url": "https://jobs.ashbyhq.com/supabase",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "database",
+      "open-source"
+    ]
+  },
+  {
+    "id": "waymo",
+    "name": "Waymo",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/waymo",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "autonomous",
+      "alphabet"
+    ]
+  },
+  {
+    "id": "doordash",
+    "name": "DoorDash",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/doordashusa",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "delivery",
+      "marketplace"
+    ]
+  },
+  {
+    "id": "instacart",
+    "name": "Instacart",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/instacart",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "delivery",
+      "grocery"
+    ]
+  },
+  {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/anthropic",
+    "industry": "AI",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "ai",
+      "safety"
+    ]
+  },
+  {
+    "id": "scale-ai",
+    "name": "Scale AI",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/scaleai",
+    "industry": "AI",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "ai",
+      "data"
+    ]
+  },
+  {
+    "id": "lyft",
+    "name": "Lyft",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/lyft",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "rideshare",
+      "transportation"
+    ]
+  },
+  {
+    "id": "grammarly",
+    "name": "Grammarly",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/grammarly",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "ai",
+      "productivity"
+    ]
+  },
+  {
+    "id": "discord",
+    "name": "Discord",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/discord",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "social",
+      "gaming"
+    ]
+  },
+  {
+    "id": "spotify",
+    "name": "Spotify",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/spotify",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "music",
+      "streaming"
+    ]
+  },
+  {
+    "id": "twitch",
+    "name": "Twitch",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/twitch",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "streaming",
+      "amazon"
+    ]
+  },
+  {
+    "id": "wiz",
+    "name": "Wiz",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/wizinc",
+    "industry": "Cybersecurity",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "security",
+      "cloud"
+    ]
+  },
+  {
+    "id": "navan",
+    "name": "Navan",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/tripactions",
+    "industry": "Tech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "travel",
+      "expense"
+    ]
+  },
+  {
+    "id": "lendingtree",
+    "name": "LendingTree",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/lendingtree",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "charlotte-nc"
+    ]
+  },
+  {
+    "id": "credit-karma",
+    "name": "Credit Karma",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/creditkarma",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "charlotte-nc"
+    ]
+  },
+  {
+    "id": "splunk",
+    "name": "Splunk",
+    "ats": "phenom",
+    "board_url": "https://careers.cisco.com/global/en/splunk",
+    "industry": "Data",
+    "tags": [
+      "data",
+      "analytics",
+      "enterprise"
+    ],
+    "priority": 0,
+    "hq_state": "CA",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "avalara",
+    "name": "Avalara",
+    "ats": "jibe",
+    "board_url": "https://careers.avalara.com",
+    "industry": "Fintech",
+    "enabled": true,
+    "status": "active",
+    "tags": [
+      "fintech",
+      "compliance",
+      "tax"
+    ]
+  },
+  {
+    "id": "credible",
+    "name": "Credible",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/credible",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "sugarcrm",
+    "name": "Sugarcrm",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/sugarcrm",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "green-irony",
+    "name": "Green Irony",
+    "ats": "greenhouse",
+    "board_url": "https://boards.greenhouse.io/greenirony",
+    "industry": "",
+    "tags": [],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "appian",
+    "name": "Appian",
+    "ats": "greenhouse",
+    "board_url": "https://job-boards.greenhouse.io/appian",
+    "industry": "IT",
+    "tags": ["enterprise", "low-code", "software"],
+    "priority": 0,
+    "hq_state": "VA",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "kyndryl",
+    "name": "Kyndryl",
+    "ats": "workday",
+    "board_url": "https://kyndryl.wd5.myworkdayjobs.com/KyndrylProfessionalCareers",
+    "industry": "IT",
+    "tags": ["infrastructure", "enterprise", "consulting"],
+    "priority": 0,
+    "hq_state": "NY",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "centene",
+    "name": "Centene",
+    "ats": "workday",
+    "board_url": "https://centene.wd5.myworkdayjobs.com/Centene_External",
+    "industry": "Healthcare",
+    "tags": ["healthcare", "insurance", "enterprise"],
+    "priority": 0,
+    "hq_state": "MO",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "spreedly",
+    "name": "Spreedly",
+    "ats": "lever",
+    "board_url": "https://jobs.lever.co/spreedly",
+    "industry": "Fintech",
+    "tags": ["fintech", "payments", "api"],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "lpl-financial",
+    "name": "LPL Financial",
+    "ats": "workday",
+    "board_url": "https://lplfinancial.wd1.myworkdayjobs.com/External",
+    "industry": "Financial",
+    "tags": ["financial", "wealth-management", "broker-dealer"],
+    "priority": 0,
+    "hq_state": "NC",
+    "region": "us",
+    "enabled": true
+  },
+  {
+    "id": "freddie-mac",
+    "name": "Freddie Mac",
+    "ats": "phenom",
+    "board_url": "https://careers.freddiemac.com",
+    "industry": "Financial",
+    "tags": ["mortgage", "financial", "government"],
+    "priority": 0,
+    "hq_state": "VA",
+    "region": "us",
+    "enabled": true
+  }
+]

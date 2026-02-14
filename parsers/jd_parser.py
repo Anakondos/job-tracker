@@ -42,6 +42,12 @@ def fetch_jd_from_url(url: str, ats: str = "greenhouse") -> Optional[str]:
             if jd:
                 return jd
 
+        # Try Workday CXS API (much more reliable than HTML parsing)
+        if ats == "workday" or "myworkdayjobs.com" in url:
+            jd = _fetch_workday_api(url)
+            if jd and len(jd) > 100:
+                return jd
+
         # For JS-heavy sites (Ashby, Phenom, etc), use browser parser
         js_heavy_ats = ["ashby", "phenom", "universal"]
         js_heavy_domains = ["ashbyhq.com", "phenompeople.com", "careers.cisco.com"]
@@ -214,17 +220,56 @@ def _parse_lever_jd(html: str) -> Optional[str]:
     return _parse_generic_jd(html)
 
 
+def _fetch_workday_api(url: str) -> Optional[str]:
+    """Fetch JD from Workday CXS JSON API.
+
+    Workday pages are SPAs that load JD via JS. The CXS API returns JD as JSON.
+    URL pattern: https://{company}.wd{N}.myworkdayjobs.com/wday/cxs/{company}/{board}/job/{path}
+    """
+    try:
+        m = re.match(r'https://([^.]+)\.wd(\d+)\.myworkdayjobs\.com/(?:en-US/)?([^/]+)/job/(.+)', url)
+        if not m:
+            return None
+
+        company = m.group(1)
+        wd_num = m.group(2)
+        board = m.group(3)
+        path = m.group(4)
+
+        api_url = f'https://{company}.wd{wd_num}.myworkdayjobs.com/wday/cxs/{company}/{board}/job/{path}'
+
+        resp = requests.get(api_url, headers={'Accept': 'application/json'}, timeout=15)
+        if resp.status_code != 200:
+            print(f"[JD Parser] Workday API returned {resp.status_code}")
+            return None
+
+        data = resp.json()
+        jd_html = data.get('jobPostingInfo', {}).get('jobDescription', '')
+        if not jd_html:
+            return None
+
+        jd = _clean_html(jd_html)
+        if len(jd) > 100:
+            print(f"[JD Parser] Workday API fetched {len(jd)} chars")
+            return jd
+        return None
+
+    except Exception as e:
+        print(f"[JD Parser] Workday API error: {e}")
+        return None
+
+
 def _parse_workday_jd(html: str) -> Optional[str]:
-    """Extract JD from Workday page"""
+    """Extract JD from Workday page HTML (fallback)"""
     import re
-    
+
     # Workday often has JD in JSON
     json_match = re.search(r'"jobDescription"\s*:\s*"([^"]+)"', html)
     if json_match:
         jd = json_match.group(1)
         jd = jd.encode().decode('unicode_escape')
         return _clean_html(jd)
-    
+
     return _parse_generic_jd(html)
 
 
@@ -309,7 +354,7 @@ Return ONLY valid JSON, no other text."""
                 "content-type": "application/json"
             },
             json={
-                "model": "claude-sonnet-4-20250514",
+                "model": "claude-3-5-haiku-20241022",
                 "max_tokens": 1500,
                 "messages": [{"role": "user", "content": prompt}]
             },

@@ -28,13 +28,24 @@ def fetch_phenom_jobs(company: str, base_url: str) -> List[Dict]:
         # Build widgets URL
         widgets_url = f"{parsed_url.scheme}://{parsed_url.netloc}/widgets"
 
+        # Detect locale from URL path (e.g., /us/en/ -> en_us, /global/en/ -> en_global)
+        path = parsed_url.path.strip("/")
+        if path.startswith("us/"):
+            lang = "en_us"
+            country = "us"
+            referer_prefix = "us/en"
+        else:
+            lang = "en_global"
+            country = "global"
+            referer_prefix = "global/en"
+
         # Common headers
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'Origin': f"{parsed_url.scheme}://{parsed_url.netloc}",
-            'Referer': f"{parsed_url.scheme}://{parsed_url.netloc}/global/en/search-results"
+            'Referer': f"{parsed_url.scheme}://{parsed_url.netloc}/{referer_prefix}/search-results"
         }
 
         # Phenom uses refineSearch endpoint with pagination
@@ -44,12 +55,23 @@ def fetch_phenom_jobs(company: str, base_url: str) -> List[Dict]:
 
         session = requests.Session()
 
+        # Try detected locale first, fallback to other if 0 results
+        locale_configs = [
+            {"lang": lang, "country": country},
+        ]
+        if lang == "en_global":
+            locale_configs.append({"lang": "en_us", "country": "us"})
+        else:
+            locale_configs.append({"lang": "en_global", "country": "global"})
+
+        active_locale = locale_configs[0]
+
         while True:
             payload = {
-                "lang": "en_global",
+                "lang": active_locale["lang"],
                 "siteType": "external",
                 "deviceType": "desktop",
-                "country": "global",
+                "country": active_locale["country"],
                 "ddoKey": "refineSearch",
                 "sortBy": "",
                 "from": offset,
@@ -77,13 +99,21 @@ def fetch_phenom_jobs(company: str, base_url: str) -> List[Dict]:
 
                 if total_hits is None:
                     total_hits = refine_data.get("totalHits", 0)
+                    # If first locale returns 0 hits, try fallback locale
+                    if total_hits == 0 and len(locale_configs) > 1 and active_locale == locale_configs[0]:
+                        active_locale = locale_configs[1]
+                        print(f"  Phenom: trying fallback locale {active_locale['lang']}")
+                        continue
 
                 if not jobs_data:
                     break
 
+                # Determine locale prefix for job URLs
+                locale_prefix = "us/en" if active_locale["lang"] == "en_us" else "global/en"
+
                 # Parse each job
                 for job_data in jobs_data:
-                    job = _parse_job(job_data, parsed_url.netloc, company)
+                    job = _parse_job(job_data, parsed_url.netloc, company, locale_prefix)
                     if job:
                         jobs.append(job)
 
@@ -102,7 +132,7 @@ def fetch_phenom_jobs(company: str, base_url: str) -> List[Dict]:
     return jobs
 
 
-def _parse_job(job_data: dict, domain: str, company: str) -> Optional[Dict]:
+def _parse_job(job_data: dict, domain: str, company: str, locale_prefix: str = "global/en") -> Optional[Dict]:
     """Parse a single job from Phenom API response."""
     try:
         # Extract job ID - Phenom uses reqId or jobId
@@ -143,9 +173,9 @@ def _parse_job(job_data: dict, domain: str, company: str) -> Optional[Dict]:
             if multi_cat:
                 department = multi_cat[0] if isinstance(multi_cat, list) else str(multi_cat)
 
-        # Build job URL - Phenom typically uses /global/en/job/<jobSeqNo> format
+        # Build job URL - Phenom uses /<locale>/job/<jobSeqNo> format
         job_seq = job_data.get("jobSeqNo", job_id)
-        job_url = f"https://{domain}/global/en/job/{job_seq}"
+        job_url = f"https://{domain}/{locale_prefix}/job/{job_seq}"
 
         # If there's an applyUrl, extract the base job URL
         if job_data.get("applyUrl"):

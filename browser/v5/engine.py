@@ -40,6 +40,7 @@ DATA_DIR.mkdir(exist_ok=True)
 PROFILE_PATH = BROWSER_DIR / "profiles" / "anton_tpm.json"
 # Use shared learned database with V3.5
 LEARNED_DB_PATH = BROWSER_DIR / "learned_database.json"
+KNOWLEDGE_BASE_PATH = BROWSER_DIR / "knowledge_base.json"
 FIELD_PATTERNS_PATH = DATA_DIR / "field_patterns.json"
 
 
@@ -138,6 +139,11 @@ class FormField:
     # Profile mapping
     profile_key: str = ""
 
+    # DOM constraints (for format adaptation)
+    placeholder: str = ""
+    maxlength: int = 0
+    pattern: str = ""       # HTML5 pattern attribute
+
 
 @dataclass
 class FillReport:
@@ -190,6 +196,71 @@ class FillReport:
         lines.append("═══════════════════════════════════════════════════════════")
         return "\n".join(lines)
 
+    def detailed_report(self) -> str:
+        """Generate detailed field-by-field text report."""
+        lines = [
+            "╔══════════════════════════════════════════════════════════════════════════════════════════════╗",
+            f"║  FORM FILL REPORT — {self.title[:60]:<60}        ║",
+            f"║  ATS: {self.ats_type:<15}  URL: {self.url[:55]:<55} ║",
+            "╠══════════════════════════════════════════════════════════════════════════════════════════════╣",
+        ]
+
+        # Source stats
+        source_counts = {}
+        for f in self.fields:
+            src = f.answer_source.value if f.answer_source else "none"
+            source_counts[src] = source_counts.get(src, 0) + 1
+
+        # Group fields by category
+        status_icons = {
+            FillStatus.VERIFIED: "✅",
+            FillStatus.FILLED: "📝",
+            FillStatus.ERROR: "❌",
+            FillStatus.SKIPPED: "⏭️",
+            FillStatus.NEEDS_INPUT: "❓",
+            FillStatus.READY: "🔵",
+        }
+
+        for i, f in enumerate(self.fields, 1):
+            icon = status_icons.get(f.status, "?")
+            src = f.answer_source.value if f.answer_source else "-"
+            answer = (f.answer or "")
+            label = (f.label or "").split(" [")[0]  # Remove [name=...] suffix
+
+            # Truncate for display
+            label_display = label[:55]
+            answer_display = answer[:50]
+
+            lines.append(
+                f"║ {i:>2}. {icon} {f.field_type.value:12} │ {label_display:<55} │ {answer_display:<50} │ {src:<8} ║"
+            )
+
+        lines.append("╠══════════════════════════════════════════════════════════════════════════════════════════════╣")
+
+        # Summary
+        lines.append(f"║  📊 RESULTS: {self.verified_fields} verified, {self.filled_fields} filled, {self.errors} errors, {self.skipped} skipped / {self.total_fields} total")
+
+        # Source breakdown
+        src_parts = [f"{src}: {cnt}" for src, cnt in sorted(source_counts.items(), key=lambda x: -x[1])]
+        lines.append(f"║  📦 SOURCES: {', '.join(src_parts)}")
+
+        # Errors
+        error_fields = [f for f in self.fields if f.status == FillStatus.ERROR]
+        if error_fields:
+            lines.append(f"║  ❌ ERRORS:")
+            for f in error_fields:
+                lines.append(f"║     • {f.label[:50]}: {f.error_message}")
+
+        # Needs input
+        needs = [f for f in self.fields if f.status == FillStatus.NEEDS_INPUT]
+        if needs:
+            lines.append(f"║  ⚠️ NEEDS INPUT:")
+            for f in needs:
+                lines.append(f"║     • {f.label[:60]}")
+
+        lines.append("╚══════════════════════════════════════════════════════════════════════════════════════════════╝")
+        return "\n".join(lines)
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # PROFILE
@@ -225,7 +296,20 @@ class Profile:
         "home address": "personal.street_address",
         "linkedin": "links.linkedin",
         "github": "links.github",
-        # Work experience
+        # Education dates — MUST be before generic start/end patterns
+        # because "Education Start Month" contains "start month" which would
+        # match work_experience patterns if checked first
+        "education start month": "education.0.start_month",
+        "education start year": "education.0.start_year",
+        "education end month": "education.0.end_month",
+        "education end year": "education.0.end_year",
+        "school": "education.0.school",
+        "university": "education.0.school",
+        "degree": "education.0.degree",
+        "discipline": "education.0.discipline",
+        "your major": "education.0.discipline",
+        "field of study": "education.0.discipline",
+        # Work experience (generic date patterns — checked after education-specific)
         "company name": "work_experience.0.company",
         "employer": "work_experience.0.company",
         "job title": "work_experience.0.title",
@@ -238,15 +322,24 @@ class Profile:
         "end month": "work_experience.0.end_month",
         "end date year": "work_experience.0.end_year",
         "end year": "work_experience.0.end_year",
-        # Education
-        "school": "education.0.school",
-        "university": "education.0.school",
-        "degree": "education.0.degree",
-        "discipline": "education.0.discipline",
-        "your major": "education.0.discipline",
-        "field of study": "education.0.discipline",
         # Common questions
         "how did you hear": "common_answers.how_heard",
+        "full name": "personal.full_name",
+        "your name": "personal.full_name",
+        "legal name": "personal.full_name",
+        "preferred name": "personal.first_name",
+        "preferred first name": "personal.first_name",
+        "candidate name": "personal.full_name",
+        "name of company": "work_experience.0.company",
+        "name of your current company": "work_experience.0.company",
+        "current company": "work_experience.0.company",
+        "current employer": "work_experience.0.company",
+        "location": "personal.location",
+        "current location": "personal.location",
+        "where are you located": "personal.location",
+        "website": "links.linkedin",
+        "portfolio": "links.linkedin",
+        "personal website": "links.linkedin",
     }
     
     # Yes/No question patterns
@@ -270,6 +363,12 @@ class Profile:
         "confirm": "Yes",
         "acknowledge": "Yes",
         "confirm receipt": "Confirmed",
+        # IMPORTANT: More specific patterns MUST come before generic ones
+        # "non-compete" must be before "agree" because questions like
+        # "Do you work under any agreement, such as a non-compete agreement..."
+        # would match "agree" first and answer "Yes" incorrectly
+        "non-compete": "No",
+        "non-disclosure": "Yes",
         "agree": "Yes",
         "i understand": "Yes",
         "current role": "Yes",
@@ -280,8 +379,6 @@ class Profile:
         "willing to relocate": "Yes",
         "background check": "Yes",
         "drug test": "Yes",
-        "non-compete": "No",
-        "non-disclosure": "Yes",
     }
     
     # Text field defaults (for common questions)
@@ -292,10 +389,25 @@ class Profile:
         "how did you hear": "LinkedIn",
         "how did you find": "LinkedIn",
         "where did you hear": "LinkedIn",
+        "how were you referred": "LinkedIn",
+        "referred by": "LinkedIn",
+        "referral source": "LinkedIn",
+        "source of application": "LinkedIn",
         "salary": "150000",
         "desired salary": "150000",
         "expected salary": "150000",
         "compensation": "150000",
+        "salary expectation": "150000",
+        "annual salary": "150000",
+        "notice period": "2 weeks",
+        "when can you start": "2 weeks",
+        "earliest start": "2 weeks",
+        "availability": "2 weeks",
+        "start date": "2 weeks",
+        "website": "https://linkedin.com/in/antonkondakov",
+        "portfolio": "https://linkedin.com/in/antonkondakov",
+        "personal website": "https://linkedin.com/in/antonkondakov",
+        "additional information": "I am excited about this opportunity and believe my 15+ years of experience in technical program management align well with this role.",
     }
     
     # Demographic defaults
@@ -347,8 +459,26 @@ class Profile:
         return None
     
     def find_demographic(self, label: str) -> Optional[str]:
-        """Find demographic default answer."""
+        """Find demographic answer — profile first, then defaults."""
         ll = label.lower()
+        # Try profile demographics first
+        demo = self.data.get("demographics", {})
+        if demo:
+            demo_field_map = {
+                "gender": "gender",
+                "hispanic": "hispanic_latino",
+                "latino": "hispanic_latino",
+                "race": "race_ethnicity",
+                "ethnicity": "race_ethnicity",
+                "veteran": "veteran_status",
+                "disability": "disability_status",
+            }
+            for pattern, field_key in demo_field_map.items():
+                if pattern in ll:
+                    val = demo.get(field_key, "")
+                    if val:
+                        return val
+        # Fallback to hardcoded defaults
         for pattern, answer in self.DEMOGRAPHIC_DEFAULTS.items():
             if pattern in ll:
                 return answer
@@ -493,6 +623,61 @@ class LearnedDB:
         self.save()
         print(f"   💾 Learned: '{label[:30]}' → '{answer[:25]}'")
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# KNOWLEDGE BASE - Experience snippets + common answers for AI context
+# ═══════════════════════════════════════════════════════════════════════════
+
+class KnowledgeBase:
+    """Knowledge base with experience snippets and common answers."""
+
+    def __init__(self, path: Path = KNOWLEDGE_BASE_PATH):
+        self.path = path
+        try:
+            self.data = json.loads(path.read_text())
+        except Exception:
+            self.data = {}
+        self.snippets = self.data.get("experience_snippets", {})
+        self.common_answers = self.data.get("common_answers", {})
+        self.skills = self.data.get("skills", {})
+        self.achievements = self.data.get("achievements", [])
+        print(f"   📚 KnowledgeBase loaded: {len(self.snippets)} snippets, {len(self.common_answers)} common answers")
+
+    def find_relevant_snippets(self, question: str) -> List[str]:
+        """Find relevant experience snippets for a question."""
+        question_lower = question.lower()
+        found = []
+
+        for keyword, snippet in self.snippets.items():
+            # Check if keyword appears in question
+            if keyword.lower() in question_lower:
+                found.append(snippet)
+            # Also check individual words from multi-word keywords
+            elif len(keyword.split()) > 1:
+                words = keyword.lower().split()
+                if any(w in question_lower for w in words if len(w) > 3):
+                    found.append(snippet)
+
+        return found[:3]  # Max 3 snippets
+
+    def get_context_for_question(self, question: str) -> str:
+        """Get formatted context with relevant snippets for AI prompt."""
+        snippets = self.find_relevant_snippets(question)
+        if snippets:
+            return "Relevant experience:\n" + "\n".join(f"- {s}" for s in snippets)
+        return ""
+
+    def find_common_answer(self, question: str) -> Optional[str]:
+        """Find pre-written answer for common questions (salary, why interested, etc.)."""
+        question_lower = question.lower()
+
+        for answer_key, answer_data in self.common_answers.items():
+            keywords = answer_data.get("keywords", [])
+            for kw in keywords:
+                if kw.lower() in question_lower:
+                    return answer_data.get("answer")
+
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -709,11 +894,17 @@ class FormFillerV5:
     """
     
     # Repeatable sections configuration (Work Experience, Education)
+    # Greenhouse uses patterns like: company-name-0, title-0, school--0, degree--0
     REPEATABLE_SECTIONS = {
         'work_experience': {
             'profile_key': 'work_experience',
-            'add_button_selector': 'button.add-another-button',
-            'button_index': 0,
+            'add_button_selectors': [
+                'button:has-text("Add another")',
+                'a:has-text("Add another")',
+                '.add-section a', '.add-section button',
+                '#add_work_experience',
+            ],
+            'section_text': 'work experience',
             'field_patterns': {
                 'company-name-{N}': 'company',
                 'title-{N}': 'title',
@@ -727,12 +918,36 @@ class FormFillerV5:
         },
         'education': {
             'profile_key': 'education',
-            'add_button_selector': 'button.add-another-button',
-            'button_index': 1,
+            'add_button_selectors': [
+                'button:has-text("Add another")',
+                'a:has-text("Add another")',
+                '.add-section a', '.add-section button',
+                '#add_education',
+            ],
+            'section_text': 'education',
+            # Greenhouse education uses two ID formats:
+            # - Select2: s2id_education_school_name_{N}, s2id_education_degree_{N}
+            # - Legacy: school--{N}, degree--{N}
             'field_patterns': {
+                'education_school_name_{N}': 'school',
+                'education_degree_{N}': 'degree',
+                'education_discipline_{N}': 'discipline',
+            },
+            # Date fields have no ID in Greenhouse — handled by name-based selectors
+            'date_selectors': {
+                'start_month': "input[name='job_application[educations][][start_date][month]']",
+                'start_year': "input[name='job_application[educations][][start_date][year]']",
+                'end_month': "input[name='job_application[educations][][end_date][month]']",
+                'end_year': "input[name='job_application[educations][][end_date][year]']",
+            },
+            'legacy_field_patterns': {
                 'school--{N}': 'school',
                 'degree--{N}': 'degree',
                 'discipline--{N}': 'discipline',
+                'start-date-month--{N}': 'start_month',
+                'start-date-year--{N}': 'start_year',
+                'end-date-month--{N}': 'end_month',
+                'end-date-year--{N}': 'end_year',
             },
             'skip_end_date_if_current': False,
         }
@@ -742,6 +957,7 @@ class FormFillerV5:
         self.browser_mode = browser_mode
         self.profile = Profile()
         self.learned_db = LearnedDB()
+        self.kb = KnowledgeBase()
         self.ai = AIHelper()
         self.ollama = OllamaHelper()
         self.logger = FormLogger()
@@ -774,17 +990,25 @@ class FormFillerV5:
             # Generate report
             return self._generate_report(url)
     
-    def fill(self, url: str, mode: FillMode = FillMode.INTERACTIVE) -> FillReport:
+    def fill(self, url: str, mode: FillMode = FillMode.INTERACTIVE, keep_open: bool = False) -> FillReport:
         """
         Fill form with specified mode.
         Includes re-scan logic for dynamic forms (fields that appear after selection).
+
+        Args:
+            keep_open: If True, keeps browser open for manual review (CDP: just disconnect,
+                      PERSISTENT/FRESH: wait for ENTER)
         """
         with BrowserManager(mode=self.browser_mode) as browser:
             self.browser = browser
             self.page = browser.page
-            
+
             browser.goto(url)
             browser.wait_for_stable()
+
+            # Start logging session
+            company = self._extract_company_from_url(url)
+            self.logger.start_session(url=url, company=company)
             
             # Wait for iframes to load (Greenhouse, Lever forms are in iframes)
             self._wait_for_iframes()
@@ -797,16 +1021,26 @@ class FormFillerV5:
                 # After login, wait and rescan
                 browser.wait_for_stable()
             
-            # Initial scan, resolve, fill
+            # Extract job info for personalized documents (before scan)
+            self._extract_job_info()
+
+            # Initial scan, prescan dropdowns, resolve, fill
             self._scan_fields()
+            self._prescan_all_options()
             self._resolve_all_answers()
             
             if mode == FillMode.PRE_FLIGHT:
                 return self._generate_report(url)
             
             # Fill repeatable sections first (work experience, education)
-            self.fill_all_repeatable_sections()
-            
+            try:
+                self.fill_all_repeatable_sections()
+            except Exception as e:
+                print(f"⚠️ Repeatable sections error (continuing): {e}")
+
+            # Mark fields already filled by section handler so main loop skips them
+            self._mark_section_filled_fields()
+
             # Fill fields with re-scan for dynamic forms
             # Loop until no new fields appear
             max_iterations = 5
@@ -824,14 +1058,55 @@ class FormFillerV5:
                 new_fields = self._scan_for_new_fields()
                 
                 if new_fields:
-                    print(f"\n🔄 Found {len(new_fields)} new fields after filling")
+                    # Filter out fields already filled by repeatable section handler
+                    # or belonging to empty education/work_experience slots
+                    unfilled_new = []
+                    edu_count = len(self.profile.data.get('education', []))
                     for f in new_fields:
-                        print(f"   + {f.label[:40]}")
-                    
-                    # Resolve answers for new fields
-                    for f in new_fields:
-                        self._resolve_field_answer(f)
-                    
+                        # Check if field already has a value (filled by repeatable sections)
+                        try:
+                            context = getattr(self, '_active_frame', self.page)
+                            el = context.query_selector(f.selector)
+                            if el:
+                                # For Select2/autocomplete, check the display text
+                                tag = el.evaluate("e => e.tagName.toLowerCase()")
+                                if tag == 'input' and el.get_attribute('type') == 'hidden':
+                                    val = el.input_value()
+                                else:
+                                    val = el.input_value() if tag in ('input', 'textarea') else el.evaluate("e => e.value || ''")
+                                if val and val.strip():
+                                    print(f"   ⏭️ {f.label[:40]} (already filled by section handler)")
+                                    f.status = FillStatus.VERIFIED
+                                    f.answer = val[:50]
+                                    f.answer_source = AnswerSource.PROFILE
+                                    continue
+
+                                # Skip empty education/repeatable section fields
+                                # (Greenhouse pre-renders 4 education slots, but we only fill as many as profile has)
+                                f_label = f.label.lower()
+                                is_section_field = f_label in ('school', 'degree', 'discipline') or \
+                                    any(kw in (f.selector or '').lower() for kw in
+                                        ('education_school', 'education_degree', 'education_discipline'))
+                                if is_section_field:
+                                    print(f"   ⏭️ {f.label[:40]} (extra education slot, no profile data)")
+                                    f.status = FillStatus.SKIPPED
+                                    continue
+                        except:
+                            pass
+                        unfilled_new.append(f)
+
+                    if unfilled_new:
+                        print(f"\n🔄 Found {len(unfilled_new)} new unfilled fields after filling")
+                        for f in unfilled_new:
+                            print(f"   + {f.label[:40]}")
+
+                        # Resolve answers for new fields
+                        for f in unfilled_new:
+                            self._resolve_field_answer(f)
+                    else:
+                        print(f"\n✅ {len(new_fields)} dynamic fields already filled by section handler")
+                        break
+
                     # Continue loop to fill new fields
                 else:
                     # No new fields, we're done
@@ -841,17 +1116,35 @@ class FormFillerV5:
             self._blur_all_fields()
             self._validate_all_fields()
             
+            # Feedback loop: save verified AI answers to learned DB
+            self._save_verified_ai_answers()
+
+            # End logging session
+            log_path = self.logger.end_session(status="completed")
+            if log_path:
+                print(f"   📄 Log saved: {log_path}")
+
             # Keep browser open for review
-            if mode == FillMode.INTERACTIVE:
-                print("\n👀 Review the form in browser.")
-                print("   Press ENTER when done...")
-                try:
-                    input()
-                except:
-                    time.sleep(60)
-            
-            return self._generate_report(url)
-    
+            if keep_open or mode == FillMode.INTERACTIVE:
+                if self.browser_mode == BrowserMode.CDP:
+                    # CDP: Chrome stays open after disconnect — just inform user
+                    print("\n👀 Form filled! Browser stays open for review.")
+                    print("   Close the tab manually when done.")
+                else:
+                    # PERSISTENT/FRESH: Need to hold the session open
+                    print("\n👀 Review the form in browser.")
+                    print("   Press ENTER when done...")
+                    try:
+                        input()
+                    except:
+                        # Fallback: keep open for 5 minutes when input() not available
+                        print("   (Browser will stay open for 5 minutes)")
+                        time.sleep(300)
+
+            report = self._generate_report(url)
+            print(report.detailed_report())
+            return report
+
     def _scan_for_new_fields(self) -> List[FormField]:
         """
         Scan for fields that appeared after initial scan.
@@ -1117,33 +1410,152 @@ class FormFillerV5:
         self.fields = []
         self._seen_selectors = set()
         self._active_frame = self.page  # Track which frame has the form
-        
+
         # Scan main page first
+        print("   Scanning main page...", flush=True)
         elements = self.page.query_selector_all("input, select, textarea")
         main_count = self._scan_elements(elements, "main")
-        
+        print(f"   Main page: {main_count} fields", flush=True)
+
         # Scan all iframes (important for Greenhouse, Lever embedded forms)
         frames = self.page.frames
         if len(frames) > 1:
-            print(f"   📄 Checking {len(frames)} frames...")
-            
+            print(f"   📄 Checking {len(frames)} frames...", flush=True)
+
             for i, frame in enumerate(frames):
                 if frame == self.page.main_frame:
                     continue  # Already scanned
-                
+
                 try:
                     frame_url = frame.url[:40] if frame.url else "(empty)"
+                    print(f"      Frame {i}: {frame_url}...", flush=True)
                     elements = frame.query_selector_all("input, select, textarea")
                     count = self._scan_elements(elements, f"frame[{i}]")
-                    
+
                     if count > 0:
-                        print(f"      ✅ Frame {i} ({frame_url}): {count} fields")
+                        print(f"      ✅ Frame {i}: {count} fields")
                         # Remember which frame has the form
                         if count > main_count:
                             self._active_frame = frame
-                except:
+                except Exception as e:
+                    print(f"      ⚠️ Frame {i} error: {e}", flush=True)
                     continue
+
+        # Greenhouse file upload fieldsets (Resume + Cover Letter)
+        # Greenhouse hides <input type="file"> — detect by fieldset structure instead
+        self._scan_greenhouse_file_fieldsets()
+
+        # Print scan summary
+        print(f"   Total fields: {len(self.fields)}", flush=True)
+        for f in self.fields:
+            print(f"      {f.field_type.value:12} | {f.label[:40]:<40} | {f.selector[:30]}", flush=True)
     
+    def _scan_greenhouse_file_fieldsets(self):
+        """Detect Greenhouse file upload fieldsets (Resume/CV, Cover Letter).
+
+        Greenhouse hides <input type='file'> inside S3 upload forms.
+        The visible UI is a fieldset with an 'Attach' button.
+        We detect by fieldset ID and create FILE fields pointing to the fieldset.
+        """
+        context = getattr(self, '_active_frame', self.page)
+
+        fieldsets = [
+            ("resume_fieldset", "Resume/CV"),
+            ("cover_letter_fieldset", "Cover Letter"),
+        ]
+
+        for fieldset_id, label in fieldsets:
+            try:
+                fieldset = context.query_selector(f"#{fieldset_id}")
+                if not fieldset:
+                    continue
+
+                # Check if we already have a file field for this fieldset
+                # (might have been detected from the hidden <input type="file">)
+                already_found = False
+                fieldset_key = fieldset_id.replace("_fieldset", "")  # "resume" or "cover_letter"
+                for f in self.fields:
+                    if f.field_type == FieldType.FILE:
+                        sel_lower = (f.selector or "").lower()
+                        fl_lower = (f.label or "").lower()
+                        fid_lower = (f.element_id or "").lower()
+                        if fieldset_key in sel_lower or \
+                           fieldset_key in fid_lower or \
+                           label.lower() in fl_lower:
+                            already_found = True
+                            # Update label and selector if they were generic
+                            if f.label.lower() in ("file", ""):
+                                f.label = label
+                                print(f"      📎 Updated file field label: '{label}'")
+                            # Also update element_id to point to fieldset for Attach button lookup
+                            if not f.element_id or f.element_id.lower() == "file":
+                                f.element_id = fieldset_id
+                            break
+
+                if already_found:
+                    continue
+
+                # Also check: is the first generic file field likely this one?
+                # On Greenhouse, first [name='file'] is Resume, but we need to
+                # upgrade it rather than create a duplicate
+                if fieldset_key == "resume":
+                    for f in self.fields:
+                        if f.field_type == FieldType.FILE and \
+                           f.label.lower() in ("file", "") and \
+                           "[name='file']" in (f.selector or "").lower():
+                            # This generic file field is likely the Resume — upgrade it
+                            f.label = label
+                            f.element_id = fieldset_id
+                            f.selector = f"#{fieldset_id} input[type='file']"
+                            self._seen_selectors.add(f.selector)
+                            print(f"      📎 Upgraded generic file → {label} ({f.selector})")
+                            already_found = True
+                            break
+
+                if already_found:
+                    continue
+
+                # Check there's an Attach button (confirms this is a file upload fieldset)
+                attach_btn = context.query_selector(
+                    f"#{fieldset_id} button[data-source='attach']"
+                )
+                if not attach_btn:
+                    continue
+
+                # Find the hidden <input type="file"> inside the S3 form
+                file_input = context.query_selector(
+                    f"#{fieldset_id} input[type='file']"
+                )
+
+                # Create selector — prefer the file input if found, else use fieldset
+                if file_input:
+                    selector = f"#{fieldset_id} input[type='file']"
+                else:
+                    selector = f"#{fieldset_id}"
+
+                if selector in self._seen_selectors:
+                    continue
+
+                # Create FILE field
+                field = FormField(
+                    selector=selector,
+                    element_id=fieldset_id,
+                    name="file",
+                    label=label,
+                    field_type=FieldType.FILE,
+                    detection_method=DetectionMethod.HTML,
+                    html_tag="fieldset",
+                    input_type="file",
+                    required=(fieldset_id == "resume_fieldset"),  # Resume is usually required
+                )
+
+                self._seen_selectors.add(selector)
+                self.fields.append(field)
+                print(f"      📎 Greenhouse file fieldset: {label} → {selector}")
+
+            except Exception as e:
+                print(f"      ⚠️ Fieldset scan error ({fieldset_id}): {e}")
+
     def _scan_elements(self, elements, source):
         """Scan elements from a specific source (main or frame)."""
         count = 0
@@ -1179,11 +1591,20 @@ class FormFillerV5:
             if input_type in ("hidden", "submit", "button"):
                 return None
             
-            # Build selector
+            # Build selector (escape special CSS chars in IDs like question_123[])
             if el_id:
-                selector = f"#{el_id}"
+                escaped_id = re.sub(r'([\[\](){}!@#$%^&*+=|~`<>?,/\\])', r'\\\1', el_id)
+                selector = f"#{escaped_id}"
             elif el_name:
-                selector = f"[name='{el_name}']"
+                # For file inputs, use parent form ID to disambiguate (Resume vs Cover Letter)
+                if input_type == "file":
+                    form_id = el.evaluate("e => e.form ? e.form.id : ''")
+                    if form_id:
+                        selector = f"#{form_id} input[type='file']"
+                    else:
+                        selector = f"[name='{el_name}']"
+                else:
+                    selector = f"[name='{el_name}']"
             else:
                 return None
             
@@ -1200,15 +1621,25 @@ class FormFillerV5:
             # Detect type
             field_type, detection_method = self._detect_type(el, tag, input_type)
             
-            # Get options for select/autocomplete
+            # Get options for select fields only during scan
+            # Autocomplete options will be discovered in prescan phase (faster)
             options = []
             if field_type == FieldType.SELECT:
-                options = el.evaluate(
-                    "e => Array.from(e.options).map(o => o.text).filter(t => t && t !== 'Select...')"
-                )
-            elif field_type == FieldType.AUTOCOMPLETE:
-                options = self._probe_autocomplete_options(el, selector)
+                try:
+                    options = el.evaluate(
+                        "e => Array.from(e.options).map(o => o.text).filter(t => t && t !== 'Select...')"
+                    )
+                except:
+                    pass
+            # NOTE: autocomplete options are NOT probed here - they're done in _prescan_all_options()
             
+            # ── DOM constraints (placeholder, maxlength, pattern) ──
+            # Engine reads these to understand expected format BEFORE filling
+            placeholder = el.get_attribute("placeholder") or ""
+            maxlength_str = el.get_attribute("maxlength") or ""
+            maxlength = int(maxlength_str) if maxlength_str.isdigit() else 0
+            html_pattern = el.get_attribute("pattern") or ""
+
             return FormField(
                 selector=selector,
                 element_id=el_id,
@@ -1221,6 +1652,9 @@ class FormFillerV5:
                 options=options,
                 required=required,
                 current_value=current_value,
+                placeholder=placeholder,
+                maxlength=maxlength,
+                pattern=html_pattern,
             )
             
         except Exception as e:
@@ -1229,27 +1663,121 @@ class FormFillerV5:
     def _find_label(self, el: ElementHandle, el_id: str) -> str:
         """
         Find label text for field using multiple strategies.
-        
+
         Priority:
-        1. Standard label[for] attribute
+        1. Standard label[for] attribute (in active frame + page)
+        1b. Parent <label> direct text (Greenhouse wraps fields in <label> tags)
+        1c. div.field > label sibling (Greenhouse custom questions in div.field)
         2. aria-label / placeholder
         3. Context Discovery (traverse DOM for nearby text)
         4. Name/ID as fallback
         """
         label = ""
         el_name = el.get_attribute("name") or ""
-        
-        # Strategy 1: By for attribute
+
+        # Strategy 1: By for attribute - search in element's own frame first
         if el_id:
-            label_el = self.page.query_selector(f"label[for='{el_id}']")
+            # Try element's owner frame first (handles iframes)
+            frame = el.owner_frame() or self.page
+            label_el = frame.query_selector(f"label[for='{el_id}']")
+            if not label_el and frame != self.page:
+                label_el = self.page.query_selector(f"label[for='{el_id}']")
             if label_el:
                 label = label_el.inner_text().strip()
-        
+
+        # Strategy 1b: Parent <label> direct text nodes
+        # In Greenhouse, fields (inputs, textareas, Select2) are inside a <label> tag
+        # whose direct text nodes contain the actual question text.
+        # e.g. <label>Question text? *<span class="asterisk">*</span><br><input...></label>
+        # This works for ALL field types, not just Select2.
+        if not label:
+            try:
+                parent_label_text = el.evaluate('''el => {
+                    // For Select2 inputs, start from the container
+                    let start = el.closest('.select2-container') || el;
+
+                    // Walk up to find a <label> parent (max 4 levels)
+                    let parent = start.parentElement;
+                    for (let i = 0; i < 4 && parent; i++) {
+                        if (parent.tagName === 'LABEL') {
+                            // Extract only direct text nodes (not children text)
+                            let text = '';
+                            for (const node of parent.childNodes) {
+                                if (node.nodeType === 3) { // TEXT_NODE
+                                    text += node.textContent.trim() + ' ';
+                                }
+                            }
+                            text = text.trim();
+                            // Filter out noise: just asterisks, very short text
+                            if (text && text !== '*' && text.length > 3) {
+                                return text;
+                            }
+                        }
+                        parent = parent.parentElement;
+                    }
+                    return '';
+                }''')
+                if parent_label_text and len(parent_label_text) > 3:
+                    label = parent_label_text
+            except Exception:
+                pass
+
+        # Strategy 1c: div.field > label sibling
+        # Some Greenhouse forms use: <div class="field"><label>Question</label><input></div>
+        if not label:
+            try:
+                sibling_label = el.evaluate('''el => {
+                    // Walk up to find div.field
+                    let parent = el.parentElement;
+                    for (let i = 0; i < 5 && parent; i++) {
+                        if (parent.classList && parent.classList.contains('field')) {
+                            // Get first direct label child that doesn't contain our input
+                            const labels = parent.querySelectorAll(':scope > label');
+                            for (const lbl of labels) {
+                                if (!lbl.contains(el)) {
+                                    let text = '';
+                                    for (const node of lbl.childNodes) {
+                                        if (node.nodeType === 3) text += node.textContent.trim() + ' ';
+                                    }
+                                    text = text.trim();
+                                    if (text && text !== '*' && text.length > 3) return text;
+                                }
+                            }
+                            break;
+                        }
+                        parent = parent.parentElement;
+                    }
+                    return '';
+                }''')
+                if sibling_label and len(sibling_label) > 3:
+                    label = sibling_label
+            except Exception:
+                pass
+
+        # Strategy 1d: fieldset > legend > label (Greenhouse file uploads)
+        if not label:
+            try:
+                fieldset_label = el.evaluate('''el => {
+                    let parent = el.parentElement;
+                    for (let i = 0; i < 6 && parent; i++) {
+                        if (parent.tagName === 'FIELDSET') {
+                            const legend = parent.querySelector('legend label, legend');
+                            if (legend) return legend.textContent.trim();
+                        }
+                        parent = parent.parentElement;
+                    }
+                    return '';
+                }''')
+                if fieldset_label and len(fieldset_label) > 2:
+                    label = fieldset_label
+            except:
+                pass
+
         # Strategy 2: aria/placeholder
         if not label:
             label = el.get_attribute("aria-label") or \
                     el.get_attribute("placeholder") or ""
-        
+
         # Strategy 3: Context Discovery (for Shadow DOM)
         if not label or len(label) < 5:
             try:
@@ -1258,15 +1786,15 @@ class FormFillerV5:
                     label = context
             except Exception as e:
                 pass  # Fallback to other methods
-        
+
         # Strategy 4: Name/ID fallback
         if not label:
             label = el_name or el_id or ""
-        
+
         # Append name attribute if different (helps with mapping)
         if el_name and el_name.lower() not in label.lower():
             label = f"{label} [{el_name}]"
-        
+
         return label
     
     def _discover_field_context(self, field_id: str) -> str:
@@ -1397,9 +1925,133 @@ class FormFillerV5:
         return options[:50]  # Limit
     
     # ─────────────────────────────────────────────────────────────────────
+    # PRESCAN (ported from V3.5)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def _prescan_all_options(self):
+        """
+        Pre-scan all autocomplete/select fields to discover options BEFORE filling.
+        Ported from V3.5's prescan_options() — key to higher fill rates.
+
+        Opens each dropdown, reads options, finds exact matches, then closes.
+        This prevents the issue of typing wrong text and getting no results.
+        """
+        print("\n🔍 Pre-scanning dropdown options...")
+        # Search in active frame AND all frames
+        context = getattr(self, '_active_frame', self.page)
+        prescan_count = 0
+
+        # Build lookup of field selectors to frames for fill later
+        self._field_frames = {}
+
+        for field in self.fields:
+            if field.field_type not in (FieldType.AUTOCOMPLETE, FieldType.SELECT):
+                continue
+
+            # Skip if already has options (from initial scan)
+            if field.options:
+                prescan_count += 1
+                continue
+
+            # Skip location/school - these are SEARCH type, don't prescan
+            label_lower = field.label.lower()
+            if any(kw in label_lower for kw in ['location', 'city', 'school', 'university']):
+                print(f"   [SEARCH] {field.label[:35]}: skipping prescan (API-driven)")
+                continue
+
+            # Skip Select2 fields - they need special _fill_select2 handling
+            if 's2id' in (field.element_id or ''):
+                print(f"   [SELECT2] {field.label[:35]}: will use Select2 handler")
+                continue
+
+            print(f"   Prescanning: {field.label[:35]}...", flush=True)
+
+            try:
+                el = context.query_selector(field.selector)
+                if not el:
+                    # Try all frames
+                    for frame in self.page.frames:
+                        try:
+                            el = frame.query_selector(field.selector)
+                            if el:
+                                break
+                        except:
+                            continue
+                if not el or not el.is_visible():
+                    print(f"      ⚠️ Not visible, skipping")
+                    continue
+
+                # Close any open dropdowns
+                self.page.keyboard.press('Escape')
+                time.sleep(0.1)
+
+                try:
+                    el.scroll_into_view_if_needed(timeout=3000)
+                except:
+                    pass
+                el.click(timeout=3000)  # Short timeout for prescan clicks
+                time.sleep(0.5)
+
+                # Read options via aria-controls (V5 method)
+                controls_id = el.get_attribute('aria-controls')
+                options = []
+
+                if controls_id:
+                    listbox = context.query_selector(f'#{controls_id}')
+                    if not listbox:
+                        # Try in all frames
+                        for frame in self.page.frames:
+                            try:
+                                listbox = frame.query_selector(f'#{controls_id}')
+                                if listbox:
+                                    break
+                            except:
+                                continue
+                    if listbox:
+                        opt_els = listbox.query_selector_all('[role="option"]')
+                        for opt in opt_els[:50]:
+                            text = opt.inner_text().strip()
+                            if text and text not in ('No options', 'No results'):
+                                options.append(text)
+
+                # Fallback: global selectors with SHORT timeout
+                if not options:
+                    try:
+                        self.page.wait_for_selector('.select__menu, [role="listbox"]', timeout=1000)
+                        opt_els = self.page.query_selector_all('.select__option, [role="option"]')
+                        for opt in opt_els[:50]:
+                            text = opt.inner_text().strip()
+                            if text and text not in ('No options', 'No results'):
+                                options.append(text)
+                    except:
+                        pass
+
+                # Close dropdown
+                self.page.keyboard.press('Escape')
+                time.sleep(0.1)
+
+                if options:
+                    field.options = options
+                    is_fixed = len(options) <= 25
+                    status = "FIXED" if is_fixed else "SEARCH"
+                    print(f"      [{status}] {len(options)} options found")
+                    prescan_count += 1
+                else:
+                    print(f"      No options found")
+
+            except Exception as e:
+                print(f"      ⚠️ Error: {str(e)[:50]}")
+                try:
+                    self.page.keyboard.press('Escape')
+                except:
+                    pass
+
+        print(f"   📊 Pre-scanned {prescan_count} dropdowns")
+
+    # ─────────────────────────────────────────────────────────────────────
     # LAYER 2: RESOLUTION
     # ─────────────────────────────────────────────────────────────────────
-    
+
     def _resolve_all_answers(self):
         """Find answers for all fields."""
         print("\n📋 Resolving answers...")
@@ -1426,7 +2078,9 @@ class FormFillerV5:
         label_lower = field.label.lower()
         
         # Skip end date fields if current role (work_experience.0.current == true)
-        if any(kw in label_lower for kw in ["end date", "end month", "end year"]):
+        # But NOT for education fields — those always have end dates
+        is_education_field = "education" in label_lower or "educations" in (field.selector or "").lower()
+        if not is_education_field and any(kw in label_lower for kw in ["end date", "end month", "end year"]):
             work_exp = self.profile.data.get("work_experience", [{}])
             if work_exp and work_exp[0].get("current", False):
                 field.status = FillStatus.SKIPPED
@@ -1449,7 +2103,14 @@ class FormFillerV5:
             if val:
                 answer, source, confidence = val, AnswerSource.PROFILE, 0.9
                 field.profile_key = key
-        
+
+        # 2.5 Common answers from KnowledgeBase (salary, why interested, etc.)
+        if not answer and not is_dropdown:
+            common = self.kb.find_common_answer(field.label)
+            if common:
+                answer, source, confidence = common, AnswerSource.DEFAULT, 0.88
+                print(f"   📚 KB common: '{field.label[:30]}' → '{common[:40]}...'")
+
         # 3. Yes/No patterns
         if not answer:
             yn = self.profile.find_yes_no(field.label)
@@ -1468,18 +2129,51 @@ class FormFillerV5:
             if matched:
                 answer, source, confidence = matched, AnswerSource.DEFAULT, 0.7
         
-        # 6. Ollama for custom questions
+        # 6. Text defaults (years of experience, salary, etc.)
+        if not answer:
+            text_default = self.profile.find_text_default(field.label)
+            if text_default:
+                answer, source, confidence = text_default, AnswerSource.DEFAULT, 0.75
+
+        # 7. Ollama for custom questions (with KB context)
         if not answer and self.ollama.available:
             profile_context = self._get_profile_context_for_ai()
+            kb_context = self.kb.get_context_for_question(field.label)
+            if kb_context:
+                profile_context += f"\n\n{kb_context}"
             ollama_answer = self.ollama.generate(field.label, profile_context, field.options)
             if ollama_answer:
                 if field.options:
                     ollama_answer = self.ollama.match_option(ollama_answer, field.options)
                 answer, source, confidence = ollama_answer, AnswerSource.AI, 0.6
                 print(f"   🤖 Ollama: '{field.label[:30]}' → '{ollama_answer[:30]}'")
-        
-        # Set result
+
+        # 8. Claude AI fallback for remaining unknown fields (with KB context)
+        if not answer and self.ai.available:
+            profile_context = self._get_profile_context_for_ai()
+            kb_context = self.kb.get_context_for_question(field.label)
+            if kb_context:
+                profile_context += f"\n\n{kb_context}"
+            try:
+                if field.options:
+                    claude_answer = self.ai.choose_option(field.label, field.options, profile_context)
+                else:
+                    claude_answer = self.ai.generate(field.label, profile_context)
+                if claude_answer:
+                    answer, source, confidence = claude_answer, AnswerSource.AI, 0.55
+                    print(f"   🧠 Claude: '{field.label[:30]}' → '{claude_answer[:30]}'")
+            except Exception as e:
+                print(f"   ⚠️ Claude fallback error: {e}")
+
+        # Set result — apply DOM-aware format adaptation
         if answer:
+            # DOM-aware: adapt value to field's placeholder/maxlength/type
+            # e.g., "September" → "09" if placeholder="MM" or maxlength=2
+            if field.field_type in (FieldType.TEXT, FieldType.DATE):
+                original = answer
+                answer = self._adapt_value_to_dom(answer, field)
+                if answer != original:
+                    print(f"   🔧 DOM adapt: '{original}' → '{answer}' (placeholder='{field.placeholder}', maxlen={field.maxlength})")
             field.answer = answer
             field.answer_source = source
             field.confidence = confidence
@@ -1492,71 +2186,91 @@ class FormFillerV5:
         p = self.profile.data.get("personal", {})
         w = self.profile.data.get("work_experience", [{}])[0]
         certs = self.profile.data.get("certifications", [])
-        
+        common = self.profile.data.get("common_answers", {})
+        demo = self.profile.data.get("demographics", {})
+        wa = self.profile.data.get("work_authorization", {})
+
         return f"""Name: {p.get('first_name', '')} {p.get('last_name', '')}
+Location: {p.get('location', '')}, {p.get('state', '')}, US
 Current Role: {w.get('title', '')} at {w.get('company', '')}
 Experience: {w.get('description', '')}
 Years: 15+ years in PM/TPM
 Tools: GCP, AWS, Jira, Confluence, SharePoint, Python, SQL
-Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
+Certifications: {', '.join(certs) if certs else 'SAFe, PSM, GCP'}
+Work Authorization: Authorized to work in US: {wa.get('authorized_us', 'Yes')}, Needs sponsorship: {wa.get('requires_sponsorship', 'No')}
+Willing to relocate: Yes
+18 or older: Yes
+Previously employed at company: No
+Government official: No
+Gender: {demo.get('gender', 'Decline')}
+Veteran: {demo.get('veteran_status', 'Not a protected veteran')}
+Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
     
     def _match_option(self, field: FormField) -> Optional[str]:
         """Try to match profile data to dropdown options."""
         label_lower = field.label.lower()
         options_lower = [opt.lower() for opt in field.options]
 
-        # Gender - prefer "Decline to self-identify" or similar
+        # ── Demographics: use profile values first, then fallback to defaults ──
+        demo = self.profile.data.get("demographics", {}) if self.profile else {}
+
+        # Gender
         if "gender" in label_lower:
-            priority_patterns = [
-                "decline", "prefer not", "do not wish", "choose not",
-                "i don't wish", "not disclosed", "not to say"
-            ]
-            for pattern in priority_patterns:
+            profile_val = demo.get("gender", "")
+            if profile_val:
+                for i, opt_lower in enumerate(options_lower):
+                    if profile_val.lower() in opt_lower or opt_lower in profile_val.lower():
+                        return field.options[i]
+            # Fallback: decline
+            for pattern in ["decline", "prefer not", "do not wish"]:
                 for i, opt_lower in enumerate(options_lower):
                     if pattern in opt_lower:
                         return field.options[i]
-            # Fallback: first option that's not male/female specific
-            for i, opt_lower in enumerate(options_lower):
-                if "male" not in opt_lower and "female" not in opt_lower and "man" not in opt_lower and "woman" not in opt_lower:
-                    return field.options[i]
 
         # Hispanic/Latino
         if "hispanic" in label_lower or "latino" in label_lower:
-            priority_patterns = ["decline", "prefer not", "do not wish", "no"]
-            for pattern in priority_patterns:
+            profile_val = demo.get("hispanic_latino", "")
+            if profile_val:
+                for i, opt_lower in enumerate(options_lower):
+                    if opt_lower.startswith(profile_val.lower()) or profile_val.lower() == opt_lower:
+                        return field.options[i]
+            for pattern in ["decline", "prefer not", "no"]:
                 for i, opt_lower in enumerate(options_lower):
                     if pattern in opt_lower:
                         return field.options[i]
 
         # Race/Ethnicity
         if "race" in label_lower or "ethnicity" in label_lower:
-            priority_patterns = [
-                "decline", "prefer not", "do not wish", "two or more",
-                "not disclosed", "choose not"
-            ]
-            for pattern in priority_patterns:
+            profile_val = demo.get("race_ethnicity", "")
+            if profile_val:
+                for i, opt_lower in enumerate(options_lower):
+                    if profile_val.lower() in opt_lower or opt_lower in profile_val.lower():
+                        return field.options[i]
+            for pattern in ["decline", "prefer not", "two or more", "do not wish"]:
                 for i, opt_lower in enumerate(options_lower):
                     if pattern in opt_lower:
                         return field.options[i]
 
         # Veteran status
         if "veteran" in label_lower:
-            priority_patterns = [
-                "not a protected veteran", "i am not a", "not a veteran",
-                "decline", "prefer not", "do not wish", "no"
-            ]
-            for pattern in priority_patterns:
+            profile_val = demo.get("veteran_status", "")
+            if profile_val:
+                for i, opt_lower in enumerate(options_lower):
+                    if profile_val.lower() in opt_lower or opt_lower in profile_val.lower():
+                        return field.options[i]
+            for pattern in ["not a protected veteran", "i am not a", "decline", "no"]:
                 for i, opt_lower in enumerate(options_lower):
                     if pattern in opt_lower:
                         return field.options[i]
 
         # Disability
         if "disability" in label_lower:
-            priority_patterns = [
-                "do not want to answer", "prefer not", "decline",
-                "do not wish", "i don't have", "no, i do not"
-            ]
-            for pattern in priority_patterns:
+            profile_val = demo.get("disability_status", "")
+            if profile_val:
+                for i, opt_lower in enumerate(options_lower):
+                    if profile_val.lower() in opt_lower or opt_lower in profile_val.lower():
+                        return field.options[i]
+            for pattern in ["do not want to answer", "prefer not", "decline", "no, i do not"]:
                 for i, opt_lower in enumerate(options_lower):
                     if pattern in opt_lower:
                         return field.options[i]
@@ -1585,52 +2299,122 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
 
         return None
     
+    def _ensure_compatible_extension(self, file_path: Path) -> Path:
+        """Convert .dotx/.dotm to .docx for ATS compatibility.
+
+        Greenhouse, Lever, and most ATS only accept: pdf, doc, docx, txt, rtf.
+        .dotx (Word template) is functionally identical to .docx but rejected by extension filter.
+        """
+        ext = file_path.suffix.lower()
+        incompatible = {'.dotx': '.docx', '.dotm': '.docm'}
+
+        if ext in incompatible:
+            import shutil
+            new_ext = incompatible[ext]
+            new_path = file_path.with_suffix(new_ext)
+
+            # Copy to compatible extension (in same directory)
+            if not new_path.exists():
+                shutil.copy2(file_path, new_path)
+                print(f"   📎 Converted {file_path.name} → {new_path.name} (ATS compatibility)")
+            else:
+                print(f"   📎 Using existing {new_path.name}")
+
+            return new_path
+
+        return file_path
+
     def _resolve_file_field(self, field: FormField):
-        """Resolve file upload field based on job title."""
+        """Resolve file upload field based on job title.
+        Tries personalized documents first (AI-generated CL, tailored CV),
+        falls back to static files from profile.
+        """
         label_lower = field.label.lower()
         field_id = (field.element_id or "").lower()
-        
+        field_name = (field.name or "").lower()
+
         # Get job title from page
-        job_title = self.page.title() if self.page else ""
-        
-        # Get CV and Cover Letter paths based on role
-        cv_path, cover_letter_path = self.profile.get_files_for_role(job_title)
-        
-        # Check what type of file is requested (check ID first, then label)
+        job_title_page = self.page.title() if self.page else ""
+
+        # Get static CV and Cover Letter paths based on role (fallback)
+        cv_path, cover_letter_path = self.profile.get_files_for_role(job_title_page)
+
+        # Ensure compatible file extensions (.dotx → .docx)
+        if cv_path:
+            cv_path = self._ensure_compatible_extension(cv_path)
+        if cover_letter_path:
+            cover_letter_path = self._ensure_compatible_extension(cover_letter_path)
+
+        # Try personalized documents if we have job info
+        jt = getattr(self, 'job_title', '') or ''
+        cn = getattr(self, 'company_name', '') or ''
+        jd = getattr(self, 'job_description', '') or ''
+
+        # Check what type of file is requested (check ID, selector, then label)
+        selector_lower = (field.selector or "").lower()
         is_cover_letter = (
-            "cover_letter" in field_id or 
+            "cover_letter" in field_id or
             "coverletter" in field_id or
+            "cover_letter" in selector_lower or
             any(kw in label_lower for kw in ["cover letter", "cover_letter", "coverletter"])
         )
-        
+
         is_resume = (
             "resume" in field_id or
             "cv" in field_id or
             any(kw in label_lower for kw in ["resume", "cv"])
         )
-        
+
         if is_cover_letter:
-            # Cover Letter field
+            # Try personalized CL first
+            if jt and cn:
+                personalized_cl = self._generate_personalized_cover_letter(jt, cn, jd)
+                if personalized_cl and personalized_cl.exists():
+                    field.answer = str(personalized_cl)
+                    field.answer_source = AnswerSource.AI
+                    field.status = FillStatus.READY
+                    print(f"   📄 Cover Letter (personalized): {personalized_cl.name}")
+                    return
+
+            # Fallback to static CL
             if cover_letter_path and cover_letter_path.exists():
                 field.answer = str(cover_letter_path)
                 field.answer_source = AnswerSource.PROFILE
                 field.status = FillStatus.READY
-                print(f"   📄 Cover Letter: {cover_letter_path.name}")
+                print(f"   📄 Cover Letter (static): {cover_letter_path.name}")
             else:
                 field.status = FillStatus.NEEDS_INPUT
                 field.error_message = "Cover letter not found for this role"
-        elif is_resume or "attach" in label_lower or "upload" in label_lower or "browse" in label_lower:
-            # Resume/CV field (including generic "Attach")
+
+        elif is_resume or "attach" in label_lower or "upload" in label_lower or "browse" in label_lower or field_name == "file":
+            # Try tailored CV first
+            if jt and cn and jd:
+                tailored_cv = self._create_tailored_cv(jt, cn, jd)
+                if tailored_cv and tailored_cv.exists():
+                    field.answer = str(tailored_cv)
+                    field.answer_source = AnswerSource.AI
+                    field.status = FillStatus.READY
+                    print(f"   📄 Resume/CV (tailored): {tailored_cv.name}")
+                    return
+
+            # Fallback to static CV
             if cv_path and cv_path.exists():
                 field.answer = str(cv_path)
                 field.answer_source = AnswerSource.PROFILE
                 field.status = FillStatus.READY
-                print(f"   📄 Resume/CV: {cv_path.name}")
+                print(f"   📄 Resume/CV (static): {cv_path.name}")
             else:
                 field.status = FillStatus.ERROR
                 field.error_message = "CV not found for this role"
         else:
-            field.status = FillStatus.NEEDS_INPUT
+            # Unknown file field — assume resume as default
+            if cv_path and cv_path.exists():
+                field.answer = str(cv_path)
+                field.answer_source = AnswerSource.PROFILE
+                field.status = FillStatus.READY
+                print(f"   📄 Default file → Resume: {cv_path.name}")
+            else:
+                field.status = FillStatus.NEEDS_INPUT
     
     # ─────────────────────────────────────────────────────────────────────
     # LAYER 3: INPUT
@@ -1639,37 +2423,47 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _fill_all_fields(self, mode: FillMode):
         """Fill all fields with answers."""
         print("\n📝 Filling fields...")
-        
+
         for field in self.fields:
             if field.status == FillStatus.READY:
                 self._fill_field(field)
             elif field.status == FillStatus.NEEDS_INPUT and mode == FillMode.INTERACTIVE:
                 self._interactive_fill(field)
-            else:
+            elif field.status == FillStatus.NEEDS_INPUT:
                 field.status = FillStatus.SKIPPED
+            # Don't overwrite FILLED/VERIFIED/ERROR status from previous iteration
     
     def _fill_field(self, field: FormField) -> bool:
-        """Fill single field. Uses _active_frame to support iframes."""
+        """Fill single field. Uses _active_frame to support iframes. Timeout protected."""
         try:
             # Use active frame (main page or iframe with form)
             context = getattr(self, '_active_frame', self.page)
             el = context.query_selector(field.selector)
-            
-            # Fallback: try main page if not found in active frame
+
+            # Fallback: try all frames if not found
             if not el:
                 el = self.page.query_selector(field.selector)
-            
+            if not el:
+                for frame in self.page.frames:
+                    try:
+                        el = frame.query_selector(field.selector)
+                        if el:
+                            break
+                    except:
+                        continue
             if not el:
                 field.status = FillStatus.ERROR
                 field.error_message = "Element not found"
                 return False
-            
-            self.browser.highlight_element(field.selector, "green")
-            el.scroll_into_view_if_needed()
+
+            try:
+                el.scroll_into_view_if_needed()
+            except:
+                pass
             time.sleep(0.1)
-            
+
             success = False
-            
+
             if field.field_type == FieldType.FILE:
                 success = self._fill_file(el, field)
             elif field.field_type == FieldType.SELECT:
@@ -1682,20 +2476,40 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 success = self._fill_phone(el, field)
             else:
                 success = self._fill_text(el, field)
-            
+
             if success:
                 field.status = FillStatus.FILLED
                 print(f"   ✅ {field.label[:35]:<35} = {field.answer[:20]} [{field.answer_source.value}]")
             else:
                 field.status = FillStatus.ERROR
                 print(f"   ❌ {field.label[:35]} - fill failed")
-            
-            self.browser.unhighlight_element(field.selector)
+
+            # Log field fill
+            self.logger.log_field(
+                field_id=field.element_id or field.selector,
+                field_type=field.field_type.value,
+                question=field.label,
+                value=field.answer or "",
+                source=field.answer_source.value if field.answer_source else "none",
+                success=success,
+                error=field.error_message
+            )
+
             return success
-            
+
         except Exception as e:
             field.status = FillStatus.ERROR
-            field.error_message = str(e)
+            field.error_message = str(e)[:100]
+            print(f"   ❌ {field.label[:35]} - error: {str(e)[:50]}")
+            self.logger.log_field(
+                field_id=field.element_id or field.selector,
+                field_type=field.field_type.value,
+                question=field.label,
+                value="",
+                source="error",
+                success=False,
+                error=str(e)[:100]
+            )
             return False
     
     def _fill_text(self, el: ElementHandle, field: FormField) -> bool:
@@ -1735,42 +2549,86 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
             return False
     
     def _fill_select(self, el: ElementHandle, field: FormField) -> bool:
-        """Fill native select."""
-        el.select_option(label=field.answer)
-        # Blur to trigger validation
-        el.evaluate("e => e.blur()")
-        return True
+        """Fill native select with fuzzy matching."""
+        try:
+            # Try exact label match
+            el.select_option(label=field.answer)
+            el.evaluate("e => e.blur()")
+            return True
+        except:
+            pass
+
+        # Fuzzy match: get all options and find best match
+        try:
+            options = el.evaluate(
+                "e => Array.from(e.options).map(o => ({value: o.value, text: o.text}))"
+            )
+            answer_lower = field.answer.lower().strip()
+
+            for opt in options:
+                opt_text = opt.get('text', '').lower()
+                if answer_lower in opt_text or opt_text in answer_lower:
+                    el.select_option(value=opt['value'])
+                    el.evaluate("e => e.blur()")
+                    return True
+
+            # Word overlap matching
+            answer_words = set(answer_lower.split())
+            for opt in options:
+                opt_text = opt.get('text', '').lower()
+                opt_words = set(opt_text.split())
+                if len(answer_words & opt_words) >= 1:
+                    el.select_option(value=opt['value'])
+                    el.evaluate("e => e.blur()")
+                    return True
+
+            # Last resort: first non-empty option
+            for opt in options:
+                if opt.get('value') and opt.get('text', '').strip():
+                    el.select_option(value=opt['value'])
+                    el.evaluate("e => e.blur()")
+                    return True
+        except Exception as e:
+            print(f"      ⚠️ Select error: {e}")
+
+        return False
     
     def _fill_autocomplete(self, el: ElementHandle, field: FormField) -> bool:
         """
-        Fill autocomplete/combobox using aria-controls method.
-
-        Key principles (from manual testing):
-        1. Use aria-controls to find the CORRECT listbox (not global selectors)
-        2. Press Escape before clicking to close any open dropdowns
-        3. scroll_into_view_if_needed before clicking
-        4. For Location fields - wait 2 seconds for API response
-        5. For School fields - use search with fallback to "0 - Other"
+        Fill autocomplete/combobox. Supports:
+        - React Select (aria-controls)
+        - Select2 (#s2id_autogen* selectors)
+        - Location fields (API-driven)
+        - School fields (search with fallback)
         """
-        # Get the frame context (for iframe support)
         frame = el.owner_frame() or self.page
-
         label_lower = field.label.lower()
 
         # Check field type for special handling
         is_location = 'location' in label_lower or 'city' in label_lower
         is_school = 'school' in label_lower or 'university' in label_lower or 'college' in label_lower
-        
+
+        # ── SELECT2 DETECTION ──
+        # Select2 uses hidden inputs like #s2id_autogen1
+        # The actual clickable element is the .select2-choice container
+        is_select2 = 's2id' in (field.element_id or '') or 's2id' in field.selector
+        if is_select2:
+            return self._fill_select2(el, field, frame)
+
         # Close any open dropdowns first
         self.page.keyboard.press('Escape')
         time.sleep(0.1)
-        
+
         # Scroll into view
-        el.scroll_into_view_if_needed()
+        try:
+            el.scroll_into_view_if_needed()
+        except:
+            pass
         time.sleep(0.1)
-        
+
         # For Location: type first, then wait for API
         if is_location:
+            print(f"      📍 Location: typing '{field.answer[:30]}'...")
             el.click()
             time.sleep(0.3)
             self.page.keyboard.type(field.answer[:30], delay=30)
@@ -1795,94 +2653,487 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         if is_school:
             return self._fill_school_autocomplete(el, field, frame)
 
-        # Click to open dropdown
-        el.click()
-        time.sleep(0.4)
-        
-        # Use aria-controls to find the CORRECT listbox
-        controls_id = el.get_attribute('aria-controls')
-        options = []
-        
-        if controls_id:
-            listbox = frame.query_selector(f'#{controls_id}')
-            if listbox:
-                options = listbox.query_selector_all('[role="option"]')
-        
-        # Fallback to global selectors if aria-controls didn't work
-        if not options:
-            try:
-                frame.wait_for_selector('[role="listbox"], .select__menu', timeout=1500)
-                options = frame.query_selector_all('[role="option"], .select__option')
-            except:
-                pass
-        
-        answer_lower = field.answer.lower().strip()
-        
-        # Strategy based on option count
-        if options and len(options) <= 15:
-            # Few options - find best match and click
-            for opt in options:
-                opt_text = opt.inner_text().strip()
-                opt_lower = opt_text.lower()
-                
-                # Exact or substring match
-                if answer_lower in opt_lower or opt_lower in answer_lower:
-                    opt.click()
-                    time.sleep(0.2)
-                    return True
-                
-                # Word overlap (for multi-word answers)
-                answer_words = set(answer_lower.replace('-', ' ').split())
-                opt_words = set(opt_lower.replace('-', ' ').split())
-                if len(answer_words & opt_words) >= 1:
-                    opt.click()
-                    time.sleep(0.2)
-                    return True
-            
-            # No match - click first option
-            if options:
-                options[0].click()
-                time.sleep(0.2)
-                return True
-        
-        elif options and len(options) > 15:
-            # Many options - type to filter
-            self.page.keyboard.press('Escape')
-            time.sleep(0.1)
+        # STRATEGY: Use prescan data if we have options from prescan
+        if field.options and len(field.options) <= 25:
+            # Fixed dropdown — find exact match from prescan data and click it
             el.click()
-            time.sleep(0.2)
-            
-            # Type to filter (use keyboard.type for React compatibility)
-            self.page.keyboard.type(field.answer[:30], delay=20)
-            
-            # Check if this is a Location field - needs extra wait for API
-            is_location = 'location' in field.label.lower() or 'city' in field.label.lower()
-            wait_time = 2.0 if is_location else 0.5
-            time.sleep(wait_time)
-            
-            # Re-check options using aria-controls
+            time.sleep(0.4)
+
+            # Read live options
+            controls_id = el.get_attribute('aria-controls')
+            live_options = []
             if controls_id:
                 listbox = frame.query_selector(f'#{controls_id}')
                 if listbox:
-                    options = listbox.query_selector_all('[role="option"]')
-            
-            if options:
-                options[0].click()
+                    live_options = listbox.query_selector_all('[role="option"]')
+            if not live_options:
+                try:
+                    frame.wait_for_selector('[role="listbox"], .select__menu', timeout=1500)
+                    live_options = frame.query_selector_all('[role="option"], .select__option')
+                except:
+                    pass
+
+            answer_lower = field.answer.lower().strip()
+
+            # Score-based matching (like V3.5)
+            best_score = 0
+            best_opt = None
+            for opt in live_options:
+                opt_text = opt.inner_text().strip()
+                opt_lower = opt_text.lower()
+                score = 0
+                if opt_lower == answer_lower:
+                    score = 100  # Exact match
+                elif answer_lower in opt_lower:
+                    score = 80  # Our answer is substring
+                elif opt_lower in answer_lower:
+                    score = 70  # Option is substring of answer
+                else:
+                    # Word overlap
+                    answer_words = set(answer_lower.replace('-', ' ').split())
+                    opt_words = set(opt_lower.replace('-', ' ').split())
+                    overlap = len(answer_words & opt_words)
+                    if overlap >= 2:
+                        score = 60
+                    elif overlap >= 1:
+                        score = 40
+                if score > best_score:
+                    best_score = score
+                    best_opt = opt
+
+            if best_opt:
+                best_opt.click()
                 time.sleep(0.2)
                 return True
-            
-            # Fallback: keyboard navigation
-            self.page.keyboard.press('ArrowDown')
-            self.page.keyboard.press('Tab')  # Tab instead of Enter (safer)
-        
-        else:
-            # No options found - type and tab out
-            self.page.keyboard.type(field.answer[:30], delay=20)
-            time.sleep(0.3)
-            self.page.keyboard.press('Tab')
-        
+
+            # No match - click first option as fallback
+            if live_options:
+                live_options[0].click()
+                time.sleep(0.2)
+                return True
+
+            self.page.keyboard.press('Escape')
+            return True
+
+        # SEARCH dropdown or no prescan data — type to filter
+        el.click()
+        time.sleep(0.3)
+        controls_id = el.get_attribute('aria-controls')
+
+        # Type to filter
+        self.page.keyboard.type(field.answer[:30], delay=20)
+        time.sleep(0.8)
+
+        # Read filtered options
+        live_options = []
+        if controls_id:
+            listbox = frame.query_selector(f'#{controls_id}')
+            if listbox:
+                live_options = listbox.query_selector_all('[role="option"]')
+        if not live_options:
+            live_options = frame.query_selector_all('[role="option"], .select__option')
+
+        if live_options:
+            # Check first option isn't "no results"
+            first_text = live_options[0].inner_text().strip().lower()
+            if 'no result' not in first_text and 'no option' not in first_text:
+                live_options[0].click()
+                time.sleep(0.2)
+                return True
+
+        # Fallback: keyboard navigation
+        self.page.keyboard.press('ArrowDown')
+        self.page.keyboard.press('Tab')
         time.sleep(0.2)
         return True
+
+    def _fill_select2(self, el: ElementHandle, field: FormField, frame) -> bool:
+        """
+        Fill Select2 dropdown (Greenhouse EEO/demographics/custom questions).
+
+        Select2 DOM structure:
+        - .select2-container (id=s2id_job_application_gender)
+          - a.select2-choice  ← CLICK THIS
+          - input#s2id_autogen2 ← the input we detected
+        - .select2-drop (appears after click)
+          - .select2-results
+            - li.select2-result ← the options to click
+        """
+        print(f"      🔽 Select2: {field.label[:30]}...", flush=True)
+
+        is_school_field = 'school' in field.label.lower()
+
+        try:
+            # Open dropdown by clicking .select2-choice via JavaScript
+            opened = frame.evaluate(f'''() => {{
+                const input = document.querySelector('{field.selector}');
+                if (!input) return false;
+                // Find parent select2-container
+                let container = input.closest('.select2-container');
+                if (!container) {{
+                    // Walk up manually
+                    let parent = input.parentElement;
+                    for (let i = 0; i < 5; i++) {{
+                        if (!parent) break;
+                        if (parent.classList && parent.classList.contains('select2-container')) {{
+                            container = parent;
+                            break;
+                        }}
+                        parent = parent.parentElement;
+                    }}
+                }}
+                if (!container) return false;
+                const choice = container.querySelector('a.select2-choice, .select2-choices');
+                if (choice) {{
+                    choice.dispatchEvent(new MouseEvent('mousedown', {{bubbles: true}}));
+                    return true;
+                }}
+                return false;
+            }}''')
+
+            if not opened:
+                print(f"      ⚠️ Could not find Select2 container")
+                return False
+
+            time.sleep(0.5)
+
+            # Wait for and read options from .select2-drop
+            try:
+                frame.wait_for_selector('.select2-drop:not(.select2-display-none) .select2-results', timeout=2000)
+            except:
+                # Try alternative: just check if results exist
+                pass
+
+            options = frame.query_selector_all('.select2-drop:not(.select2-display-none) .select2-results li.select2-result')
+            if not options:
+                options = frame.query_selector_all('.select2-results li.select2-result')
+            if not options:
+                options = frame.query_selector_all('.select2-results li')
+
+            # Filter out disabled/header items
+            valid_options = []
+            for opt in options:
+                try:
+                    cls = opt.get_attribute('class') or ''
+                    if 'select2-disabled' in cls or 'select2-result-unselectable' in cls:
+                        continue
+                    text = opt.inner_text().strip()
+                    if text:
+                        valid_options.append((opt, text))
+                except:
+                    continue
+
+            if not valid_options:
+                print(f"      ⚠️ No Select2 options found")
+                self.page.keyboard.press('Escape')
+                return False
+
+            option_texts = [t for _, t in valid_options]
+            answer_lower = field.answer.lower().strip()
+            print(f"      Looking for: '{answer_lower[:30]}' in {len(valid_options)} options")
+
+            # Score-based matching
+            best_score, best_opt, best_text = self._select2_match(answer_lower, valid_options)
+
+            # School fields need higher confidence — weak matches mean school isn't in DB
+            min_score = 80 if is_school_field else 40
+
+            if best_score >= min_score:
+                best_opt.click()
+                time.sleep(0.3)
+                print(f"      ✅ Select2 matched (score={best_score})")
+                return True
+
+            # No match from pre-resolved answer — try re-resolving with actual options
+            # This handles cases where label was wrong during resolution or AI gave freetext
+            # Skip re-resolve for school fields — they should fallback to "Other" if not matched
+            if not is_school_field:
+                print(f"      🔄 Re-resolving with actual {len(option_texts)} options...")
+                new_answer = self._resolve_select2_from_options(field, option_texts)
+                if new_answer:
+                    new_lower = new_answer.lower().strip()
+                    best_score2, best_opt2, best_text2 = self._select2_match(new_lower, valid_options)
+                    if best_score2 >= min_score:
+                        best_opt2.click()
+                        time.sleep(0.3)
+                        field.answer = new_answer
+                        print(f"      ✅ Select2 re-resolved: '{best_text2[:30]}' (score={best_score2})")
+                        return True
+
+            # For school fields: search for "Other" instead of picking first match
+            if is_school_field:
+                print(f"      🎓 School not matched — searching for 'Other'...")
+                self.page.keyboard.press('Escape')
+                time.sleep(0.2)
+
+                # Re-open and search for "Other"
+                opened2 = frame.evaluate(f'''() => {{
+                    const input = document.querySelector('{field.selector}');
+                    if (!input) return false;
+                    let container = input.closest('.select2-container');
+                    if (!container) {{
+                        let parent = input.parentElement;
+                        for (let i = 0; i < 5; i++) {{
+                            if (!parent) break;
+                            if (parent.classList && parent.classList.contains('select2-container')) {{
+                                container = parent; break;
+                            }}
+                            parent = parent.parentElement;
+                        }}
+                    }}
+                    if (!container) return false;
+                    const choice = container.querySelector('a.select2-choice, .select2-choices');
+                    if (choice) {{
+                        choice.dispatchEvent(new MouseEvent('mousedown', {{bubbles: true}}));
+                        return true;
+                    }}
+                    return false;
+                }}''')
+
+                if opened2:
+                    time.sleep(0.5)
+                    search_input = frame.query_selector('.select2-drop:not(.select2-display-none) .select2-input')
+                    if not search_input:
+                        search_input = frame.query_selector('.select2-search input')
+                    if search_input:
+                        try:
+                            search_input.fill('', timeout=3000)
+                        except:
+                            pass
+                        self.page.keyboard.type('Other', delay=20)
+                        time.sleep(0.8)
+
+                    fb_opts = frame.query_selector_all('.select2-drop:not(.select2-display-none) .select2-results li.select2-result')
+                    if not fb_opts:
+                        fb_opts = frame.query_selector_all('.select2-results li')
+
+                    for opt in fb_opts:
+                        try:
+                            text = opt.inner_text().strip()
+                            if text.lower() == 'other':
+                                opt.click()
+                                time.sleep(0.3)
+                                print(f"      ✅ School fallback: 'Other'")
+                                return True
+                        except:
+                            continue
+
+                    # No exact "Other" — pick first valid result
+                    for opt in fb_opts:
+                        try:
+                            text = opt.inner_text().strip()
+                            if text and 'no result' not in text.lower():
+                                opt.click()
+                                time.sleep(0.3)
+                                print(f"      ✅ School fallback: '{text[:30]}'")
+                                return True
+                        except:
+                            continue
+
+            # Final fallback — try rule-based resolve (no AI needed)
+            rule_answer = self._resolve_select2_from_options(field, option_texts)
+            if rule_answer:
+                ra_lower = rule_answer.lower().strip()
+                for opt_el, opt_text in valid_options:
+                    if opt_text.lower().strip() == ra_lower or ra_lower in opt_text.lower():
+                        opt_el.click()
+                        time.sleep(0.3)
+                        field.answer = rule_answer
+                        print(f"      ✅ Select2 rule-based: '{opt_text[:30]}'")
+                        return True
+
+            # Last resort — click first non-placeholder option
+            fallback_idx = 0
+            for idx, (_, text) in enumerate(valid_options):
+                tl = text.lower()
+                if tl not in ('--', 'please select', 'select', 'select...', ''):
+                    fallback_idx = idx
+                    break
+            valid_options[fallback_idx][0].click()
+            time.sleep(0.3)
+            print(f"      ⚠️ Select2 fallback: '{valid_options[fallback_idx][1][:30]}'")
+            return True
+
+        except Exception as e:
+            print(f"      ⚠️ Select2 error: {str(e)[:60]}")
+            try:
+                self.page.keyboard.press('Escape')
+            except:
+                pass
+            return False
+
+    def _select2_match(self, answer_lower: str, valid_options: list) -> tuple:
+        """Score-based matching for Select2 options. Returns (score, element, text)."""
+        best_score = 0
+        best_opt = None
+        best_text = ""
+        for opt_el, opt_text in valid_options:
+            opt_lower = opt_text.lower()
+            score = 0
+            if opt_lower == answer_lower:
+                score = 100
+            elif answer_lower in opt_lower:
+                score = 80
+            elif opt_lower in answer_lower:
+                score = 70
+            else:
+                answer_words = set(answer_lower.split())
+                opt_words = set(opt_lower.split())
+                overlap = len(answer_words & opt_words)
+                if overlap >= 2:
+                    score = 60
+                elif overlap >= 1:
+                    score = 40
+            if score > best_score:
+                best_score = score
+                best_opt = opt_el
+                best_text = opt_text
+        return best_score, best_opt, best_text
+
+    def _resolve_select2_from_options(self, field: FormField, option_texts: list) -> str:
+        """
+        Re-resolve a Select2 answer using the actual dropdown options.
+        Uses profile matching, defaults, and AI to pick the best option.
+        """
+        label = field.label.lower()
+        opt_lower = [t.lower() for t in option_texts]
+
+        # 1. Yes/No questions — check known patterns
+        yes_patterns = ['authorize', 'authorized', 'legal right', 'legally',
+                       '18 years', 'age', 'willing to relocat', 'relocated',
+                       'background check', 'drug test', 'submit verification']
+        no_patterns = ['require sponsor', 'sponsorship', 'non-compete',
+                      'previously been employed', 'worked for our company',
+                      'different name', 'convicted']
+
+        has_yes = any('yes' in o for o in opt_lower)
+        has_no = any('no' in o for o in opt_lower)
+
+        if has_yes and has_no:
+            if any(p in label for p in yes_patterns):
+                return 'Yes'
+            if any(p in label for p in no_patterns):
+                return 'No'
+
+        # 2. State/location questions
+        if any(k in label for k in ['state', 'province', 'reside', 'location', 'where']):
+            profile_state = ""
+            if self.profile:
+                profile_state = self.profile.get("personal.state")
+            if profile_state:
+                # Bidirectional state mapping (full name ↔ abbreviation)
+                state_to_abbr = {
+                    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+                    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+                    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+                    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+                    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+                    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+                    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+                    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+                    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+                    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+                    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+                    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+                    "wisconsin": "WI", "wyoming": "WY"
+                }
+                abbr_to_state = {v: k for k, v in state_to_abbr.items()}
+
+                ps_lower = profile_state.lower().strip()
+                # Determine both full name and abbreviation
+                if len(ps_lower) == 2:
+                    state_abbr = ps_lower.upper()
+                    state_full = abbr_to_state.get(state_abbr, "").lower()
+                else:
+                    state_full = ps_lower
+                    state_abbr = state_to_abbr.get(ps_lower, "").upper()
+
+                # Try matching: full name, abbreviation, "USA-XX" pattern
+                for t in option_texts:
+                    tl = t.lower()
+                    if state_full and state_full in tl:
+                        return t
+                    if state_abbr and (state_abbr.lower() in tl.split('-') or
+                                       tl.endswith(state_abbr.lower()) or
+                                       f"usa-{state_abbr.lower()}" == tl):
+                        return t
+                    if ps_lower in tl or tl in ps_lower:
+                        return t
+
+                # Also try city + state combo
+                profile_city = self.profile.get("personal.city") if self.profile else ""
+                if profile_city:
+                    for t in option_texts:
+                        if profile_city.lower() in t.lower():
+                            return t
+
+        # 3. Pronouns
+        if 'pronoun' in label:
+            for t in option_texts:
+                if 'he/him' in t.lower():
+                    return t
+
+        # 4. How did you hear / source
+        if any(k in label for k in ['how did you', 'learn about', 'hear about', 'source']):
+            for t in option_texts:
+                tl = t.lower()
+                if any(k in tl for k in ['linkedin', 'job board', 'online']):
+                    return t
+            # Return "Other" if available
+            for t in option_texts:
+                if t.lower() in ('other', 'other (please specify)'):
+                    return t
+
+        # 5. Previously employed
+        if any(k in label for k in ['previously', 'former', 'employed']):
+            for t in option_texts:
+                if t.lower().startswith('no'):
+                    return t
+
+        # 6. Demographics — use profile values first, then fallback to decline
+        demo = self.profile.data.get("demographics", {}) if self.profile else {}
+        demo_map = {
+            'gender': demo.get('gender', ''),
+            'hispanic': demo.get('hispanic_latino', ''),
+            'latino': demo.get('hispanic_latino', ''),
+            'race': demo.get('race_ethnicity', ''),
+            'ethnic': demo.get('race_ethnicity', ''),
+            'veteran': demo.get('veteran_status', ''),
+            'disability': demo.get('disability_status', ''),
+        }
+        if any(k in label for k in demo_map):
+            # Find matching profile value
+            profile_val = ''
+            for key, val in demo_map.items():
+                if key in label and val:
+                    profile_val = val
+                    break
+            # Try profile value first
+            if profile_val:
+                for t in option_texts:
+                    tl = t.lower()
+                    pv = profile_val.lower()
+                    if pv in tl or tl in pv or tl.startswith(pv) or pv.startswith(tl):
+                        return t
+            # Fallback to decline/prefer not
+            for t in option_texts:
+                tl = t.lower()
+                if 'decline' in tl or 'prefer not' in tl or 'do not want' in tl or 'not a protected' in tl:
+                    return t
+
+        # 7. Claude AI as last resort — ask to pick from specific options
+        if self.ai and self.ai.available:
+            try:
+                clean_options = [t for t in option_texts if t.lower() not in ('--', 'please select', 'select', '')]
+                if clean_options:
+                    context = self._get_profile_context_for_ai()
+                    ai_pick = self.ai.choose_option(field.label, clean_options, context)
+                    if ai_pick:
+                        return ai_pick
+            except Exception as e:
+                print(f"      ⚠️ AI re-resolve error: {str(e)[:40]}")
+
+        return ""
 
     def _fill_school_autocomplete(self, el: ElementHandle, field: FormField, frame) -> bool:
         """
@@ -1900,8 +3151,14 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         self.page.keyboard.press('Escape')
         time.sleep(0.1)
 
-        el.scroll_into_view_if_needed()
-        el.click()
+        try:
+            el.scroll_into_view_if_needed(timeout=3000)
+        except:
+            pass  # Element may not be scrollable
+        try:
+            el.click(timeout=3000)
+        except:
+            return False  # Can't click — probably hidden
         time.sleep(0.3)
 
         # Type search - use shorter text for better matches
@@ -1983,10 +3240,83 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         return True
     
     def _fill_file(self, el: ElementHandle, field: FormField) -> bool:
-        """Upload file."""
-        el.set_input_files(field.answer)
-        time.sleep(0.5)
-        return True
+        """Upload file via Attach button (Greenhouse S3) or direct set_input_files."""
+        context = getattr(self, '_active_frame', self.page)
+
+        # Strategy 1: Greenhouse S3 upload — click "Attach" button inside fieldset
+        # Greenhouse hides <input type="file"> inside S3 forms and uses JS upload handlers
+        # The correct approach is: click "Attach" → intercept file_chooser → set file
+        try:
+            # Find parent fieldset (resume_fieldset, cover_letter_fieldset)
+            fieldset_id = el.evaluate("""el => {
+                let parent = el;
+                for (let i = 0; i < 8 && parent; i++) {
+                    if (parent.tagName === 'FIELDSET' && parent.id) return parent.id;
+                    parent = parent.parentElement;
+                }
+                // Also check if selector points to fieldset itself
+                if (el.tagName === 'FIELDSET') return el.id || '';
+                return '';
+            }""")
+
+            if fieldset_id:
+                # Found fieldset — look for Attach button inside it
+                attach_btn = context.query_selector(
+                    f"#{fieldset_id} button[data-source='attach'], "
+                    f"#{fieldset_id} button:has-text('Attach')"
+                )
+                if attach_btn and attach_btn.is_visible():
+                    try:
+                        with self.page.expect_file_chooser(timeout=5000) as fc_info:
+                            attach_btn.click(timeout=3000)
+                        file_chooser = fc_info.value
+                        file_chooser.set_files(field.answer)
+                        time.sleep(1.0)
+                        print(f"      📎 Uploaded via Attach button (fieldset: {fieldset_id})")
+                        return True
+                    except Exception as e:
+                        print(f"      ⚠️ Attach button upload failed: {e}")
+                        # Fall through to Strategy 2
+        except Exception as e:
+            print(f"      ⚠️ Fieldset detection error: {e}")
+
+        # Strategy 2: Find Attach button near the element (broader search)
+        try:
+            # Check selector for fieldset hints (e.g. #s3_upload_for_cover_letter input[type='file'])
+            selector_lower = (field.selector or "").lower()
+            fieldset_hint = ""
+            if "cover_letter" in selector_lower:
+                fieldset_hint = "cover_letter_fieldset"
+            elif "resume" in selector_lower or "s3_upload_for_resume" in selector_lower:
+                fieldset_hint = "resume_fieldset"
+
+            if fieldset_hint:
+                attach_btn = context.query_selector(
+                    f"#{fieldset_hint} button[data-source='attach']"
+                )
+                if attach_btn and attach_btn.is_visible():
+                    try:
+                        with self.page.expect_file_chooser(timeout=5000) as fc_info:
+                            attach_btn.click(timeout=3000)
+                        file_chooser = fc_info.value
+                        file_chooser.set_files(field.answer)
+                        time.sleep(1.0)
+                        print(f"      📎 Uploaded via Attach button (hint: {fieldset_hint})")
+                        return True
+                    except Exception as e:
+                        print(f"      ⚠️ Attach button (hint) failed: {e}")
+        except Exception as e:
+            pass
+
+        # Strategy 3: Direct set_input_files (works for standard file inputs)
+        try:
+            el.set_input_files(field.answer)
+            time.sleep(0.5)
+            print(f"      📎 Uploaded via direct set_input_files")
+            return True
+        except Exception as e:
+            print(f"      ❌ Direct file upload failed: {e}")
+            return False
     
     def _interactive_fill(self, field: FormField):
         """Interactive fill for unknown fields."""
@@ -2033,14 +3363,20 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _blur_all_fields(self):
         """Click outside all fields to trigger blur/validation."""
         try:
+            context = getattr(self, '_active_frame', self.page)
             # Click on body to blur any focused field
-            self.page.click('body', position={'x': 10, 'y': 10})
+            try:
+                context.click('body', position={'x': 10, 'y': 10})
+            except:
+                self.page.click('body', position={'x': 10, 'y': 10})
             time.sleep(0.3)
-            
+
             # Also blur each field explicitly
             for field in self.fields:
                 if field.selector:
-                    el = self.page.query_selector(field.selector)
+                    el = context.query_selector(field.selector)
+                    if not el:
+                        el = self.page.query_selector(field.selector)
                     if el:
                         try:
                             el.evaluate("e => e.blur()")
@@ -2064,14 +3400,35 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     def _validate_field(self, field: FormField) -> bool:
         """Validate single field by reading back value."""
         try:
-            el = self.page.query_selector(field.selector)
+            context = getattr(self, '_active_frame', self.page)
+            el = context.query_selector(field.selector)
+            if not el:
+                el = self.page.query_selector(field.selector)
             if not el:
                 return False
             
             actual = self._get_value(el, field.html_tag, field.input_type)
             
-            # For file fields, just check if something was uploaded
+            # For file fields, check if Greenhouse shows the filename
             if field.field_type == FieldType.FILE:
+                # Try to verify by checking if filename is visible in the fieldset
+                try:
+                    context = getattr(self, '_active_frame', self.page)
+                    fid = (field.element_id or "").lower()
+                    # Greenhouse shows filename in #resume_filename or #cover_letter_filename
+                    for name_id in ["resume_filename", "cover_letter_filename"]:
+                        if fid.replace("_fieldset", "") in name_id or \
+                           name_id.replace("_filename", "") in fid:
+                            fn_el = context.query_selector(f"#{name_id}")
+                            if fn_el:
+                                fn_text = fn_el.inner_text().strip()
+                                if fn_text:
+                                    print(f"   📎 File verified: {fn_text}")
+                                    field.status = FillStatus.VERIFIED
+                                    return True
+                except:
+                    pass
+                # Fallback: assume verified (file inputs can't be read back)
                 field.status = FillStatus.VERIFIED
                 return True
             
@@ -2110,166 +3467,490 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
     # ─────────────────────────────────────────────────────────────────────
     
     def fill_section_entry(self, section_name: str, entry_index: int, form_index: int) -> bool:
-        """Fill one entry of a repeatable section."""
+        """Fill one entry of a repeatable section (work experience, education)."""
         config = self.REPEATABLE_SECTIONS.get(section_name)
         if not config:
             return False
-        
+
         profile_key = config['profile_key']
         field_patterns = config['field_patterns']
         skip_end_if_current = config.get('skip_end_date_if_current', False)
-        
+
         entries = self.profile.data.get(profile_key, [])
         if entry_index >= len(entries):
             return False
-        
+
         entry = entries[entry_index]
         is_current = entry.get('current', False)
-        
+
         company_or_school = entry.get('company', entry.get('school', ''))
         print(f"   📝 {section_name}[{entry_index}]: {company_or_school[:40]}")
-        
+
         filled_any = False
-        
-        for pattern, field_name in field_patterns.items():
+        context = getattr(self, '_active_frame', self.page)
+
+        # ── Phase 1: Fill ID-based fields (school, degree, discipline, company, title) ──
+        # Try primary patterns first, then legacy patterns
+        all_patterns = dict(field_patterns)
+        legacy = config.get('legacy_field_patterns', {})
+
+        for pattern, field_name in all_patterns.items():
             selector = '#' + pattern.replace('{N}', str(form_index))
-            
-            # Skip end date if current role
+
             if skip_end_if_current and is_current and 'end' in field_name:
                 print(f"      ⏭️ {field_name} (skipped - current role)")
                 continue
-            
+
             value = entry.get(field_name, '')
             if not value and field_name != 'current':
                 continue
-            
-            # Handle boolean current field
+
+            search_value = entry.get(f'{field_name}_search', '')
+            fallback_value = entry.get(f'{field_name}_fallback', '')
+
             if field_name == 'current':
                 if value == True:
                     value = 'checked'
                 else:
                     continue
-            
-            el = self.page.query_selector(selector)
+
+            # Find element — try primary selector, then with s2id_ prefix (Select2), then legacy
+            el = context.query_selector(selector)
+            if not el and context != self.page:
+                el = self.page.query_selector(selector)
+
+            # If element is hidden (Greenhouse wraps selects in Select2), prefer the s2id_ container
+            if el:
+                try:
+                    el_visible = el.is_visible()
+                    el_type_check = el.get_attribute('type') or ''
+                    if not el_visible or el_type_check == 'hidden':
+                        # Found hidden element — try Select2 container instead
+                        s2id_selector = '#s2id_' + pattern.replace('{N}', str(form_index))
+                        s2id_el = context.query_selector(s2id_selector)
+                        if not s2id_el and context != self.page:
+                            s2id_el = self.page.query_selector(s2id_selector)
+                        if s2id_el:
+                            el = s2id_el  # Use visible Select2 container
+                except:
+                    pass
+
+            # For Greenhouse Select2: the actual element is s2id_{id}
             if not el:
+                s2id_selector = '#s2id_' + pattern.replace('{N}', str(form_index))
+                el = context.query_selector(s2id_selector)
+                if not el and context != self.page:
+                    el = self.page.query_selector(s2id_selector)
+
+            # Try legacy patterns
+            if not el and field_name in {fp_fn for fp_fn in legacy.values()}:
+                for leg_pat, leg_fn in legacy.items():
+                    if leg_fn == field_name:
+                        leg_sel = '#' + leg_pat.replace('{N}', str(form_index))
+                        el = context.query_selector(leg_sel)
+                        if not el and context != self.page:
+                            el = self.page.query_selector(leg_sel)
+                        if el:
+                            break
+
+            if not el:
+                print(f"      ⚠️ {field_name}: element not found")
                 continue
-            
+
             try:
-                tag = el.evaluate("e => e.tagName.toLowerCase()")
-                el_type = el.get_attribute('type') or 'text'
-                role = el.get_attribute('role') or ''
-                aria = el.get_attribute('aria-haspopup') or ''
-                
-                # Determine field type and fill
-                if tag == 'select':
-                    el.select_option(label=str(value))
-                elif role == 'combobox' or aria in ('true', 'listbox'):
-                    # For autocomplete: use aria-controls method
-                    frame = el.owner_frame() or self.page
-                    
-                    # Close any open dropdowns
-                    self.page.keyboard.press('Escape')
-                    time.sleep(0.1)
-                    
-                    el.scroll_into_view_if_needed()
-                    el.click()
-                    time.sleep(0.3)
-                    
-                    # Type to filter
-                    search_text = str(value)[:40]
-                    el.fill('')
-                    self.page.keyboard.type(search_text, delay=15)
-                    time.sleep(0.5)
-                    
-                    # Use aria-controls to find correct listbox
-                    controls_id = el.get_attribute('aria-controls')
-                    opts = []
-                    if controls_id:
-                        listbox = frame.query_selector(f'#{controls_id}')
-                        if listbox:
-                            opts = listbox.query_selector_all('[role="option"]')
-                    
-                    # Fallback to global selectors
-                    if not opts:
-                        opts = frame.query_selector_all('[role="option"], .select__option')
-                    
-                    value_lower = str(value).lower()
-                    best_match = None
-                    
-                    for opt in opts:
-                        opt_text = opt.inner_text().strip().lower()
-                        if value_lower in opt_text or opt_text in value_lower:
-                            best_match = opt
-                            break
-                        value_words = set(value_lower.split()[:3])
-                        opt_words = set(opt_text.split()[:3])
-                        if len(value_words & opt_words) >= 2:
-                            best_match = opt
-                            break
-                    
-                    if best_match:
-                        best_match.click()
-                    elif opts:
-                        opts[0].click()
-                    else:
-                        # No matches - try "Other" for school fields
-                        if 'school' in field_name.lower():
-                            self.page.keyboard.press('Escape')
-                            time.sleep(0.1)
-                            el.fill('')
-                            self.page.keyboard.type('0 - Other', delay=15)
-                            time.sleep(0.5)
-                            if controls_id:
-                                listbox = frame.query_selector(f'#{controls_id}')
-                                if listbox:
-                                    other_opts = listbox.query_selector_all('[role="option"]')
-                                    if other_opts:
-                                        other_opts[0].click()
-                                    else:
-                                        self.page.keyboard.press('Tab')
-                            else:
-                                self.page.keyboard.press('Tab')
-                        else:
-                            self.page.keyboard.press('Tab')
-                    time.sleep(0.2)
-                elif el_type == 'checkbox':
-                    if value == 'checked' and not el.is_checked():
-                        el.click()
-                else:
-                    el.fill(str(value))
-                
-                filled_any = True
-                print(f"      ✅ {field_name}: {str(value)[:25]}")
+                ok = self._fill_section_element(el, field_name, value, search_value, fallback_value)
+                if ok:
+                    filled_any = True
+                    print(f"      ✅ {field_name}: {str(value)[:25]}")
                 time.sleep(0.1)
-                
             except Exception as e:
                 print(f"      ❌ {field_name}: {e}")
-        
+
+        # ── Phase 2: Fill date fields (name-based selectors, no ID) ──
+        date_selectors = config.get('date_selectors', {})
+        if date_selectors:
+            for field_name, name_selector in date_selectors.items():
+                if skip_end_if_current and is_current and 'end' in field_name:
+                    print(f"      ⏭️ {field_name} (skipped - current role)")
+                    continue
+
+                value = entry.get(field_name, '')
+                if not value:
+                    continue
+
+                # Find all matching elements (one per education entry) and pick by index
+                els = context.query_selector_all(name_selector)
+                if not els and context != self.page:
+                    els = self.page.query_selector_all(name_selector)
+
+                if form_index < len(els):
+                    el = els[form_index]
+                    try:
+                        fill_value = str(value)
+                        # DOM-aware format adaptation
+                        fill_value = self._adapt_value_to_dom_element(fill_value, el)
+                        el.fill(fill_value)
+                        filled_any = True
+                        print(f"      ✅ {field_name}: {fill_value}")
+                        time.sleep(0.1)
+                    except Exception as e:
+                        print(f"      ❌ {field_name}: {e}")
+                else:
+                    print(f"      ⚠️ {field_name}: element[{form_index}] not found (only {len(els)} elements)")
+
         return filled_any
+
+    def _fill_section_element(self, el, field_name: str, value: str,
+                               search_value: str = '', fallback_value: str = '') -> bool:
+        """Fill a single element within a repeatable section. Handles Select2, select, combobox, text."""
+        tag = el.evaluate("e => e.tagName.toLowerCase()")
+        el_type = el.get_attribute('type') or 'text'
+        role = el.get_attribute('role') or ''
+        aria = el.get_attribute('aria-haspopup') or ''
+        el_class = el.get_attribute('class') or ''
+
+        # ── Select2 container (Greenhouse education school/degree/discipline) ──
+        if 'select2-container' in el_class or (tag == 'div' and 's2id' in (el.get_attribute('id') or '')):
+            return self._fill_section_select2(el, field_name, value, search_value, fallback_value)
+
+        # ── Native <select> ──
+        if tag == 'select':
+            el.select_option(label=str(value))
+            return True
+
+        # ── Combobox / aria autocomplete ──
+        if role == 'combobox' or aria in ('true', 'listbox'):
+            return self._fill_section_autocomplete(el, field_name, value, search_value, fallback_value)
+
+        # ── Checkbox ──
+        if el_type == 'checkbox':
+            if value == 'checked' and not el.is_checked():
+                el.click()
+            return True
+
+        # ── Text input ──
+        fill_value = str(value)
+        fill_value = self._adapt_value_to_dom_element(fill_value, el)
+        el.fill(fill_value)
+        return True
+
+    def _fill_section_select2(self, container, field_name: str, value: str,
+                               search_value: str = '', fallback_value: str = '') -> bool:
+        """Fill Select2 dropdown within a repeatable section (e.g., Greenhouse education)."""
+        frame = container.owner_frame() or self.page
+
+        # Open Select2 by clicking the choice element
+        try:
+            choice = container.query_selector('a.select2-choice, .select2-choices')
+            if choice:
+                choice.dispatchEvent = None  # We'll use JS dispatch instead
+                container.evaluate('''el => {
+                    const choice = el.querySelector('a.select2-choice, .select2-choices');
+                    if (choice) choice.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                }''')
+            else:
+                container.click()
+        except:
+            container.click()
+
+        time.sleep(0.5)
+
+        # Type search text
+        search_text = str(search_value or value)[:40]
+
+        # Find the search input inside the open dropdown
+        search_input = frame.query_selector('.select2-drop:not(.select2-display-none) .select2-input')
+        if not search_input:
+            search_input = frame.query_selector('.select2-search input')
+
+        if search_input:
+            try:
+                search_input.fill('', timeout=3000)
+            except:
+                pass  # fill may fail on hidden inputs — keyboard will handle it
+            self.page.keyboard.type(search_text, delay=20)
+        else:
+            self.page.keyboard.type(search_text, delay=20)
+
+        time.sleep(0.8)
+
+        # Read options
+        opts = frame.query_selector_all('.select2-drop:not(.select2-display-none) .select2-results li.select2-result')
+        if not opts:
+            opts = frame.query_selector_all('.select2-results li.select2-result')
+        if not opts:
+            opts = frame.query_selector_all('.select2-results li')
+
+        # Filter valid options
+        valid_opts = []
+        for opt in opts:
+            try:
+                cls = opt.get_attribute('class') or ''
+                if 'select2-disabled' in cls or 'select2-result-unselectable' in cls:
+                    continue
+                text = opt.inner_text().strip()
+                if text and 'no result' not in text.lower():
+                    valid_opts.append((opt, text))
+            except:
+                continue
+
+        # Score-based matching
+        value_lower = str(value).lower()
+        best_match = None
+        best_score = 0
+
+        for opt, opt_text in valid_opts:
+            opt_lower = opt_text.lower()
+            score = 0
+            if opt_lower == value_lower:
+                score = 100
+            elif value_lower in opt_lower:
+                score = 90
+            elif opt_lower in value_lower:
+                score = 85
+            elif 'school' in field_name.lower():
+                # School: strict word overlap
+                value_words = set(value_lower.split())
+                opt_words = set(opt_lower.split())
+                overlap = len(value_words & opt_words)
+                total = max(len(value_words), len(opt_words))
+                if total > 0 and overlap / total >= 0.6:
+                    score = 70
+            else:
+                value_words = set(value_lower.split())
+                opt_words = set(opt_lower.split())
+                overlap = len(value_words & opt_words)
+                if overlap >= 2:
+                    score = 60
+            if score > best_score:
+                best_score = score
+                best_match = opt
+
+        if best_match and best_score >= 70:
+            best_match.click()
+            print(f"      ✅ Select2 matched (score={best_score})")
+            time.sleep(0.2)
+            return True
+
+        # No confident match → fallback (e.g., "Other" for schools)
+        if fallback_value:
+            self.page.keyboard.press('Escape')
+            time.sleep(0.2)
+
+            # Re-open dropdown
+            try:
+                container.evaluate('''el => {
+                    const choice = el.querySelector('a.select2-choice, .select2-choices');
+                    if (choice) choice.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                }''')
+            except:
+                container.click()
+            time.sleep(0.5)
+
+            # Type fallback
+            search_input = frame.query_selector('.select2-drop:not(.select2-display-none) .select2-input')
+            if not search_input:
+                search_input = frame.query_selector('.select2-search input')
+            if search_input:
+                try:
+                    search_input.fill('', timeout=3000)
+                except:
+                    pass
+                self.page.keyboard.type(fallback_value, delay=20)
+            else:
+                self.page.keyboard.type(fallback_value, delay=20)
+            time.sleep(0.8)
+
+            # Find exact "Other" match
+            fb_opts = frame.query_selector_all('.select2-drop:not(.select2-display-none) .select2-results li.select2-result')
+            if not fb_opts:
+                fb_opts = frame.query_selector_all('.select2-results li')
+
+            for opt in fb_opts:
+                try:
+                    text = opt.inner_text().strip()
+                    if text.lower() == fallback_value.lower():
+                        opt.click()
+                        print(f"      ✅ Used fallback: '{fallback_value}'")
+                        time.sleep(0.2)
+                        return True
+                except:
+                    continue
+
+            # Click first valid option
+            for opt in fb_opts:
+                try:
+                    text = opt.inner_text().strip()
+                    if text and 'no result' not in text.lower():
+                        opt.click()
+                        print(f"      ✅ Used fallback (first match): '{text[:30]}'")
+                        time.sleep(0.2)
+                        return True
+                except:
+                    continue
+
+        # Last resort — click first valid option or escape
+        if valid_opts:
+            valid_opts[0][0].click()
+            print(f"      ⚠️ No match, using first: '{valid_opts[0][1][:30]}'")
+            time.sleep(0.2)
+            return True
+
+        self.page.keyboard.press('Escape')
+        return False
+
+    def _fill_section_autocomplete(self, el, field_name: str, value: str,
+                                    search_value: str = '', fallback_value: str = '') -> bool:
+        """Fill combobox/autocomplete within a repeatable section."""
+        frame = el.owner_frame() or self.page
+
+        self.page.keyboard.press('Escape')
+        time.sleep(0.1)
+
+        try:
+            el.scroll_into_view_if_needed(timeout=3000)
+        except:
+            pass
+        try:
+            el.click(timeout=3000)
+        except:
+            return False
+        time.sleep(0.3)
+
+        search_text = str(search_value or value)[:40]
+        try:
+            el.fill('', timeout=3000)
+        except:
+            pass
+        self.page.keyboard.type(search_text, delay=15)
+        time.sleep(0.5)
+
+        controls_id = el.get_attribute('aria-controls')
+        opts = []
+        if controls_id:
+            listbox = frame.query_selector(f'#{controls_id}')
+            if listbox:
+                opts = listbox.query_selector_all('[role="option"]')
+        if not opts:
+            opts = frame.query_selector_all('[role="option"], .select__option')
+
+        value_lower = str(value).lower()
+        best_match = None
+        best_score = 0
+
+        for opt in opts:
+            opt_text = opt.inner_text().strip().lower()
+            score = 0
+            if opt_text == value_lower:
+                score = 100
+            elif value_lower in opt_text:
+                score = 90
+            elif opt_text in value_lower:
+                score = 85
+            elif 'school' in field_name.lower():
+                value_words = set(value_lower.split())
+                opt_words = set(opt_text.split())
+                overlap = len(value_words & opt_words)
+                total = max(len(value_words), len(opt_words))
+                if total > 0 and overlap / total >= 0.5:
+                    score = 70
+            else:
+                value_words = set(value_lower.split())
+                opt_words = set(opt_text.split())
+                overlap = len(value_words & opt_words)
+                if overlap >= 3:
+                    score = 70
+                elif overlap >= 2:
+                    score = 60
+            if score > best_score:
+                best_score = score
+                best_match = opt
+
+        if best_match and best_score >= 70:
+            best_match.click()
+            print(f"      ✅ Autocomplete matched (score={best_score})")
+            time.sleep(0.2)
+            return True
+
+        # Fallback
+        if fallback_value:
+            self.page.keyboard.press('Escape')
+            time.sleep(0.1)
+            try:
+                el.fill('', timeout=3000)
+            except:
+                pass
+            self.page.keyboard.type(fallback_value, delay=15)
+            time.sleep(0.5)
+            new_opts = []
+            if controls_id:
+                listbox = frame.query_selector(f'#{controls_id}')
+                if listbox:
+                    new_opts = listbox.query_selector_all('[role="option"]')
+            if not new_opts:
+                new_opts = frame.query_selector_all('[role="option"], .select__option')
+            for opt in new_opts:
+                if opt.inner_text().strip().lower() == fallback_value.lower():
+                    opt.click()
+                    print(f"      ✅ Used fallback: '{fallback_value}'")
+                    time.sleep(0.2)
+                    return True
+            if new_opts:
+                new_opts[-1].click()
+                print(f"      ✅ Used fallback (last option)")
+                time.sleep(0.2)
+                return True
+
+        if opts:
+            opts[0].click()
+            print(f"      ⚠️ No match — using first option")
+            time.sleep(0.2)
+            return True
+
+        self.page.keyboard.press('Tab')
+        return False
     
     def click_add_another(self, section_name: str) -> bool:
-        """Click 'Add another' button for a section."""
+        """Click 'Add another' button for a section. Searches in iframe too."""
         config = self.REPEATABLE_SECTIONS.get(section_name)
         if not config:
             return False
-        
-        button_index = config['button_index']
-        buttons = self.page.query_selector_all(config['add_button_selector'])
-        
-        if button_index < len(buttons):
-            buttons[button_index].click()
-            time.sleep(0.5)
-            self.browser.wait_for_stable()
-            return True
-        
-        # Fallback: try finding by text
-        add_link = self.page.query_selector(f'a:has-text("Add another"), button:has-text("Add another")')
-        if add_link:
-            add_link.click()
-            time.sleep(0.5)
-            self.browser.wait_for_stable()
-            return True
-        
+
+        contexts = [getattr(self, '_active_frame', self.page), self.page]
+        section_text = config.get('section_text', section_name.replace('_', ' '))
+
+        for context in contexts:
+            # Try configured selectors
+            for selector in config.get('add_button_selectors', []):
+                try:
+                    btn = context.query_selector(selector)
+                    if btn and btn.is_visible():
+                        btn.click()
+                        time.sleep(0.5)
+                        self.browser.wait_for_stable()
+                        return True
+                except:
+                    continue
+
+            # Text-based search — must match section context
+            try:
+                all_links = context.query_selector_all('a, button')
+                for link in all_links:
+                    try:
+                        if not link.is_visible():
+                            continue
+                        text = link.inner_text().strip().lower()
+                        if ('add another' in text or 'add a' in text) and \
+                           section_text.lower() in text:
+                            link.click()
+                            time.sleep(0.5)
+                            self.browser.wait_for_stable()
+                            return True
+                    except:
+                        continue
+            except:
+                continue
+
         return False
     
     def fill_repeatable_section(self, section_name: str):
@@ -2285,24 +3966,52 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         
         print(f"\n🔄 Filling {section_name}: {len(entries)} entries")
         
-        # Fill first entry
-        self.fill_section_entry(section_name, entry_index=0, form_index=0)
-        
+        # Fill first entry — if no fields found, skip the whole section
+        first_ok = False
+        try:
+            first_ok = self.fill_section_entry(section_name, entry_index=0, form_index=0)
+        except Exception as e:
+            print(f"   ❌ Error filling {section_name}[0]: {e}")
+
+        if not first_ok:
+            print(f"   ⚠️ No {section_name} fields found on this form, skipping remaining entries")
+            return
+
         # Add and fill additional entries
         for i in range(1, len(entries)):
-            print(f"\n   ➕ Adding {section_name} entry {i+1}...")
-            if self.click_add_another(section_name):
-                time.sleep(1.0)  # Wait for React to render new fields
+            try:
+                print(f"\n   ➕ Adding {section_name} entry {i+1}...")
+
+                # Check if slot already exists (Greenhouse pre-renders 4 education slots)
+                first_pattern = list(config['field_patterns'].keys())[0]
+                new_id = first_pattern.replace('{N}', str(i))
+                slot_exists = self.page.query_selector(f'#{new_id}') or \
+                              self.page.query_selector(f'#s2id_{new_id}')
+
+                if not slot_exists:
+                    # Try clicking "Add another" button
+                    if self.click_add_another(section_name):
+                        time.sleep(1.0)  # Wait for React to render new fields
+                    else:
+                        print(f"   ⚠️ Could not add entry {i+1} and slot not pre-rendered")
+                        break
+                else:
+                    print(f"      ℹ️ Slot {i} already exists (pre-rendered)")
+
                 # Scroll to new section to ensure visibility
-                new_selector = list(config['field_patterns'].keys())[0].replace('{N}', str(i))
-                new_el = self.page.query_selector(f'#{new_selector}')
+                new_el = self.page.query_selector(f'#{new_id}') or \
+                         self.page.query_selector(f'#s2id_{new_id}')
                 if new_el:
-                    new_el.scroll_into_view_if_needed()
+                    try:
+                        new_el.scroll_into_view_if_needed(timeout=3000)
+                    except:
+                        pass
                     time.sleep(0.3)
+
                 self.fill_section_entry(section_name, entry_index=i, form_index=i)
-            else:
-                print(f"   ❌ Could not add entry {i+1}")
-                break
+            except Exception as e:
+                print(f"   ❌ Error filling {section_name}[{i}]: {e}")
+                continue  # Try next entry instead of crashing
     
     def fill_all_repeatable_sections(self):
         """Fill all repeatable sections (work experience, education)."""
@@ -2311,8 +4020,57 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
         print("="*60)
         
         for section_name in self.REPEATABLE_SECTIONS.keys():
-            self.fill_repeatable_section(section_name)
+            try:
+                self.fill_repeatable_section(section_name)
+            except Exception as e:
+                print(f"   ❌ Error in {section_name} section: {e}")
     
+    def _mark_section_filled_fields(self):
+        """After repeatable sections are filled, mark overlapping fields in self.fields as VERIFIED.
+        This prevents the main fill loop from overwriting section-filled values."""
+        context = getattr(self, '_active_frame', self.page)
+        marked = 0
+        for f in self.fields:
+            if f.status != FillStatus.READY:
+                continue
+            f_label = f.label.lower().strip()
+            # Check if this is an education/section field
+            is_section_field = f_label in ('school', 'degree', 'discipline') or \
+                'education' in f_label or \
+                any(kw in f_label for kw in ('start month', 'start year', 'end month', 'end year'))
+            if not is_section_field:
+                continue
+            # Check if the underlying element already has a value (set by section handler)
+            try:
+                el = context.query_selector(f.selector)
+                if not el:
+                    continue
+                tag = el.evaluate("e => e.tagName.toLowerCase()")
+                if tag == 'div':
+                    # Select2 container — check the display text
+                    chosen_text = el.evaluate('''e => {
+                        const chosen = e.querySelector('.select2-chosen');
+                        return chosen ? chosen.textContent.trim() : '';
+                    }''')
+                    if chosen_text and chosen_text != '' and chosen_text.lower() not in ('', 'select...', 'select', '—'):
+                        f.status = FillStatus.VERIFIED
+                        f.answer = chosen_text[:50]
+                        f.answer_source = AnswerSource.PROFILE
+                        marked += 1
+                        continue
+                # Check hidden input value
+                if tag == 'input':
+                    val = el.input_value()
+                    if val and val.strip():
+                        f.status = FillStatus.VERIFIED
+                        f.answer = val[:50]
+                        f.answer_source = AnswerSource.PROFILE
+                        marked += 1
+            except:
+                pass
+        if marked:
+            print(f"   ✅ Marked {marked} fields as already filled by section handler")
+
     def _generate_report(self, url: str) -> FillReport:
         """Generate fill report."""
         report = FillReport(
@@ -2338,7 +4096,556 @@ Certifications: {', '.join(certs[:3]) if certs else 'SAFe, PSM, GCP'}"""
                 report.errors += 1
         
         return report
-    
+
+    MONTH_MAP = {
+        'january': '01', 'february': '02', 'march': '03', 'april': '04',
+        'may': '05', 'june': '06', 'july': '07', 'august': '08',
+        'september': '09', 'october': '10', 'november': '11', 'december': '12',
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+        'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09',
+        'oct': '10', 'nov': '11', 'dec': '12',
+    }
+
+    def _month_to_number(self, value: str) -> str:
+        """Convert month name to number (e.g., 'September' → '09', '06' → '06')."""
+        v = value.strip().lower()
+        # Already numeric
+        if v.isdigit():
+            return v.zfill(2)
+        return self.MONTH_MAP.get(v, value)
+
+    def _adapt_value_to_dom(self, value: str, field: 'FormField') -> str:
+        """
+        DOM-aware value adaptation.
+
+        Reads field's placeholder, maxlength, pattern, and input_type
+        to understand what format the field expects, then converts the value.
+
+        Examples:
+        - placeholder="MM", value="September" → "09"
+        - placeholder="YYYY", value="September" → "September" (no change, not a year)
+        - maxlength=2, value="September" → "09" (month name in short field → number)
+        - maxlength=4, value="2025" → "2025" (year fits fine)
+        - placeholder="MM/YYYY", value="September" → "09" (extract month part)
+        - input_type="number", value="September" → "09"
+        """
+        if not value or not value.strip():
+            return value
+
+        v = value.strip()
+        placeholder = field.placeholder.strip().upper() if field.placeholder else ""
+        maxlen = field.maxlength
+        input_type = field.input_type.lower() if field.input_type else ""
+
+        # ── Rule 1: Placeholder indicates numeric month (MM) ──
+        # Covers: placeholder="MM", "mm", "MM/YYYY" (month part)
+        if placeholder in ("MM", "M"):
+            converted = self._month_to_number(v)
+            if converted != v:
+                return converted
+            # Value is already numeric or unknown — truncate to maxlen
+            if maxlen and len(v) > maxlen:
+                return v[:maxlen]
+            return v
+
+        # ── Rule 2: Placeholder indicates year (YYYY) ──
+        if placeholder in ("YYYY", "YY"):
+            # Year should be numeric — if it's already digits, fine
+            if v.isdigit():
+                if placeholder == "YY" and len(v) == 4:
+                    return v[2:]  # 2025 → 25
+                return v
+            return v
+
+        # ── Rule 3: maxlength constraint ──
+        # If field only accepts 2 chars and value is a month name → convert
+        if maxlen and maxlen <= 2 and not v.isdigit():
+            # Likely a month field that expects numeric format
+            converted = self._month_to_number(v)
+            if converted != v:
+                return converted
+
+        # If field only accepts 4 chars and value is longer text → might be year
+        if maxlen and maxlen == 4 and v.isdigit():
+            return v[:4]
+
+        # ── Rule 4: input type="number" or type="tel" ──
+        # Field expects numeric input — try to convert month names
+        if input_type in ("number", "tel"):
+            converted = self._month_to_number(v)
+            if converted != v:
+                return converted
+
+        # ── Rule 5: HTML5 pattern attribute ──
+        # e.g., pattern="[0-9]{2}" means 2-digit number expected
+        if field.pattern:
+            pat = field.pattern
+            if re.match(r'^\[0-9\]', pat):
+                # Numeric pattern — convert month names if applicable
+                converted = self._month_to_number(v)
+                if converted != v:
+                    return converted
+
+        # ── Rule 6: General maxlength truncation ──
+        if maxlen and len(v) > maxlen:
+            # Don't silently truncate meaningful text — log a warning
+            print(f"      ⚠️ DOM: value '{v[:20]}...' exceeds maxlength={maxlen}, truncating")
+            return v[:maxlen]
+
+        return v
+
+    def _adapt_value_to_dom_element(self, value: str, el: 'ElementHandle') -> str:
+        """
+        DOM-aware adaptation for elements without FormField (e.g., repeatable sections).
+        Reads placeholder/maxlength directly from the DOM element.
+        """
+        if not value or not value.strip():
+            return value
+
+        try:
+            placeholder = el.get_attribute("placeholder") or ""
+            maxlength_str = el.get_attribute("maxlength") or ""
+            maxlength = int(maxlength_str) if maxlength_str.isdigit() else 0
+            input_type = el.get_attribute("type") or "text"
+            html_pattern = el.get_attribute("pattern") or ""
+        except:
+            return value
+
+        # Create a minimal FormField-like object for the adapter
+        class _DOMHint:
+            pass
+        hint = _DOMHint()
+        hint.placeholder = placeholder
+        hint.maxlength = maxlength
+        hint.input_type = input_type
+        hint.pattern = html_pattern
+
+        return self._adapt_value_to_dom(value, hint)
+
+    # ─────────────────────────────────────────────────────────────────────
+    # PERSONALIZED DOCUMENTS (Cover Letter + CV)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def _extract_job_info(self):
+        """Extract job title, company, and description from the page.
+        Saves to self.job_title, self.company_name, self.job_description.
+        Ported from V3.5 extract_job_info() + improved.
+        """
+        self.job_title = ""
+        self.company_name = ""
+        self.job_description = ""
+
+        try:
+            title_text = self.page.title() if self.page else ""
+
+            # Greenhouse format: "Job Application for {TITLE} at {COMPANY}"
+            if " at " in title_text:
+                parts = title_text.split(" at ", 1)
+                self.job_title = parts[0].replace("Job Application for ", "").strip()
+                self.company_name = parts[1].strip()
+                self.company_name = self.company_name.replace(" Careers Page", "").replace(" Careers", "").strip()
+            elif " - " in title_text:
+                self.job_title = title_text.split(" - ")[0].replace("Job Application for ", "").strip()
+
+            # Fallback: company from URL
+            if not self.company_name:
+                url = self.page.url if self.page else ""
+                m = re.search(r'[?&]for=([^&]+)', url)
+                if m:
+                    self.company_name = m.group(1).replace('-', ' ').replace('_', ' ').title()
+
+            # Fallback: company from DOM
+            if not self.company_name:
+                try:
+                    context = getattr(self, '_active_frame', self.page)
+                    company_el = context.query_selector('h1, .company-name, [class*="company"]')
+                    if company_el:
+                        self.company_name = company_el.inner_text().strip()[:50]
+                except:
+                    pass
+
+            # Job description: try multiple selectors
+            for selector in ['.job-description', '[class*="description"]', '.content', '#content']:
+                try:
+                    context = getattr(self, '_active_frame', self.page)
+                    desc_el = context.query_selector(selector)
+                    if desc_el:
+                        text = desc_el.inner_text().strip()
+                        if len(text) > 200:
+                            self.job_description = text[:4000]
+                            break
+                except:
+                    continue
+
+            if self.job_title:
+                print(f"   📋 Job: {self.job_title[:60]}")
+            if self.company_name:
+                print(f"   🏢 Company: {self.company_name[:40]}")
+            if self.job_description:
+                print(f"   📄 JD: {len(self.job_description)} chars")
+            else:
+                print(f"   ⚠️ No job description found on page")
+
+        except Exception as e:
+            print(f"   ⚠️ Job info extraction error: {e}")
+
+    def _generate_personalized_cover_letter(self, job_title: str, company: str,
+                                             jd: str) -> Optional[Path]:
+        """Generate personalized cover letter: AI text → DOCX template.
+
+        Flow:
+        1. Check cache (Applications/{company}_{title}/)
+        2. Generate CL body via Claude (personalized to JD)
+        3. Insert into role-specific DOCX template (preserving header/signature formatting)
+        4. Save to Applications folder
+        """
+        from pathlib import Path as _Path
+
+        files_config = self.profile.data.get("files", {})
+        base_path = _Path(files_config.get("base_path", ""))
+        applications_dir = base_path / "Applications"
+
+        # Build folder name
+        safe_company = re.sub(r'[^\w\s-]', '', company).strip().replace(' ', '_')[:30]
+        safe_title = re.sub(r'[^\w\s-]', '', job_title).strip().replace(' ', '_')[:40]
+        from datetime import datetime as _dt
+        folder_name = f"{safe_company}_{safe_title}_{_dt.now().strftime('%Y%m%d')}"
+        app_folder = applications_dir / folder_name
+
+        # Check cache
+        cached_cl = app_folder / f"Cover_Letter_{safe_company}.docx"
+        if cached_cl.exists():
+            print(f"   📄 Using cached CL: {cached_cl.name}")
+            return cached_cl
+
+        # Get role-specific template
+        page_title = self.page.title() if self.page else ""
+        _, cl_template_path = self.profile.get_files_for_role(page_title)
+        if not cl_template_path or not cl_template_path.exists():
+            print(f"   ⚠️ No CL template found")
+            return None
+
+        # Ensure .docx (not .dotx)
+        cl_template_path = self._ensure_compatible_extension(cl_template_path)
+
+        # Generate personalized body via Claude
+        cl_body = ""
+        if jd and self.ai.available:
+            try:
+                profile_context = self._get_profile_context_for_ai()
+                kb_context = ""
+                if self.kb:
+                    kb_context = self.kb.get_context_for_question("cover letter experience achievements")
+
+                prompt = f"""Write the BODY of a cover letter (without header/salutation/signature — just the paragraphs).
+
+Position: {job_title}
+Company: {company}
+
+Job Description (key parts):
+{jd[:2500]}
+
+Candidate Profile:
+{profile_context}
+
+Relevant Experience:
+{kb_context}
+
+Requirements:
+- 3-4 paragraphs, 300-400 words total
+- Professional but not generic — reference SPECIFIC requirements from JD
+- Highlight matching experience with concrete results (numbers, metrics)
+- Show genuine enthusiasm for this specific role and company
+- Do NOT include salutation (Dear...) or signature (Sincerely...) — just body paragraphs
+- Do NOT start with "I am excited to apply" — be more creative
+
+Write ONLY the paragraphs, nothing else."""
+
+                response = self.ai.vision_ai.client.messages.create(
+                    model=self.ai.vision_ai.config.model,
+                    max_tokens=800,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.4,
+                )
+                cl_body = response.content[0].text.strip()
+                print(f"   ✍️ AI generated CL body: {len(cl_body)} chars")
+            except Exception as e:
+                print(f"   ⚠️ AI CL generation failed: {e}")
+
+        # Load DOCX template and modify
+        try:
+            from docx import Document
+            doc = Document(str(cl_template_path))
+
+            if cl_body:
+                # Strategy: replace body paragraphs (between "Dear..." and "Sincerely")
+                # Find boundaries
+                dear_idx = None
+                sincerely_idx = None
+                for i, para in enumerate(doc.paragraphs):
+                    text_lower = para.text.strip().lower()
+                    if text_lower.startswith("dear"):
+                        dear_idx = i
+                    if text_lower.startswith("sincerely") or text_lower.startswith("best regards"):
+                        sincerely_idx = i
+
+                if dear_idx is not None and sincerely_idx is not None:
+                    # Clear body paragraphs (between Dear and Sincerely)
+                    body_start = dear_idx + 1
+                    body_end = sincerely_idx
+
+                    # Remove old body paragraphs (in reverse to preserve indices)
+                    for i in range(body_end - 1, body_start - 1, -1):
+                        p = doc.paragraphs[i]._element
+                        p.getparent().remove(p)
+
+                    # Insert new body paragraphs after "Dear..."
+                    from docx.oxml.ns import qn
+                    import copy
+                    # Get reference to Dear paragraph element
+                    dear_element = doc.paragraphs[dear_idx]._element
+
+                    # Split AI body into paragraphs
+                    new_paragraphs = [p.strip() for p in cl_body.split('\n\n') if p.strip()]
+
+                    for para_text in reversed(new_paragraphs):
+                        # Create new paragraph element
+                        new_p = copy.deepcopy(dear_element)
+                        # Clear and set text
+                        for child in list(new_p):
+                            new_p.remove(child)
+                        run = doc.paragraphs[dear_idx].runs[0] if doc.paragraphs[dear_idx].runs else None
+                        new_run = copy.deepcopy(run._element) if run else None
+                        if new_run is not None:
+                            new_run.text = para_text
+                            new_p.append(new_run)
+                        else:
+                            from docx.oxml import OxmlElement
+                            r = OxmlElement('w:r')
+                            t = OxmlElement('w:t')
+                            t.text = para_text
+                            r.append(t)
+                            new_p.append(r)
+
+                        dear_element.addnext(new_p)
+
+                    print(f"   ✅ Inserted {len(new_paragraphs)} AI paragraphs into template")
+                else:
+                    print(f"   ⚠️ Could not find Dear/Sincerely boundaries, using marker replacement")
+                    cl_body = ""  # Fall through to marker replacement
+
+            # Always do marker replacement (company name, position title)
+            for para in doc.paragraphs:
+                for run in para.runs:
+                    if "[COMPANY NAME]" in run.text:
+                        run.text = run.text.replace("[COMPANY NAME]", company)
+                    if "[POSITION TITLE]" in run.text:
+                        run.text = run.text.replace("[POSITION TITLE]", job_title)
+                    if "[COMPANY MISSION]" in run.text:
+                        run.text = run.text.replace("[COMPANY MISSION]",
+                                                     f"contribute to {company}'s continued success")
+
+            # Save
+            app_folder.mkdir(parents=True, exist_ok=True)
+            output_path = app_folder / f"Cover_Letter_{safe_company}.docx"
+            doc.save(str(output_path))
+            print(f"   📄 Saved personalized CL: {output_path.name}")
+            return output_path
+
+        except Exception as e:
+            print(f"   ❌ DOCX CL generation error: {e}")
+            return None
+
+    def _create_tailored_cv(self, job_title: str, company: str, jd: str) -> Optional[Path]:
+        """Create tailored CV with keywords from JD injected into TECHNICAL SKILLS section.
+
+        Flow:
+        1. Check cache
+        2. Extract keywords from JD (via Claude or regex)
+        3. Load role-specific CV DOCX
+        4. Add keywords to TECHNICAL SKILLS / COMPETENCIES section
+        5. Save to Applications folder
+        """
+        from pathlib import Path as _Path
+
+        files_config = self.profile.data.get("files", {})
+        base_path = _Path(files_config.get("base_path", ""))
+        applications_dir = base_path / "Applications"
+
+        safe_company = re.sub(r'[^\w\s-]', '', company).strip().replace(' ', '_')[:30]
+        safe_title = re.sub(r'[^\w\s-]', '', job_title).strip().replace(' ', '_')[:40]
+        from datetime import datetime as _dt
+        folder_name = f"{safe_company}_{safe_title}_{_dt.now().strftime('%Y%m%d')}"
+        app_folder = applications_dir / folder_name
+
+        # Check cache
+        cached_cv = app_folder / f"CV_Anton_Kondakov_{safe_company}.docx"
+        if cached_cv.exists():
+            print(f"   📄 Using cached CV: {cached_cv.name}")
+            return cached_cv
+
+        # Find role-specific CV DOCX (not PDF)
+        page_title = self.page.title() if self.page else ""
+        by_role = files_config.get("by_role", {})
+        default_role = files_config.get("default_role", "TPM")
+
+        # Detect role
+        job_lower = page_title.lower()
+        detected_role = default_role
+        role_patterns = [
+            ("TPM", ["technical program manager", "tpm"]),
+            ("Product Manager", ["product manager"]),
+            ("Product Owner", ["product owner"]),
+            ("Project Manager", ["project manager"]),
+            ("Scrum Master", ["scrum master", "agile coach"]),
+            ("Delivery Lead", ["delivery lead", "delivery manager"]),
+        ]
+        for role_name, patterns in role_patterns:
+            if any(p in job_lower for p in patterns):
+                detected_role = role_name
+                break
+
+        role_files = by_role.get(detected_role, by_role.get(default_role, {}))
+        cv_filename = role_files.get("cv", "")
+
+        if not cv_filename:
+            return None
+
+        # Need DOCX version (not PDF)
+        cv_docx_name = cv_filename.replace('.pdf', '.docx')
+        cv_docx_path = base_path / cv_docx_name
+
+        if not cv_docx_path.exists():
+            print(f"   ⚠️ CV DOCX not found: {cv_docx_name}")
+            return None
+
+        # Extract keywords from JD
+        keywords = []
+        if jd and self.ai.available:
+            try:
+                prompt = f"""Extract 5-10 key technical skills/tools/technologies from this job description
+that are NOT already in the candidate's CV.
+
+The candidate already has: AWS, GCP, Azure, Jira, Confluence, ServiceNow, Python, Java, Angular,
+Terraform, Jenkins, GitHub Actions, SQL, Tableau, Power BI, SAFe, Scrum, Kanban.
+
+Job Description:
+{jd[:2500]}
+
+Return ONLY a comma-separated list of missing keywords (max 10). No explanations.
+Example: Kubernetes, Docker, Snowflake, dbt, Airflow"""
+
+                response = self.ai.vision_ai.client.messages.create(
+                    model=self.ai.vision_ai.config.model,
+                    max_tokens=200,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1,
+                )
+                kw_text = response.content[0].text.strip()
+                keywords = [k.strip() for k in kw_text.split(',') if k.strip() and len(k.strip()) < 30]
+                keywords = keywords[:8]  # Cap at 8
+                if keywords:
+                    print(f"   🔑 Keywords from JD: {', '.join(keywords)}")
+            except Exception as e:
+                print(f"   ⚠️ Keyword extraction failed: {e}")
+
+        if not keywords:
+            print(f"   ⚠️ No keywords to add — using base CV")
+            return None
+
+        # Load CV and inject keywords
+        try:
+            from docx import Document
+            doc = Document(str(cv_docx_path))
+
+            # Find TECHNICAL SKILLS section (preferred) or CORE COMPETENCIES (fallback)
+            injected = False
+            skills_section_idx = None
+            # First pass: find TECHNICAL SKILLS (preferred)
+            for i, para in enumerate(doc.paragraphs):
+                if "TECHNICAL SKILLS" in para.text.upper():
+                    skills_section_idx = i
+                    break
+            # Second pass: fallback to CORE COMPETENCIES
+            if skills_section_idx is None:
+                for i, para in enumerate(doc.paragraphs):
+                    if "CORE COMPETENCIES" in para.text.upper():
+                        skills_section_idx = i
+                        break
+
+            if skills_section_idx is not None:
+                # Find last paragraph in this section (before next section header or end)
+                last_content_idx = skills_section_idx
+                for j in range(skills_section_idx + 1, min(skills_section_idx + 20, len(doc.paragraphs))):
+                    next_text = doc.paragraphs[j].text.strip().upper()
+                    if not next_text:
+                        continue
+                    # Stop at next section header (all-caps line that's a known section)
+                    if any(kw in next_text for kw in [
+                        "EXPERIENCE", "EDUCATION", "CERTIFICATION",
+                        "ACHIEVEMENT", "CORE COMPETENCIES", "TECHNICAL SKILLS"
+                    ]) and j != skills_section_idx:
+                        break
+                    last_content_idx = j
+
+                # Append keywords to the last content paragraph in the section
+                target = doc.paragraphs[last_content_idx]
+                current = target.text.rstrip('.')
+                kw_str = ', '.join(keywords)
+                if target.runs:
+                    target.runs[-1].text = f"{current}, {kw_str}"
+                else:
+                    target.clear()
+                    target.add_run(f"{current}, {kw_str}")
+                injected = True
+                print(f"   📝 Keywords injected at paragraph [{last_content_idx}]: ...{target.text[-60:]}")
+
+            if not injected:
+                print(f"   ⚠️ Could not find TECHNICAL SKILLS section for keyword injection")
+                return None
+
+            # Save
+            app_folder.mkdir(parents=True, exist_ok=True)
+            output_path = app_folder / f"CV_Anton_Kondakov_{safe_company}.docx"
+            doc.save(str(output_path))
+            print(f"   📄 Saved tailored CV: {output_path.name} (+{len(keywords)} keywords)")
+            return output_path
+
+        except Exception as e:
+            print(f"   ❌ CV tailoring error: {e}")
+            return None
+
+    def _extract_company_from_url(self, url: str) -> str:
+        """Extract company name from Greenhouse/Lever URL."""
+        url_lower = url.lower()
+        # Greenhouse: ?for=companyname or boards.greenhouse.io/companyname
+        import re as _re
+        m = _re.search(r'for=([a-z0-9_-]+)', url_lower)
+        if m:
+            return m.group(1)
+        m = _re.search(r'boards\.greenhouse\.io/([a-z0-9_-]+)', url_lower)
+        if m:
+            return m.group(1)
+        m = _re.search(r'jobs\.lever\.co/([a-z0-9_-]+)', url_lower)
+        if m:
+            return m.group(1)
+        return ""
+
+    def _save_verified_ai_answers(self):
+        """Feedback loop: save verified AI answers to learned DB for future use."""
+        saved_count = 0
+        for field in self.fields:
+            if (field.status == FillStatus.VERIFIED and
+                    field.answer_source == AnswerSource.AI and
+                    field.answer and
+                    len(field.label) > 5):
+                # Save AI-generated answer that was verified as correct
+                is_dropdown = field.field_type in (FieldType.SELECT, FieldType.AUTOCOMPLETE)
+                self.learned_db.save_answer(field.label, field.answer, is_dropdown)
+                saved_count += 1
+        if saved_count:
+            print(f"   🔄 Feedback: saved {saved_count} verified AI answers to learned DB")
+
     def _detect_ats(self, url: str) -> str:
         """Detect ATS type from URL."""
         url_lower = url.lower()
@@ -2437,27 +4744,30 @@ def main():
         "https://job-boards.greenhouse.io/embed/job_app?token=7404427&for=coinbase&gh_jid=7404427"
     
     mode_arg = sys.argv[2] if len(sys.argv) > 2 else "interactive"
-    
+    keep_open = "--keep-open" in sys.argv or "-k" in sys.argv
+
     mode_map = {
         "preflight": FillMode.PRE_FLIGHT,
         "interactive": FillMode.INTERACTIVE,
         "auto": FillMode.AUTONOMOUS,
     }
     mode = mode_map.get(mode_arg, FillMode.INTERACTIVE)
-    
+
     print("\n" + "="*70)
     print("🚀 SMART FORM FILLER V5.0")
     print("="*70)
     print(f"URL: {url[:60]}...")
     print(f"Mode: {mode.value}")
+    if keep_open:
+        print("Keep open: Yes (browser stays open after fill)")
     print("="*70)
-    
+
     filler = FormFillerV5(browser_mode=BrowserMode.CDP)
-    
+
     if mode == FillMode.PRE_FLIGHT:
         report = filler.analyze(url)
     else:
-        report = filler.fill(url, mode=mode)
+        report = filler.fill(url, mode=mode, keep_open=keep_open)
     
     print("\n" + report.summary())
 

@@ -1,55 +1,127 @@
 {
   "_meta": {
-    "description": "Knowledge base for AI-generated answers",
-    "version": "1.0"
+    "description": "Unified knowledge base for AI-generated answers and common Q&A",
+    "version": "2.0"
   },
-  
+
   "skills": {
     "tools": [
       "Jira", "Confluence", "Asana", "Monday.com",
       "Salesforce", "NetSuite", "SAP",
       "AWS", "GCP", "Azure",
       "Tableau", "Power BI", "Looker",
-      "Git", "GitHub", "GitLab"
+      "Git", "GitHub", "GitLab",
+      "ServiceNow", "MS Project", "Azure DevOps",
+      "SQL", "Oracle", "PostgreSQL", "Python",
+      "Docker", "Kubernetes", "Terraform", "Jenkins"
     ],
     "methodologies": [
-      "Agile", "Scrum", "SAFe", "Kanban", 
-      "Waterfall", "Lean", "Six Sigma"
+      "Agile", "Scrum", "SAFe", "Kanban",
+      "Waterfall", "Lean", "Six Sigma",
+      "PI Planning", "Sprint Planning", "Backlog Refinement"
     ],
     "domains": [
-      "fintech", "banking", "insurance", 
+      "fintech", "banking", "insurance",
       "payments", "trading", "investment banking",
-      "e-commerce", "SaaS", "enterprise"
+      "e-commerce", "SaaS", "enterprise",
+      "capital markets", "cash equities", "regulatory compliance"
     ]
   },
-  
+
   "experience_snippets": {
     "NetSuite": "Configured NetSuite ERP for multi-currency operations across 15 countries, including AP/AR workflows and financial reporting dashboards.",
-    
     "multi-currency": "Led implementation of multi-currency trading systems at Deutsche Bank, supporting 8 asset classes across global markets with real-time FX conversion.",
-    
     "Salesforce": "Integrated Salesforce CRM with internal systems, managing data pipelines and reporting for 500+ users.",
-    
-    "AWS": "Directed AWS cloud migration for 15 applications and 50+ microservices, achieving $1.2M annual cost savings.",
-    
+    "AWS": "Directed AWS cloud migration for 15 applications and 50+ microservices, achieving $1.2M annual cost savings. Led enterprise platform modernization on AWS for global insurance broker.",
     "GCP": "Led GCP migration at Deutsche Bank, implementing containerized microservices architecture with Kubernetes.",
-    
-    "Agile": "10+ years leading Agile transformations, certified SAFe POPM and PSM I. Established Scrum Center of Excellence for 5 teams.",
-    
+    "cloud": "Led multiple cloud transformations: GCP migration (15 apps, 50+ microservices, $1.2M savings), AWS platform modernization for insurance. Expert in cloud-native architecture.",
+    "Agile": "10+ years leading Agile transformations, certified SAFe POPM and PSM I. Established Scrum Center of Excellence for 5 teams. Facilitate PI Planning for 60+ engineers.",
+    "SAFe": "SAFe Product Owner/Product Manager (POPM) certified. Led SAFe-based Agile Release Train for global insurance platform. Facilitate quarterly PI Planning coordinating product, engineering, and business.",
+    "Scrum": "Professional Scrum Master I (PSM I) certified. 10+ years as Scrum Master and Agile Coach. Improved delivery predictability by 20% and reduced incidents by 50%.",
     "program management": "15+ years managing enterprise technology programs for Fortune 500 companies, delivering $50M+ initiatives on time and budget.",
-    
+    "project management": "15+ years managing complex technology projects across financial services, insurance, and enterprise. Track record of 98% on-time delivery.",
     "fintech": "Deep experience in fintech/banking: Deutsche Bank, UBS, insurance platforms. Led trading system modernization and regulatory compliance programs.",
-    
-    "migration": "Specialist in large-scale migrations: DB-Fidessa merger (8 asset classes), SharePoint consolidation (13,000+ sites), cloud transformations.",
-    
-    "team leadership": "Direct experience leading cross-functional teams of 60+ engineers across global time zones, with 10 direct reports."
+    "banking": "5+ years at Deutsche Bank directing Cash Equities technology programs. 4 years at UBS managing investment banking platform modernization.",
+    "insurance": "Leading enterprise platform modernization for global insurance broker (DXC Technology — London Market). AWS cloud migration with microservices architecture.",
+    "migration": "Specialist in large-scale migrations: DB-Fidessa merger (8 asset classes, 15 countries), SharePoint consolidation (13,000+ sites), cloud transformations.",
+    "M&A": "Directed DB-Fidessa M&A integration across 15 countries and 8 asset classes — achieved 98% SIT success rate. Managed complex stakeholder alignment across merged organizations.",
+    "team leadership": "Direct experience leading cross-functional teams of 60+ engineers across global time zones, with 10 direct reports. Built new teams achieving delivery velocity parity within first quarter.",
+    "team management": "Managed cross-functional teams of 50-60+ engineers. 10 direct reports. Increased team capacity by 15% and reduced conflicts by 60% through mentoring and process optimization.",
+    "release management": "Automated release pipeline: reduced deployment from 4 hours to 15 minutes, tripled release frequency. Expert in CI/CD, Jenkins, release coordination.",
+    "risk management": "Led ART-level risk management and dependency tracking for enterprise programs. Managed regulatory compliance risks for MiFID II, CAT reporting, EMIR.",
+    "stakeholder management": "Expert in executive communication and cross-functional alignment. Bridged technical complexity with business outcomes across global Fortune 500 organizations.",
+    "DXC": "Senior Delivery Manager / Scrum Center of Excellence Lead at DXC Technology — London Market Insurance. Leading enterprise platform modernization on AWS for global insurance broker.",
+    "Deutsche Bank": "Senior Technical Program Manager at Luxoft USA for Deutsche Bank Cash Equities division. Directed GCP cloud migration, DB-Fidessa M&A integration, regulatory compliance programs.",
+    "UBS": "Technical Program Manager at Luxoft Poland for UBS investment banking. Led infrastructure modernization (13,000+ SharePoint sites), delivered risk analytics platform reducing computation by 88%.",
+    "data": "Built data platform handling 200TB+. Experience with ETL pipelines, real-time analytics, BigQuery, data warehousing.",
+    "AI": "Experience with AI/ML integration in enterprise platforms. Comfortable with GitHub Copilot, Claude, and AI-powered development tools. Led AI-driven modernization initiatives.",
+    "DevOps": "Expert in CI/CD pipelines, Jenkins, Docker, Kubernetes. Automated deployment reducing release time from 4 hours to 15 minutes.",
+    "regulatory": "Managed regulatory compliance programs: MiFID II, CAT reporting, EMIR, SOX. Experience with audit preparation and governance frameworks.",
+    "performance": "Improved delivery predictability by 20%, reduced incidents by 50%, achieved 25% uptime improvement. Zero production incidents track record.",
+    "remote": "Extensive experience leading distributed/remote teams across US, Europe, India. Managed global programs spanning 15+ countries and multiple time zones.",
+    "mentoring": "Passionate about coaching and mentoring. Built Scrum Center of Excellence. Increased team capacity by 15% through targeted mentoring programs.",
+    "vendor": "Managed multi-vendor programs coordinating Luxoft, Deutsche Bank, and third-party vendors. Expert in vendor management, SLA negotiation, and delivery coordination.",
+    "certification": "SAFe Product Owner/Product Manager (POPM) - Scaled Agile (2025), Professional Scrum Master I (PSM I) - Scrum.org (2016), Google Cloud Architect (2020), Google Cloud Digital Leader (2024), Agile Program Manager (2024).",
+    "credentials": "SAFe POPM, PSM I, Google Cloud Architect, Google Cloud Digital Leader, Agile Program Manager. Master's in Computer Science (MIPT) and MBA (Open University Business School)."
   },
-  
+
+  "common_answers": {
+    "salary_expectations": {
+      "keywords": ["salary", "compensation", "pay", "expected salary", "desired salary", "salary range", "salary requirement"],
+      "answer": "Given my extensive experience leading large-scale cloud transformation programs, managing cross-functional teams, and driving delivery excellence in Agile and SAFe environments, I believe a competitive total compensation range for this role would be $150,000 to $180,000. I am flexible and open to discussion based on the overall compensation package and growth opportunities."
+    },
+    "why_interested": {
+      "keywords": ["why interested", "why this role", "why this position", "why do you want", "interest in this role", "interested in this role", "interested in this position", "what attracts you", "why are you applying"],
+      "answer": "I am drawn to this opportunity because it aligns perfectly with my experience leading large-scale Agile transformations and my passion for building high-performing teams. The chance to drive meaningful impact through program delivery excellence, combined with the company's focus on innovation, makes this an exciting next step in my career."
+    },
+    "greatest_strength": {
+      "keywords": ["greatest strength", "biggest strength", "key strength", "strongest skill", "what is your strength"],
+      "answer": "My greatest strength is the ability to bridge technical complexity with business outcomes. I excel at translating stakeholder needs into actionable delivery plans, aligning cross-functional teams, and driving predictable execution. My experience spanning engineering, product, and program management allows me to build trust across all levels of an organization."
+    },
+    "leadership_style": {
+      "keywords": ["leadership style", "management style", "how do you lead", "describe your leadership", "approach to leadership"],
+      "answer": "I lead through servant leadership — removing impediments, fostering psychological safety, and empowering teams to deliver their best work. I focus on coaching and mentoring, establishing clear goals and accountability while giving teams autonomy in how they achieve results."
+    },
+    "challenging_situation": {
+      "keywords": ["challenging situation", "difficult situation", "challenge you faced", "overcome a challenge", "tough situation", "tell me about a time"],
+      "answer": "During the DB-Fidessa M&A integration, we faced significant challenges coordinating teams across 15 countries with conflicting priorities. I established a structured dependency management process, facilitated alignment workshops, and implemented real-time risk tracking. We achieved 98% SIT success and delivered on time."
+    },
+    "why_leave": {
+      "keywords": ["why leaving", "why leave", "reason for leaving", "why looking for new", "what prompted your search"],
+      "answer": "I am looking for an opportunity where I can leverage my full range of skills in program management, cloud transformation, and Agile leadership at a larger scale. I want to drive strategic initiatives that have significant business impact."
+    },
+    "career_goals": {
+      "keywords": ["career goals", "where do you see yourself", "5 year plan", "long term goals", "career aspirations"],
+      "answer": "My goal is to continue growing as a senior technology leader, driving large-scale digital transformations and building high-performing teams. I aspire to a VP/Director of Program Management role where I can shape delivery strategy and mentor the next generation of technical leaders."
+    },
+    "work_style": {
+      "keywords": ["work style", "how do you work", "working style", "describe your work approach"],
+      "answer": "I thrive in fast-paced, collaborative environments. I'm highly organized, data-driven, and focus on transparency and accountability. I balance strategic thinking with hands-on execution, and I'm comfortable working across time zones with distributed teams."
+    },
+    "perform_duties": {
+      "keywords": ["able to perform", "perform the duties", "reason you would not be able", "any reason why you"],
+      "answer": "No, there is no reason I would be unable to perform the duties of this position. I am fully capable and committed to excelling in this role."
+    },
+    "additional_info": {
+      "keywords": ["additional information", "anything else", "is there anything", "what else should we know"],
+      "answer": "I bring 15+ years of progressive experience in technical program management across Fortune 500 financial services and enterprise technology companies. I am authorized to work in the US and available to start within 2-3 weeks of offer acceptance."
+    }
+  },
+
+  "achievements": [
+    "Cloud migration: 15 applications, 50+ microservices → $1.2M annual savings",
+    "DB-Fidessa M&A integration: 15 countries, 8 asset classes → 98% SIT success",
+    "Release automation: 4 hours → 15 minutes, 3x deployment frequency",
+    "Team performance: 20% predictability improvement, 50% incident reduction",
+    "Infrastructure: 13,000+ SharePoint sites consolidated, 25% uptime improvement",
+    "Data platform: 200TB+ with real-time analytics",
+    "Team capacity: +15% through mentoring, 60% conflict reduction",
+    "Risk analytics: 88% computation time reduction at UBS"
+  ],
+
   "answer_templates": {
     "experience_with_X": "Yes, I have extensive experience with {tool}. {snippet} This directly applies to the requirements of this role.",
-    
     "years_of_X": "I have {years}+ years of experience in {area}, demonstrated through my work at {companies}.",
-    
     "why_interested": "I'm excited about this opportunity because it aligns with my background in {domain} and passion for {area}. My experience at {company} directly prepared me for this role."
   }
 }
