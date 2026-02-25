@@ -359,6 +359,9 @@ class Profile:
         "senior leader": "No",
         "previously employed": "No",
         "previously been employed": "No",
+        "ever worked for": "No",
+        "currently or have you ever worked": "No",
+        "worked for": "No",
         "former employee": "No",
         "confirm": "Yes",
         "acknowledge": "Yes",
@@ -439,7 +442,10 @@ class Profile:
             else:
                 val = val.get(p) if isinstance(val, dict) else None
         return str(val) if val else ""
-    
+
+    # Alias for FormSchemaDB compatibility
+    get_by_dotpath = get
+
     def find_by_label(self, label: str) -> Tuple[Optional[str], Optional[str]]:
         """Find profile value by label text. Returns (value, profile_key)."""
         ll = label.lower()
@@ -622,6 +628,251 @@ class LearnedDB:
         self.data[store][key] = answer
         self.save()
         print(f"   💾 Learned: '{label[:30]}' → '{answer[:25]}'")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FORM SCHEMA DB - Remembers form field structures per ATS type
+# ═══════════════════════════════════════════════════════════════════════════
+
+FORM_SCHEMAS_PATH = BROWSER_DIR / "form_schemas.json"
+
+class FormSchemaDB:
+    """Database of form schemas per ATS type.
+
+    After each successful fill, saves field mappings:
+      field_id → {profile_key, source, field_type, label, options, answer_hint}
+
+    Before next fill on same ATS, loads schema and uses it as "step 0" in cascade:
+      - Known profile_key fields → resolve directly from profile
+      - Known dropdown choices → apply immediately
+      - Known field types → skip detection
+      - Tracks success_count per field → higher count = higher confidence
+
+    Schema structure:
+    {
+      "Greenhouse": {
+        "last_updated": "2026-02-14T...",
+        "fill_count": 5,
+        "fields": {
+          "first_name": {
+            "label": "First Name*",
+            "field_type": "text",
+            "profile_key": "personal.first_name",
+            "source": "profile",
+            "answer_hint": "",
+            "options": [],
+            "success_count": 5,
+            "last_success": "2026-02-14T..."
+          },
+          "question_11097818007": {
+            "label": "Are you 18 years of age or older?*",
+            "field_type": "autocomplete",
+            "profile_key": "",
+            "source": "default",
+            "answer_hint": "Yes",
+            "options": ["Yes", "No"],
+            "success_count": 3,
+            "last_success": "2026-02-14T..."
+          }
+        },
+        "repeatable_field_ids": {
+          "education": ["school--{N}", "degree--{N}", "discipline--{N}",
+                        "start-month--{N}", "start-year--{N}"],
+          "work_experience": ["company-name-{N}", "title-{N}"]
+        }
+      }
+    }
+    """
+
+    def __init__(self, path: Path = FORM_SCHEMAS_PATH):
+        self.path = path
+        self.data = self._load()
+
+    def _load(self) -> dict:
+        if self.path.exists():
+            try:
+                with open(self.path) as f:
+                    return json.load(f)
+            except Exception:
+                return {}
+        return {}
+
+    def save(self):
+        with open(self.path, "w") as f:
+            json.dump(self.data, f, indent=2, ensure_ascii=False)
+
+    def get_schema(self, ats_type: str) -> Optional[dict]:
+        """Get form schema for an ATS type."""
+        return self.data.get(ats_type)
+
+    def get_field_mapping(self, ats_type: str, field_id: str) -> Optional[dict]:
+        """Get known mapping for a specific field in an ATS schema."""
+        schema = self.data.get(ats_type)
+        if not schema:
+            return None
+        return schema.get("fields", {}).get(field_id)
+
+    def resolve_from_schema(self, ats_type: str, field: 'FormField',
+                            profile: 'Profile') -> Optional[Tuple[str, 'AnswerSource', float]]:
+        """Try to resolve a field answer using saved schema.
+
+        Returns (answer, source, confidence) or None.
+        Uses the saved profile_key or answer_hint from previous successful fills.
+        """
+        mapping = self.get_field_mapping(ats_type, field.element_id or "")
+        if not mapping:
+            # Try by normalized label match
+            schema = self.data.get(ats_type, {})
+            fields = schema.get("fields", {})
+            label_lower = (field.label or "").lower().strip()
+            for fid, fmap in fields.items():
+                saved_label = (fmap.get("label", "") or "").lower().strip()
+                if saved_label and saved_label == label_lower:
+                    mapping = fmap
+                    break
+            if not mapping:
+                return None
+
+        success_count = mapping.get("success_count", 0)
+        if success_count < 1:
+            return None
+
+        # Confidence based on success count (min 0.92, grows with count)
+        confidence = min(0.98, 0.92 + success_count * 0.01)
+
+        # 1. If profile_key is saved, resolve from profile directly
+        profile_key = mapping.get("profile_key", "")
+        if profile_key:
+            val = profile.get_by_dotpath(profile_key)
+            if val:
+                return (val, AnswerSource.PROFILE, confidence)
+
+        # 2. If source was "default" or "learned" and answer_hint is saved
+        answer_hint = mapping.get("answer_hint", "")
+        source_str = mapping.get("source", "")
+        if answer_hint and source_str in ("default", "learned", "ai"):
+            src = AnswerSource.LEARNED if source_str == "learned" else AnswerSource.DEFAULT
+            return (answer_hint, src, confidence)
+
+        return None
+
+    def save_schema_from_fill(self, ats_type: str, fields: List['FormField'],
+                               url: str = ""):
+        """Save/update schema from a successful form fill.
+
+        Called after each fill — merges new field data into existing schema.
+        Only saves fields that were successfully filled (FILLED or VERIFIED).
+        """
+        from datetime import datetime as _dt
+        now = _dt.now().isoformat()
+
+        if ats_type not in self.data:
+            self.data[ats_type] = {
+                "last_updated": now,
+                "fill_count": 0,
+                "fields": {},
+                "repeatable_field_ids": {},
+            }
+
+        schema = self.data[ats_type]
+        schema["last_updated"] = now
+        schema["fill_count"] = schema.get("fill_count", 0) + 1
+
+        saved_fields = schema.get("fields", {})
+        repeatable_ids = schema.get("repeatable_field_ids", {})
+
+        for field in fields:
+            # Only learn from successful fills
+            if field.status not in (FillStatus.FILLED, FillStatus.VERIFIED):
+                continue
+            if not field.answer:
+                continue
+
+            # Determine the field key — use element_id (most stable)
+            fid = field.element_id or field.name or ""
+            if not fid:
+                continue
+
+            # Skip repeatable section fields with numeric index — normalize them
+            # e.g., "school--0" → "school--{N}", "company-name-1" → "company-name-{N}"
+            normalized_fid, section_name = self._normalize_repeatable_id(fid)
+            if section_name:
+                # Track repeatable field patterns per section
+                if section_name not in repeatable_ids:
+                    repeatable_ids[section_name] = []
+                if normalized_fid not in repeatable_ids[section_name]:
+                    repeatable_ids[section_name].append(normalized_fid)
+                # Don't save individual repeatable entries (school--0, school--1, etc.)
+                # — they're handled by REPEATABLE_SECTIONS config
+                continue
+
+            # Build/update field mapping
+            existing = saved_fields.get(fid, {})
+            success_count = existing.get("success_count", 0) + 1
+
+            # Determine answer_hint — save static answers, skip dynamic ones
+            answer_hint = ""
+            source_str = field.answer_source.value if field.answer_source else "none"
+            if source_str in ("default", "learned"):
+                answer_hint = field.answer
+            elif source_str == "ai" and field.field_type in (FieldType.SELECT, FieldType.AUTOCOMPLETE):
+                # For dropdowns, AI choices are stable — save them
+                answer_hint = field.answer
+
+            saved_fields[fid] = {
+                "label": (field.label or "")[:100],
+                "field_type": field.field_type.value if field.field_type else "unknown",
+                "profile_key": field.profile_key or existing.get("profile_key", ""),
+                "source": source_str,
+                "answer_hint": answer_hint or existing.get("answer_hint", ""),
+                "options": field.options[:20] if field.options else existing.get("options", []),
+                "success_count": success_count,
+                "last_success": now,
+            }
+
+        schema["fields"] = saved_fields
+        schema["repeatable_field_ids"] = repeatable_ids
+        self.save()
+
+        print(f"   📐 Schema saved: {ats_type} ({len(saved_fields)} fields, fill #{schema['fill_count']})")
+
+    def _normalize_repeatable_id(self, field_id: str) -> Tuple[str, str]:
+        """Normalize repeatable field IDs: 'school--0' → ('school--{N}', 'education').
+
+        Returns (normalized_id, section_name) or (field_id, '') if not repeatable.
+        """
+        # Patterns for known repeatable sections
+        education_patterns = [
+            (r'(school|degree|discipline|start-month|start-year|end-month|end-year)--(\d+)$', 'education'),
+            (r'(education_school_name|education_degree|education_discipline)_(\d+)$', 'education'),
+        ]
+        work_patterns = [
+            (r'(company-name|title|start-date-month|start-date-year|end-date-month|end-date-year)-(\d+)$', 'work_experience'),
+            (r'(current-role)-(\d+)_\d+$', 'work_experience'),
+        ]
+
+        for patterns, section in [(education_patterns, 'education'), (work_patterns, 'work_experience')]:
+            for pattern, _ in patterns:
+                m = re.match(pattern, field_id)
+                if m:
+                    base = m.group(1)
+                    # Reconstruct with {N}
+                    normalized = field_id[:m.start(2)] + '{N}' + field_id[m.end(2):]
+                    return (normalized, section)
+
+        return (field_id, '')
+
+    def get_stats(self) -> dict:
+        """Get schema statistics for display."""
+        stats = {}
+        for ats, schema in self.data.items():
+            stats[ats] = {
+                "fill_count": schema.get("fill_count", 0),
+                "field_count": len(schema.get("fields", {})),
+                "last_updated": schema.get("last_updated", ""),
+                "repeatable_sections": list(schema.get("repeatable_field_ids", {}).keys()),
+            }
+        return stats
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -932,8 +1183,13 @@ class FormFillerV5:
                 'education_school_name_{N}': 'school',
                 'education_degree_{N}': 'degree',
                 'education_discipline_{N}': 'discipline',
+                # React Select date fields (modern Greenhouse forms)
+                'start-month--{N}': 'start_month',
+                'start-year--{N}': 'start_year',
+                'end-month--{N}': 'end_month',
+                'end-year--{N}': 'end_year',
             },
-            # Date fields have no ID in Greenhouse — handled by name-based selectors
+            # Date fields fallback — legacy name-based selectors
             'date_selectors': {
                 'start_month': "input[name='job_application[educations][][start_date][month]']",
                 'start_year': "input[name='job_application[educations][][start_date][year]']",
@@ -957,15 +1213,18 @@ class FormFillerV5:
         self.browser_mode = browser_mode
         self.profile = Profile()
         self.learned_db = LearnedDB()
+        self.schema_db = FormSchemaDB()
         self.kb = KnowledgeBase()
         self.ai = AIHelper()
         self.ollama = OllamaHelper()
         self.logger = FormLogger()
-        
+
         self.browser: Optional[BrowserManager] = None
         self.page: Optional[Page] = None
         self.fields: List[FormField] = []
         self._seen_selectors: set = set()
+        self._ats_type: str = ""  # Detected ATS type for schema lookups
+        self._section_filled_ids: set = set()  # Element IDs filled by repeatable section handler
     
     # ─────────────────────────────────────────────────────────────────────
     # PUBLIC API
@@ -982,11 +1241,14 @@ class FormFillerV5:
             
             browser.goto(url)
             browser.wait_for_stable()
-            
+
+            # Detect ATS for schema lookups
+            self._ats_type = self._detect_ats(url)
+
             # Scan and analyze
             self._scan_fields()
             self._resolve_all_answers()
-            
+
             # Generate report
             return self._generate_report(url)
     
@@ -1009,20 +1271,37 @@ class FormFillerV5:
             # Start logging session
             company = self._extract_company_from_url(url)
             self.logger.start_session(url=url, company=company)
-            
+
+            # Detect ATS type early for schema lookups
+            self._ats_type = self._detect_ats(url)
+            schema = self.schema_db.get_schema(self._ats_type)
+            if schema:
+                print(f"   📐 Schema loaded: {self._ats_type} ({len(schema.get('fields', {}))} fields, fill #{schema.get('fill_count', 0)})")
+            else:
+                print(f"   📐 No schema yet for {self._ats_type} — will learn from this fill")
+
             # Wait for iframes to load (Greenhouse, Lever forms are in iframes)
             self._wait_for_iframes()
             
+            # Extract job info BEFORE Apply click (full JD available on description page)
+            self._extract_job_info()
+            jd_before_apply = getattr(self, 'job_description', '') or ''
+
             # Try to find and click Apply button if on job description page
             self._find_and_click_apply_button()
-            
+
             # Handle login page if needed
             if self._handle_login_page():
                 # After login, wait and rescan
                 browser.wait_for_stable()
-            
-            # Extract job info for personalized documents (before scan)
+
+            # Re-extract job info after Apply (may get additional info from form page)
             self._extract_job_info()
+            # Keep the longer JD (description page usually has more than form page)
+            jd_after_apply = getattr(self, 'job_description', '') or ''
+            if len(jd_before_apply) > len(jd_after_apply):
+                self.job_description = jd_before_apply
+                print(f"   📄 Using pre-Apply JD: {len(self.job_description)} chars (form page had {len(jd_after_apply)})")
 
             # Initial scan, prescan dropdowns, resolve, fill
             self._scan_fields()
@@ -1063,6 +1342,23 @@ class FormFillerV5:
                     unfilled_new = []
                     edu_count = len(self.profile.data.get('education', []))
                     for f in new_fields:
+                        f_eid = f.element_id or ""
+                        f_label = f.label.lower()
+
+                        # Fast path: field was explicitly filled by section handler (tracked by ID)
+                        if f_eid and f_eid in self._section_filled_ids:
+                            print(f"   ⏭️ {f.label[:40]} (already filled by section handler)")
+                            f.status = FillStatus.VERIFIED
+                            f.answer_source = AnswerSource.PROFILE
+                            try:
+                                context2 = getattr(self, '_active_frame', self.page)
+                                dom_val = self._read_section_field_value(context2, f)
+                                if dom_val:
+                                    f.answer = dom_val[:50]
+                            except:
+                                pass
+                            continue
+
                         # Check if field already has a value (filled by repeatable sections)
                         try:
                             context = getattr(self, '_active_frame', self.page)
@@ -1082,11 +1378,14 @@ class FormFillerV5:
                                     continue
 
                                 # Skip empty education/repeatable section fields
-                                # (Greenhouse pre-renders 4 education slots, but we only fill as many as profile has)
-                                f_label = f.label.lower()
-                                is_section_field = f_label in ('school', 'degree', 'discipline') or \
-                                    any(kw in (f.selector or '').lower() for kw in
-                                        ('education_school', 'education_degree', 'education_discipline'))
+                                # (Greenhouse pre-renders extra slots, but we only fill as many as profile has)
+                                is_section_field = f_label in ('school', 'degree', 'discipline',
+                                                                'start date month', 'start date year',
+                                                                'end date month', 'end date year') or \
+                                    any(kw in f_eid for kw in
+                                        ('education_school', 'education_degree', 'education_discipline',
+                                         'school--', 'degree--', 'discipline--',
+                                         'start-month--', 'start-year--', 'end-month--', 'end-year--'))
                                 if is_section_field:
                                     print(f"   ⏭️ {f.label[:40]} (extra education slot, no profile data)")
                                     f.status = FillStatus.SKIPPED
@@ -1119,10 +1418,24 @@ class FormFillerV5:
             # Feedback loop: save verified AI answers to learned DB
             self._save_verified_ai_answers()
 
+            # Save form schema for this ATS type
+            if self._ats_type:
+                self.schema_db.save_schema_from_fill(self._ats_type, self.fields, url)
+
+            # Save duration before end_session clears it
+            self._fill_duration = 0.0
+            if self.logger.start_time:
+                from datetime import datetime as _dt
+                self._fill_duration = (_dt.now() - self.logger.start_time).total_seconds()
+
             # End logging session
             log_path = self.logger.end_session(status="completed")
             if log_path:
                 print(f"   📄 Log saved: {log_path}")
+
+            # Generate report + save JSON/PDF (before browser might close)
+            report = self._generate_report(url)
+            self._save_application_report(report)
 
             # Keep browser open for review
             if keep_open or mode == FillMode.INTERACTIVE:
@@ -1132,6 +1445,20 @@ class FormFillerV5:
                     print("   Close the tab manually when done.")
                 else:
                     # PERSISTENT/FRESH: Need to hold the session open
+                    # Save form screenshots before waiting
+                    try:
+                        self.page.evaluate('window.scrollTo(0, 0)')
+                        time.sleep(0.3)
+                        self.page.screenshot(path='/tmp/form_screenshot_top.png', full_page=False)
+                        self.page.evaluate('window.scrollTo(0, document.body.scrollHeight / 2)')
+                        time.sleep(0.3)
+                        self.page.screenshot(path='/tmp/form_screenshot_mid.png', full_page=False)
+                        self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                        time.sleep(0.3)
+                        self.page.screenshot(path='/tmp/form_screenshot_bot.png', full_page=False)
+                        print("   📸 Screenshots: /tmp/form_screenshot_*.png")
+                    except:
+                        pass
                     print("\n👀 Review the form in browser.")
                     print("   Press ENTER when done...")
                     try:
@@ -1141,7 +1468,6 @@ class FormFillerV5:
                         print("   (Browser will stay open for 5 minutes)")
                         time.sleep(300)
 
-            report = self._generate_report(url)
             print(report.detailed_report())
             return report
 
@@ -1409,6 +1735,7 @@ class FormFillerV5:
         print("\n🔍 Scanning form fields...")
         self.fields = []
         self._seen_selectors = set()
+        self._section_filled_ids = set()  # Reset for new form scan
         self._active_frame = self.page  # Track which frame has the form
 
         # Scan main page first
@@ -2009,7 +2336,7 @@ class FormFillerV5:
                                 continue
                     if listbox:
                         opt_els = listbox.query_selector_all('[role="option"]')
-                        for opt in opt_els[:50]:
+                        for opt in opt_els[:100]:
                             text = opt.inner_text().strip()
                             if text and text not in ('No options', 'No results'):
                                 options.append(text)
@@ -2019,7 +2346,7 @@ class FormFillerV5:
                     try:
                         self.page.wait_for_selector('.select__menu, [role="listbox"]', timeout=1000)
                         opt_els = self.page.query_selector_all('.select__option, [role="option"]')
-                        for opt in opt_els[:50]:
+                        for opt in opt_els[:100]:
                             text = opt.inner_text().strip()
                             if text and text not in ('No options', 'No results'):
                                 options.append(text)
@@ -2090,52 +2417,73 @@ class FormFillerV5:
         
         # Cascade resolution
         answer, source, confidence = None, AnswerSource.NONE, 0.0
-        
-        # 1. Learned database
         is_dropdown = field.field_type in (FieldType.SELECT, FieldType.AUTOCOMPLETE)
-        saved = self.learned_db.find(field.label, is_dropdown)
-        if saved:
-            answer, source, confidence = saved, AnswerSource.LEARNED, 0.95
+
+        # 0. Schema database — fast lookup from previous successful fills
+        if self._ats_type:
+            schema_result = self.schema_db.resolve_from_schema(
+                self._ats_type, field, self.profile
+            )
+            if schema_result:
+                answer, source, confidence = schema_result
+                # Preserve profile_key from schema for future saves
+                mapping = self.schema_db.get_field_mapping(self._ats_type, field.element_id or "")
+                if mapping and mapping.get("profile_key"):
+                    field.profile_key = mapping["profile_key"]
+                print(f"   📐 Schema: '{field.label[:30]}' → '{answer[:30]}' ({source.value})")
+
+        # 1. Learned database
+        if not answer:
+            saved = self.learned_db.find(field.label, is_dropdown)
+            if saved:
+                answer, source, confidence = saved, AnswerSource.LEARNED, 0.95
         
-        # 2. Profile mapping
+        # 2. Yes/No patterns (checked BEFORE profile mapping for dropdowns
+        #    to avoid "city" in "...same city...willing to relocate?" matching personal.city)
+        if not answer and is_dropdown:
+            yn = self.profile.find_yes_no(field.label)
+            if yn:
+                answer, source, confidence = yn, AnswerSource.DEFAULT, 0.85
+
+        # 3. Profile mapping
         if not answer:
             val, key = self.profile.find_by_label(field.label)
             if val:
                 answer, source, confidence = val, AnswerSource.PROFILE, 0.9
                 field.profile_key = key
 
-        # 2.5 Common answers from KnowledgeBase (salary, why interested, etc.)
+        # 3.5 Common answers from KnowledgeBase (salary, why interested, etc.)
         if not answer and not is_dropdown:
             common = self.kb.find_common_answer(field.label)
             if common:
                 answer, source, confidence = common, AnswerSource.DEFAULT, 0.88
                 print(f"   📚 KB common: '{field.label[:30]}' → '{common[:40]}...'")
 
-        # 3. Yes/No patterns
-        if not answer:
+        # 4. Yes/No patterns (for text fields — fallback)
+        if not answer and not is_dropdown:
             yn = self.profile.find_yes_no(field.label)
             if yn:
                 answer, source, confidence = yn, AnswerSource.DEFAULT, 0.85
         
-        # 4. Demographic defaults
+        # 5. Demographic defaults
         if not answer:
             demo = self.profile.find_demographic(field.label)
             if demo:
                 answer, source, confidence = demo, AnswerSource.DEFAULT, 0.8
-        
-        # 5. Option matching for dropdowns
+
+        # 6. Option matching for dropdowns
         if not answer and field.options:
             matched = self._match_option(field)
             if matched:
                 answer, source, confidence = matched, AnswerSource.DEFAULT, 0.7
-        
-        # 6. Text defaults (years of experience, salary, etc.)
+
+        # 7. Text defaults (years of experience, salary, etc.)
         if not answer:
             text_default = self.profile.find_text_default(field.label)
             if text_default:
                 answer, source, confidence = text_default, AnswerSource.DEFAULT, 0.75
 
-        # 7. Ollama for custom questions (with KB context)
+        # 8. Ollama for custom questions (with KB context)
         if not answer and self.ollama.available:
             profile_context = self._get_profile_context_for_ai()
             kb_context = self.kb.get_context_for_question(field.label)
@@ -2190,6 +2538,16 @@ class FormFillerV5:
         demo = self.profile.data.get("demographics", {})
         wa = self.profile.data.get("work_authorization", {})
 
+        # Job context (JD + title + company)
+        jd = getattr(self, 'job_description', '') or ''
+        jt = getattr(self, 'job_title', '') or ''
+        cn = getattr(self, 'company_name', '') or ''
+        job_context = ""
+        if jt or cn:
+            job_context = f"\n\nAPPLYING FOR: {jt} at {cn}"
+        if jd:
+            job_context += f"\n\nJOB DESCRIPTION (use this to tailor answers):\n{jd[:5000]}"
+
         return f"""Name: {p.get('first_name', '')} {p.get('last_name', '')}
 Location: {p.get('location', '')}, {p.get('state', '')}, US
 Current Role: {w.get('title', '')} at {w.get('company', '')}
@@ -2204,7 +2562,7 @@ Previously employed at company: No
 Government official: No
 Gender: {demo.get('gender', 'Decline')}
 Veteran: {demo.get('veteran_status', 'Not a protected veteran')}
-Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
+Disability: {demo.get('disability_status', 'Prefer not to answer')}{job_context}"""
     
     def _match_option(self, field: FormField) -> Optional[str]:
         """Try to match profile data to dropdown options."""
@@ -2457,7 +2815,7 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 return False
 
             try:
-                el.scroll_into_view_if_needed()
+                el.scroll_into_view_if_needed(timeout=3000)
             except:
                 pass
             time.sleep(0.1)
@@ -2610,8 +2968,25 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
 
         # ── SELECT2 DETECTION ──
         # Select2 uses hidden inputs like #s2id_autogen1
-        # The actual clickable element is the .select2-choice container
+        # BUT on newer forms, the input may have a regular ID (e.g. question_11097823007)
+        # while still being wrapped in a .select2-container
         is_select2 = 's2id' in (field.element_id or '') or 's2id' in field.selector
+        if not is_select2:
+            # Check DOM: is this element inside a .select2-container?
+            try:
+                is_select2 = frame.evaluate(f'''() => {{
+                    const el = document.querySelector('{field.selector}');
+                    if (!el) return false;
+                    let parent = el.parentElement;
+                    for (let i = 0; i < 5; i++) {{
+                        if (!parent) break;
+                        if (parent.classList && parent.classList.contains('select2-container')) return true;
+                        parent = parent.parentElement;
+                    }}
+                    return false;
+                }}''')
+            except:
+                is_select2 = False
         if is_select2:
             return self._fill_select2(el, field, frame)
 
@@ -2653,10 +3028,27 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
         if is_school:
             return self._fill_school_autocomplete(el, field, frame)
 
+        # ── Pre-resolve: adapt answer to match actual form options (state codes, etc.) ──
+        if field.options and len(field.options) >= 3:
+            resolved = self._resolve_select2_from_options(field, field.options)
+            if resolved:
+                field.answer = resolved
+                print(f"      🔄 Answer adapted to option: '{resolved}'")
+
         # STRATEGY: Use prescan data if we have options from prescan
-        if field.options and len(field.options) <= 25:
+        # Threshold 100: includes US states (~70 options) in the fixed dropdown path
+        if field.options and len(field.options) <= 100:
             # Fixed dropdown — find exact match from prescan data and click it
-            el.click()
+            try:
+                el.click(force=True, timeout=5000)
+            except:
+                try:
+                    frame.evaluate(f'''() => {{
+                        const el = document.querySelector('{field.selector}');
+                        if (el) {{ el.focus(); el.dispatchEvent(new MouseEvent('mousedown', {{bubbles:true}})); }}
+                    }}''')
+                except:
+                    pass
             time.sleep(0.4)
 
             # Read live options
@@ -2685,7 +3077,15 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 if opt_lower == answer_lower:
                     score = 100  # Exact match
                 elif answer_lower in opt_lower:
-                    score = 80  # Our answer is substring
+                    # Substring match — but for short answers (Yes/No) require word boundary
+                    # "No" in "now" is NOT a match; "No" in "No, I do not..." IS a match
+                    if len(answer_lower) <= 4:
+                        # Short answer: must start the option or be a separate word
+                        import re
+                        if re.search(r'(?:^|[\s,])' + re.escape(answer_lower) + r'(?:[\s,.]|$)', opt_lower):
+                            score = 85 if opt_lower.startswith(answer_lower) else 80
+                    else:
+                        score = 85 if opt_lower.startswith(answer_lower) else 80
                 elif opt_lower in answer_lower:
                     score = 70  # Option is substring of answer
                 else:
@@ -2701,28 +3101,80 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                     best_score = score
                     best_opt = opt
 
-            if best_opt:
-                best_opt.click()
+            if best_opt and best_score >= 70:
+                opt_text = best_opt.inner_text().strip()
+                print(f"      ✓ Clicking option: '{opt_text[:40]}' (score={best_score})")
+                try:
+                    best_opt.click(force=True, timeout=5000)
+                except:
+                    try:
+                        best_opt.evaluate("e => e.click()")
+                    except:
+                        pass
                 time.sleep(0.2)
                 return True
 
-            # No match - click first option as fallback
-            if live_options:
-                live_options[0].click()
-                time.sleep(0.2)
-                return True
+            # No good match in live options — type answer as filter to narrow down
+            # (React Select virtualizes options, so not all may be visible)
+            print(f"      🔎 Typing filter '{field.answer[:30]}' (best_score={best_score}, {len(live_options)} live opts)")
+            el.type(field.answer[:30], delay=20)
+            time.sleep(0.5)
+
+            # Re-read filtered options
+            filtered = []
+            if controls_id:
+                listbox = frame.query_selector(f'#{controls_id}')
+                if listbox:
+                    filtered = listbox.query_selector_all('[role="option"]')
+            if not filtered:
+                filtered = frame.query_selector_all('[role="option"], .select__option')
+
+            if filtered:
+                first_text = filtered[0].inner_text().strip().lower()
+                if 'no result' not in first_text and 'no option' not in first_text:
+                    try:
+                        filtered[0].click(force=True, timeout=5000)
+                    except:
+                        filtered[0].evaluate("e => e.click()")
+                    time.sleep(0.2)
+                    return True
 
             self.page.keyboard.press('Escape')
             return True
 
-        # SEARCH dropdown or no prescan data — type to filter
-        el.click()
-        time.sleep(0.3)
+        # SEARCH dropdown or no prescan data — open and type to filter
+        print(f"      🔎 Search path: typing '{field.answer[:30]}' into {field.selector}")
+        # Close any previously open dropdowns
+        self.page.keyboard.press('Escape')
+        time.sleep(0.2)
+        # Use JavaScript click to avoid Playwright actionability timeouts on hidden/overlay elements
+        try:
+            frame.evaluate(f'''() => {{
+                const el = document.querySelector('{field.selector}');
+                if (el) {{
+                    el.scrollIntoView({{block: 'center'}});
+                    el.focus();
+                    el.click();
+                    el.dispatchEvent(new MouseEvent('mousedown', {{bubbles: true}}));
+                }}
+            }}''')
+        except:
+            # Fallback: try Playwright click
+            try:
+                el.click(force=True, timeout=5000)
+            except:
+                pass
+        time.sleep(0.4)
         controls_id = el.get_attribute('aria-controls')
+        print(f"      🔎 controls_id={controls_id}")
 
-        # Type to filter
-        self.page.keyboard.type(field.answer[:30], delay=20)
+        # Type to filter — use el.type() to ensure typing goes to the right input in iframe
+        el.type(field.answer[:30], delay=20)
         time.sleep(0.8)
+
+        # Re-read controls_id (React Select sets it after interaction)
+        if not controls_id:
+            controls_id = el.get_attribute('aria-controls')
 
         # Read filtered options
         live_options = []
@@ -2734,10 +3186,29 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
             live_options = frame.query_selector_all('[role="option"], .select__option')
 
         if live_options:
+            first_text = live_options[0].inner_text().strip()
+            print(f"      🔎 Found {len(live_options)} options, first: '{first_text[:40]}'")
             # Check first option isn't "no results"
-            first_text = live_options[0].inner_text().strip().lower()
-            if 'no result' not in first_text and 'no option' not in first_text:
-                live_options[0].click()
+            if 'no result' not in first_text.lower() and 'no option' not in first_text.lower():
+                # Click the option — try multiple methods for React Select compatibility
+                clicked = False
+                try:
+                    live_options[0].click(force=True, timeout=5000)
+                    clicked = True
+                except:
+                    pass
+                if not clicked:
+                    try:
+                        live_options[0].evaluate("e => e.click()")
+                        clicked = True
+                    except:
+                        pass
+                # Fallback: keyboard — ArrowDown selects first, Enter confirms
+                if not clicked or not controls_id:
+                    self.page.keyboard.press('ArrowDown')
+                    time.sleep(0.1)
+                    self.page.keyboard.press('Enter')
+                    print(f"      🔎 Used keyboard fallback (ArrowDown+Enter)")
                 time.sleep(0.2)
                 return True
 
@@ -2839,7 +3310,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
             min_score = 80 if is_school_field else 40
 
             if best_score >= min_score:
-                best_opt.click()
+                try:
+                    best_opt.click(force=True, timeout=5000)
+                except:
+                    best_opt.evaluate("e => e.click()")
                 time.sleep(0.3)
                 print(f"      ✅ Select2 matched (score={best_score})")
                 return True
@@ -2854,7 +3328,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                     new_lower = new_answer.lower().strip()
                     best_score2, best_opt2, best_text2 = self._select2_match(new_lower, valid_options)
                     if best_score2 >= min_score:
-                        best_opt2.click()
+                        try:
+                            best_opt2.click(force=True, timeout=5000)
+                        except:
+                            best_opt2.evaluate("e => e.click()")
                         time.sleep(0.3)
                         field.answer = new_answer
                         print(f"      ✅ Select2 re-resolved: '{best_text2[:30]}' (score={best_score2})")
@@ -2911,7 +3388,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                         try:
                             text = opt.inner_text().strip()
                             if text.lower() == 'other':
-                                opt.click()
+                                try:
+                                    opt.click(force=True, timeout=5000)
+                                except:
+                                    opt.evaluate("e => e.click()")
                                 time.sleep(0.3)
                                 print(f"      ✅ School fallback: 'Other'")
                                 return True
@@ -2923,7 +3403,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                         try:
                             text = opt.inner_text().strip()
                             if text and 'no result' not in text.lower():
-                                opt.click()
+                                try:
+                                    opt.click(force=True, timeout=5000)
+                                except:
+                                    opt.evaluate("e => e.click()")
                                 time.sleep(0.3)
                                 print(f"      ✅ School fallback: '{text[:30]}'")
                                 return True
@@ -2936,7 +3419,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 ra_lower = rule_answer.lower().strip()
                 for opt_el, opt_text in valid_options:
                     if opt_text.lower().strip() == ra_lower or ra_lower in opt_text.lower():
-                        opt_el.click()
+                        try:
+                            opt_el.click(force=True, timeout=5000)
+                        except:
+                            opt_el.evaluate("e => e.click()")
                         time.sleep(0.3)
                         field.answer = rule_answer
                         print(f"      ✅ Select2 rule-based: '{opt_text[:30]}'")
@@ -2949,7 +3435,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 if tl not in ('--', 'please select', 'select', 'select...', ''):
                     fallback_idx = idx
                     break
-            valid_options[fallback_idx][0].click()
+            try:
+                valid_options[fallback_idx][0].click(force=True, timeout=5000)
+            except:
+                valid_options[fallback_idx][0].evaluate("e => e.click()")
             time.sleep(0.3)
             print(f"      ⚠️ Select2 fallback: '{valid_options[fallback_idx][1][:30]}'")
             return True
@@ -3004,7 +3493,8 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                        'background check', 'drug test', 'submit verification']
         no_patterns = ['require sponsor', 'sponsorship', 'non-compete',
                       'previously been employed', 'worked for our company',
-                      'different name', 'convicted']
+                      'ever worked for', 'currently or have you ever worked',
+                      'worked for', 'different name', 'convicted']
 
         has_yes = any('yes' in o for o in opt_lower)
         has_no = any('no' in o for o in opt_lower)
@@ -3060,6 +3550,13 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                     if ps_lower in tl or tl in ps_lower:
                         return t
 
+                # Options may be virtualized (React Select) — not all visible in prescan.
+                # If we see USA-XX or CAN-XX pattern in existing options, generate the code directly.
+                if state_abbr:
+                    has_usa_pattern = any(t.startswith('USA-') for t in option_texts[:20])
+                    if has_usa_pattern:
+                        return f"USA-{state_abbr}"
+
                 # Also try city + state combo
                 profile_city = self.profile.get("personal.city") if self.profile else ""
                 if profile_city:
@@ -3088,6 +3585,77 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
         if any(k in label for k in ['previously', 'former', 'employed']):
             for t in option_texts:
                 if t.lower().startswith('no'):
+                    return t
+
+        # 5b. Years of experience questions — JD-aware selection
+        # For "How many years..." with options like "No experience", "1-3", "4-7", "8+"
+        if any(k in label for k in ['how many years', 'years of experience', 'years experience']):
+            # Build ranked options list
+            ranked = []
+            for t in option_texts:
+                tl = t.lower()
+                if 'no experience' in tl or 'none' in tl or '0' == tl.strip():
+                    ranked.append((0, t))
+                elif '8+' in tl or '10+' in tl or '15+' in tl:
+                    ranked.append((100, t))
+                elif '4' in tl and '7' in tl:
+                    ranked.append((70, t))
+                elif '3' in tl and '7' in tl:
+                    ranked.append((70, t))
+                elif '1' in tl and ('3' in tl or '2' in tl):
+                    ranked.append((30, t))
+                elif 'advanced' in tl:
+                    ranked.append((100, t))
+                elif 'intermediate' in tl:
+                    ranked.append((60, t))
+                elif 'beginner' in tl:
+                    ranked.append((20, t))
+                else:
+                    ranked.append((50, t))
+            if ranked:
+                ranked.sort(key=lambda x: x[0], reverse=True)
+                # Detect if this is a niche/unrelated domain where we have NO experience
+                # Core competencies: PM, TPM, product management, agile, scrum, SAFe, technical,
+                # developer, API, platform, consumer, marketplace, engineering, software, data
+                core_keywords = ['product manag', 'program manag', 'technical', 'agile', 'scrum',
+                                 'safe', 'developer', 'api', 'platform', 'consumer', 'marketplace',
+                                 'engineering', 'software', 'data', 'project manag', 'delivery',
+                                 'stakeholder', 'cross-functional', 'roadmap', 'strategy']
+                # Domains where user explicitly has NO experience
+                # NOTE: avoid short substrings that match verbs (e.g. "design" in "designing")
+                no_experience_keywords = ['product marketing', 'marketing manager', 'sales ',
+                                         'ux design', 'ui design', 'visual design',
+                                         'ux research', 'human resources', 'legal ',
+                                         'finance ', 'financial analyst',
+                                         'accounting', 'recruiting', 'content writing',
+                                         'graphic design', 'public relations']
+
+                is_no_experience = any(nk in label for nk in no_experience_keywords)
+                is_core = any(ck in label for ck in core_keywords)
+
+                if is_no_experience and not is_core:
+                    # Pick "No experience" for domains we don't have
+                    for score, text in ranked:
+                        if score == 0:
+                            print(f"   📊 Years: '{text}' (no experience in this domain)")
+                            return text
+                    # If no "No experience" option, pick lowest non-zero
+                    ranked.sort(key=lambda x: x[0])
+                    for score, text in ranked:
+                        if score > 0:
+                            return text
+
+                # For core competencies or ambiguous — pick highest
+                return ranked[0][1]
+
+        # 5c. Proficiency questions — pick highest
+        if any(k in label for k in ['level of proficiency', 'proficiency level', 'how proficient']):
+            for t in option_texts:
+                if t.lower() in ('advanced', 'expert'):
+                    return t
+            # Fallback to second-highest
+            for t in option_texts:
+                if t.lower() == 'intermediate':
                     return t
 
         # 6. Demographics — use profile values first, then fallback to decline
@@ -3151,14 +3719,22 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
         self.page.keyboard.press('Escape')
         time.sleep(0.1)
 
+        # Open school dropdown — JS-first to avoid Playwright actionability timeouts
         try:
-            el.scroll_into_view_if_needed(timeout=3000)
+            frame.evaluate(f'''() => {{
+                const el = document.querySelector('{field.selector}');
+                if (el) {{
+                    el.scrollIntoView({{block: 'center'}});
+                    el.focus();
+                    el.click();
+                    el.dispatchEvent(new MouseEvent('mousedown', {{bubbles: true}}));
+                }}
+            }}''')
         except:
-            pass  # Element may not be scrollable
-        try:
-            el.click(timeout=3000)
-        except:
-            return False  # Can't click — probably hidden
+            try:
+                el.click(force=True, timeout=5000)
+            except:
+                return False
         time.sleep(0.3)
 
         # Type search - use shorter text for better matches
@@ -3191,12 +3767,18 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                     opt_lower = opt_text.lower()
                     # Match if search text appears in option
                     if search_lower[:15] in opt_lower or opt_lower in search_lower:
-                        opt.click()
+                        try:
+                            opt.click(force=True, timeout=5000)
+                        except:
+                            opt.evaluate("e => e.click()")
                         time.sleep(0.2)
                         print(f"      🎓 School matched: {opt_text[:40]}")
                         return True
                 # No exact match but results exist - take first
-                options[0].click()
+                try:
+                    options[0].click(force=True, timeout=5000)
+                except:
+                    options[0].evaluate("e => e.click()")
                 time.sleep(0.2)
                 return True
 
@@ -3204,7 +3786,16 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
         print(f"      ⚠️ School not found, trying fallback...")
         self.page.keyboard.press('Escape')
         time.sleep(0.1)
-        el.click()
+        try:
+            frame.evaluate(f'''() => {{
+                const el = document.querySelector('{field.selector}');
+                if (el) {{ el.focus(); el.click(); }}
+            }}''')
+        except:
+            try:
+                el.click(force=True, timeout=5000)
+            except:
+                pass
         time.sleep(0.2)
 
         # Clear and try each fallback
@@ -3221,7 +3812,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                     if options:
                         first_text = options[0].inner_text().strip()
                         if 'no result' not in first_text.lower():
-                            options[0].click()
+                            try:
+                                options[0].click(force=True, timeout=5000)
+                            except:
+                                options[0].evaluate("e => e.click()")
                             time.sleep(0.2)
                             print(f"      🎓 School fallback: {first_text[:40]}")
                             return True
@@ -3525,13 +4119,37 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                     el_visible = el.is_visible()
                     el_type_check = el.get_attribute('type') or ''
                     if not el_visible or el_type_check == 'hidden':
-                        # Found hidden element — try Select2 container instead
+                        # Found hidden element — try Select2 container by known prefix
                         s2id_selector = '#s2id_' + pattern.replace('{N}', str(form_index))
                         s2id_el = context.query_selector(s2id_selector)
                         if not s2id_el and context != self.page:
                             s2id_el = self.page.query_selector(s2id_selector)
                         if s2id_el:
                             el = s2id_el  # Use visible Select2 container
+                        else:
+                            # Select2 may use auto-generated IDs (s2id_autogen14)
+                            # Find Select2 container via DOM: sibling .select2-container
+                            try:
+                                s2_el = context.evaluate_handle(f'''() => {{
+                                    const hidden = document.querySelector('{selector}');
+                                    if (!hidden) return null;
+                                    // Select2 adds .select2-container as next sibling of the hidden <select>
+                                    let sib = hidden.nextElementSibling;
+                                    if (sib && sib.classList.contains('select2-container')) return sib;
+                                    // Or look in parent
+                                    let parent = hidden.parentElement;
+                                    if (parent) {{
+                                        const s2 = parent.querySelector('.select2-container');
+                                        if (s2) return s2;
+                                    }}
+                                    return null;
+                                }}''')
+                                if s2_el:
+                                    el = s2_el.as_element()
+                                    if el:
+                                        print(f"      🔍 Found Select2 container via DOM for {field_name}")
+                            except:
+                                pass
                 except:
                     pass
 
@@ -3562,6 +4180,25 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 if ok:
                     filled_any = True
                     print(f"      ✅ {field_name}: {str(value)[:25]}")
+                    # Track filled element IDs so main loop skips them
+                    # Add primary pattern ID
+                    actual_id = pattern.replace('{N}', str(form_index))
+                    self._section_filled_ids.add(actual_id)
+                    self._section_filled_ids.add(f's2id_{actual_id}')
+                    # Also track the actual element's DOM ID (may differ from pattern)
+                    try:
+                        el_dom_id = el.get_attribute('id')
+                        if el_dom_id:
+                            self._section_filled_ids.add(el_dom_id)
+                            self._section_filled_ids.add(f's2id_{el_dom_id}')
+                    except:
+                        pass
+                    # Add all legacy patterns for this field_name
+                    for leg_pat, leg_fn in legacy.items():
+                        if leg_fn == field_name:
+                            leg_id = leg_pat.replace('{N}', str(form_index))
+                            self._section_filled_ids.add(leg_id)
+                            self._section_filled_ids.add(f's2id_{leg_id}')
                 time.sleep(0.1)
             except Exception as e:
                 print(f"      ❌ {field_name}: {e}")
@@ -3592,6 +4229,10 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                         el.fill(fill_value)
                         filled_any = True
                         print(f"      ✅ {field_name}: {fill_value}")
+                        # Track by element ID so _mark_section_filled_fields can skip it
+                        el_id = el.get_attribute('id')
+                        if el_id:
+                            self._section_filled_ids.add(el_id)
                         time.sleep(0.1)
                     except Exception as e:
                         print(f"      ❌ {field_name}: {e}")
@@ -3639,19 +4280,23 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
         """Fill Select2 dropdown within a repeatable section (e.g., Greenhouse education)."""
         frame = container.owner_frame() or self.page
 
-        # Open Select2 by clicking the choice element
+        # Open Select2 by clicking the choice element (always via JS to avoid actionability timeouts)
         try:
-            choice = container.query_selector('a.select2-choice, .select2-choices')
-            if choice:
-                choice.dispatchEvent = None  # We'll use JS dispatch instead
-                container.evaluate('''el => {
-                    const choice = el.querySelector('a.select2-choice, .select2-choices');
-                    if (choice) choice.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
-                }''')
-            else:
-                container.click()
+            container.evaluate('''el => {
+                const choice = el.querySelector('a.select2-choice, .select2-choices');
+                if (choice) {
+                    choice.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                } else {
+                    // Fallback: try clicking the container itself
+                    el.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                    el.click();
+                }
+            }''')
         except:
-            container.click()
+            try:
+                container.click(force=True, timeout=5000)
+            except:
+                return False
 
         time.sleep(0.5)
 
@@ -3812,9 +4457,13 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
         except:
             pass
         try:
-            el.click(timeout=3000)
+            el.click(force=True, timeout=5000)
         except:
-            return False
+            # Fallback: JS dispatch
+            try:
+                el.evaluate("e => { e.focus(); e.dispatchEvent(new MouseEvent('mousedown', {bubbles:true})); }")
+            except:
+                return False
         time.sleep(0.3)
 
         search_text = str(search_value or value)[:40]
@@ -4030,14 +4679,50 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
         This prevents the main fill loop from overwriting section-filled values."""
         context = getattr(self, '_active_frame', self.page)
         marked = 0
+
+        # Build set of element ID patterns from repeatable sections
+        # e.g., "school--", "degree--", "discipline--", "company-name-", "title-"
+        section_id_prefixes = set()
+        for sec_config in self.REPEATABLE_SECTIONS.values():
+            for pattern in sec_config.get('field_patterns', {}):
+                prefix = pattern.replace('{N}', '')
+                section_id_prefixes.add(prefix)
+            for pattern in sec_config.get('legacy_field_patterns', {}):
+                prefix = pattern.replace('{N}', '')
+                section_id_prefixes.add(prefix)
+
         for f in self.fields:
-            if f.status != FillStatus.READY:
+            if f.status in (FillStatus.VERIFIED, FillStatus.FILLED, FillStatus.ERROR):
                 continue
             f_label = f.label.lower().strip()
-            # Check if this is an education/section field
-            is_section_field = f_label in ('school', 'degree', 'discipline') or \
+            f_eid = f.element_id or ""
+
+            # ── Fast path: field was explicitly filled by section handler (tracked by ID) ──
+            # Check for READY, NEEDS_INPUT, SKIPPED — section handler may have filled
+            # fields that answer resolver couldn't resolve (e.g., education dates)
+            if f_eid and f_eid in self._section_filled_ids:
+                f.status = FillStatus.VERIFIED
+                f.answer_source = AnswerSource.PROFILE
+                # Read actual DOM value so report shows what section handler wrote (not answer resolver guess)
+                try:
+                    dom_val = self._read_section_field_value(context, f)
+                    if dom_val:
+                        f.answer = dom_val[:50]
+                except:
+                    pass
+                marked += 1
+                continue
+
+            # Check if element ID matches any repeatable section pattern
+            is_section_by_id = any(f_eid.startswith(prefix) or f_eid.startswith(f's2id_{prefix}')
+                                   for prefix in section_id_prefixes if prefix)
+
+            # Check if this is an education/section field by label
+            is_section_field = is_section_by_id or \
+                f_label in ('school', 'degree', 'discipline') or \
                 'education' in f_label or \
-                any(kw in f_label for kw in ('start month', 'start year', 'end month', 'end year'))
+                any(kw in f_label for kw in ('start month', 'start year', 'end month', 'end year',
+                                                'start date', 'end date'))
             if not is_section_field:
                 continue
             # Check if the underlying element already has a value (set by section handler)
@@ -4066,16 +4751,95 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                         f.answer = val[:50]
                         f.answer_source = AnswerSource.PROFILE
                         marked += 1
+                # Check React Select combobox — value stored in aria-label or display text
+                if role := el.get_attribute('role'):
+                    if role == 'combobox':
+                        # React Select stores display value in a sibling/parent span
+                        react_val = el.evaluate('''e => {
+                            const parent = e.closest('.select2-container') || e.parentElement;
+                            if (!parent) return '';
+                            const span = parent.querySelector('[class*="singleValue"], .select2-chosen');
+                            return span ? span.textContent.trim() : '';
+                        }''')
+                        if react_val and react_val.lower() not in ('', 'select...', 'select', '—'):
+                            f.status = FillStatus.VERIFIED
+                            f.answer = react_val[:50]
+                            f.answer_source = AnswerSource.PROFILE
+                            marked += 1
             except:
                 pass
         if marked:
             print(f"   ✅ Marked {marked} fields as already filled by section handler")
 
+    def _read_section_field_value(self, context, field) -> str:
+        """Read the visible DOM value of a section field (Select2, React Select, or plain input)."""
+        el = context.query_selector(field.selector)
+        if not el:
+            return ""
+
+        tag = el.evaluate("e => e.tagName.toLowerCase()")
+        role = el.get_attribute('role') or ''
+        el_type = el.get_attribute('type') or ''
+        el_id = field.element_id or ''
+
+        # Hidden input (Select2 pattern) — look for s2id_ container's chosen text
+        if el_type == 'hidden' or (tag == 'input' and not el.is_visible()):
+            s2id = f's2id_{el_id}' if el_id else ''
+            if s2id:
+                s2_el = context.query_selector(f'#{s2id}')
+                if s2_el:
+                    chosen = s2_el.evaluate('''e => {
+                        const c = e.querySelector('.select2-chosen');
+                        return c ? c.textContent.trim() : '';
+                    }''')
+                    if chosen and chosen.lower() not in ('select...', 'select', '—', ''):
+                        return chosen
+            # Also try reading hidden input value directly
+            val = el.input_value()
+            return val if val else ""
+
+        # React Select combobox input — read singleValue from parent
+        if role == 'combobox' or 'select__input' in (el.get_attribute('class') or ''):
+            val = el.evaluate('''e => {
+                let c = e.parentElement;
+                for (let i = 0; i < 6; i++) {
+                    if (!c) break;
+                    const sv = c.querySelector('[class*="singleValue"]');
+                    if (sv) return sv.textContent.trim();
+                    const sc = c.querySelector('.select2-chosen');
+                    if (sc) return sc.textContent.trim();
+                    c = c.parentElement;
+                }
+                return '';
+            }''')
+            return val if val and val.lower() not in ('select...', 'select', '') else ""
+
+        # Regular text input
+        if tag in ('input', 'textarea'):
+            return el.input_value()
+
+        # Div container (Select2 or React Select wrapper)
+        if tag == 'div':
+            val = el.evaluate('''e => {
+                const v = e.querySelector('[class*="singleValue"], .select2-chosen');
+                return v ? v.textContent.trim() : '';
+            }''')
+            return val if val and val.lower() not in ('select...', 'select', '') else ""
+
+        return ""
+
+    def _safe_page_title(self) -> str:
+        """Get page title safely (page may be closed)."""
+        try:
+            return self.page.title() if self.page else ""
+        except Exception:
+            return ""
+
     def _generate_report(self, url: str) -> FillReport:
         """Generate fill report."""
         report = FillReport(
             url=url,
-            title=self.page.title() if self.page else "",
+            title=getattr(self, 'job_title', '') or self._safe_page_title(),
             ats_type=self._detect_ats(url),
             total_fields=len(self.fields),
             fields=self.fields,
@@ -4096,6 +4860,316 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 report.errors += 1
         
         return report
+
+    def _save_application_report(self, report: FillReport):
+        """Save JSON + PDF report to Applications folder.
+
+        JSON: full field data (no truncation), JD, file paths, source stats
+        PDF: formatted table with header, summary, field details
+        """
+        from datetime import datetime as _dt
+        from pathlib import Path as _Path
+
+        # Determine app_folder (same logic as _generate_personalized_cover_letter)
+        files_config = self.profile.data.get("files", {})
+        base_path = _Path(files_config.get("base_path", ""))
+
+        jt = getattr(self, 'job_title', '') or ''
+        cn = getattr(self, 'company_name', '') or ''
+        jd = getattr(self, 'job_description', '') or ''
+
+        if jt and cn and base_path.exists():
+            safe_company = re.sub(r'[^\w\s-]', '', cn).strip().replace(' ', '_')[:30]
+            safe_title = re.sub(r'[^\w\s-]', '', jt).strip().replace(' ', '_')[:40]
+            folder_name = f"{safe_company}_{safe_title}_{_dt.now().strftime('%Y%m%d')}"
+            app_folder = base_path / "Applications" / folder_name
+        else:
+            # Fallback: save alongside form logs
+            app_folder = _Path(__file__).parent.parent.parent / "logs" / "form_fills"
+
+        app_folder.mkdir(parents=True, exist_ok=True)
+        timestamp = _dt.now().isoformat()
+
+        # ── Build source summary ──
+        source_counts = {}
+        for f in report.fields:
+            src = f.answer_source.value if f.answer_source else "none"
+            source_counts[src] = source_counts.get(src, 0) + 1
+
+        # ── Find file paths from filled fields ──
+        cv_path = ""
+        cl_path = ""
+        cv_personalized = False
+        cl_personalized = False
+        for f in report.fields:
+            if f.field_type == FieldType.FILE:
+                answer = f.answer or ""
+                label_lower = (f.label or "").lower()
+                if "cover" in label_lower or "letter" in label_lower:
+                    cl_path = answer
+                    cl_personalized = f.answer_source == AnswerSource.AI
+                else:
+                    cv_path = answer
+                    cv_personalized = f.answer_source == AnswerSource.AI
+
+        # ── JSON Report (full, no truncation) ──
+        json_data = {
+            "meta": {
+                "timestamp": timestamp,
+                "url": report.url,
+                "ats_type": report.ats_type,
+                "job_title": jt,
+                "company": cn,
+                "status": "completed" if report.errors == 0 else "with_errors",
+                "duration_seconds": round(getattr(self, '_fill_duration', 0), 1),
+                "fields_total": report.total_fields,
+                "fields_filled": report.verified_fields + report.filled_fields,
+                "fields_skipped": report.skipped,
+                "fields_error": report.errors,
+            },
+            "files": {
+                "cv_path": cv_path,
+                "cover_letter_path": cl_path,
+                "cv_personalized": cv_personalized,
+                "cover_letter_personalized": cl_personalized,
+            },
+            "job_description": jd,
+            "fields": [],
+            "source_summary": source_counts,
+            "errors": [f.error_message for f in report.fields if f.status == FillStatus.ERROR],
+        }
+
+        for f in report.fields:
+            question = (f.label or "").split(" [")[0].strip()  # Remove [name=...] suffix
+            json_data["fields"].append({
+                "id": f.element_id or f.selector or "",
+                "type": f.field_type.value if f.field_type else "unknown",
+                "question": question,
+                "answer": f.answer or "",
+                "source": f.answer_source.value if f.answer_source else "none",
+                "status": f.status.value if f.status else "unknown",
+            })
+
+        json_path = app_folder / "application_report.json"
+        with open(json_path, "w", encoding="utf-8") as fp:
+            json.dump(json_data, fp, indent=2, ensure_ascii=False)
+
+        # ── PDF Report ──
+        try:
+            self._generate_pdf_report(json_data, app_folder)
+        except Exception as e:
+            print(f"   ⚠️ PDF report error: {e}")
+
+        print(f"   📋 Report saved: {app_folder.name}/")
+
+    def _generate_pdf_report(self, data: dict, app_folder):
+        """Generate a formatted PDF report from JSON data."""
+        from fpdf import FPDF
+        from pathlib import Path as _Path
+
+        def _latin(text: str) -> str:
+            """Sanitize text for Helvetica (latin-1) encoding."""
+            if not text:
+                return ""
+            return text.encode('latin-1', 'replace').decode('latin-1')
+
+        def _row_height(pdf_obj, text: str, col_w: float, font_size: int = 8) -> float:
+            """Calculate row height needed for multi_cell text."""
+            pdf_obj.set_font("Helvetica", "", font_size)
+            # Approximate: chars per line based on column width
+            char_w = font_size * 0.22  # approximate char width for Helvetica 8pt
+            effective_w = col_w - 2  # padding
+            if effective_w <= 0:
+                effective_w = col_w
+            chars_per_line = max(1, int(effective_w / char_w))
+            lines = 1
+            for paragraph in text.split('\n'):
+                if len(paragraph) == 0:
+                    lines += 1
+                else:
+                    lines += max(1, -(-len(paragraph) // chars_per_line))  # ceil division
+            return max(5, lines * 4.2)
+
+        # ── Landscape A4 for wider table ──
+        pdf = FPDF(orientation='L', format='A4')
+        pdf.set_auto_page_break(auto=True, margin=15)
+        page_w = pdf.w - pdf.l_margin - pdf.r_margin  # usable width (~257mm)
+
+        pdf.add_page()
+
+        # ── Title ──
+        pdf.set_font("Helvetica", "B", 18)
+        pdf.cell(0, 12, "Application Report", align="C", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+        # ── Header info ──
+        meta = data.get("meta", {})
+
+        info_lines = [
+            ("Position", meta.get("job_title", "N/A")),
+            ("Company", meta.get("company", "N/A")),
+            ("Date", meta.get("timestamp", "")[:19].replace("T", " ")),
+            ("ATS", meta.get("ats_type", "N/A")),
+            ("URL", meta.get("url", "N/A")),
+        ]
+
+        for label, value in info_lines:
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(25, 6, f"{label}:", new_x="END")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.cell(0, 6, f"  {_latin(value)}", new_x="LMARGIN", new_y="NEXT")
+
+        pdf.ln(3)
+
+        # ── Summary box ──
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(0, 8, "  Summary", fill=True, new_x="LMARGIN", new_y="NEXT")
+
+        pdf.set_font("Helvetica", "", 10)
+        total = meta.get("fields_total", 0)
+        filled = meta.get("fields_filled", 0)
+        skipped = meta.get("fields_skipped", 0)
+        errors = meta.get("fields_error", 0)
+        duration = meta.get("duration_seconds", 0)
+
+        pdf.cell(0, 6, f"  Fields: {filled}/{total} filled   |   Skipped: {skipped}   |   Errors: {errors}   |   Duration: {duration:.0f}s", new_x="LMARGIN", new_y="NEXT")
+
+        # Source breakdown
+        src = data.get("source_summary", {})
+        if src:
+            src_text = "  Sources: " + ", ".join(f"{k}: {v}" for k, v in sorted(src.items(), key=lambda x: -x[1]))
+            pdf.cell(0, 6, _latin(src_text), new_x="LMARGIN", new_y="NEXT")
+
+        # Files
+        files = data.get("files", {})
+        if files.get("cv_path"):
+            cv_name = _Path(files["cv_path"]).name if files["cv_path"] else "N/A"
+            cv_tag = " (personalized)" if files.get("cv_personalized") else ""
+            pdf.cell(0, 6, f"  CV: {_latin(cv_name)}{cv_tag}", new_x="LMARGIN", new_y="NEXT")
+        if files.get("cover_letter_path"):
+            cl_name = _Path(files["cover_letter_path"]).name if files["cover_letter_path"] else "N/A"
+            cl_tag = " (personalized)" if files.get("cover_letter_personalized") else ""
+            pdf.cell(0, 6, f"  Cover Letter: {_latin(cl_name)}{cl_tag}", new_x="LMARGIN", new_y="NEXT")
+
+        pdf.ln(5)
+
+        # ── Fields table (landscape — full width) ──
+        # Column widths: #(10) | Question(80) | Answer(120) | Source(27) | Status(20) = ~257
+        col_w = [10, 80, page_w - 10 - 80 - 27 - 20, 27, 20]
+        headers = ["#", "Question", "Answer", "Source", "Status"]
+
+        status_marks = {
+            "verified": "OK",
+            "filled": "OK",
+            "skipped": "SKIP",
+            "error": "ERR",
+            "needs_input": "?",
+            "ready": "-",
+        }
+
+        # Table header
+        pdf.set_fill_color(50, 50, 80)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", "B", 9)
+        for header, w in zip(headers, col_w):
+            pdf.cell(w, 8, f"  {header}", border=1, fill=True, new_x="END")
+        pdf.ln()
+
+        # Table rows with multi_cell wrapping
+        pdf.set_text_color(0, 0, 0)
+
+        for i, field in enumerate(data.get("fields", []), 1):
+            question = _latin(field.get("question", ""))
+            answer = _latin(field.get("answer", ""))
+            source = field.get("source", "")
+            status = status_marks.get(field.get("status", ""), "?")
+
+            # Calculate row height based on longest content
+            h_q = _row_height(pdf, question, col_w[1])
+            h_a = _row_height(pdf, answer, col_w[2])
+            row_h = max(6, h_q, h_a)
+
+            # Check if row fits on page, add new page + header if not
+            if pdf.get_y() + row_h > pdf.h - 15:
+                pdf.add_page()
+                pdf.set_fill_color(50, 50, 80)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_font("Helvetica", "B", 9)
+                for header, w in zip(headers, col_w):
+                    pdf.cell(w, 8, f"  {header}", border=1, fill=True, new_x="END")
+                pdf.ln()
+                pdf.set_text_color(0, 0, 0)
+
+            # Alternate row colors
+            if i % 2 == 0:
+                pdf.set_fill_color(243, 243, 248)
+            else:
+                pdf.set_fill_color(255, 255, 255)
+
+            y_start = pdf.get_y()
+            x_start = pdf.l_margin
+
+            # Draw row background + borders first
+            for w in col_w:
+                pdf.rect(x_start, y_start, w, row_h, style='DF')
+                x_start += w
+
+            # Fill cells with text
+            x = pdf.l_margin
+            pdf.set_font("Helvetica", "", 8)
+
+            # #
+            pdf.set_xy(x + 1, y_start + 1)
+            pdf.cell(col_w[0] - 2, 4, str(i), align="C")
+            x += col_w[0]
+
+            # Question (multi_cell for wrapping)
+            pdf.set_xy(x + 1, y_start + 1)
+            pdf.multi_cell(col_w[1] - 2, 4, question, new_x="LEFT", new_y="TOP")
+            x += col_w[1]
+
+            # Answer (multi_cell for wrapping)
+            pdf.set_xy(x + 1, y_start + 1)
+            pdf.multi_cell(col_w[2] - 2, 4, answer, new_x="LEFT", new_y="TOP")
+            x += col_w[2]
+
+            # Source
+            pdf.set_xy(x + 1, y_start + 1)
+            pdf.cell(col_w[3] - 2, 4, source)
+            x += col_w[3]
+
+            # Status
+            pdf.set_xy(x + 1, y_start + 1)
+            # Color-code status
+            if status == "OK":
+                pdf.set_text_color(0, 128, 0)
+            elif status == "ERR":
+                pdf.set_text_color(200, 0, 0)
+            elif status == "SKIP":
+                pdf.set_text_color(180, 140, 0)
+            pdf.cell(col_w[4] - 2, 4, status, align="C")
+            pdf.set_text_color(0, 0, 0)
+
+            # Move to next row
+            pdf.set_y(y_start + row_h)
+
+        # ── Job Description (if available) ──
+        jd_text = data.get("job_description", "")
+        if jd_text and len(jd_text) > 100:
+            pdf.add_page()
+            pdf.set_font("Helvetica", "B", 14)
+            pdf.cell(0, 10, "Job Description", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(2)
+
+            pdf.set_font("Helvetica", "", 9)
+            clean_jd = _latin(jd_text[:4000])
+            pdf.multi_cell(0, 5, clean_jd)
+
+        # Save PDF
+        pdf_path = app_folder / "Application_Report.pdf"
+        pdf.output(str(pdf_path))
+        print(f"   📄 PDF report: {pdf_path.name}")
 
     MONTH_MAP = {
         'january': '01', 'february': '02', 'march': '03', 'april': '04',
@@ -4264,18 +5338,53 @@ Disability: {demo.get('disability_status', 'Prefer not to answer')}"""
                 except:
                     pass
 
-            # Job description: try multiple selectors
-            for selector in ['.job-description', '[class*="description"]', '.content', '#content']:
-                try:
-                    context = getattr(self, '_active_frame', self.page)
-                    desc_el = context.query_selector(selector)
-                    if desc_el:
-                        text = desc_el.inner_text().strip()
-                        if len(text) > 200:
-                            self.job_description = text[:4000]
-                            break
-                except:
-                    continue
+            # Job description: search in main page first, then iframes
+            jd_selectors = [
+                '.job-description', '[class*="description"]',
+                '[class*="job-details"]', '[class*="job-content"]',
+                '[class*="posting-page"]', '.content', '#content',
+                'article', '[role="main"]',
+            ]
+            # Search main page first (description pages have JD in main content)
+            contexts_to_try = [self.page]
+            # Then iframes
+            for frame in self.page.frames:
+                if frame != self.page.main_frame:
+                    contexts_to_try.append(frame)
+
+            for ctx in contexts_to_try:
+                if self.job_description:
+                    break
+                for selector in jd_selectors:
+                    try:
+                        desc_el = ctx.query_selector(selector)
+                        if desc_el:
+                            text = desc_el.inner_text().strip()
+                            if len(text) > 200:
+                                self.job_description = text[:4000]
+                                break
+                    except:
+                        continue
+
+            # Fallback: If DOM JD is short (<500 chars), try ATS API (Greenhouse, Workday, etc.)
+            # Use cached API JD if already fetched (avoid redundant API calls on re-extract)
+            if len(self.job_description or '') < 500:
+                cached_api_jd = getattr(self, '_api_jd_cache', None)
+                if cached_api_jd:
+                    self.job_description = cached_api_jd
+                    print(f"   📄 JD from API (cached): {len(self.job_description)} chars")
+                else:
+                    try:
+                        from parsers.jd_parser import fetch_jd_from_url
+                        page_url = self.page.url if self.page else ""
+                        if page_url:
+                            api_jd = fetch_jd_from_url(page_url)
+                            if api_jd and len(api_jd) > len(self.job_description or ''):
+                                self.job_description = api_jd[:6000]
+                                self._api_jd_cache = self.job_description
+                                print(f"   📄 JD from API: {len(self.job_description)} chars")
+                    except Exception as e:
+                        print(f"   ⚠️ JD API fallback error: {e}")
 
             if self.job_title:
                 print(f"   📋 Job: {self.job_title[:60]}")

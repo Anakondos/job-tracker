@@ -3,31 +3,63 @@
     "description": "Unified knowledge base for AI-generated answers and common Q&A",
     "version": "2.0"
   },
-
   "skills": {
     "tools": [
-      "Jira", "Confluence", "Asana", "Monday.com",
-      "Salesforce", "NetSuite", "SAP",
-      "AWS", "GCP", "Azure",
-      "Tableau", "Power BI", "Looker",
-      "Git", "GitHub", "GitLab",
-      "ServiceNow", "MS Project", "Azure DevOps",
-      "SQL", "Oracle", "PostgreSQL", "Python",
-      "Docker", "Kubernetes", "Terraform", "Jenkins"
+      "Jira",
+      "Confluence",
+      "Asana",
+      "Monday.com",
+      "Salesforce",
+      "NetSuite",
+      "SAP",
+      "AWS",
+      "GCP",
+      "Azure",
+      "Tableau",
+      "Power BI",
+      "Looker",
+      "Git",
+      "GitHub",
+      "GitLab",
+      "ServiceNow",
+      "MS Project",
+      "Azure DevOps",
+      "SQL",
+      "Oracle",
+      "PostgreSQL",
+      "Python",
+      "Docker",
+      "Kubernetes",
+      "Terraform",
+      "Jenkins"
     ],
     "methodologies": [
-      "Agile", "Scrum", "SAFe", "Kanban",
-      "Waterfall", "Lean", "Six Sigma",
-      "PI Planning", "Sprint Planning", "Backlog Refinement"
+      "Agile",
+      "Scrum",
+      "SAFe",
+      "Kanban",
+      "Waterfall",
+      "Lean",
+      "Six Sigma",
+      "PI Planning",
+      "Sprint Planning",
+      "Backlog Refinement"
     ],
     "domains": [
-      "fintech", "banking", "insurance",
-      "payments", "trading", "investment banking",
-      "e-commerce", "SaaS", "enterprise",
-      "capital markets", "cash equities", "regulatory compliance"
+      "fintech",
+      "banking",
+      "insurance",
+      "payments",
+      "trading",
+      "investment banking",
+      "e-commerce",
+      "SaaS",
+      "enterprise",
+      "capital markets",
+      "cash equities",
+      "regulatory compliance"
     ]
   },
-
   "experience_snippets": {
     "NetSuite": "Configured NetSuite ERP for multi-currency operations across 15 countries, including AP/AR workflows and financial reporting dashboards.",
     "multi-currency": "Led implementation of multi-currency trading systems at Deutsche Bank, supporting 8 asset classes across global markets with real-time FX conversion.",
@@ -64,50 +96,112 @@
     "certification": "SAFe Product Owner/Product Manager (POPM) - Scaled Agile (2025), Professional Scrum Master I (PSM I) - Scrum.org (2016), Google Cloud Architect (2020), Google Cloud Digital Leader (2024), Agile Program Manager (2024).",
     "credentials": "SAFe POPM, PSM I, Google Cloud Architect, Google Cloud Digital Leader, Agile Program Manager. Master's in Computer Science (MIPT) and MBA (Open University Business School)."
   },
-
   "common_answers": {
     "salary_expectations": {
-      "keywords": ["salary", "compensation", "pay", "expected salary", "desired salary", "salary range", "salary requirement"],
+      "keywords": [
+        "salary",
+        "compensation",
+        "pay",
+        "expected salary",
+        "desired salary",
+        "salary range",
+        "salary requirement"
+      ],
       "answer": "Given my extensive experience leading large-scale cloud transformation programs, managing cross-functional teams, and driving delivery excellence in Agile and SAFe environments, I believe a competitive total compensation range for this role would be $150,000 to $180,000. I am flexible and open to discussion based on the overall compensation package and growth opportunities."
     },
     "why_interested": {
-      "keywords": ["why interested", "why this role", "why this position", "why do you want", "interest in this role", "interested in this role", "interested in this position", "what attracts you", "why are you applying"],
+      "keywords": [
+        "why interested",
+        "why this role",
+        "why this position",
+        "why do you want",
+        "interest in this role",
+        "interested in this role",
+        "interested in this position",
+        "what attracts you",
+        "why are you applying"
+      ],
       "answer": "I am drawn to this opportunity because it aligns perfectly with my experience leading large-scale Agile transformations and my passion for building high-performing teams. The chance to drive meaningful impact through program delivery excellence, combined with the company's focus on innovation, makes this an exciting next step in my career."
     },
     "greatest_strength": {
-      "keywords": ["greatest strength", "biggest strength", "key strength", "strongest skill", "what is your strength"],
+      "keywords": [
+        "greatest strength",
+        "biggest strength",
+        "key strength",
+        "strongest skill",
+        "what is your strength"
+      ],
       "answer": "My greatest strength is the ability to bridge technical complexity with business outcomes. I excel at translating stakeholder needs into actionable delivery plans, aligning cross-functional teams, and driving predictable execution. My experience spanning engineering, product, and program management allows me to build trust across all levels of an organization."
     },
     "leadership_style": {
-      "keywords": ["leadership style", "management style", "how do you lead", "describe your leadership", "approach to leadership"],
+      "keywords": [
+        "leadership style",
+        "management style",
+        "how do you lead",
+        "describe your leadership",
+        "approach to leadership"
+      ],
       "answer": "I lead through servant leadership — removing impediments, fostering psychological safety, and empowering teams to deliver their best work. I focus on coaching and mentoring, establishing clear goals and accountability while giving teams autonomy in how they achieve results."
     },
     "challenging_situation": {
-      "keywords": ["challenging situation", "difficult situation", "challenge you faced", "overcome a challenge", "tough situation", "tell me about a time"],
+      "keywords": [
+        "challenging situation",
+        "difficult situation",
+        "challenge you faced",
+        "overcome a challenge",
+        "tough situation",
+        "tell me about a time"
+      ],
       "answer": "During the DB-Fidessa M&A integration, we faced significant challenges coordinating teams across 15 countries with conflicting priorities. I established a structured dependency management process, facilitated alignment workshops, and implemented real-time risk tracking. We achieved 98% SIT success and delivered on time."
     },
     "why_leave": {
-      "keywords": ["why leaving", "why leave", "reason for leaving", "why looking for new", "what prompted your search"],
+      "keywords": [
+        "why leaving",
+        "why leave",
+        "reason for leaving",
+        "why looking for new",
+        "what prompted your search"
+      ],
       "answer": "I am looking for an opportunity where I can leverage my full range of skills in program management, cloud transformation, and Agile leadership at a larger scale. I want to drive strategic initiatives that have significant business impact."
     },
     "career_goals": {
-      "keywords": ["career goals", "where do you see yourself", "5 year plan", "long term goals", "career aspirations"],
+      "keywords": [
+        "career goals",
+        "where do you see yourself",
+        "5 year plan",
+        "long term goals",
+        "career aspirations"
+      ],
       "answer": "My goal is to continue growing as a senior technology leader, driving large-scale digital transformations and building high-performing teams. I aspire to a VP/Director of Program Management role where I can shape delivery strategy and mentor the next generation of technical leaders."
     },
     "work_style": {
-      "keywords": ["work style", "how do you work", "working style", "describe your work approach"],
+      "keywords": [
+        "work style",
+        "how do you work",
+        "working style",
+        "describe your work approach"
+      ],
       "answer": "I thrive in fast-paced, collaborative environments. I'm highly organized, data-driven, and focus on transparency and accountability. I balance strategic thinking with hands-on execution, and I'm comfortable working across time zones with distributed teams."
     },
     "perform_duties": {
-      "keywords": ["able to perform", "perform the duties", "reason you would not be able", "any reason why you"],
+      "keywords": [
+        "able to perform",
+        "perform the duties",
+        "reason you would not be able",
+        "any reason why you"
+      ],
       "answer": "No, there is no reason I would be unable to perform the duties of this position. I am fully capable and committed to excelling in this role."
     },
     "additional_info": {
-      "keywords": ["additional information", "anything else", "is there anything", "what else should we know"],
+      "keywords": [
+        "additional information",
+        "anything else",
+        "is there anything",
+        "what else should we know"
+      ],
       "answer": "I bring 15+ years of progressive experience in technical program management across Fortune 500 financial services and enterprise technology companies. I am authorized to work in the US and available to start within 2-3 weeks of offer acceptance."
     }
   },
-
   "achievements": [
     "Cloud migration: 15 applications, 50+ microservices → $1.2M annual savings",
     "DB-Fidessa M&A integration: 15 countries, 8 asset classes → 98% SIT success",
@@ -118,7 +212,6 @@
     "Team capacity: +15% through mentoring, 60% conflict reduction",
     "Risk analytics: 88% computation time reduction at UBS"
   ],
-
   "answer_templates": {
     "experience_with_X": "Yes, I have extensive experience with {tool}. {snippet} This directly applies to the requirements of this role.",
     "years_of_X": "I have {years}+ years of experience in {area}, demonstrated through my work at {companies}.",

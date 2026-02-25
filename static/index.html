@@ -285,6 +285,14 @@
       .action-apply { background: #16a34a; }
       .action-applied { background: #7c3aed; }
       .action-interview { background: #d97706; }
+      .action-excluded { background: #4b5563; cursor: default; opacity: 0.7; }
+      .action-rejected { background: #991b1b; cursor: default; opacity: 0.7; }
+      .action-withdrawn { background: #6b7280; cursor: default; opacity: 0.7; }
+      .action-closed { background: #6b7280; cursor: default; opacity: 0.7; }
+      /* Faded row for excluded/rejected/withdrawn/closed statuses */
+      tr.row-excluded td { opacity: 0.4; }
+      tr.row-excluded td.td-actions { opacity: 0.7; }
+      tr.row-excluded:hover td { opacity: 0.7; }
       .removeFromPipelineBtn {
         background: #5a2a2a;
         color: white;
@@ -1417,11 +1425,10 @@
       </div> <!-- end wrap -->
     </div> <!-- end tab-review -->
 
-    <!-- Answers Tab -->
-    <!-- Profile Tab (formerly Answers) -->
+    <!-- Profile Tab (V5 Knowledge Base + Learned DB) -->
     <div class="tab-content" id="tab-answers">
-      <h3 style="margin: 0 0 16px 0;">My Profile</h3>
-      
+      <h3 style="margin: 0 0 16px 0;">My Profile & Knowledge Base</h3>
+
       <!-- Target Roles -->
       <div class="card" style="margin-bottom: 16px; padding: 16px;">
         <h4 style="margin: 0 0 12px 0; color: var(--accent);">🎯 Target Roles</h4>
@@ -1438,37 +1445,63 @@
           </div>
         </div>
       </div>
-      
-      <h4 style="margin: 16px 0 12px 0; color: #9ca3af;">📋 Answer Library</h4>
-      
-      <!-- Personal Info -->
+
+      <!-- Personal Info (read-only) -->
       <div class="card" style="margin-bottom: 16px; padding: 16px;">
-        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Personal Info</h4>
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">👤 Personal Info</h4>
         <div id="personalInfo" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;"></div>
       </div>
-      
-      <!-- Demographics -->
+
+      <!-- Demographics (read-only) -->
       <div class="card" style="margin-bottom: 16px; padding: 16px;">
-        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Demographics (EEO)</h4>
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">📊 Demographics (EEO)</h4>
         <div id="demographicsInfo" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;"></div>
       </div>
-      
-      <!-- Education -->
+
+      <!-- Education (read-only) -->
       <div class="card" style="margin-bottom: 16px; padding: 16px;">
-        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Education</h4>
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">🎓 Education</h4>
         <div id="educationInfo"></div>
       </div>
-      
-      <!-- Employment -->
+
+      <!-- Employment (editable) -->
       <div class="card" style="margin-bottom: 16px; padding: 16px;">
-        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Employment History</h4>
+        <h4 style="margin: 0 0 12px 0; color: var(--accent);">💼 Employment History</h4>
         <div id="employmentInfo"></div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <button id="addWorkExpBtn" class="ghost" style="padding: 6px 14px; font-size: 12px; border: 1px dashed var(--border); border-radius: 6px;">+ Add Position</button>
+        </div>
       </div>
-      
-      <!-- Answers -->
+
+      <!-- Common Answers (editable + AI improve) -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 4px 0; color: var(--accent);">💬 Common Answers</h4>
+        <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0;">From knowledge_base.json — used when AI generates answers to common questions</p>
+        <div id="commonAnswersList"></div>
+      </div>
+
+      <!-- Experience Snippets (editable + AI improve + add new) -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 4px 0; color: var(--accent);">📝 Experience Snippets</h4>
+        <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0;">Keyword-based snippets used by AI to compose tailored answers</p>
+        <div id="snippetsList"></div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <button id="addSnippetBtn" class="ghost" style="padding: 6px 14px; font-size: 12px; border: 1px dashed var(--border); border-radius: 6px;">+ Add Snippet</button>
+        </div>
+      </div>
+
+      <!-- Learned Answers (editable + AI improve + delete) -->
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <h4 style="margin: 0 0 4px 0; color: var(--accent);">🧠 Learned Answers</h4>
+        <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0;">Answers learned from previously filled forms — reused automatically</p>
+        <div id="learnedAnswersList"></div>
+      </div>
+
+      <!-- Learned Dropdown Choices -->
       <div class="card" style="padding: 16px;">
-        <h4 style="margin: 0 0 12px 0; color: var(--accent);">Common Questions</h4>
-        <div id="answersList"></div>
+        <h4 style="margin: 0 0 4px 0; color: var(--accent);">📋 Learned Dropdown Choices</h4>
+        <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0;">Dropdown/autocomplete values remembered from forms</p>
+        <div id="learnedDropdownsList"></div>
       </div>
     </div> <!-- end tab-answers -->
 
@@ -2573,7 +2606,12 @@
           const jobKey = job.job_key || url || "";
 
           const st = job.application_status || "New";
-          
+          const stLowerCheck = st.toLowerCase();
+          // Fade out excluded/rejected/withdrawn/closed rows
+          if (['excluded', 'rejected', 'withdrawn', 'closed'].includes(stLowerCheck)) {
+            row.classList.add('row-excluded');
+          }
+
           // Get tags for industry column
           const tags = job.company_data?.tags || [];
           const tagsStr = tags.join(", ");
@@ -2706,6 +2744,16 @@
               return `<button class="smartActionBtn action-applied" ${btnData} title="Applied — waiting for response">📨 Applied</button>`;
             } else if (stLower === 'interview') {
               return `<button class="smartActionBtn action-interview" ${btnData} title="Interview stage">🎯 Interview</button>`;
+            } else if (stLower === 'excluded') {
+              return `<button class="smartActionBtn action-excluded" title="Excluded">🚫 Excluded</button>`;
+            } else if (stLower === 'rejected') {
+              return `<button class="smartActionBtn action-rejected" title="Rejected">❌ Rejected</button>`;
+            } else if (stLower === 'withdrawn') {
+              return `<button class="smartActionBtn action-withdrawn" title="Withdrawn">↩️ Withdrawn</button>`;
+            } else if (stLower === 'closed') {
+              return `<button class="smartActionBtn action-closed" title="Closed">🔒 Closed</button>`;
+            } else if (stLower === 'offer') {
+              return `<button class="smartActionBtn" style="background:#059669; cursor:default;" title="Offer received">🎉 Offer</button>`;
             } else {
               return '';
             }
@@ -4127,7 +4175,7 @@
             loadReviewJobs(1);
           } else if (tab === "answers") {
             // Answers tab - load answer library
-            if (!answerLibrary.personal) loadAnswerLibrary();
+            if (!v5Profile.personal) loadAnswerLibrary();
           }
         });
       });
@@ -4761,7 +4809,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               job_url: firstJob.url,
-              profile: 'anton_kondakov'
+              profile: 'anton_tpm'
             })
           });
           
@@ -4854,7 +4902,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               job_url: applicationUrl,
-              profile: 'anton_kondakov'
+              profile: 'anton_tpm'
             })
           });
           
@@ -5549,7 +5597,7 @@
           const data = await resp.json();
           const candidates = (data.candidates || []).filter(c => c.status !== 'approved' && c.status !== 'rejected');
           // Sort: ready_to_approve first, then parse_error (retryable), then rest
-          const statusOrder = {'ready_to_approve':0, 'validated':1, 'supported':1, 'parse_error':2, 'unsupported_ats':3, 'needs_careers_url':4, 'no_ats_detected':5, 'no_relevant_roles':6, 'pending_validation':7};
+          const statusOrder = {'ready_to_approve':0, 'validated':1, 'supported':1, 'parse_error':2, 'unsupported_ats':3, 'needs_careers_url':4, 'no_ats_detected':5, 'no_relevant_roles':6, 'pending_validation':7, 'manual_search':8};
           candidates.sort((a,b) => (statusOrder[a.status]??9) - (statusOrder[b.status]??9));
 
           badge.textContent = candidates.length;
@@ -5563,6 +5611,7 @@
           if (counts.needs_careers_url) parts.push(`🔗 ${counts.needs_careers_url} need URL`);
           if (counts.no_ats_detected) parts.push(`⚪ ${counts.no_ats_detected} no ATS`);
           if (counts.parse_error) parts.push(`🔴 ${counts.parse_error} errors`);
+          if (counts.manual_search) parts.push(`🔍 ${counts.manual_search} manual`);
           if (counts.approved) parts.push(`✓ ${counts.approved} approved`);
           if (counts.rejected) parts.push(`✗ ${counts.rejected} rejected`);
           status.textContent = parts.join(' · ');
@@ -5583,6 +5632,7 @@
               'parse_error': {bg:'#2a0a0a', border:'#dc2626', icon:'🔴'},
               'unsupported_ats': {bg:'#2a1a0a', border:'#d97706', icon:'🟡'},
               'no_relevant_roles': {bg:'#1a1a1a', border:'#475569', icon:'⚫'},
+              'manual_search': {bg:'#1a1a1a', border:'#8b5cf6', icon:'🔍'},
             };
             const st = statusColors[c.status] || {bg:'#1a1a2e', border:'#475569', icon:'❓'};
             const atsLabel = c.ats && c.ats !== 'unknown' ? c.ats : '';
@@ -5597,6 +5647,9 @@
             const retryBtn = ['parse_error','no_relevant_roles','no_ats_detected','unsupported_ats','needs_careers_url'].includes(c.status)
               ? `<button onclick="discoveryRetry('${c.id}')" style="background:#6366f1;color:white;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">🔄 Retry</button>`
               : '';
+            const searchBtn = c.status === 'manual_search' && c.search_url
+              ? `<a href="${c.search_url}" target="_blank" style="background:#8b5cf6;color:white;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;text-decoration:none;display:inline-block;">🔍 Search Jobs</a>`
+              : '';
             const rejectBtn = `<button onclick="discoveryReject('${c.id}')" style="background:#dc2626;color:white;border:none;border-radius:3px;padding:2px 6px;font-size:10px;cursor:pointer;">✗ Reject</button>`;
 
             return `<div style="background:${st.bg}; border:1px solid ${st.border}; border-radius:6px; padding:6px 10px; font-size:12px; min-width:220px; max-width:320px;">
@@ -5607,7 +5660,7 @@
               <div style="color:#94a3b8; font-size:10px; margin:3px 0;">${meta}</div>
               ${c.notes ? `<div style="color:#fbbf24; font-size:9px; margin:2px 0; opacity:0.8;">💡 ${c.notes.substring(0,60)}</div>` : ''}
               ${c.retry_result ? `<div style="color:#a78bfa; font-size:9px; margin:2px 0;">↪ ${c.retry_result.substring(0,60)}</div>` : ''}
-              <div style="display:flex; gap:4px; margin-top:4px;">${approveBtn}${retryBtn}${rejectBtn}</div>
+              <div style="display:flex; gap:4px; margin-top:4px;">${approveBtn}${retryBtn}${searchBtn}${rejectBtn}</div>
             </div>`;
           }).join('');
         } catch(e) {
@@ -6445,7 +6498,7 @@
           document.getElementById(`tab-${savedTab}`).classList.add("active");
         }
       }
-      
+
       loadCompanies();
       loadStatsByDate();
       loadJobsFromCache();  // Load jobs for header stats
@@ -6643,102 +6696,679 @@
       window.removeTargetRole = removeTargetRole;
       window.addTargetRole = addTargetRole;
       
+      // ── V5 Profile Data stores ──
+      let v5Profile = {};
+      let v5KnowledgeBase = {};
+      let v5Learned = {};
+
       async function loadAnswerLibrary() {
         try {
+          // Load old answer library for Target Roles compatibility
           const resp = await fetch('/answers');
           answerLibrary = await resp.json();
-          renderAnswers();
           renderTargetRoles();
-          
-          // Setup add role buttons
           document.querySelectorAll('.add-role-btn').forEach(btn => {
             btn.onclick = () => addTargetRole(btn.dataset.role);
           });
+
+          // Load V5 data from new endpoints
+          const [profileResp, kbResp, learnedResp] = await Promise.all([
+            fetch('/api/v5/profile'),
+            fetch('/api/v5/knowledge-base'),
+            fetch('/api/v5/learned'),
+          ]);
+          v5Profile = await profileResp.json();
+          v5KnowledgeBase = await kbResp.json();
+          v5Learned = await learnedResp.json();
+
+          renderProfileTab();
         } catch (e) {
-          console.error('Failed to load answers:', e);
+          console.error('Failed to load profile data:', e);
         }
       }
-      
-      function renderAnswers() {
-        // Personal Info
-        const personalDiv = document.getElementById('personalInfo');
-        const personal = answerLibrary.personal || {};
-        personalDiv.innerHTML = Object.entries(personal).map(([key, value]) => `
+
+      // ── Utility: escape HTML ──
+      function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+      // ── Render entire Profile tab ──
+      function renderProfileTab() {
+        renderPersonalInfo();
+        renderDemographics();
+        renderEducation();
+        renderEmployment();
+        renderCommonAnswers();
+        renderSnippets();
+        renderLearnedAnswers();
+        renderLearnedDropdowns();
+        setupAddSnippetBtn();
+      }
+
+      function renderPersonalInfo() {
+        const el = document.getElementById('personalInfo');
+        const p = v5Profile.personal || {};
+        const links = v5Profile.links || {};
+        const wa = v5Profile.work_authorization || {};
+        const sal = v5Profile.salary || {};
+        const items = [
+          ...Object.entries(p).map(([k,v]) => [k,v]),
+          ...Object.entries(links).map(([k,v]) => [k,v]),
+          ['Authorized (US)', wa.authorized_us || ''],
+          ['Sponsorship', wa.requires_sponsorship || ''],
+          ['Salary Range', sal.expected_salary ? `$${sal.expected_salary}` : ''],
+        ].filter(([k,v]) => v);
+        el.innerHTML = items.map(([key, value]) => `
           <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:var(--panel); border-radius:6px;">
             <div>
-              <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">${key.replace(/_/g, ' ')}</div>
-              <div style="font-size:13px;">${value}</div>
+              <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">${esc(key.replace(/_/g, ' '))}</div>
+              <div style="font-size:13px;">${esc(value)}</div>
             </div>
-            <button class="ghost copy-btn" data-value="${String(value).replace(/"/g, '&quot;')}" style="padding:4px 8px; font-size:11px;">Copy</button>
           </div>
         `).join('');
-        
-        // Demographics
-        const demoDiv = document.getElementById('demographicsInfo');
-        const demographics = answerLibrary.demographics || {};
-        demoDiv.innerHTML = Object.entries(demographics).map(([key, value]) => `
+      }
+
+      function renderDemographics() {
+        const el = document.getElementById('demographicsInfo');
+        const d = v5Profile.demographics || {};
+        el.innerHTML = Object.entries(d).map(([key, value]) => `
           <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:var(--panel); border-radius:6px;">
             <div>
-              <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">${key.replace(/_/g, ' ')}</div>
-              <div style="font-size:13px;">${value}</div>
+              <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">${esc(key.replace(/_/g, ' '))}</div>
+              <div style="font-size:13px;">${esc(value)}</div>
             </div>
-            <button class="ghost copy-btn" data-value="${String(value).replace(/"/g, '&quot;')}" style="padding:4px 8px; font-size:11px;">Copy</button>
           </div>
         `).join('');
-        
-        // Education
-        const eduDiv = document.getElementById('educationInfo');
-        const education = answerLibrary.education || [];
-        eduDiv.innerHTML = education.map((edu, i) => `
+      }
+
+      function renderEducation() {
+        const el = document.getElementById('educationInfo');
+        const edu = v5Profile.education || [];
+        el.innerHTML = edu.map(e => `
           <div style="padding:12px; background:var(--panel); border-radius:8px; margin-bottom:12px;">
-            <div style="font-weight:600; color:var(--accent);">${edu.school}</div>
-            <div style="font-size:13px;">${edu.degree} - ${edu.discipline}</div>
-            <div style="font-size:12px; color:var(--muted);">${edu.start_month} ${edu.start_year} - ${edu.end_month} ${edu.end_year}</div>
+            <div style="font-weight:600; color:var(--accent);">${esc(e.school)}</div>
+            <div style="font-size:13px;">${esc(e.degree)} — ${esc(e.discipline)}</div>
+            <div style="font-size:12px; color:var(--muted);">${esc(e.start_month)} ${esc(e.start_year)} – ${esc(e.end_month)} ${esc(e.end_year)}</div>
           </div>
         `).join('');
-        
-        // Employment
-        const empDiv = document.getElementById('employmentInfo');
-        const employment = answerLibrary.employment || [];
-        empDiv.innerHTML = employment.map((emp, i) => `
-          <div style="padding:12px; background:var(--panel); border-radius:8px; margin-bottom:12px;">
-            <div style="font-weight:600; color:var(--accent);">${emp.company}</div>
-            <div style="font-size:13px;">${emp.title}</div>
-            <div style="font-size:12px; color:var(--muted);">${emp.start_month} ${emp.start_year} - ${emp.current ? 'Present' : emp.end_month + ' ' + emp.end_year}</div>
-          </div>
-        `).join('');
-        
-        // Answers
-        const answersDiv = document.getElementById('answersList');
-        const answers = answerLibrary.answers || {};
-        answersDiv.innerHTML = Object.entries(answers).map(([key, data]) => `
-          <div class="answer-item" style="margin-bottom:16px; padding:12px; background:var(--panel); border-radius:8px;">
+      }
+
+      function renderEmployment() {
+        const el = document.getElementById('employmentInfo');
+        const work = v5Profile.work_experience || [];
+        el.innerHTML = work.map((w, i) => `
+          <div class="work-exp-item" data-index="${i}" style="padding:12px; background:var(--panel); border-radius:8px; margin-bottom:12px; border-left:3px solid ${w.current ? '#059669' : '#3b82f6'};">
             <div style="display:flex; justify-content:space-between; align-items:start;">
-              <div style="font-weight:600; color:var(--accent); margin-bottom:8px;">${data.question || key}</div>
-              <button class="ghost copy-btn" data-value="${String(data.answer || '').replace(/"/g, '&quot;')}" style="padding:4px 8px; font-size:11px;">Copy</button>
+              <div style="font-weight:600; color:var(--accent);">${esc(w.company)}</div>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="ghost edit-work-btn" data-index="${i}" style="padding:3px 8px; font-size:11px;">✏️ Edit</button>
+                <button class="ghost delete-work-btn" data-index="${i}" style="padding:3px 8px; font-size:11px; color:#ef4444;">🗑️</button>
+              </div>
             </div>
-            <div style="font-size:13px; line-height:1.5; color:var(--text);">${data.answer || ''}</div>
-            ${data.note ? `<div style="font-size:11px; color:var(--muted); margin-top:8px; font-style:italic;">Note: ${data.note}</div>` : ''}
+            <div style="font-size:13px;">${esc(w.title)}</div>
+            <div style="font-size:12px; color:var(--muted);">${esc(w.start_month)} ${esc(w.start_year)} – ${w.current ? 'Present' : esc(w.end_month) + ' ' + esc(w.end_year)}</div>
+            <div class="work-desc" style="font-size:12px; color:#9ca3af; margin-top:6px; line-height:1.4;">${esc(w.description)}</div>
           </div>
         `).join('');
-        
-        // Add copy handlers
-        document.querySelectorAll('#tab-answers .copy-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const value = btn.dataset.value;
-            navigator.clipboard.writeText(value).then(() => {
-              const orig = btn.textContent;
-              btn.textContent = 'Copied!';
-              btn.style.background = 'var(--accent)';
-              btn.style.color = 'white';
-              setTimeout(() => {
-                btn.textContent = orig;
-                btn.style.background = '';
-                btn.style.color = '';
-              }, 1500);
-            });
-          });
+
+        // Attach handlers
+        el.querySelectorAll('.edit-work-btn').forEach(btn => {
+          btn.onclick = () => startEditWorkExp(parseInt(btn.dataset.index));
         });
+        el.querySelectorAll('.delete-work-btn').forEach(btn => {
+          btn.onclick = async () => {
+            const idx = parseInt(btn.dataset.index);
+            const w = work[idx];
+            if (!confirm(`Delete "${w.company} — ${w.title}"?`)) return;
+            const res = await fetch(`/api/v5/profile/work-experience/${idx}`, { method: 'DELETE' });
+            if ((await res.json()).ok) {
+              v5Profile.work_experience.splice(idx, 1);
+              renderEmployment();
+            }
+          };
+        });
+
+        // Setup Add button
+        const addBtn = document.getElementById('addWorkExpBtn');
+        if (addBtn) addBtn.onclick = () => startAddWorkExp();
+      }
+
+      function workExpFormHtml(w = {}, isNew = false) {
+        return `
+          <div class="work-exp-form" style="padding:14px; background:var(--bg); border:${isNew ? '2px dashed var(--accent)' : '1px solid var(--accent)'}; border-radius:8px; margin-bottom:12px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+              <div>
+                <label style="font-size:11px; color:var(--muted);">Company</label>
+                <input class="wf-company" value="${esc(w.company||'')}" style="width:100%; padding:5px 8px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:13px; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--muted);">Title</label>
+                <input class="wf-title" value="${esc(w.title||'')}" style="width:100%; padding:5px 8px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:13px; box-sizing:border-box;">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap:8px; margin-bottom:8px; align-items:end;">
+              <div>
+                <label style="font-size:11px; color:var(--muted);">Start Month</label>
+                <input class="wf-sm" value="${esc(w.start_month||'')}" placeholder="June" style="width:100%; padding:5px 8px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:12px; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--muted);">Start Year</label>
+                <input class="wf-sy" value="${esc(w.start_year||'')}" placeholder="2020" style="width:100%; padding:5px 8px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:12px; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--muted);">End Month</label>
+                <input class="wf-em" value="${esc(w.end_month||'')}" placeholder="Dec" style="width:100%; padding:5px 8px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:12px; box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--muted);">End Year</label>
+                <input class="wf-ey" value="${esc(w.end_year||'')}" placeholder="2025" style="width:100%; padding:5px 8px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:12px; box-sizing:border-box;">
+              </div>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="checkbox" class="wf-current" ${w.current ? 'checked' : ''}>
+                <label style="font-size:11px; color:var(--muted);">Current</label>
+              </div>
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="font-size:11px; color:var(--muted);">Description</label>
+              <textarea class="wf-desc" rows="3" style="width:100%; padding:6px 8px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:12px; resize:vertical; font-family:inherit; box-sizing:border-box;">${esc(w.description||'')}</textarea>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="ghost wf-save" style="padding:5px 14px; font-size:12px; background:var(--accent); color:white; border-radius:4px;">Save</button>
+              <button class="ghost wf-cancel" style="padding:5px 14px; font-size:12px;">Cancel</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function getFormData(form) {
+        return {
+          company: form.querySelector('.wf-company').value.trim(),
+          title: form.querySelector('.wf-title').value.trim(),
+          start_month: form.querySelector('.wf-sm').value.trim(),
+          start_year: form.querySelector('.wf-sy').value.trim(),
+          end_month: form.querySelector('.wf-em').value.trim(),
+          end_year: form.querySelector('.wf-ey').value.trim(),
+          current: form.querySelector('.wf-current').checked,
+          description: form.querySelector('.wf-desc').value.trim(),
+        };
+      }
+
+      function startEditWorkExp(index) {
+        const item = document.querySelector(`.work-exp-item[data-index="${index}"]`);
+        if (!item) return;
+        const w = v5Profile.work_experience[index];
+        item.outerHTML = workExpFormHtml(w);
+        const form = document.querySelector('.work-exp-form');
+        form.querySelector('.wf-save').onclick = async () => {
+          const data = getFormData(form);
+          if (!data.company || !data.title) { alert('Company and title required'); return; }
+          const res = await fetch(`/api/v5/profile/work-experience/${index}`, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+          });
+          if ((await res.json()).ok) {
+            v5Profile.work_experience[index] = data;
+            renderEmployment();
+          }
+        };
+        form.querySelector('.wf-cancel').onclick = () => renderEmployment();
+        // Current checkbox disables end date
+        form.querySelector('.wf-current').onchange = (e) => {
+          form.querySelector('.wf-em').disabled = e.target.checked;
+          form.querySelector('.wf-ey').disabled = e.target.checked;
+          if (e.target.checked) {
+            form.querySelector('.wf-em').value = '';
+            form.querySelector('.wf-ey').value = '';
+          }
+        };
+      }
+
+      function startAddWorkExp() {
+        const el = document.getElementById('employmentInfo');
+        const existing = el.querySelector('.work-exp-form');
+        if (existing) { existing.remove(); return; }
+        el.insertAdjacentHTML('beforeend', workExpFormHtml({}, true));
+        const form = el.querySelector('.work-exp-form');
+        form.querySelector('.wf-save').onclick = async () => {
+          const data = getFormData(form);
+          if (!data.company || !data.title) { alert('Company and title required'); return; }
+          const res = await fetch('/api/v5/profile/work-experience', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+          });
+          const result = await res.json();
+          if (result.ok) {
+            v5Profile.work_experience.push(data);
+            renderEmployment();
+          }
+        };
+        form.querySelector('.wf-cancel').onclick = () => form.remove();
+        form.querySelector('.wf-current').onchange = (e) => {
+          form.querySelector('.wf-em').disabled = e.target.checked;
+          form.querySelector('.wf-ey').disabled = e.target.checked;
+        };
+      }
+
+      // ── Common Answers (editable) ──
+      function renderCommonAnswers() {
+        const el = document.getElementById('commonAnswersList');
+        const ca = v5KnowledgeBase.common_answers || {};
+        el.innerHTML = Object.entries(ca).map(([key, data]) => `
+          <div class="kb-item" data-key="${esc(key)}" style="margin-bottom:16px; padding:14px; background:var(--panel); border-radius:8px; border-left:3px solid var(--accent);">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:6px;">
+              <div style="font-weight:600; color:var(--accent); font-size:13px;">${esc(key.replace(/_/g, ' '))}</div>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="ghost edit-ca-btn" data-key="${esc(key)}" style="padding:3px 8px; font-size:11px;">✏️ Edit</button>
+                <button class="ghost improve-ca-btn" data-key="${esc(key)}" style="padding:3px 8px; font-size:11px;">🤖 Improve</button>
+              </div>
+            </div>
+            <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">Keywords: ${esc((data.keywords||[]).join(', '))}</div>
+            <div class="ca-answer-text" style="font-size:13px; line-height:1.5; color:var(--text);">${esc(data.answer || '')}</div>
+          </div>
+        `).join('');
+
+        // Attach edit handlers
+        el.querySelectorAll('.edit-ca-btn').forEach(btn => {
+          btn.onclick = () => startEditCommonAnswer(btn.dataset.key);
+        });
+        el.querySelectorAll('.improve-ca-btn').forEach(btn => {
+          btn.onclick = () => startImproveCommonAnswer(btn.dataset.key);
+        });
+      }
+
+      function startEditCommonAnswer(key) {
+        const item = document.querySelector(`.kb-item[data-key="${key}"]`);
+        const textEl = item.querySelector('.ca-answer-text');
+        const currentText = (v5KnowledgeBase.common_answers[key] || {}).answer || '';
+        textEl.innerHTML = `
+          <textarea style="width:100%; min-height:80px; background:var(--bg); color:var(--text); border:1px solid var(--accent); border-radius:6px; padding:8px; font-size:13px; resize:vertical; font-family:inherit;">${esc(currentText)}</textarea>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="ghost save-ca-btn" style="padding:4px 12px; font-size:12px; background:var(--accent); color:white; border-radius:4px;">Save</button>
+            <button class="ghost cancel-ca-btn" style="padding:4px 12px; font-size:12px;">Cancel</button>
+          </div>
+        `;
+        textEl.querySelector('.save-ca-btn').onclick = async () => {
+          const newText = textEl.querySelector('textarea').value.trim();
+          if (!newText) return;
+          const res = await fetch(`/api/v5/knowledge-base/common-answer/${encodeURIComponent(key)}`, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ answer: newText })
+          });
+          if ((await res.json()).ok) {
+            v5KnowledgeBase.common_answers[key].answer = newText;
+            renderCommonAnswers();
+          }
+        };
+        textEl.querySelector('.cancel-ca-btn').onclick = () => renderCommonAnswers();
+      }
+
+      function startImproveCommonAnswer(key) {
+        const item = document.querySelector(`.kb-item[data-key="${key}"]`);
+        const textEl = item.querySelector('.ca-answer-text');
+        const currentText = (v5KnowledgeBase.common_answers[key] || {}).answer || '';
+        const keywords = (v5KnowledgeBase.common_answers[key] || {}).keywords || [];
+        textEl.insertAdjacentHTML('afterend', `
+          <div class="improve-panel" style="margin-top:10px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:6px;">
+            <input type="text" class="improve-comment" placeholder="How to improve? (e.g. 'make shorter', 'add AWS experience', 'more confident tone')"
+              style="width:100%; padding:6px 10px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:12px; box-sizing:border-box;">
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="ghost run-improve-btn" style="padding:4px 12px; font-size:12px; background:#7c3aed; color:white; border-radius:4px;">🤖 Generate</button>
+              <button class="ghost cancel-improve-btn" style="padding:4px 12px; font-size:12px;">Cancel</button>
+            </div>
+            <div class="improve-result" style="display:none; margin-top:10px;"></div>
+          </div>
+        `);
+        const panel = item.querySelector('.improve-panel');
+        panel.querySelector('.cancel-improve-btn').onclick = () => panel.remove();
+        panel.querySelector('.run-improve-btn').onclick = async () => {
+          const comment = panel.querySelector('.improve-comment').value.trim();
+          if (!comment) return;
+          const btn = panel.querySelector('.run-improve-btn');
+          btn.textContent = '⏳ Thinking...'; btn.disabled = true;
+          try {
+            const res = await fetch('/api/v5/improve-answer', {
+              method: 'POST', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({ question: keywords.join(', '), current_answer: currentText, user_comment: comment })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              const resultDiv = panel.querySelector('.improve-result');
+              resultDiv.style.display = 'block';
+              resultDiv.innerHTML = `
+                <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">Improved version:</div>
+                <div style="font-size:13px; line-height:1.5; padding:8px; background:var(--panel); border-radius:6px; border-left:3px solid #7c3aed;">${esc(data.improved_answer)}</div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                  <button class="ghost accept-improve-btn" style="padding:4px 12px; font-size:12px; background:#059669; color:white; border-radius:4px;">✅ Accept</button>
+                  <button class="ghost reject-improve-btn" style="padding:4px 12px; font-size:12px;">❌ Reject</button>
+                </div>
+              `;
+              resultDiv.querySelector('.accept-improve-btn').onclick = async () => {
+                const saveRes = await fetch(`/api/v5/knowledge-base/common-answer/${encodeURIComponent(key)}`, {
+                  method: 'PATCH', headers: {'Content-Type':'application/json'},
+                  body: JSON.stringify({ answer: data.improved_answer })
+                });
+                if ((await saveRes.json()).ok) {
+                  v5KnowledgeBase.common_answers[key].answer = data.improved_answer;
+                  renderCommonAnswers();
+                }
+              };
+              resultDiv.querySelector('.reject-improve-btn').onclick = () => panel.remove();
+            } else {
+              alert('Error: ' + (data.error || 'Unknown'));
+              btn.textContent = '🤖 Generate'; btn.disabled = false;
+            }
+          } catch(e) { alert('Error: ' + e.message); btn.textContent = '🤖 Generate'; btn.disabled = false; }
+        };
+      }
+
+      // ── Experience Snippets (editable) ──
+      function renderSnippets() {
+        const el = document.getElementById('snippetsList');
+        const snippets = v5KnowledgeBase.experience_snippets || {};
+        el.innerHTML = Object.entries(snippets).map(([key, text]) => `
+          <div class="snippet-item" data-key="${esc(key)}" style="margin-bottom:12px; padding:12px; background:var(--panel); border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">
+              <span style="font-weight:600; color:#60a5fa; font-size:12px; background:#1e3a5f; padding:2px 8px; border-radius:4px;">${esc(key)}</span>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="ghost edit-sn-btn" data-key="${esc(key)}" style="padding:3px 8px; font-size:11px;">✏️</button>
+                <button class="ghost improve-sn-btn" data-key="${esc(key)}" style="padding:3px 8px; font-size:11px;">🤖</button>
+                <button class="ghost delete-sn-btn" data-key="${esc(key)}" style="padding:3px 8px; font-size:11px; color:#ef4444;">🗑️</button>
+              </div>
+            </div>
+            <div class="sn-text" style="font-size:13px; line-height:1.5; color:var(--text);">${esc(text)}</div>
+          </div>
+        `).join('');
+
+        el.querySelectorAll('.edit-sn-btn').forEach(btn => { btn.onclick = () => startEditSnippet(btn.dataset.key); });
+        el.querySelectorAll('.improve-sn-btn').forEach(btn => { btn.onclick = () => startImproveSnippet(btn.dataset.key); });
+        el.querySelectorAll('.delete-sn-btn').forEach(btn => {
+          btn.onclick = async () => {
+            if (!confirm(`Delete snippet "${btn.dataset.key}"?`)) return;
+            const res = await fetch(`/api/v5/knowledge-base/snippet/${encodeURIComponent(btn.dataset.key)}`, { method: 'DELETE' });
+            if ((await res.json()).ok) {
+              delete v5KnowledgeBase.experience_snippets[btn.dataset.key];
+              renderSnippets();
+            }
+          };
+        });
+      }
+
+      function startEditSnippet(key) {
+        const item = document.querySelector(`.snippet-item[data-key="${key}"]`);
+        const textEl = item.querySelector('.sn-text');
+        const currentText = v5KnowledgeBase.experience_snippets[key] || '';
+        textEl.innerHTML = `
+          <textarea style="width:100%; min-height:60px; background:var(--bg); color:var(--text); border:1px solid var(--accent); border-radius:6px; padding:8px; font-size:13px; resize:vertical; font-family:inherit;">${esc(currentText)}</textarea>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="ghost save-sn-btn" style="padding:4px 12px; font-size:12px; background:var(--accent); color:white; border-radius:4px;">Save</button>
+            <button class="ghost cancel-sn-btn" style="padding:4px 12px; font-size:12px;">Cancel</button>
+          </div>
+        `;
+        textEl.querySelector('.save-sn-btn').onclick = async () => {
+          const newText = textEl.querySelector('textarea').value.trim();
+          if (!newText) return;
+          const res = await fetch(`/api/v5/knowledge-base/snippet/${encodeURIComponent(key)}`, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ text: newText })
+          });
+          if ((await res.json()).ok) {
+            v5KnowledgeBase.experience_snippets[key] = newText;
+            renderSnippets();
+          }
+        };
+        textEl.querySelector('.cancel-sn-btn').onclick = () => renderSnippets();
+      }
+
+      function startImproveSnippet(key) {
+        const item = document.querySelector(`.snippet-item[data-key="${key}"]`);
+        const textEl = item.querySelector('.sn-text');
+        const currentText = v5KnowledgeBase.experience_snippets[key] || '';
+        textEl.insertAdjacentHTML('afterend', `
+          <div class="improve-panel" style="margin-top:10px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:6px;">
+            <input type="text" class="improve-comment" placeholder="How to improve? (e.g. 'add metrics', 'more concise')"
+              style="width:100%; padding:6px 10px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:12px; box-sizing:border-box;">
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="ghost run-improve-btn" style="padding:4px 12px; font-size:12px; background:#7c3aed; color:white; border-radius:4px;">🤖 Generate</button>
+              <button class="ghost cancel-improve-btn" style="padding:4px 12px; font-size:12px;">Cancel</button>
+            </div>
+            <div class="improve-result" style="display:none; margin-top:10px;"></div>
+          </div>
+        `);
+        const panel = item.querySelector('.improve-panel');
+        panel.querySelector('.cancel-improve-btn').onclick = () => panel.remove();
+        panel.querySelector('.run-improve-btn').onclick = async () => {
+          const comment = panel.querySelector('.improve-comment').value.trim();
+          if (!comment) return;
+          const btn = panel.querySelector('.run-improve-btn');
+          btn.textContent = '⏳ Thinking...'; btn.disabled = true;
+          try {
+            const res = await fetch('/api/v5/improve-answer', {
+              method: 'POST', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({ question: `Experience snippet: ${key}`, current_answer: currentText, user_comment: comment })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              const resultDiv = panel.querySelector('.improve-result');
+              resultDiv.style.display = 'block';
+              resultDiv.innerHTML = `
+                <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">Improved:</div>
+                <div style="font-size:13px; line-height:1.5; padding:8px; background:var(--panel); border-radius:6px; border-left:3px solid #7c3aed;">${esc(data.improved_answer)}</div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                  <button class="ghost accept-improve-btn" style="padding:4px 12px; font-size:12px; background:#059669; color:white; border-radius:4px;">✅ Accept</button>
+                  <button class="ghost reject-improve-btn" style="padding:4px 12px; font-size:12px;">❌ Reject</button>
+                </div>
+              `;
+              resultDiv.querySelector('.accept-improve-btn').onclick = async () => {
+                const saveRes = await fetch(`/api/v5/knowledge-base/snippet/${encodeURIComponent(key)}`, {
+                  method: 'PATCH', headers: {'Content-Type':'application/json'},
+                  body: JSON.stringify({ text: data.improved_answer })
+                });
+                if ((await saveRes.json()).ok) {
+                  v5KnowledgeBase.experience_snippets[key] = data.improved_answer;
+                  renderSnippets();
+                }
+              };
+              resultDiv.querySelector('.reject-improve-btn').onclick = () => panel.remove();
+            } else {
+              alert('Error: ' + (data.error || 'Unknown'));
+              btn.textContent = '🤖 Generate'; btn.disabled = false;
+            }
+          } catch(e) { alert('Error: ' + e.message); btn.textContent = '🤖 Generate'; btn.disabled = false; }
+        };
+      }
+
+      function setupAddSnippetBtn() {
+        document.getElementById('addSnippetBtn').onclick = () => {
+          const container = document.getElementById('snippetsList');
+          // Remove existing form if any
+          const existing = container.querySelector('.new-snippet-form');
+          if (existing) { existing.remove(); return; }
+          container.insertAdjacentHTML('afterbegin', `
+            <div class="new-snippet-form" style="margin-bottom:16px; padding:14px; background:var(--bg); border:2px dashed var(--accent); border-radius:8px;">
+              <input type="text" class="new-sn-key" placeholder="Keyword (e.g. 'Docker', 'compliance')"
+                style="width:100%; padding:6px 10px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:13px; margin-bottom:8px; box-sizing:border-box;">
+              <textarea class="new-sn-text" placeholder="Experience snippet text..."
+                style="width:100%; min-height:60px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:8px; font-size:13px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="ghost add-sn-save" style="padding:4px 12px; font-size:12px; background:var(--accent); color:white; border-radius:4px;">Add</button>
+                <button class="ghost add-sn-cancel" style="padding:4px 12px; font-size:12px;">Cancel</button>
+              </div>
+            </div>
+          `);
+          container.querySelector('.add-sn-cancel').onclick = () => container.querySelector('.new-snippet-form').remove();
+          container.querySelector('.add-sn-save').onclick = async () => {
+            const key = container.querySelector('.new-sn-key').value.trim();
+            const text = container.querySelector('.new-sn-text').value.trim();
+            if (!key || !text) { alert('Both keyword and text are required'); return; }
+            const res = await fetch('/api/v5/knowledge-base/snippet', {
+              method: 'POST', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({ key, text })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              v5KnowledgeBase.experience_snippets[key] = text;
+              renderSnippets();
+            } else { alert(data.error || 'Error adding snippet'); }
+          };
+        };
+      }
+
+      // ── Learned Answers (editable + delete) ──
+      function renderLearnedAnswers() {
+        const el = document.getElementById('learnedAnswersList');
+        const answers = v5Learned.answers || {};
+        if (Object.keys(answers).length === 0) {
+          el.innerHTML = '<p style="color:var(--muted); font-size:13px;">No learned answers yet. Fill out forms to build this database.</p>';
+          return;
+        }
+        el.innerHTML = Object.entries(answers).map(([key, value]) => `
+          <div class="learned-item" data-key="${esc(key)}" data-section="answers" style="margin-bottom:12px; padding:12px; background:var(--panel); border-radius:8px; border-left:3px solid #f59e0b;">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">
+              <div style="font-size:12px; color:#f59e0b; font-weight:500;">${esc(key.substring(0,80))}${key.length > 80 ? '...' : ''}</div>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="ghost edit-ln-btn" data-key="${esc(key)}" data-section="answers" style="padding:3px 8px; font-size:11px;">✏️</button>
+                <button class="ghost improve-ln-btn" data-key="${esc(key)}" data-section="answers" style="padding:3px 8px; font-size:11px;">🤖</button>
+                <button class="ghost delete-ln-btn" data-key="${esc(key)}" data-section="answers" style="padding:3px 8px; font-size:11px; color:#ef4444;">🗑️</button>
+              </div>
+            </div>
+            <div class="ln-text" style="font-size:13px; line-height:1.5; color:var(--text);">${esc(value)}</div>
+          </div>
+        `).join('');
+
+        el.querySelectorAll('.edit-ln-btn').forEach(btn => { btn.onclick = () => startEditLearned(btn.dataset.key, btn.dataset.section); });
+        el.querySelectorAll('.improve-ln-btn').forEach(btn => { btn.onclick = () => startImproveLearned(btn.dataset.key, btn.dataset.section); });
+        el.querySelectorAll('.delete-ln-btn').forEach(btn => {
+          btn.onclick = async () => {
+            if (!confirm('Delete this learned answer?')) return;
+            const res = await fetch(`/api/v5/learned/${btn.dataset.section}/${encodeURIComponent(btn.dataset.key)}`, { method: 'DELETE' });
+            if ((await res.json()).ok) {
+              delete v5Learned[btn.dataset.section][btn.dataset.key];
+              renderLearnedAnswers();
+            }
+          };
+        });
+      }
+
+      function renderLearnedDropdowns() {
+        const el = document.getElementById('learnedDropdownsList');
+        const choices = v5Learned.dropdown_choices || {};
+        if (Object.keys(choices).length === 0) {
+          el.innerHTML = '<p style="color:var(--muted); font-size:13px;">No learned dropdown choices yet.</p>';
+          return;
+        }
+        el.innerHTML = Object.entries(choices).map(([key, value]) => `
+          <div class="learned-item" data-key="${esc(key)}" data-section="dropdown_choices" style="margin-bottom:12px; padding:12px; background:var(--panel); border-radius:8px; border-left:3px solid #8b5cf6;">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">
+              <div style="font-size:12px; color:#8b5cf6; font-weight:500;">${esc(key.substring(0,80))}${key.length > 80 ? '...' : ''}</div>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="ghost edit-ln-btn" data-key="${esc(key)}" data-section="dropdown_choices" style="padding:3px 8px; font-size:11px;">✏️</button>
+                <button class="ghost delete-ln-btn" data-key="${esc(key)}" data-section="dropdown_choices" style="padding:3px 8px; font-size:11px; color:#ef4444;">🗑️</button>
+              </div>
+            </div>
+            <div class="ln-text" style="font-size:13px; line-height:1.5; color:var(--text);">${esc(value)}</div>
+          </div>
+        `).join('');
+
+        el.querySelectorAll('.edit-ln-btn').forEach(btn => { btn.onclick = () => startEditLearned(btn.dataset.key, btn.dataset.section); });
+        el.querySelectorAll('.delete-ln-btn').forEach(btn => {
+          btn.onclick = async () => {
+            if (!confirm('Delete this dropdown choice?')) return;
+            const res = await fetch(`/api/v5/learned/${btn.dataset.section}/${encodeURIComponent(btn.dataset.key)}`, { method: 'DELETE' });
+            if ((await res.json()).ok) {
+              delete v5Learned[btn.dataset.section][btn.dataset.key];
+              renderLearnedDropdowns();
+            }
+          };
+        });
+      }
+
+      function startEditLearned(key, section) {
+        const item = document.querySelector(`.learned-item[data-key="${CSS.escape(key)}"][data-section="${section}"]`);
+        if (!item) return;
+        const textEl = item.querySelector('.ln-text');
+        const currentText = (v5Learned[section] || {})[key] || '';
+        textEl.innerHTML = `
+          <textarea style="width:100%; min-height:60px; background:var(--bg); color:var(--text); border:1px solid var(--accent); border-radius:6px; padding:8px; font-size:13px; resize:vertical; font-family:inherit;">${esc(currentText)}</textarea>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="ghost save-ln-btn" style="padding:4px 12px; font-size:12px; background:var(--accent); color:white; border-radius:4px;">Save</button>
+            <button class="ghost cancel-ln-btn" style="padding:4px 12px; font-size:12px;">Cancel</button>
+          </div>
+        `;
+        textEl.querySelector('.save-ln-btn').onclick = async () => {
+          const newText = textEl.querySelector('textarea').value.trim();
+          if (!newText) return;
+          const res = await fetch(`/api/v5/learned/${section}/${encodeURIComponent(key)}`, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ value: newText })
+          });
+          if ((await res.json()).ok) {
+            v5Learned[section][key] = newText;
+            if (section === 'answers') renderLearnedAnswers();
+            else renderLearnedDropdowns();
+          }
+        };
+        textEl.querySelector('.cancel-ln-btn').onclick = () => {
+          if (section === 'answers') renderLearnedAnswers();
+          else renderLearnedDropdowns();
+        };
+      }
+
+      function startImproveLearned(key, section) {
+        const item = document.querySelector(`.learned-item[data-key="${CSS.escape(key)}"][data-section="${section}"]`);
+        if (!item) return;
+        const textEl = item.querySelector('.ln-text');
+        const currentText = (v5Learned[section] || {})[key] || '';
+        textEl.insertAdjacentHTML('afterend', `
+          <div class="improve-panel" style="margin-top:10px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:6px;">
+            <input type="text" class="improve-comment" placeholder="How to improve?"
+              style="width:100%; padding:6px 10px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:4px; font-size:12px; box-sizing:border-box;">
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="ghost run-improve-btn" style="padding:4px 12px; font-size:12px; background:#7c3aed; color:white; border-radius:4px;">🤖 Generate</button>
+              <button class="ghost cancel-improve-btn" style="padding:4px 12px; font-size:12px;">Cancel</button>
+            </div>
+            <div class="improve-result" style="display:none; margin-top:10px;"></div>
+          </div>
+        `);
+        const panel = item.querySelector('.improve-panel');
+        panel.querySelector('.cancel-improve-btn').onclick = () => panel.remove();
+        panel.querySelector('.run-improve-btn').onclick = async () => {
+          const comment = panel.querySelector('.improve-comment').value.trim();
+          if (!comment) return;
+          const btn = panel.querySelector('.run-improve-btn');
+          btn.textContent = '⏳ Thinking...'; btn.disabled = true;
+          try {
+            const res = await fetch('/api/v5/improve-answer', {
+              method: 'POST', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({ question: key, current_answer: currentText, user_comment: comment })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              const resultDiv = panel.querySelector('.improve-result');
+              resultDiv.style.display = 'block';
+              resultDiv.innerHTML = `
+                <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">Improved:</div>
+                <div style="font-size:13px; line-height:1.5; padding:8px; background:var(--panel); border-radius:6px; border-left:3px solid #7c3aed;">${esc(data.improved_answer)}</div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                  <button class="ghost accept-improve-btn" style="padding:4px 12px; font-size:12px; background:#059669; color:white; border-radius:4px;">✅ Accept</button>
+                  <button class="ghost reject-improve-btn" style="padding:4px 12px; font-size:12px;">❌ Reject</button>
+                </div>
+              `;
+              resultDiv.querySelector('.accept-improve-btn').onclick = async () => {
+                const saveRes = await fetch(`/api/v5/learned/${section}/${encodeURIComponent(key)}`, {
+                  method: 'PATCH', headers: {'Content-Type':'application/json'},
+                  body: JSON.stringify({ value: data.improved_answer })
+                });
+                if ((await saveRes.json()).ok) {
+                  v5Learned[section][key] = data.improved_answer;
+                  if (section === 'answers') renderLearnedAnswers();
+                  else renderLearnedDropdowns();
+                }
+              };
+              resultDiv.querySelector('.reject-improve-btn').onclick = () => panel.remove();
+            } else {
+              alert('Error: ' + (data.error || 'Unknown'));
+              btn.textContent = '🤖 Generate'; btn.disabled = false;
+            }
+          } catch(e) { alert('Error: ' + e.message); btn.textContent = '🤖 Generate'; btn.disabled = false; }
+        };
       }
       
       // Cover Letter Modal
@@ -7749,6 +8379,11 @@
           btn.textContent = "Add";
         }
       });
+
+      // Auto-load Profile data if tab was restored to 'answers' from localStorage
+      if (localStorage.getItem('activeTab') === 'answers' && !v5Profile.personal) {
+        loadAnswerLibrary();
+      }
     </script>
   </body>
 </html>

@@ -8,8 +8,10 @@
     "location": "Raleigh, NC",
     "city": "Wake Forest",
     "state": "North Carolina",
+    "state_code": "NC",
     "zip_code": "27587",
     "country": "United States",
+    "country_code": "USA",
     "street_address": "2000 Sweet Samson St",
     "full_address": "2000 Sweet Samson St, Wake Forest, NC 27587"
   },
@@ -58,33 +60,83 @@
   "work_experience": [
     {
       "company": "DXC Technology",
-      "title": "Senior Technical Program Manager / Delivery Manager",
+      "title": "Delivery Manager / Product Owner | SAFe Agile Transformation",
       "start_month": "June",
       "start_year": "2025",
       "end_month": "",
       "end_year": "",
       "current": true,
-      "description": "Leading enterprise platform modernization program for global insurance broker. Direct cross-functional program delivery across 5 Agile teams (60+ engineers). Lead AWS cloud migration with microservices architecture achieving 30% improvement in delivery velocity."
+      "description": "Leading SAFe Agile transformation and product delivery for a top global insurance broker's digital platform modernization. Driving end-to-end product ownership, PI Planning facilitation, and cross-functional team coordination across multiple time zones. Integrated Amazon Q Developer for AI-assisted code analysis achieving 30% improvement in release velocity. Spearheading migration of legacy trading platform to AWS-native microservices architecture using Terraform and Amazon ECS. Leading Angular 10→18 frontend migration with Material Design, improving UI performance by 40%. Facilitating PI Planning sessions, managing product backlog, coordinating UAT cycles. Built new cross-functional team achieving delivery velocity parity within first quarter. Mentored tech leads, increasing team capacity by 15% and reducing conflicts by 60%."
     },
     {
       "company": "Luxoft USA (Deutsche Bank)",
-      "title": "Senior Technical Program Manager",
+      "title": "Senior Technical Program Manager & Product Owner | Cash Equities",
       "start_month": "February",
       "start_year": "2020",
       "end_month": "June",
       "end_year": "2025",
       "current": false,
-      "description": "Directed enterprise-scale technology programs for Deutsche Bank's Cash Equities division across 15 countries. Led GCP cloud migration (15 applications, 50+ microservices) achieving $1.2M annual savings. Directed DB-Fidessa merger integration across 8 asset classes."
+      "description": "Directed enterprise-scale technology programs for Deutsche Bank's Cash Equities division — trade information processing and regulatory reporting across 15 countries. Managed 200TB+ database with 25+ critical regulatory reporting requirements. Enhanced SDLC development process improving project delivery efficiency by 20%. Reduced program costs by 50% through optimized architectural frameworks. Revamped release preparation workflows using Agile/ServiceNow — reduced to 15 minutes, increased deployment frequency by 30%. Re-engineered critical components cutting annual support costs by $1.2M. Led GCP cloud migration achieving 25% more system uptime. Directed DB-Fidessa M&A integration across 8 asset classes — 98% SIT success rate."
     },
     {
       "company": "Luxoft Poland (UBS Bank)",
-      "title": "Technical Program Manager",
-      "start_month": "January",
+      "title": "Senior Technical Program Manager | Cash Equities",
+      "start_month": "April",
       "start_year": "2016",
       "end_month": "January",
       "end_year": "2020",
       "current": false,
-      "description": "Managed technology programs for UBS investment banking division. Led infrastructure modernization migrating 13,000+ SharePoint sites. Delivered risk analytics platform reducing computation time by 88%."
+      "description": "Managed diverse Technical Program within International Banking Investment sector — Cash Equities. Led Performance Automation System for operational processes, global Clarion Project for client team integration, expansive IT infrastructure transformation (13,000+ SharePoint sites, 80+ applications to cloud), and comprehensive analytical engine for Credit Risks Analysis (CVA/CE) reducing computation time by 88%. Managed vendor consolidation (12 to 4 vendors) reducing overhead 40%. Reinforced bank's operational efficiency, technological resilience, and analytical acuity."
+    },
+    {
+      "company": "Luxoft Europe",
+      "title": "Senior Project Manager | Corporate Portals, Procurement",
+      "start_month": "October",
+      "start_year": "2013",
+      "end_month": "March",
+      "end_year": "2016",
+      "current": false,
+      "description": "Delivered comprehensive corporate portal for Lukoil using SharePoint/C# within microservices architecture — unified access across global branches (25,000+ users, 12 countries). Spearheaded PepsiCo 'MyBay' procurement system integrating Ariba with SAP for 15 markets. Guided delivery of customized lot management solution for Brookfield ($1.5M budget) on .NET platform. Established and led agile development of Pfizer's corporate portal services including Corporate Chat, News, and Business Workflow."
+    },
+    {
+      "company": "AT Consulting",
+      "title": "Project Manager & Analyst | Cloud SaaS, e-Gov",
+      "start_month": "April",
+      "start_year": "2011",
+      "end_month": "October",
+      "end_year": "2013",
+      "current": false,
+      "description": "Successfully launched Pre-Production phase of 'Virtual Office - SaaS' in Electronic Government Program. Modernized front and back-office processes to deliver value and accelerate business performance. Adopted cloud-enabled service model — helped launch new cloud services. Delivered Cloud Storage Management Portal. Simplified supplier access to services meeting customers' business needs."
+    },
+    {
+      "company": "Association for Appraisal and Pricing of Engineering Cost",
+      "title": "Business Analyst & Project Manager | Pricing Workflow, SaaS",
+      "start_month": "December",
+      "start_year": "2009",
+      "end_month": "April",
+      "end_year": "2011",
+      "current": false,
+      "description": "Top management consultation and business analysis for pricing processes and managing construction projects. Implemented new business workflow with Cloud SaaS services in several government companies. Improved annual income by $700K through process reengineering and cloud solutions."
+    },
+    {
+      "company": "TopS BI",
+      "title": "Portfolio/Project Manager | IT PM, EPM",
+      "start_month": "July",
+      "start_year": "2007",
+      "end_month": "December",
+      "end_year": "2009",
+      "current": false,
+      "description": "Organized pre-sales phases, negotiations, contract preparation, project scheduling and budgeting. Implemented information systems for project management and portfolios based on Microsoft Office EPM Solution 2007. Developed rules and standards for managing projects. Delivered EPM implementations for Crednevolzhskaya Gas Company (SVGK) and National Logistics Company. Led internal MS EPM 2003→2007 migration."
+    },
+    {
+      "company": "JSC Vega Radio Engineering Corporation",
+      "title": "Head of CAD Lab | IT Project Manager",
+      "start_month": "December",
+      "start_year": "2002",
+      "end_month": "July",
+      "end_year": "2007",
+      "current": false,
+      "description": "Led team members to achieve high-level performance. Managed negotiations with sub-contractors, analyzed technical commercial proposals. Collected and analyzed requirements from functional units. Integration of PDM-systems with CAD Systems (Pro/Engineer Wildfire). Implemented production workflow Lotsia PLM. Developed web-portal based on MS SharePoint Services."
     }
   ],
   

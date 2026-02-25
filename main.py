@@ -97,6 +97,7 @@ from storage.job_storage import (
     add_job, add_jobs_bulk, update_status as job_update_status,
     update_last_seen, update_last_seen_bulk, mark_missing_jobs,
     get_stats as get_job_stats, get_job_by_id, job_exists,
+    get_rejected_ids,
     STATUS_NEW, STATUS_APPLIED, STATUS_INTERVIEW, STATUS_OFFER,
     STATUS_REJECTED, STATUS_WITHDRAWN, STATUS_CLOSED, STATUS_EXCLUDED,
     ACTIVE_STATUSES, ARCHIVE_STATUSES,
@@ -1168,8 +1169,14 @@ async def get_jobs(
             return bucket == "remote_usa"
         return True
 
+    # Filter out previously rejected/excluded jobs
+    rejected_ids = get_rejected_ids()
+
     filtered: list[dict] = []
     for j in all_jobs:
+        ats_job_id = j.get("ats_job_id") or ""
+        if ats_job_id and str(ats_job_id) in rejected_ids:
+            continue
         if not match_role(j):
             continue
         if not match_states(j):
@@ -4433,12 +4440,19 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
     
     # Try different parsers
     if "greenhouse" in url.lower() or "boards.greenhouse.io" in url:
-        from parsers.greenhouse import parse_jobs_api
+        from parsers.greenhouse import fetch_greenhouse
         ats = "greenhouse"
         # Extract company from URL
         if "boards.greenhouse.io" in url:
-            parts = url.split("boards.greenhouse.io/")[1].split("/")
-            company_slug = parts[0]
+            import urllib.parse as _up
+            _parsed = _up.urlparse(url)
+            _qs = _up.parse_qs(_parsed.query)
+            if "/embed/job_app" in _parsed.path and _qs.get("for"):
+                # Embed URL: boards.greenhouse.io/embed/job_app?token=XXX&for=company
+                company_slug = _qs["for"][0]
+            else:
+                parts = url.split("boards.greenhouse.io/")[1].split("/")
+                company_slug = parts[0]
             job_data = {"board_url": f"https://boards.greenhouse.io/{company_slug}"}
     elif "lever.co" in url.lower():
         ats = "lever"
@@ -4523,12 +4537,21 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
         
         # Standard Greenhouse URL (boards.greenhouse.io)
         if not jd and "boards.greenhouse.io" in url:
-            parts = url.split("boards.greenhouse.io/")[1].split("/")
-            company_slug = parts[0]
-            job_id = None
-            if len(parts) > 2:
-                job_id = parts[2].split("?")[0]
-            
+            import urllib.parse as _up2
+            _parsed2 = _up2.urlparse(url)
+            _qs2 = _up2.parse_qs(_parsed2.query)
+
+            if "/embed/job_app" in _parsed2.path and _qs2.get("token"):
+                # Embed URL: boards.greenhouse.io/embed/job_app?token=XXX&for=company
+                job_id = _qs2["token"][0]
+                company_slug = _qs2.get("for", [""])[0] or "unknown"
+            else:
+                parts = url.split("boards.greenhouse.io/")[1].split("/")
+                company_slug = parts[0]
+                job_id = None
+                if len(parts) > 2:
+                    job_id = parts[2].split("?")[0]
+
             if job_id:
                 api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs/{job_id}"
                 resp = requests.get(api_url, timeout=15)
@@ -4546,32 +4569,37 @@ async def analyze_job_url_endpoint(payload: AnalyzeJobUrlRequest):
         
         # Special handling for Workday - use their API
         if not jd and "myworkdayjobs" in url:
-            # Parse URL: https://company.wd1.myworkdayjobs.com/site/job/location/title_JOBID
+            # Parse URL: https://company.wd5.myworkdayjobs.com/en-US/site/job/title_JOBID
             import re
-            # Extract: company, site, and the job path (location/title_ID)
-            match = re.match(r"https://([^.]+)\.wd\d\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([^/]+)/job/(.+)", url)
+            # Extract: company, wdN number, site, and the job path
+            match = re.match(r"https://([^.]+)\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([^/]+)/job/(.+)", url)
             if match:
                 company_slug = match.group(1)
-                site = match.group(2)
-                job_path = match.group(3).split("?")[0]  # Remove query params
-                
-                # Fetch job details from Workday API - need full path
-                api_url = f"https://{company_slug}.wd1.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                wd_instance = match.group(2)  # e.g. wd1, wd5, wd12
+                site = match.group(3)
+                job_path = match.group(4).split("?")[0]  # Remove query params
+
+                # Fetch job details from Workday API - use correct wdN instance
+                api_url = f"https://{company_slug}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company_slug}/{site}/job/{job_path}"
+                print(f"[AnalyzeJobUrl] Workday API: {api_url}")
                 headers = {"Content-Type": "application/json", "Accept": "application/json"}
                 resp = requests.get(api_url, headers=headers, timeout=15)
-                
+
                 if resp.ok:
                     data = resp.json()
                     job_posting = data.get("jobPostingInfo", {})
                     title = job_posting.get("title", "")
-                    company = job_posting.get("company", company_slug.replace("-", " ").title())
+                    company = job_posting.get("company", "") or company_slug.replace("-", " ").title()
                     location = job_posting.get("location", "")
                     jd = job_posting.get("jobDescription", "")
-                    
+
                     # Clean HTML from JD
                     if jd:
                         soup_jd = BeautifulSoup(jd, "html.parser")
                         jd = soup_jd.get_text(separator="\n", strip=True)
+                    print(f"[AnalyzeJobUrl] Workday API success: {title} at {company}, JD={len(jd)} chars")
+                else:
+                    print(f"[AnalyzeJobUrl] Workday API failed: {resp.status_code}")
         
         # Standard HTML parsing for other ATS
         if not jd:
@@ -5135,6 +5163,364 @@ def get_answer(category: str, key: str):
     if category in data and key in data[category]:
         return {"value": data[category][key]}
     return {"error": f"Key {category}/{key} not found"}
+
+
+# ============= V5 PROFILE / KNOWLEDGE BASE / LEARNED DB =============
+
+@app.get("/api/v5/profile")
+def get_v5_profile():
+    """Get personal profile (read-only) from V5 profile file."""
+    profile_path = Path("browser/profiles/anton_tpm.json")
+    if not profile_path.exists():
+        return {"error": "Profile not found"}
+    with open(profile_path) as f:
+        data = json.load(f)
+    # Return structured sections
+    return {
+        "personal": data.get("personal", {}),
+        "links": data.get("links", {}),
+        "demographics": data.get("demographics", {}),
+        "education": data.get("education", []),
+        "work_experience": data.get("work_experience", []),
+        "certifications": data.get("certifications", []),
+        "common_answers": data.get("common_answers", {}),
+        "work_authorization": data.get("work_authorization", {}),
+        "salary": data.get("salary", {}),
+        "availability": data.get("availability", {}),
+        "summary": data.get("summary", ""),
+    }
+
+
+@app.put("/api/v5/profile/work-experience")
+def update_work_experience(payload: dict):
+    """Update the work experience list in profile."""
+    profile_path = Path("browser/profiles/anton_tpm.json")
+    if not profile_path.exists():
+        return {"error": "Profile not found"}
+    with open(profile_path) as f:
+        data = json.load(f)
+
+    if "work_experience" in payload:
+        data["work_experience"] = payload["work_experience"]
+    with open(profile_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "count": len(data["work_experience"])}
+
+
+@app.patch("/api/v5/profile/work-experience/{index}")
+def update_single_work_experience(index: int, payload: dict):
+    """Update a single work experience entry by index."""
+    profile_path = Path("browser/profiles/anton_tpm.json")
+    if not profile_path.exists():
+        return {"error": "Profile not found"}
+    with open(profile_path) as f:
+        data = json.load(f)
+
+    work_exp = data.get("work_experience", [])
+    if index < 0 or index >= len(work_exp):
+        return {"error": f"Index {index} out of range (0-{len(work_exp)-1})"}
+
+    # Update fields that are provided
+    for key in ["company", "title", "start_month", "start_year",
+                 "end_month", "end_year", "current", "description"]:
+        if key in payload:
+            work_exp[index][key] = payload[key]
+
+    data["work_experience"] = work_exp
+    with open(profile_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "updated_index": index}
+
+
+@app.post("/api/v5/profile/work-experience")
+def add_work_experience(payload: dict):
+    """Add a new work experience entry."""
+    profile_path = Path("browser/profiles/anton_tpm.json")
+    if not profile_path.exists():
+        return {"error": "Profile not found"}
+    with open(profile_path) as f:
+        data = json.load(f)
+
+    entry = {
+        "company": payload.get("company", ""),
+        "title": payload.get("title", ""),
+        "start_month": payload.get("start_month", ""),
+        "start_year": payload.get("start_year", ""),
+        "end_month": payload.get("end_month", ""),
+        "end_year": payload.get("end_year", ""),
+        "current": payload.get("current", False),
+        "description": payload.get("description", ""),
+    }
+
+    work_exp = data.get("work_experience", [])
+    work_exp.append(entry)
+    data["work_experience"] = work_exp
+
+    with open(profile_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "added_index": len(work_exp) - 1}
+
+
+@app.delete("/api/v5/profile/work-experience/{index}")
+def delete_work_experience(index: int):
+    """Delete a work experience entry by index."""
+    profile_path = Path("browser/profiles/anton_tpm.json")
+    if not profile_path.exists():
+        return {"error": "Profile not found"}
+    with open(profile_path) as f:
+        data = json.load(f)
+
+    work_exp = data.get("work_experience", [])
+    if index < 0 or index >= len(work_exp):
+        return {"error": f"Index {index} out of range"}
+
+    removed = work_exp.pop(index)
+    data["work_experience"] = work_exp
+
+    with open(profile_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "deleted": removed.get("company", "")}
+
+
+@app.get("/api/v5/knowledge-base")
+def get_knowledge_base():
+    """Get the full knowledge base."""
+    kb_path = Path("browser/knowledge_base.json")
+    if not kb_path.exists():
+        return {"error": "Knowledge base not found"}
+    with open(kb_path) as f:
+        return json.load(f)
+
+
+@app.put("/api/v5/knowledge-base")
+def update_knowledge_base(data: dict):
+    """Update the full knowledge base."""
+    kb_path = Path("browser/knowledge_base.json")
+    with open(kb_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True}
+
+
+@app.patch("/api/v5/knowledge-base/common-answer/{key}")
+def update_common_answer(key: str, payload: dict):
+    """Update a single common answer by key."""
+    kb_path = Path("browser/knowledge_base.json")
+    if not kb_path.exists():
+        return {"error": "Knowledge base not found"}
+    with open(kb_path) as f:
+        data = json.load(f)
+
+    ca = data.get("common_answers", {})
+    if key not in ca:
+        return {"error": f"Common answer '{key}' not found"}
+
+    # Update answer text (and optionally keywords)
+    if "answer" in payload:
+        ca[key]["answer"] = payload["answer"]
+    if "keywords" in payload:
+        ca[key]["keywords"] = payload["keywords"]
+
+    data["common_answers"] = ca
+    with open(kb_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "updated": key}
+
+
+@app.patch("/api/v5/knowledge-base/snippet/{key}")
+def update_snippet(key: str, payload: dict):
+    """Update a single experience snippet by key."""
+    kb_path = Path("browser/knowledge_base.json")
+    if not kb_path.exists():
+        return {"error": "Knowledge base not found"}
+    with open(kb_path) as f:
+        data = json.load(f)
+
+    snippets = data.get("experience_snippets", {})
+    if key not in snippets:
+        return {"error": f"Snippet '{key}' not found"}
+
+    if "text" in payload:
+        snippets[key] = payload["text"]
+
+    data["experience_snippets"] = snippets
+    with open(kb_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "updated": key}
+
+
+@app.post("/api/v5/knowledge-base/snippet")
+def add_snippet(payload: dict):
+    """Add a new experience snippet."""
+    kb_path = Path("browser/knowledge_base.json")
+    if not kb_path.exists():
+        return {"error": "Knowledge base not found"}
+
+    key = payload.get("key", "").strip()
+    text = payload.get("text", "").strip()
+    if not key or not text:
+        return {"error": "Both 'key' and 'text' are required"}
+
+    with open(kb_path) as f:
+        data = json.load(f)
+
+    snippets = data.get("experience_snippets", {})
+    if key in snippets:
+        return {"error": f"Snippet '{key}' already exists. Use PATCH to update."}
+
+    snippets[key] = text
+    data["experience_snippets"] = snippets
+    with open(kb_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "added": key}
+
+
+@app.delete("/api/v5/knowledge-base/snippet/{key}")
+def delete_snippet(key: str):
+    """Delete an experience snippet by key."""
+    kb_path = Path("browser/knowledge_base.json")
+    if not kb_path.exists():
+        return {"error": "Knowledge base not found"}
+    with open(kb_path) as f:
+        data = json.load(f)
+
+    snippets = data.get("experience_snippets", {})
+    if key not in snippets:
+        return {"error": f"Snippet '{key}' not found"}
+
+    del snippets[key]
+    data["experience_snippets"] = snippets
+    with open(kb_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "deleted": key}
+
+
+@app.get("/api/v5/learned")
+def get_learned_database():
+    """Get the learned database (answers + dropdown choices)."""
+    db_path = Path("browser/learned_database.json")
+    if not db_path.exists():
+        return {"answers": {}, "dropdown_choices": {}}
+    with open(db_path) as f:
+        return json.load(f)
+
+
+@app.patch("/api/v5/learned/{section}/{key:path}")
+def update_learned_answer(section: str, key: str, payload: dict):
+    """Update a single learned answer or dropdown choice.
+    section: 'answers' or 'dropdown_choices'
+    key: the question key (URL-encoded)
+    """
+    db_path = Path("browser/learned_database.json")
+    if not db_path.exists():
+        return {"error": "Learned database not found"}
+
+    if section not in ("answers", "dropdown_choices"):
+        return {"error": f"Invalid section '{section}'. Use 'answers' or 'dropdown_choices'."}
+
+    with open(db_path) as f:
+        data = json.load(f)
+
+    entries = data.get(section, {})
+    if key not in entries:
+        return {"error": f"Key not found in {section}"}
+
+    if "value" in payload:
+        entries[key] = payload["value"]
+
+    data[section] = entries
+    with open(db_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "updated": key[:50]}
+
+
+@app.delete("/api/v5/learned/{section}/{key:path}")
+def delete_learned_answer(section: str, key: str):
+    """Delete a learned answer or dropdown choice."""
+    db_path = Path("browser/learned_database.json")
+    if not db_path.exists():
+        return {"error": "Learned database not found"}
+
+    if section not in ("answers", "dropdown_choices"):
+        return {"error": f"Invalid section '{section}'"}
+
+    with open(db_path) as f:
+        data = json.load(f)
+
+    entries = data.get(section, {})
+    if key not in entries:
+        return {"error": f"Key not found in {section}"}
+
+    del entries[key]
+    data[section] = entries
+    with open(db_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "deleted": key[:50]}
+
+
+@app.post("/api/v5/improve-answer")
+def improve_answer_with_ai(payload: dict):
+    """
+    Improve an answer using Claude AI.
+    Expects: {question, current_answer, user_comment}
+    Returns: {ok, improved_answer}
+    """
+    import anthropic
+
+    question = payload.get("question", "")
+    current_answer = payload.get("current_answer", "")
+    user_comment = payload.get("user_comment", "")
+
+    if not current_answer or not user_comment:
+        return {"error": "Both 'current_answer' and 'user_comment' are required"}
+
+    client = anthropic.Anthropic()
+
+    prompt = f"""You are improving a job application answer.
+
+Question: {question}
+
+Current answer:
+{current_answer}
+
+User's instruction for improvement:
+{user_comment}
+
+Rules:
+- Keep the answer professional and concise
+- Maintain the factual content — do NOT invent experience or credentials
+- Apply the user's instruction faithfully
+- Return ONLY the improved answer text, nothing else
+- No markdown formatting, no quotes — just the plain answer text"""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        improved = response.content[0].text.strip()
+        return {"ok": True, "improved_answer": improved}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/v5/form-schemas")
+def get_form_schemas():
+    """Get form schema stats for all ATS types."""
+    from browser.v5.engine import FormSchemaDB
+    db = FormSchemaDB()
+    return {"ok": True, "schemas": db.data, "stats": db.get_stats()}
+
+
+@app.get("/api/v5/form-schemas/{ats_type}")
+def get_form_schema(ats_type: str):
+    """Get form schema for a specific ATS type."""
+    from browser.v5.engine import FormSchemaDB
+    db = FormSchemaDB()
+    schema = db.get_schema(ats_type)
+    if not schema:
+        return {"ok": False, "error": f"No schema for {ats_type}"}
+    return {"ok": True, "ats_type": ats_type, "schema": schema}
 
 
 @app.post("/generate-cover-letter")
@@ -6309,7 +6695,7 @@ Respond in JSON format:
                 "content-type": "application/json"
             },
             json={
-                "model": "claude-3-5-haiku-20241022",
+                "model": "claude-sonnet-4-20250514",
                 "max_tokens": 1000,
                 "messages": [{"role": "user", "content": prompt}]
             },
@@ -6511,10 +6897,11 @@ except Exception as e:
     log_file = Path("/tmp/v5_apply.log")
     
     # Run in new Terminal window (so user can see output)
+    # Paths must be quoted because cwd may contain spaces (e.g. "Mobile Documents")
     apple_script = f'''
     tell application "Terminal"
         activate
-        do script "cd {cwd} && {sys.executable} {script_file}"
+        do script "cd \\"{cwd}\\" && \\"{sys.executable}\\" \\"{script_file}\\""
     end tell
     '''
     
@@ -6656,11 +7043,10 @@ except Exception as e:
     
     log_file = Path("/tmp/v6_apply.log")
     
-    # Open new terminal but don't steal focus and don't close old ones
-    escaped_cwd = str(cwd).replace(' ', '\\\\ ')
+    # Open new terminal — paths quoted because cwd may contain spaces
     apple_script = f'''
     tell application "Terminal"
-        do script "cd {escaped_cwd} && {sys.executable} {script_file}"
+        do script "cd \\"{cwd}\\" && \\"{sys.executable}\\" \\"{script_file}\\""
         delay 0.3
         set current settings of front window to settings set "Basic"
         set font size of front window to 13
@@ -6751,11 +7137,10 @@ finally:
     script_file = Path("/tmp/v7_agent_script.py")
     script_file.write_text(script_content)
     
-    # Run in Terminal
-    escaped_cwd = str(cwd).replace(' ', '\\\\ ')
+    # Run in Terminal — paths quoted because cwd may contain spaces
     apple_script = f'''
     tell application "Terminal"
-        do script "cd {escaped_cwd} && {sys.executable} {script_file}"
+        do script "cd \\"{cwd}\\" && \\"{sys.executable}\\" \\"{script_file}\\""
         delay 0.3
         set current settings of front window to settings set "Basic"
         set font size of front window to 13

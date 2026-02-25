@@ -98,7 +98,7 @@ def call_claude_api(prompt: str, max_tokens: int = 2000) -> Optional[str]:
         resp = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": "claude-3-5-haiku-20241022", "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}]},
+            json={"model": "claude-sonnet-4-20250514", "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}]},
             timeout=60
         )
         if resp.status_code != 200:
