@@ -354,7 +354,7 @@ Return ONLY valid JSON, no other text."""
                 "content-type": "application/json"
             },
             json={
-                "model": "claude-3-5-haiku-20241022",
+                "model": "claude-sonnet-4-20250514",
                 "max_tokens": 1500,
                 "messages": [{"role": "user", "content": prompt}]
             },

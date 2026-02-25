@@ -1,0 +1,1423 @@
+{
+  "Greenhouse": {
+    "last_updated": "2026-02-18T23:38:56.526344",
+    "fill_count": 71,
+    "fields": {
+      "first_name": {
+        "label": "First Name*",
+        "field_type": "text",
+        "profile_key": "personal.first_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 71,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "last_name": {
+        "label": "Last Name*",
+        "field_type": "text",
+        "profile_key": "personal.last_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 71,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "email": {
+        "label": "Email*",
+        "field_type": "text",
+        "profile_key": "personal.email",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 71,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "phone": {
+        "label": "Phone*",
+        "field_type": "phone",
+        "profile_key": "personal.phone",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 71,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "job_application_answers_attributes_0_text_value": {
+        "label": "What is your preferred first name? [job_application[answers_attributes][0][text_value]]",
+        "field_type": "text",
+        "profile_key": "personal.first_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_1_text_value": {
+        "label": "Website [job_application[answers_attributes][1][text_value]]",
+        "field_type": "text",
+        "profile_key": "links.linkedin",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen1": {
+        "label": "Are you 18 years of age or older?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Yes",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen2": {
+        "label": "Upon employment, can you submit verification of your legal right to work for Toshiba in the United S",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "Yes, I am authorized to work in the United States ",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_4_text_value": {
+        "label": "Please list all of your professional credentials (organizations, licenses, certificates) below. [job",
+        "field_type": "textarea",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "SAFe POPM (2025), PSM I (2016), Google Cloud Archi",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_5_text_value": {
+        "label": "Please list any additional address information here, such as an apartment number, lot/space number, ",
+        "field_type": "text",
+        "profile_key": "personal.street_address",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_6_text_value": {
+        "label": "What city do you currently reside in? [job_application[answers_attributes][6][text_value]]",
+        "field_type": "text",
+        "profile_key": "personal.city",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen3": {
+        "label": "What state and country do you currently reside in?",
+        "field_type": "autocomplete",
+        "profile_key": "personal.state",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_8_text_value": {
+        "label": "What is your zip code? [job_application[answers_attributes][8][text_value]]",
+        "field_type": "text",
+        "profile_key": "personal.zip_code",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen4": {
+        "label": "If you are not based in the same city as the role you have applied for, are you willing to relocate?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Yes",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_10_text_value": {
+        "label": "If you are employed, what is the name of your current company? [job_application[answers_attributes][",
+        "field_type": "text",
+        "profile_key": "work_experience.0.company",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_11_text_value": {
+        "label": "If you are employed, what is your current title? [job_application[answers_attributes][11][text_value",
+        "field_type": "text",
+        "profile_key": "work_experience.0.title",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen5": {
+        "label": "Do you currently work under any agreement, such as a non-compete agreement, which would restrict you",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen6": {
+        "label": "Have you previously been employed by a Toshiba company?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen7": {
+        "label": "Have you ever worked for our company under a different name?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "No, I have not previously worked for your company ",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_15_text_value": {
+        "label": "If you are related to any current Toshiba employees, please list their name. [job_application[answer",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "I am not related to any current Toshiba employees.",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_16_text_value": {
+        "label": "Is there any reason why you would not be able to perform the duties of the job to which you have app",
+        "field_type": "textarea",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No, there is no reason I would be unable to perfor",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_17_text_value": {
+        "label": "I hereby certify that my answers to the foregoing questions and statements are true and complete wit",
+        "field_type": "text",
+        "profile_key": "personal.full_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_18_text_value": {
+        "label": "What is your current street address? [job_application[answers_attributes][18][text_value]]",
+        "field_type": "text",
+        "profile_key": "personal.street_address",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_19_text_value": {
+        "label": "What AI Development tools are you currently using to aid development? [job_application[answers_attri",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "Currently using GitHub Copilot, Claude, and AI-pow",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen8": {
+        "label": "Do you have a track record of designing UX directly in code?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "No direct UX coding experience. My background focu",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application_answers_attributes_21_text_value": {
+        "label": "What is your desired salary? [job_application[answers_attributes][21][text_value]]",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Given my extensive experience leading large-scale",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen9": {
+        "label": "Gender",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Male",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen10": {
+        "label": "Are you Hispanic/Latino?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen12": {
+        "label": "Veteran Status",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "I am not a protected veteran",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen13": {
+        "label": "Disability Status",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No, I do not",
+        "options": [],
+        "success_count": 26,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen11": {
+        "label": "Please identify your race",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "White",
+        "options": [],
+        "success_count": 14,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "country": {
+        "label": "Country*",
+        "field_type": "autocomplete",
+        "profile_key": "personal.country",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [
+          "United States +1",
+          "Afghanistan +93",
+          "Åland Islands +358",
+          "Albania +355",
+          "Algeria +213",
+          "American Samoa +1",
+          "Andorra +376",
+          "Angola +244",
+          "Anguilla +1",
+          "Antigua & Barbuda +1",
+          "Argentina +54",
+          "Armenia +374",
+          "Aruba +297",
+          "Ascension Island +247",
+          "Australia +61",
+          "Austria +43",
+          "Azerbaijan +994",
+          "Bahamas +1",
+          "Bahrain +973",
+          "Bangladesh +880"
+        ],
+        "success_count": 45,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_11097816007": {
+        "label": "What is your preferred first name?*",
+        "field_type": "text",
+        "profile_key": "personal.first_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097817007": {
+        "label": "Website",
+        "field_type": "text",
+        "profile_key": "links.linkedin",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097818007": {
+        "label": "Are you 18 years of age or older?*",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Yes",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097819007": {
+        "label": "Upon employment, can you submit verification of your legal right to work for Toshiba in the United S",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "Yes, I am authorized to work in the United States ",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097820007": {
+        "label": "Please list all of your professional credentials (organizations, licenses, certificates) below.",
+        "field_type": "textarea",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "SAFe POPM (2025), PSM I (2016), Google Cloud Archi",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097821007": {
+        "label": "Please list any additional address information here, such as an apartment number, lot/space number, ",
+        "field_type": "text",
+        "profile_key": "personal.street_address",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097822007": {
+        "label": "What city do you currently reside in?*",
+        "field_type": "text",
+        "profile_key": "personal.city",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097824007": {
+        "label": "What is your zip code?*",
+        "field_type": "text",
+        "profile_key": "personal.zip_code",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097825007": {
+        "label": "If you are not based in the same city as the role you have applied for, are you willing to relocate?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Yes",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097826007": {
+        "label": "If you are employed, what is the name of your current company?",
+        "field_type": "text",
+        "profile_key": "work_experience.0.company",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097827007": {
+        "label": "If you are employed, what is your current title?",
+        "field_type": "text",
+        "profile_key": "work_experience.0.title",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097828007": {
+        "label": "Do you currently work under any agreement, such as a non-compete agreement, which would restrict you",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097829007": {
+        "label": "Have you previously been employed by a Toshiba company?*",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097830007": {
+        "label": "Have you ever worked for our company under a different name?*",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "No, I have not previously worked for your company ",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097831007": {
+        "label": "If you are related to any current Toshiba employees, please list their name.*",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "I am not related to any current Toshiba employees.",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097832007": {
+        "label": "Is there any reason why you would not be able to perform the duties of the job to which you have app",
+        "field_type": "textarea",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No, there is no reason I would be unable to perfor",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097833007": {
+        "label": "Would you like to be contacted via text message about your application status? Please note standard ",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "Yes",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097834007": {
+        "label": "I hereby certify that my answers to the foregoing questions and statements are true and complete wit",
+        "field_type": "text",
+        "profile_key": "personal.full_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097835007": {
+        "label": "What is your current street address?*",
+        "field_type": "text",
+        "profile_key": "personal.street_address",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "question_11097836007": {
+        "label": "What is your desired salary?*",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Given my extensive experience leading large-scale",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "gender": {
+        "label": "Gender",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Male",
+        "options": [
+          "Male",
+          "Female",
+          "Decline To Self Identify"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "hispanic_ethnicity": {
+        "label": "Are you Hispanic/Latino?",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [
+          "Yes",
+          "No",
+          "Decline To Self Identify"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "veteran_status": {
+        "label": "Veteran Status",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "I am not a protected veteran",
+        "options": [
+          "I am not a protected veteran",
+          "I identify as one or more of the classifications of a protected veteran",
+          "I don't wish to answer"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "disability_status": {
+        "label": "Disability Status",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No, I do not have a disability and have not had one in the past",
+        "options": [
+          "Yes, I have a disability, or have had one in the past",
+          "No, I do not have a disability and have not had one in the past",
+          "I do not want to answer"
+        ],
+        "success_count": 42,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "race": {
+        "label": "Please identify your race",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "White",
+        "options": [],
+        "success_count": 39,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "resume": {
+        "label": "Attach",
+        "field_type": "file",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "cover_letter": {
+        "label": "Attach",
+        "field_type": "file",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 42,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_11097823007": {
+        "label": "What state and country do you currently reside in?*",
+        "field_type": "autocomplete",
+        "profile_key": "personal.state",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [
+          "BRA",
+          "CAN-NL",
+          "CAN-PE",
+          "CAN-NW",
+          "CAN-NB",
+          "CAN-QC",
+          "CAN-ON",
+          "CAN-MB",
+          "CAN-SK",
+          "CAN-AB",
+          "CAN-BC",
+          "CAN-YT",
+          "CAN-NT",
+          "CAN-NU",
+          "COL",
+          "CHL",
+          "MEX",
+          "USA-AL",
+          "USA-AK",
+          "USA-AZ"
+        ],
+        "success_count": 32,
+        "last_success": "2026-02-14T13:48:53.587513"
+      },
+      "s2id_autogen14": {
+        "label": "School",
+        "field_type": "autocomplete",
+        "profile_key": "education.0.school",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen15": {
+        "label": "Degree",
+        "field_type": "autocomplete",
+        "profile_key": "education.0.degree",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "s2id_autogen16": {
+        "label": "Discipline",
+        "field_type": "autocomplete",
+        "profile_key": "education.0.discipline",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application[educations][][start_date][month]": {
+        "label": "Start Date [job_application[educations][][start_date][month]]",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application[educations][][start_date][year]": {
+        "label": "Start Date [job_application[educations][][start_date][year]]",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application[educations][][end_date][month]": {
+        "label": "End Date [job_application[educations][][end_date][month]]",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "job_application[educations][][end_date][year]": {
+        "label": "End Date [job_application[educations][][end_date][year]]",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "resume_fieldset": {
+        "label": "Resume/CV",
+        "field_type": "file",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "cover_letter_fieldset": {
+        "label": "Cover Letter",
+        "field_type": "file",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "authenticity_token": {
+        "label": "authenticity_token",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 6,
+        "last_success": "2026-02-14T13:02:34.310936"
+      },
+      "preferred_name": {
+        "label": "Preferred First Name",
+        "field_type": "text",
+        "profile_key": "personal.first_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-14T14:10:12.056452"
+      },
+      "question_15384088004": {
+        "label": "LinkedIn Profile",
+        "field_type": "text",
+        "profile_key": "links.linkedin",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-14T14:10:12.056452"
+      },
+      "question_15384089004": {
+        "label": "Website",
+        "field_type": "text",
+        "profile_key": "",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-14T14:10:12.056452"
+      },
+      "candidate-location": {
+        "label": "Location (City)*",
+        "field_type": "autocomplete",
+        "profile_key": "personal.city",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404510": {
+        "label": "LinkedIn Profile",
+        "field_type": "text",
+        "profile_key": "links.linkedin",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404511": {
+        "label": "How did you hear about this job?*",
+        "field_type": "autocomplete",
+        "profile_key": "common_answers.how_heard",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [
+          "Company Website (Airbnb Careers)",
+          "Third-party website or search engine",
+          "Social media (Facebook, LinkedIn, Twitter, Instagram)",
+          "Airbnb Tech blog post",
+          "Airbnb.io",
+          "Airbnb Open Source",
+          "Event (Tech Talk, Meetup, conference)",
+          "Airbnb Employee",
+          "Friend, family, colleague",
+          "Other"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404512[]_627507047": {
+        "label": "I decline to answer the following questions. [question_63404512[]]",
+        "field_type": "checkbox",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404513": {
+        "label": "Gender:",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Male",
+        "options": [
+          "Male",
+          "Female",
+          "Other",
+          "Decline To Self Identify"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404514": {
+        "label": "Race:",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "White",
+        "options": [
+          "American Indian or Alaskan Native",
+          "Asian",
+          "Black or African American",
+          "Hispanic or Latino",
+          "White",
+          "Native Hawaiian or Other Pacific Islander",
+          "Two or More Races",
+          "Decline to Self Identify"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404515": {
+        "label": "Veteran Status:",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "I am not a protected veteran",
+        "options": [
+          "I am a protected veteran",
+          "I am not a protected veteran",
+          "Decline to Self Identify"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404516": {
+        "label": "Are you legally authorized to work in the country where the job is located? *",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Yes",
+        "options": [
+          "Yes, I am currently legally authorized to work in the country where the job is located.",
+          "No, I am not currently legally authorized to work in the country where the job is located."
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404517": {
+        "label": "Will you now or in the future require company sponsorship to retain or extend your work authorizatio",
+        "field_type": "autocomplete",
+        "profile_key": "personal.country",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [
+          "Yes, I will require immigration sponsorship now to legally work in the country where the job is located.",
+          "Yes, I will require immigration sponsorship in the future to legally work in the country where the job is located.",
+          "No, I do not and will not require immigration sponsorship to legally work in the country where the job is located."
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404518": {
+        "label": "Airbnb Candidate Privacy Policy*",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "I acknowledge that I have read and understood the Airbnb Candidate Privacy Policy.",
+        "options": [
+          "I acknowledge that I have read and understood the Airbnb Candidate Privacy Policy."
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404519": {
+        "label": "Are you currently subject to any non-compete or non-solicitation agreement that would impact your ab",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63404520": {
+        "label": "Are you currently or have you ever worked for Airbnb in any capacity? This could include, but is not",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "No, I have never worked for Airbnb in any capacity including full-time, intern, apprentice, or contingent worker roles.",
+        "options": [],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63633048": {
+        "label": "How many years experience do you have as a Product Manager in a consumer facing position?*",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "8+ years",
+        "options": [
+          "No experience",
+          "1 - 3 years",
+          "4 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63633049": {
+        "label": "How many years of product management experience do you have designing and building developer platfor",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "8+ years",
+        "options": [
+          "No experience",
+          "1 - 2 years",
+          "3 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63633050": {
+        "label": "How many years of experience do you have in Product Marketing? *",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "8+ years",
+        "options": [
+          "No experience",
+          "1 - 3 years",
+          "4 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63633051": {
+        "label": "How many years of experience do you have working on consumer products with marketplace dynamics on a",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "8+ years",
+        "options": [
+          "No experience",
+          "1 - 3 years",
+          "4 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63633052": {
+        "label": "What is your level of proficiency developing and presenting executive level presentations? *",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "Advanced",
+        "options": [
+          "No experience",
+          "Beginner",
+          "Intermediate",
+          "Advanced"
+        ],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      },
+      "question_63633053": {
+        "label": "Describe your experience developing partnerships with a focus on supply and demand at scale.*",
+        "field_type": "textarea",
+        "profile_key": "",
+        "source": "learned",
+        "answer_hint": "Led cross-functional partnerships in SAFe transformation for global insurance platform, coordinating supply-demand across multiple time zones, achieving 30% velocity improvement and scaling team capacity by 15%.",
+        "options": [],
+        "success_count": 2,
+        "last_success": "2026-02-18T23:38:56.526344"
+      }
+    },
+    "repeatable_field_ids": {
+      "education": [
+        "school--{N}",
+        "degree--{N}",
+        "discipline--{N}",
+        "start-month--{N}",
+        "start-year--{N}",
+        "end-month--{N}",
+        "end-year--{N}"
+      ],
+      "work_experience": [
+        "company-name-{N}",
+        "title-{N}",
+        "start-date-month-{N}",
+        "start-date-year-{N}",
+        "end-date-month-{N}",
+        "end-date-year-{N}"
+      ]
+    }
+  },
+  "Unknown": {
+    "last_updated": "2026-02-18T22:58:05.567829",
+    "fill_count": 1,
+    "fields": {
+      "first_name": {
+        "label": "First Name*",
+        "field_type": "text",
+        "profile_key": "personal.first_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "last_name": {
+        "label": "Last Name*",
+        "field_type": "text",
+        "profile_key": "personal.last_name",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "email": {
+        "label": "Email*",
+        "field_type": "text",
+        "profile_key": "personal.email",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "country": {
+        "label": "Country*",
+        "field_type": "autocomplete",
+        "profile_key": "personal.country",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [
+          "United States +1",
+          "Afghanistan +93",
+          "Åland Islands +358",
+          "Albania +355",
+          "Algeria +213",
+          "American Samoa +1",
+          "Andorra +376",
+          "Angola +244",
+          "Anguilla +1",
+          "Antigua & Barbuda +1",
+          "Argentina +54",
+          "Armenia +374",
+          "Aruba +297",
+          "Ascension Island +247",
+          "Australia +61",
+          "Austria +43",
+          "Azerbaijan +994",
+          "Bahamas +1",
+          "Bahrain +973",
+          "Bangladesh +880"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "phone": {
+        "label": "Phone*",
+        "field_type": "phone",
+        "profile_key": "personal.phone",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "candidate-location": {
+        "label": "Location (City)*",
+        "field_type": "autocomplete",
+        "profile_key": "personal.city",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "resume": {
+        "label": "Attach",
+        "field_type": "file",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "cover_letter": {
+        "label": "Attach",
+        "field_type": "file",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404510": {
+        "label": "LinkedIn Profile",
+        "field_type": "text",
+        "profile_key": "links.linkedin",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404511": {
+        "label": "How did you hear about this job?*",
+        "field_type": "autocomplete",
+        "profile_key": "common_answers.how_heard",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [
+          "Company Website (Airbnb Careers)",
+          "Third-party website or search engine",
+          "Social media (Facebook, LinkedIn, Twitter, Instagram)",
+          "Airbnb Tech blog post",
+          "Airbnb.io",
+          "Airbnb Open Source",
+          "Event (Tech Talk, Meetup, conference)",
+          "Airbnb Employee",
+          "Friend, family, colleague",
+          "Other"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404512[]_627507047": {
+        "label": "I decline to answer the following questions. [question_63404512[]]",
+        "field_type": "checkbox",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404513": {
+        "label": "Gender:",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Male",
+        "options": [
+          "Male",
+          "Female",
+          "Other",
+          "Decline To Self Identify"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404514": {
+        "label": "Race:",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "White",
+        "options": [
+          "American Indian or Alaskan Native",
+          "Asian",
+          "Black or African American",
+          "Hispanic or Latino",
+          "White",
+          "Native Hawaiian or Other Pacific Islander",
+          "Two or More Races",
+          "Decline to Self Identify"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404515": {
+        "label": "Veteran Status:",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "I am not a protected veteran",
+        "options": [
+          "I am a protected veteran",
+          "I am not a protected veteran",
+          "Decline to Self Identify"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404516": {
+        "label": "Are you legally authorized to work in the country where the job is located? *",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "Yes",
+        "options": [
+          "Yes, I am currently legally authorized to work in the country where the job is located.",
+          "No, I am not currently legally authorized to work in the country where the job is located."
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404517": {
+        "label": "Will you now or in the future require company sponsorship to retain or extend your work authorizatio",
+        "field_type": "autocomplete",
+        "profile_key": "personal.country",
+        "source": "profile",
+        "answer_hint": "",
+        "options": [
+          "Yes, I will require immigration sponsorship now to legally work in the country where the job is located.",
+          "Yes, I will require immigration sponsorship in the future to legally work in the country where the job is located.",
+          "No, I do not and will not require immigration sponsorship to legally work in the country where the job is located."
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404518": {
+        "label": "Airbnb Candidate Privacy Policy*",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "I acknowledge that I have read and understood the Airbnb Candidate Privacy Policy.",
+        "options": [
+          "I acknowledge that I have read and understood the Airbnb Candidate Privacy Policy."
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404519": {
+        "label": "Are you currently subject to any non-compete or non-solicitation agreement that would impact your ab",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No",
+        "options": [
+          "Yes",
+          "No"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63404520": {
+        "label": "Are you currently or have you ever worked for Airbnb in any capacity? This could include, but is not",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "No, I have never worked for Airbnb in any capacity including full-time, intern, apprentice, or contingent worker roles.",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63633048": {
+        "label": "How many years experience do you have as a Product Manager in a consumer facing position?*",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "8+ years",
+        "options": [
+          "No experience",
+          "1 - 3 years",
+          "4 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63633049": {
+        "label": "How many years of product management experience do you have designing and building developer platfor",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "8+ years",
+        "options": [
+          "No experience",
+          "1 - 2 years",
+          "3 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63633050": {
+        "label": "How many years of experience do you have in Product Marketing? *",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "No experience",
+        "options": [
+          "No experience",
+          "1 - 3 years",
+          "4 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63633051": {
+        "label": "How many years of experience do you have working on consumer products with marketplace dynamics on a",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "default",
+        "answer_hint": "8+ years",
+        "options": [
+          "No experience",
+          "1 - 3 years",
+          "4 - 7 years",
+          "8+ years"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63633052": {
+        "label": "What is your level of proficiency developing and presenting executive level presentations? *",
+        "field_type": "autocomplete",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "Advanced",
+        "options": [
+          "No experience",
+          "Beginner",
+          "Intermediate",
+          "Advanced"
+        ],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      },
+      "question_63633053": {
+        "label": "Describe your experience developing partnerships with a focus on supply and demand at scale.*",
+        "field_type": "textarea",
+        "profile_key": "",
+        "source": "ai",
+        "answer_hint": "",
+        "options": [],
+        "success_count": 1,
+        "last_success": "2026-02-18T22:58:05.567829"
+      }
+    },
+    "repeatable_field_ids": {}
+  }
+}

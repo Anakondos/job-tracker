@@ -35,3 +35,13 @@ start.sh
 
 # API keys (never commit)
 browser/v5/config/api_keys.json
+
+# Logs
+server.log
+logs/
+
+# Session summaries
+SESSION_SUMMARY_*.md
+
+# Browser videos/recordings
+browser/videos/
