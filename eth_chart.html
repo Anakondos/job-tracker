@@ -41,8 +41,170 @@ const COLORS = {
   bg: '#131722', grid: '#1e222d', gridText: '#787b86',
   up: '#26a69a', down: '#ef5350', upVol: 'rgba(38,166,154,0.3)', downVol: 'rgba(239,83,80,0.3)',
   ma7: '#2196f3', ma25: '#e040fb', crosshair: '#555',
-  priceLine: '#2962ff'
+  priceLine: '#2962ff',
+  bullSignal: '#00e676', bearSignal: '#ff1744', neutralSignal: '#ffab00'
 };
+
+// === PRICE ACTION PATTERN DETECTION ===
+function detectPatterns(data) {
+  let patterns = new Array(data.length).fill(null);
+
+  for (let i = 0; i < data.length; i++) {
+    let c = data[i];
+    let body = Math.abs(c.c - c.o);
+    let range = c.h - c.l;
+    let upperWick = c.h - Math.max(c.o, c.c);
+    let lowerWick = Math.min(c.o, c.c) - c.l;
+    let bull = c.c >= c.o;
+    let found = [];
+
+    if (range === 0) continue;
+
+    // --- Single candle patterns ---
+
+    // Doji: body < 10% of range
+    if (body / range < 0.1) {
+      if (upperWick > range * 0.3 && lowerWick > range * 0.3) {
+        found.push({ name: 'Doji', type: 'neutral', icon: '✦' });
+      } else if (lowerWick > range * 0.6) {
+        found.push({ name: 'Dragonfly Doji', type: 'bull', icon: '🜃' });
+      } else if (upperWick > range * 0.6) {
+        found.push({ name: 'Gravestone Doji', type: 'bear', icon: '🜁' });
+      }
+    }
+
+    // Hammer: small body at top, long lower wick (>= 2x body), in downtrend
+    if (body / range < 0.35 && lowerWick >= body * 2 && upperWick < body * 0.5 && i >= 3) {
+      let downtrend = data[i-1].c < data[i-2].c && data[i-2].c < data[i-3].c;
+      if (downtrend) {
+        found.push({ name: 'Hammer', type: 'bull', icon: '⚒' });
+      }
+    }
+
+    // Inverted Hammer: small body at bottom, long upper wick
+    if (body / range < 0.35 && upperWick >= body * 2 && lowerWick < body * 0.5 && i >= 3) {
+      let downtrend = data[i-1].c < data[i-2].c && data[i-2].c < data[i-3].c;
+      if (downtrend) {
+        found.push({ name: 'Inv Hammer', type: 'bull', icon: '⇑' });
+      }
+    }
+
+    // Shooting Star: small body at bottom, long upper wick, in uptrend
+    if (body / range < 0.35 && upperWick >= body * 2 && lowerWick < body * 0.5 && i >= 3) {
+      let uptrend = data[i-1].c > data[i-2].c && data[i-2].c > data[i-3].c;
+      if (uptrend) {
+        found.push({ name: 'Shooting Star', type: 'bear', icon: '★' });
+      }
+    }
+
+    // Hanging Man: like hammer but in uptrend
+    if (body / range < 0.35 && lowerWick >= body * 2 && upperWick < body * 0.5 && i >= 3) {
+      let uptrend = data[i-1].c > data[i-2].c && data[i-2].c > data[i-3].c;
+      if (uptrend) {
+        found.push({ name: 'Hanging Man', type: 'bear', icon: '☠' });
+      }
+    }
+
+    // Marubozu: body > 90% of range (strong momentum)
+    if (body / range > 0.9) {
+      found.push({ name: bull ? 'Bull Marubozu' : 'Bear Marubozu', type: bull ? 'bull' : 'bear', icon: bull ? '▲' : '▼' });
+    }
+
+    // Spinning Top: small body in middle, both wicks > body
+    if (body / range > 0.1 && body / range < 0.3 && upperWick > body && lowerWick > body) {
+      found.push({ name: 'Spinning Top', type: 'neutral', icon: '◎' });
+    }
+
+    // --- Two candle patterns ---
+    if (i >= 1) {
+      let p = data[i-1];
+      let pBody = Math.abs(p.c - p.o);
+      let pBull = p.c >= p.o;
+      let pRange = p.h - p.l;
+
+      // Bullish Engulfing
+      if (!pBull && bull && c.o <= p.c && c.c >= p.o && body > pBody * 1.1) {
+        found.push({ name: 'Bull Engulfing', type: 'bull', icon: '⬆' });
+      }
+
+      // Bearish Engulfing
+      if (pBull && !bull && c.o >= p.c && c.c <= p.o && body > pBody * 1.1) {
+        found.push({ name: 'Bear Engulfing', type: 'bear', icon: '⬇' });
+      }
+
+      // Bullish Harami: big red then small green inside
+      if (!pBull && bull && pBody > body * 1.5 && c.o >= p.c && c.c <= p.o) {
+        found.push({ name: 'Bull Harami', type: 'bull', icon: '⊕' });
+      }
+
+      // Bearish Harami: big green then small red inside
+      if (pBull && !bull && pBody > body * 1.5 && c.o <= p.c && c.c >= p.o) {
+        found.push({ name: 'Bear Harami', type: 'bear', icon: '⊖' });
+      }
+
+      // Tweezer Top: same high in uptrend
+      if (i >= 3 && Math.abs(c.h - p.h) / range < 0.05 && pBull && !bull) {
+        let uptrend = data[i-2].c > data[i-3].c;
+        if (uptrend) found.push({ name: 'Tweezer Top', type: 'bear', icon: '⫏' });
+      }
+
+      // Tweezer Bottom: same low in downtrend
+      if (i >= 3 && Math.abs(c.l - p.l) / range < 0.05 && !pBull && bull) {
+        let downtrend = data[i-2].c < data[i-3].c;
+        if (downtrend) found.push({ name: 'Tweezer Bottom', type: 'bull', icon: '⫐' });
+      }
+
+      // Piercing Line: gap down then close above 50% of prev body
+      if (!pBull && bull && c.o < p.c && c.c > (p.o + p.c) / 2 && c.c < p.o) {
+        found.push({ name: 'Piercing', type: 'bull', icon: '↗' });
+      }
+
+      // Dark Cloud Cover: gap up then close below 50% of prev body
+      if (pBull && !bull && c.o > p.c && c.c < (p.o + p.c) / 2 && c.c > p.o) {
+        found.push({ name: 'Dark Cloud', type: 'bear', icon: '↘' });
+      }
+    }
+
+    // --- Three candle patterns ---
+    if (i >= 2) {
+      let p1 = data[i-2], p2 = data[i-1];
+      let p1Bull = p1.c >= p1.o, p2Bull = p2.c >= p2.o;
+      let p1Body = Math.abs(p1.c - p1.o), p2Body = Math.abs(p2.c - p2.o);
+
+      // Morning Star
+      if (!p1Bull && p1Body / (p1.h - p1.l || 1) > 0.5 && p2Body < p1Body * 0.3 && bull && body > p1Body * 0.5) {
+        if (c.c > (p1.o + p1.c) / 2) {
+          found.push({ name: 'Morning Star', type: 'bull', icon: '☀' });
+        }
+      }
+
+      // Evening Star
+      if (p1Bull && p1Body / (p1.h - p1.l || 1) > 0.5 && p2Body < p1Body * 0.3 && !bull && body > p1Body * 0.5) {
+        if (c.c < (p1.o + p1.c) / 2) {
+          found.push({ name: 'Evening Star', type: 'bear', icon: '☾' });
+        }
+      }
+
+      // Three White Soldiers
+      if (p1Bull && p2Bull && bull && p2.c > p1.c && c.c > p2.c && p1Body > 0 && p2Body > 0 && body > 0) {
+        let goodBodies = p1Body / (p1.h-p1.l||1) > 0.5 && p2Body / (p2.h-p2.l||1) > 0.5 && body / range > 0.5;
+        if (goodBodies) found.push({ name: '3 White Soldiers', type: 'bull', icon: '⚔' });
+      }
+
+      // Three Black Crows
+      if (!p1Bull && !p2Bull && !bull && p2.c < p1.c && c.c < p2.c && p1Body > 0 && p2Body > 0 && body > 0) {
+        let goodBodies = p1Body / (p1.h-p1.l||1) > 0.5 && p2Body / (p2.h-p2.l||1) > 0.5 && body / range > 0.5;
+        if (goodBodies) found.push({ name: '3 Black Crows', type: 'bear', icon: '☁' });
+      }
+    }
+
+    if (found.length > 0) {
+      // Keep strongest signal (prefer multi-candle patterns)
+      patterns[i] = found[found.length - 1];
+    }
+  }
+  return patterns;
+}
 
 let scrollOffset = 0;
 let candleWidth = 12;
@@ -154,6 +316,51 @@ function draw() {
     if (mouseX >= x - totalW/2 && mouseX < x + totalW/2) hoverIdx = i;
   });
   
+  // Price Action patterns
+  let patterns = detectPatterns(candles);
+  vis.forEach((c, i) => {
+    let gi = startIdx + i;
+    let pat = patterns[gi];
+    if (!pat) return;
+    let x = i * totalW + totalW / 2;
+    let color = pat.type === 'bull' ? COLORS.bullSignal : pat.type === 'bear' ? COLORS.bearSignal : COLORS.neutralSignal;
+    let above = pat.type === 'bear';
+    let yAnchor = above ? priceY(c.h) - 8 : priceY(c.l) + 8;
+
+    // Triangle marker
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if (above) {
+      ctx.moveTo(x, yAnchor + 4);
+      ctx.lineTo(x - 5, yAnchor - 5);
+      ctx.lineTo(x + 5, yAnchor - 5);
+    } else {
+      ctx.moveTo(x, yAnchor - 4);
+      ctx.lineTo(x - 5, yAnchor + 5);
+      ctx.lineTo(x + 5, yAnchor + 5);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = color;
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    let labelY = above ? yAnchor - 10 : yAnchor + 14;
+    ctx.fillText(pat.name, x, labelY);
+
+    // Glow circle
+    ctx.beginPath();
+    ctx.arc(x, above ? yAnchor - 1 : yAnchor + 1, 3, 0, Math.PI * 2);
+    ctx.fillStyle = color.replace('1)', '0.3)').replace('#', '');
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(x, above ? yAnchor - 1 : yAnchor + 1, 10, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
   // MA lines
   function drawMA(maArr, color) {
     ctx.strokeStyle = color;
@@ -210,14 +417,24 @@ function draw() {
     tooltip.style.display = 'block';
     tooltip.style.left = Math.min(mouseX + 15, W - 200) + 'px';
     tooltip.style.top = Math.max(mouseY - 100, 10) + 'px';
-    tooltip.innerHTML = 
+    let patInfo = '';
+    let hovPat = patterns[startIdx + hoverIdx];
+    if (hovPat) {
+      let patColor = hovPat.type === 'bull' ? COLORS.bullSignal : hovPat.type === 'bear' ? COLORS.bearSignal : COLORS.neutralSignal;
+      let typeLabel = hovPat.type === 'bull' ? 'BULLISH' : hovPat.type === 'bear' ? 'BEARISH' : 'NEUTRAL';
+      patInfo = '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #2a2e39;color:' + patColor + ';font-weight:bold">' +
+        hovPat.icon + ' ' + hovPat.name + '</div>' +
+        '<div style="color:' + patColor + ';font-size:10px">' + typeLabel + ' signal</div>';
+    }
+    tooltip.innerHTML =
       '<div style="color:#fff;font-weight:bold">' + d.toUTCString().slice(0,-4) + '</div>' +
       '<div>O: <b>$' + c.o.toFixed(2) + '</b></div>' +
       '<div>H: <b>$' + c.h.toFixed(2) + '</b></div>' +
       '<div>L: <b>$' + c.l.toFixed(2) + '</b></div>' +
       '<div>C: <b style="color:' + (bull?COLORS.up:COLORS.down) + '">$' + c.c.toFixed(2) + '</b></div>' +
       '<div style="color:' + (bull?COLORS.up:COLORS.down) + '">' + (chg>0?'+':'') + chg.toFixed(2) + ' (' + pct + '%)</div>' +
-      '<div style="color:#787b86">Vol: ' + (c.v>1000?(c.v/1000).toFixed(1)+'K':c.v.toFixed(0)) + '</div>';
+      '<div style="color:#787b86">Vol: ' + (c.v>1000?(c.v/1000).toFixed(1)+'K':c.v.toFixed(0)) + '</div>' +
+      patInfo;
   } else {
     tooltip.style.display = 'none';
   }
@@ -234,7 +451,8 @@ function draw() {
     '<span>L <b>' + last.l.toFixed(2) + '</b></span>' +
     '<span>C <b class="'+cls+'">' + last.c.toFixed(2) + '</b></span>' +
     '<span class="'+cls+'">24h: ' + (ch>0?'+':'') + ch.toFixed(2) + ' (' + cp + '%)</span>' +
-    '<span style="color:#2196f3">━ MA7</span> <span style="color:#e040fb">━ MA25</span>';
+    '<span style="color:#2196f3">━ MA7</span> <span style="color:#e040fb">━ MA25</span>' +
+    '<span style="color:#00e676"> ▲ Bull</span> <span style="color:#ff1744"> ▼ Bear</span> <span style="color:#ffab00"> ◎ Neutral</span>';
 }
 
 canvas.addEventListener('mousemove', e => { mouseX = e.offsetX; mouseY = e.offsetY; draw(); });
