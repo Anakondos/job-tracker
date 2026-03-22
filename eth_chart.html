@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ETH/USD - Live Chart</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #131722; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #d1d4dc; overflow: hidden; }
+.header { padding: 12px 20px; display: flex; align-items: center; gap: 20px; }
+.pair { font-size: 22px; font-weight: 700; color: #fff; }
+.tf { background: #2a2e39; border: none; color: #d1d4dc; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.tf:hover, .tf.active { background: #2962ff; color: #fff; }
+.info { font-size: 13px; color: #787b86; }
+.info span { margin-right: 12px; }
+.up { color: #26a69a; } .down { color: #ef5350; }
+.tooltip { position: absolute; background: #1e222d; border: 1px solid #2a2e39; border-radius: 6px; padding: 10px 14px; font-size: 12px; pointer-events: none; display: none; z-index: 10; }
+.tooltip div { margin: 2px 0; }
+canvas { display: block; }
+</style>
+</head>
+<body>
+<div class="header">
+  <span class="pair">ETH / USD</span>
+  <button class="tf active" onclick="setTF(3600)">1H</button>
+  <button class="tf" onclick="setTF(900)">15M</button>
+  <button class="tf" onclick="setTF(21600)">6H</button>
+  <button class="tf" onclick="setTF(86400)">1D</button>
+  <div class="info" id="info"></div>
+</div>
+<canvas id="chart"></canvas>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+let candles = [{"t": 1773896400000, "o": 2193.48, "h": 2198.34, "l": 2186.28, "c": 2189.07, "v": 1612.52751415}, {"t": 1773900000000, "o": 2189.3, "h": 2195.62, "l": 2177.47, "c": 2180.52, "v": 2153.1174399}, {"t": 1773903600000, "o": 2180.48, "h": 2182.1, "l": 2143.22, "c": 2166.7, "v": 5837.78190293}, {"t": 1773907200000, "o": 2166.71, "h": 2171.43, "l": 2157.85, "c": 2160.96, "v": 3614.84746558}, {"t": 1773910800000, "o": 2160.96, "h": 2191.63, "l": 2160.21, "c": 2189.46, "v": 8786.48584266}, {"t": 1773914400000, "o": 2189.62, "h": 2192.4, "l": 2172.51, "c": 2172.89, "v": 2900.62733404}, {"t": 1773918000000, "o": 2172.9, "h": 2177.55, "l": 2165.58, "c": 2166.74, "v": 4440.88884282}, {"t": 1773921600000, "o": 2166.76, "h": 2167.36, "l": 2129.82, "c": 2132.46, "v": 11027.75693777}, {"t": 1773925200000, "o": 2132.45, "h": 2143.69, "l": 2111.09, "c": 2137.99, "v": 15797.63439292}, {"t": 1773928800000, "o": 2137.74, "h": 2147.74, "l": 2100, "c": 2121.19, "v": 15148.93619177}, {"t": 1773932400000, "o": 2121.11, "h": 2137.31, "l": 2098.94, "c": 2118.73, "v": 13895.13612084}, {"t": 1773936000000, "o": 2118.73, "h": 2122.25, "l": 2106.15, "c": 2115.02, "v": 10937.31957547}, {"t": 1773939600000, "o": 2115.03, "h": 2131.85, "l": 2103.97, "c": 2127.28, "v": 8453.43197933}, {"t": 1773943200000, "o": 2127.28, "h": 2129.6, "l": 2113.76, "c": 2125.17, "v": 5311.19735052}, {"t": 1773946800000, "o": 2125.15, "h": 2157.54, "l": 2124.97, "c": 2140.86, "v": 14993.29467306}, {"t": 1773950400000, "o": 2140.86, "h": 2153.14, "l": 2139.02, "c": 2146.45, "v": 3432.23686174}, {"t": 1773954000000, "o": 2146.46, "h": 2155.8, "l": 2145.41, "c": 2149.91, "v": 4107.69405329}, {"t": 1773957600000, "o": 2150.21, "h": 2152.69, "l": 2133.32, "c": 2140.4, "v": 2487.36225671}, {"t": 1773961200000, "o": 2140.39, "h": 2147.6, "l": 2131.01, "c": 2137.98, "v": 3452.62928062}, {"t": 1773964800000, "o": 2137.65, "h": 2149.33, "l": 2134.79, "c": 2145.68, "v": 2196.4487948}, {"t": 1773968400000, "o": 2145.76, "h": 2160.89, "l": 2145.05, "c": 2151.13, "v": 2889.51531768}, {"t": 1773972000000, "o": 2151.05, "h": 2152.23, "l": 2132.53, "c": 2144.75, "v": 3267.70098576}, {"t": 1773975600000, "o": 2144.74, "h": 2157.34, "l": 2143.76, "c": 2151.44, "v": 3040.29942983}, {"t": 1773979200000, "o": 2151.2, "h": 2159.43, "l": 2139.58, "c": 2148.24, "v": 3738.79123469}, {"t": 1773982800000, "o": 2148.19, "h": 2151.63, "l": 2137.37, "c": 2140.02, "v": 4504.06867651}, {"t": 1773986400000, "o": 2140.04, "h": 2141.63, "l": 2131.73, "c": 2136.54, "v": 2122.73242915}, {"t": 1773990000000, "o": 2136.53, "h": 2153.36, "l": 2121.49, "c": 2150.33, "v": 7741.03702505}, {"t": 1773993600000, "o": 2150.32, "h": 2176.62, "l": 2146.34, "c": 2163.87, "v": 4638.20969751}, {"t": 1773997200000, "o": 2163.88, "h": 2164.07, "l": 2134.39, "c": 2140.96, "v": 6653.45120688}, {"t": 1774000800000, "o": 2141.03, "h": 2150.64, "l": 2131.02, "c": 2148.2, "v": 5357.96904353}, {"t": 1774004400000, "o": 2148.26, "h": 2158.45, "l": 2134, "c": 2141.51, "v": 4850.41665948}, {"t": 1774008000000, "o": 2141.62, "h": 2152.29, "l": 2135.03, "c": 2141.02, "v": 5362.45519125}, {"t": 1774011600000, "o": 2141.12, "h": 2152.6, "l": 2122.88, "c": 2126.82, "v": 11865.90728044}, {"t": 1774015200000, "o": 2126.82, "h": 2147.77, "l": 2116.55, "c": 2128.77, "v": 17739.08732322}, {"t": 1774018800000, "o": 2128.66, "h": 2138.83, "l": 2119.49, "c": 2133.49, "v": 9185.81552482}, {"t": 1774022400000, "o": 2133.45, "h": 2144.79, "l": 2129.82, "c": 2136.84, "v": 6433.46518027}, {"t": 1774026000000, "o": 2136.84, "h": 2140.93, "l": 2118.57, "c": 2135.93, "v": 8841.98228959}, {"t": 1774029600000, "o": 2136.19, "h": 2137.03, "l": 2116.5, "c": 2122.68, "v": 7262.59461402}, {"t": 1774033200000, "o": 2122.71, "h": 2134.88, "l": 2115.85, "c": 2132.24, "v": 11528.84431414}, {"t": 1774036800000, "o": 2132.59, "h": 2136.63, "l": 2123.51, "c": 2133.13, "v": 5742.54184799}, {"t": 1774040400000, "o": 2133.12, "h": 2157.59, "l": 2130.4, "c": 2147.56, "v": 3647.29080515}, {"t": 1774044000000, "o": 2147.56, "h": 2167.39, "l": 2147.56, "c": 2154.51, "v": 4352.71890831}, {"t": 1774047600000, "o": 2154.5, "h": 2155.53, "l": 2142.92, "c": 2145.89, "v": 2072.99446763}, {"t": 1774051200000, "o": 2145.89, "h": 2156.38, "l": 2143.81, "c": 2153.02, "v": 1774.61127429}, {"t": 1774054800000, "o": 2152.82, "h": 2159.52, "l": 2146.66, "c": 2146.88, "v": 1960.1294896}, {"t": 1774058400000, "o": 2146.91, "h": 2155.94, "l": 2145.01, "c": 2154.51, "v": 2566.27713207}, {"t": 1774062000000, "o": 2154.3, "h": 2155.5, "l": 2150.4, "c": 2152.9, "v": 852.77729625}, {"t": 1774065600000, "o": 2152.88, "h": 2157.86, "l": 2150, "c": 2151.33, "v": 898.45800239}, {"t": 1774069200000, "o": 2151.32, "h": 2157.42, "l": 2151.22, "c": 2152.93, "v": 794.26641813}, {"t": 1774072800000, "o": 2152.92, "h": 2156.1, "l": 2151.91, "c": 2155.48, "v": 427.43234435}, {"t": 1774076400000, "o": 2155.23, "h": 2160.95, "l": 2153.37, "c": 2155.44, "v": 1467.78889453}, {"t": 1774080000000, "o": 2155.43, "h": 2157.03, "l": 2149.36, "c": 2153.7, "v": 643.44672129}, {"t": 1774083600000, "o": 2153.69, "h": 2158.83, "l": 2153.59, "c": 2158.39, "v": 458.54802675}, {"t": 1774087200000, "o": 2158.39, "h": 2159.2, "l": 2152.71, "c": 2154.02, "v": 514.44446089}, {"t": 1774090800000, "o": 2154.01, "h": 2157.64, "l": 2152.55, "c": 2156.97, "v": 527.8704147}, {"t": 1774094400000, "o": 2156.97, "h": 2160.18, "l": 2156.05, "c": 2157.45, "v": 646.66105516}, {"t": 1774098000000, "o": 2157.45, "h": 2159.54, "l": 2154.3, "c": 2155.55, "v": 689.4699996}, {"t": 1774101600000, "o": 2155.54, "h": 2167.71, "l": 2148.98, "c": 2151.97, "v": 2180.72024563}, {"t": 1774105200000, "o": 2151.99, "h": 2157.5, "l": 2146.18, "c": 2155.05, "v": 2007.58459109}, {"t": 1774108800000, "o": 2155.06, "h": 2155.37, "l": 2144, "c": 2146.4, "v": 1247.79997346}, {"t": 1774112400000, "o": 2146.4, "h": 2150.32, "l": 2141.76, "c": 2148, "v": 653.98226634}, {"t": 1774116000000, "o": 2148.01, "h": 2155.44, "l": 2147.31, "c": 2151.05, "v": 898.6307111}, {"t": 1774119600000, "o": 2151.05, "h": 2153.03, "l": 2148.85, "c": 2152.1, "v": 583.24034298}, {"t": 1774123200000, "o": 2152.09, "h": 2156.56, "l": 2150.1, "c": 2155.38, "v": 1232.2379034}, {"t": 1774126800000, "o": 2155.42, "h": 2156.87, "l": 2152.26, "c": 2153.4, "v": 863.53426859}, {"t": 1774130400000, "o": 2153.4, "h": 2153.58, "l": 2149.04, "c": 2149.29, "v": 970.98034402}, {"t": 1774134000000, "o": 2149.4, "h": 2149.5, "l": 2070.71, "c": 2084.64, "v": 8689.27332371}, {"t": 1774137600000, "o": 2084.61, "h": 2095.07, "l": 2050, "c": 2087.37, "v": 10516.53106411}, {"t": 1774141200000, "o": 2087.37, "h": 2094.03, "l": 2081.57, "c": 2091.06, "v": 4155.00379791}, {"t": 1774144800000, "o": 2091.07, "h": 2109.01, "l": 2087.73, "c": 2102.22, "v": 3999.92499985}, {"t": 1774148400000, "o": 2102.21, "h": 2126.45, "l": 2098.22, "c": 2113.65, "v": 2898.27694451}, {"t": 1774152000000, "o": 2113.56, "h": 2122.91, "l": 2106.12, "c": 2116.07, "v": 1842.39131017}];
+let canvas = document.getElementById('chart');
+let ctx = canvas.getContext('2d');
+let tooltip = document.getElementById('tooltip');
+let infoEl = document.getElementById('info');
+
+const COLORS = {
+  bg: '#131722', grid: '#1e222d', gridText: '#787b86',
+  up: '#26a69a', down: '#ef5350', upVol: 'rgba(38,166,154,0.3)', downVol: 'rgba(239,83,80,0.3)',
+  ma7: '#2196f3', ma25: '#e040fb', crosshair: '#555',
+  priceLine: '#2962ff'
+};
+
+let scrollOffset = 0;
+let candleWidth = 12;
+let gap = 4;
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 50;
+  draw();
+}
+
+function calcMA(data, period) {
+  let ma = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) { ma.push(null); continue; }
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j++) sum += data[j].c;
+    ma.push(sum / period);
+  }
+  return ma;
+}
+
+let mouseX = -1, mouseY = -1;
+
+function draw() {
+  let W = canvas.width, H = canvas.height;
+  let volH = H * 0.18;
+  let chartH = H - volH - 40;
+  let priceW = 75;
+  let chartW = W - priceW;
+  
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, W, H);
+  
+  let totalW = candleWidth + gap;
+  let visible = Math.floor(chartW / totalW);
+  let startIdx = Math.max(0, candles.length - visible - scrollOffset);
+  let endIdx = Math.min(candles.length, startIdx + visible);
+  let vis = candles.slice(startIdx, endIdx);
+  
+  if (vis.length === 0) return;
+  
+  let minP = Math.min(...vis.map(c => c.l));
+  let maxP = Math.max(...vis.map(c => c.h));
+  let pad = (maxP - minP) * 0.08;
+  minP -= pad; maxP += pad;
+  let maxV = Math.max(...vis.map(c => c.v));
+  
+  let ma7 = calcMA(candles, 7);
+  let ma25 = calcMA(candles, 25);
+  
+  function priceY(p) { return 20 + (1 - (p - minP) / (maxP - minP)) * chartH; }
+  function volY(v) { return H - (v / maxV) * volH; }
+  
+  // Grid
+  ctx.strokeStyle = COLORS.grid;
+  ctx.lineWidth = 0.5;
+  ctx.fillStyle = COLORS.gridText;
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'right';
+  let steps = 8;
+  for (let i = 0; i <= steps; i++) {
+    let p = minP + (maxP - minP) * (i / steps);
+    let y = priceY(p);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(chartW, y); ctx.stroke();
+    ctx.fillText('$' + p.toFixed(2), W - 5, y + 4);
+  }
+  
+  // Candles
+  let hoverIdx = -1;
+  vis.forEach((c, i) => {
+    let x = i * totalW + totalW / 2;
+    let bull = c.c >= c.o;
+    let color = bull ? COLORS.up : COLORS.down;
+    
+    // Wick
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, priceY(c.h));
+    ctx.lineTo(x, priceY(c.l));
+    ctx.stroke();
+    
+    // Body
+    let yTop = priceY(Math.max(c.o, c.c));
+    let yBot = priceY(Math.min(c.o, c.c));
+    let bodyH = Math.max(yBot - yTop, 1);
+    ctx.fillStyle = color;
+    ctx.fillRect(x - candleWidth/2, yTop, candleWidth, bodyH);
+    
+    // Volume
+    ctx.fillStyle = bull ? COLORS.upVol : COLORS.downVol;
+    let vy = volY(c.v);
+    ctx.fillRect(x - candleWidth/2, vy, candleWidth, H - vy);
+    
+    // Time labels
+    let d = new Date(c.t);
+    if (i % Math.max(1, Math.floor(visible/8)) === 0) {
+      ctx.fillStyle = COLORS.gridText;
+      ctx.textAlign = 'center';
+      ctx.fillText(d.getUTCHours().toString().padStart(2,'0') + ':00', x, chartH + 55);
+      if (d.getUTCHours() === 0 || i === 0) {
+        let ds = d.toLocaleDateString('en', {month:'short', day:'numeric'});
+        ctx.fillText(ds, x, chartH + 70);
+      }
+    }
+    
+    // Hover detect
+    if (mouseX >= x - totalW/2 && mouseX < x + totalW/2) hoverIdx = i;
+  });
+  
+  // MA lines
+  function drawMA(maArr, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let started = false;
+    vis.forEach((c, i) => {
+      let gi = startIdx + i;
+      if (maArr[gi] !== null) {
+        let x = i * totalW + totalW/2;
+        let y = priceY(maArr[gi]);
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+  }
+  drawMA(ma7, COLORS.ma7);
+  drawMA(ma25, COLORS.ma25);
+  
+  // Last price dashed line
+  let lastP = vis[vis.length-1].c;
+  ctx.strokeStyle = COLORS.priceLine;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(0, priceY(lastP));
+  ctx.lineTo(chartW, priceY(lastP));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  ctx.fillStyle = COLORS.priceLine;
+  ctx.fillRect(chartW, priceY(lastP) - 10, priceW, 20);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('$' + lastP.toFixed(2), chartW + priceW/2, priceY(lastP) + 4);
+  
+  // Crosshair + tooltip
+  if (mouseX > 0 && mouseY > 0 && hoverIdx >= 0) {
+    ctx.strokeStyle = COLORS.crosshair;
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(mouseX, 0); ctx.lineTo(mouseX, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, mouseY); ctx.lineTo(W, mouseY); ctx.stroke();
+    ctx.setLineDash([]);
+    
+    let c = vis[hoverIdx];
+    let d = new Date(c.t);
+    let bull = c.c >= c.o;
+    let chg = c.c - c.o;
+    let pct = (chg / c.o * 100).toFixed(2);
+    
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(mouseX + 15, W - 200) + 'px';
+    tooltip.style.top = Math.max(mouseY - 100, 10) + 'px';
+    tooltip.innerHTML = 
+      '<div style="color:#fff;font-weight:bold">' + d.toUTCString().slice(0,-4) + '</div>' +
+      '<div>O: <b>$' + c.o.toFixed(2) + '</b></div>' +
+      '<div>H: <b>$' + c.h.toFixed(2) + '</b></div>' +
+      '<div>L: <b>$' + c.l.toFixed(2) + '</b></div>' +
+      '<div>C: <b style="color:' + (bull?COLORS.up:COLORS.down) + '">$' + c.c.toFixed(2) + '</b></div>' +
+      '<div style="color:' + (bull?COLORS.up:COLORS.down) + '">' + (chg>0?'+':'') + chg.toFixed(2) + ' (' + pct + '%)</div>' +
+      '<div style="color:#787b86">Vol: ' + (c.v>1000?(c.v/1000).toFixed(1)+'K':c.v.toFixed(0)) + '</div>';
+  } else {
+    tooltip.style.display = 'none';
+  }
+  
+  // Info bar
+  let last = candles[candles.length-1];
+  let first = candles[candles.length-25] || candles[0];
+  let ch = last.c - first.o;
+  let cp = (ch/first.o*100).toFixed(2);
+  let cls = ch >= 0 ? 'up' : 'down';
+  infoEl.innerHTML = 
+    '<span>O <b>' + last.o.toFixed(2) + '</b></span>' +
+    '<span>H <b>' + last.h.toFixed(2) + '</b></span>' +
+    '<span>L <b>' + last.l.toFixed(2) + '</b></span>' +
+    '<span>C <b class="'+cls+'">' + last.c.toFixed(2) + '</b></span>' +
+    '<span class="'+cls+'">24h: ' + (ch>0?'+':'') + ch.toFixed(2) + ' (' + cp + '%)</span>' +
+    '<span style="color:#2196f3">━ MA7</span> <span style="color:#e040fb">━ MA25</span>';
+}
+
+canvas.addEventListener('mousemove', e => { mouseX = e.offsetX; mouseY = e.offsetY; draw(); });
+canvas.addEventListener('mouseleave', () => { mouseX = -1; mouseY = -1; draw(); });
+canvas.addEventListener('wheel', e => {
+  if (e.ctrlKey || e.metaKey) {
+    candleWidth = Math.max(4, Math.min(30, candleWidth + (e.deltaY > 0 ? -1 : 1)));
+  } else {
+    scrollOffset = Math.max(0, Math.min(candles.length - 10, scrollOffset + (e.deltaY > 0 ? 3 : -3)));
+  }
+  e.preventDefault(); draw();
+}, {passive: false});
+
+async function setTF(tf) {
+  document.querySelectorAll('.tf').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  try {
+    let r = await fetch("https://api.exchange.coinbase.com/products/ETH-USD/candles?granularity=" + tf);
+    let data = await r.json();
+    candles = data.slice(0, 72).map(c => ({t:c[0]*1000, o:c[3], h:c[2], l:c[1], c:c[4], v:c[5]})).reverse();
+    scrollOffset = 0;
+    draw();
+  } catch(e) { console.error(e); }
+}
+
+window.addEventListener('resize', resize);
+resize();
+
+// Auto-refresh every 30s
+setInterval(async () => {
+  try {
+    let r = await fetch("https://api.exchange.coinbase.com/products/ETH-USD/candles?granularity=3600");
+    let data = await r.json();
+    candles = data.slice(0, 72).map(c => ({t:c[0]*1000, o:c[3], h:c[2], l:c[1], c:c[4], v:c[5]})).reverse();
+    draw();
+  } catch(e) {}
+}, 30000);
+</script>
+</body>
+</html>
