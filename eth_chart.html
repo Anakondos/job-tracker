@@ -273,48 +273,237 @@ function draw() {
     ctx.fillText('$' + p.toFixed(2), W - 5, y + 4);
   }
   
+  // Detect NY Open candle index (13:00 UTC = 9:00 AM ET for today)
+  function isNYOpen(candle) {
+    let d = new Date(candle.t);
+    let utcH = d.getUTCHours();
+    // NY opens 9:30 ET; EDT = UTC-4, so 9 AM ET = 13 UTC
+    return utcH === 13;
+  }
+  // Find the latest NY open candle in visible range
+  let nyOpenVisIdx = -1;
+  vis.forEach((c, i) => { if (isNYOpen(c)) nyOpenVisIdx = i; });
+
   // Candles
   let hoverIdx = -1;
   vis.forEach((c, i) => {
     let x = i * totalW + totalW / 2;
     let bull = c.c >= c.o;
     let color = bull ? COLORS.up : COLORS.down;
-    
+    let isNY = (i === nyOpenVisIdx);
+
+    // NY Open: highlight background column
+    if (isNY) {
+      ctx.fillStyle = 'rgba(255,215,0,0.06)';
+      ctx.fillRect(x - totalW/2 - 2, 20, totalW + 4, chartH + 10);
+      // Vertical dashed gold line
+      ctx.strokeStyle = 'rgba(255,215,0,0.35)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, chartH + 30); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Wick
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = isNY ? '#ffd700' : color;
+    ctx.lineWidth = isNY ? 2.5 : 1.5;
     ctx.beginPath();
     ctx.moveTo(x, priceY(c.h));
     ctx.lineTo(x, priceY(c.l));
     ctx.stroke();
-    
+
     // Body
     let yTop = priceY(Math.max(c.o, c.c));
     let yBot = priceY(Math.min(c.o, c.c));
     let bodyH = Math.max(yBot - yTop, 1);
-    ctx.fillStyle = color;
+    if (isNY) {
+      // Gold glow
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 12;
+    }
+    ctx.fillStyle = isNY ? (bull ? '#ffd700' : '#ff8f00') : color;
     ctx.fillRect(x - candleWidth/2, yTop, candleWidth, bodyH);
-    
+    if (isNY) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - candleWidth/2, yTop, candleWidth, bodyH);
+      ctx.shadowBlur = 0;
+    }
+
     // Volume
-    ctx.fillStyle = bull ? COLORS.upVol : COLORS.downVol;
+    ctx.fillStyle = isNY ? 'rgba(255,215,0,0.35)' : (bull ? COLORS.upVol : COLORS.downVol);
     let vy = volY(c.v);
     ctx.fillRect(x - candleWidth/2, vy, candleWidth, H - vy);
-    
+
     // Time labels
     let d = new Date(c.t);
-    if (i % Math.max(1, Math.floor(visible/8)) === 0) {
-      ctx.fillStyle = COLORS.gridText;
+    if (isNY || i % Math.max(1, Math.floor(visible/8)) === 0) {
+      ctx.fillStyle = isNY ? '#ffd700' : COLORS.gridText;
       ctx.textAlign = 'center';
+      ctx.font = isNY ? 'bold 11px monospace' : '11px monospace';
       ctx.fillText(d.getUTCHours().toString().padStart(2,'0') + ':00', x, chartH + 55);
-      if (d.getUTCHours() === 0 || i === 0) {
+      if (isNY) {
+        ctx.fillText('NY OPEN', x, chartH + 70);
+      } else if (d.getUTCHours() === 0 || i === 0) {
         let ds = d.toLocaleDateString('en', {month:'short', day:'numeric'});
         ctx.fillText(ds, x, chartH + 70);
       }
     }
-    
+
     // Hover detect
     if (mouseX >= x - totalW/2 && mouseX < x + totalW/2) hoverIdx = i;
   });
+
+  // === NY OPEN CANDLE ANNOTATION PANEL ===
+  if (nyOpenVisIdx >= 0) {
+    let nc = vis[nyOpenVisIdx];
+    let nx = nyOpenVisIdx * totalW + totalW / 2;
+    let bull = nc.c >= nc.o;
+    let body = Math.abs(nc.c - nc.o);
+    let range = nc.h - nc.l;
+    let upperW = nc.h - Math.max(nc.o, nc.c);
+    let lowerW = Math.min(nc.o, nc.c) - nc.l;
+    let bodyPct = range > 0 ? (body / range * 100).toFixed(1) : '0';
+    let upperPct = range > 0 ? (upperW / range * 100).toFixed(1) : '0';
+    let lowerPct = range > 0 ? (lowerW / range * 100).toFixed(1) : '0';
+    let chg = nc.c - nc.o;
+    let chgPct = (chg / nc.o * 100).toFixed(2);
+
+    // Determine panel side (left or right of candle to not go off-screen)
+    let panelW = 195, panelH = 175;
+    let panelLeft = nx + 20;
+    if (panelLeft + panelW > chartW - 10) panelLeft = nx - panelW - 20;
+    let panelTop = Math.max(30, priceY(nc.h) - 20);
+    if (panelTop + panelH > chartH) panelTop = chartH - panelH - 5;
+
+    // Connector line from candle to panel
+    ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    let connX = panelLeft > nx ? panelLeft : panelLeft + panelW;
+    ctx.beginPath(); ctx.moveTo(nx, priceY(nc.h) - 5); ctx.lineTo(connX, panelTop + 10); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Panel background
+    ctx.fillStyle = 'rgba(22,27,34,0.94)';
+    ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(panelLeft, panelTop, panelW, panelH, 8);
+    ctx.fill(); ctx.stroke();
+
+    // Panel content
+    ctx.textAlign = 'left';
+    let px = panelLeft + 12, py = panelTop + 18;
+
+    // Title
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('NY OPEN', px, py);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.fillText('9:00 AM ET', px + 72, py);
+
+    py += 18;
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px monospace';
+    ctx.fillText('O', px, py);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('$' + nc.o.toFixed(2), px + 18, py);
+    ctx.fillStyle = '#8b949e';
+    ctx.fillText('H', px + 90, py);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('$' + nc.h.toFixed(2), px + 108, py);
+
+    py += 14;
+    ctx.fillStyle = '#8b949e';
+    ctx.fillText('C', px, py);
+    ctx.fillStyle = bull ? '#26a69a' : '#ef5350';
+    ctx.fillText('$' + nc.c.toFixed(2), px + 18, py);
+    ctx.fillStyle = '#8b949e';
+    ctx.fillText('L', px + 90, py);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('$' + nc.l.toFixed(2), px + 108, py);
+
+    // Divider
+    py += 10;
+    ctx.strokeStyle = '#30363d'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + panelW - 24, py); ctx.stroke();
+
+    // Body bar
+    py += 14;
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px monospace';
+    ctx.fillText('Body', px, py);
+    ctx.fillStyle = bull ? '#26a69a' : '#ef5350';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(bodyPct + '%', px + 40, py);
+    // Bar
+    let barX = px + 68, barW = panelW - 92;
+    ctx.fillStyle = '#21262d';
+    ctx.fillRect(barX, py - 7, barW, 8);
+    ctx.fillStyle = bull ? '#26a69a' : '#ef5350';
+    ctx.fillRect(barX, py - 7, barW * parseFloat(bodyPct) / 100, 8);
+
+    // Upper wick bar
+    py += 16;
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px monospace';
+    ctx.fillText('Up W', px, py);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(upperPct + '%', px + 40, py);
+    ctx.fillStyle = '#21262d';
+    ctx.fillRect(barX, py - 7, barW, 8);
+    ctx.fillStyle = '#8b949e';
+    ctx.fillRect(barX, py - 7, barW * parseFloat(upperPct) / 100, 8);
+
+    // Lower wick bar
+    py += 16;
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px monospace';
+    ctx.fillText('Lo W', px, py);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(lowerPct + '%', px + 40, py);
+    ctx.fillStyle = '#21262d';
+    ctx.fillRect(barX, py - 7, barW, 8);
+    ctx.fillStyle = '#8b949e';
+    ctx.fillRect(barX, py - 7, barW * parseFloat(lowerPct) / 100, 8);
+
+    // Divider
+    py += 10;
+    ctx.strokeStyle = '#30363d'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + panelW - 24, py); ctx.stroke();
+
+    // Verdict
+    py += 14;
+    ctx.fillStyle = bull ? '#26a69a' : '#ef5350';
+    ctx.font = 'bold 11px sans-serif';
+    let verdict = parseFloat(bodyPct) > 80 ? (bull ? 'BULL MARUBOZU' : 'BEAR MARUBOZU') :
+                  parseFloat(bodyPct) < 10 ? 'DOJI' :
+                  parseFloat(bodyPct) < 30 ? 'SPINNING TOP' :
+                  bull ? 'BULLISH' : 'BEARISH';
+    ctx.fillText(verdict, px, py);
+    ctx.fillStyle = bull ? '#26a69a' : '#ef5350';
+    ctx.font = '10px monospace';
+    ctx.fillText((chg > 0 ? '+' : '') + chg.toFixed(2) + ' (' + chgPct + '%)', px + 105, py);
+
+    py += 14;
+    ctx.fillStyle = '#8b949e'; ctx.font = '10px monospace';
+    ctx.fillText('Vol: ' + (nc.v > 1000 ? (nc.v/1000).toFixed(1) + 'K' : nc.v.toFixed(0)) + ' ETH', px, py);
+
+    // Annotation arrows on candle itself: body dimension
+    let nyYTop = priceY(Math.max(nc.o, nc.c));
+    let nyYBot = priceY(Math.min(nc.o, nc.c));
+    let dimX = nx + candleWidth/2 + 6;
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 1;
+    // Body bracket
+    ctx.beginPath(); ctx.moveTo(dimX, nyYTop); ctx.lineTo(dimX + 5, nyYTop); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(dimX, nyYBot); ctx.lineTo(dimX + 5, nyYBot); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(dimX + 5, nyYTop); ctx.lineTo(dimX + 5, nyYBot); ctx.stroke();
+    ctx.fillStyle = '#ffd700';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(bodyPct + '%', dimX + 8, (nyYTop + nyYBot) / 2 + 3);
+  }
   
   // Price Action patterns
   let patterns = detectPatterns(candles);
