@@ -502,11 +502,44 @@ def run(asset: str, hours_back: int, granularity: str, output_dir: str):
     report = generate_perp_report(asset, candles, instrument, funding, indicators)
     print(report)
 
-    # 6. Charts
+    # 6. Adaptive model signal (if enough data)
+    if candles and len(candles) >= 60 and indicators:
+        try:
+            from crypto_analysis.adaptive_model import AdaptiveModel
+            from crypto_analysis.pattern_detector import extract_patterns
+
+            funding_rate = float(funding[0]["funding_rate"]) if funding else None
+            fa = analyze_funding(funding)
+            f_trend = fa.get("trend") if fa else None
+
+            model_path = os.path.join(output_dir, f"{asset}_adaptive_model.json")
+            if os.path.exists(model_path):
+                model = AdaptiveModel.load(model_path)
+                model.incremental_update(candles, indicators, funding_rate, f_trend)
+            else:
+                model = AdaptiveModel(asset=asset, forward_candles=6)
+                model.train(candles, indicators, funding_rate, f_trend)
+
+            patterns = extract_patterns(candles, indicators, funding_rate, f_trend)
+            if patterns:
+                pred = model.predict(patterns[-1])
+                print(f"\n--- Adaptive Model Signal ---")
+                print(f"  Pattern:    {pred['pattern_key']}")
+                print(f"  Signal:     {pred['signal']}")
+                print(f"  Confidence: {pred.get('confidence', 0):.1%}")
+                if pred['signal'] != 'NO_DATA':
+                    print(f"  Win rate:   {pred['win_rate']:.1%}")
+                    print(f"  Avg return: {pred['avg_return']:+.3f}%")
+
+            model.save(model_path)
+        except Exception as e:
+            print(f"\n  [Adaptive model error: {e}]")
+
+    # 7. Charts
     print("\n--- Generating Charts ---")
     generate_perp_charts(asset, candles, indicators, funding, output_dir)
 
-    # 7. Save data
+    # 8. Save data
     os.makedirs(output_dir, exist_ok=True)
     json_path = os.path.join(output_dir, f"{asset}_perp_data.json")
     export = {
@@ -535,9 +568,27 @@ def main():
                         choices=list(GRANULARITY_MAP.keys()), help="Candle granularity")
     parser.add_argument("--output", default="crypto_analysis/output",
                         help="Output directory")
+    parser.add_argument("--train-model", action="store_true",
+                        help="Run adaptive model training with walk-forward validation")
     args = parser.parse_args()
 
     run(args.pair, args.hours, args.granularity, args.output)
+
+    if args.train_model:
+        from crypto_analysis.adaptive_model import AdaptiveModel, generate_model_report
+        from crypto_analysis.data_fetcher import get_candles
+        from crypto_analysis.technical_analysis import compute_all_indicators as compute_ind
+
+        info = PERP_INSTRUMENTS[args.pair]
+        print(f"\n--- Training Adaptive Model ({args.pair}, 30 days, 1h) ---")
+        candles_1h = get_candles(info["spot"], "1h", 30)
+        ind = compute_ind(candles_1h)
+        model = AdaptiveModel(asset=args.pair, forward_candles=6)
+        wf_results, _, _ = model.walk_forward_test(candles_1h, ind)
+        model.train(candles_1h, ind)
+        report = generate_model_report(model, wf_results)
+        print(report)
+        model.save(os.path.join(args.output, f"{args.pair}_adaptive_model.json"))
 
 
 if __name__ == "__main__":
