@@ -1,0 +1,12 @@
+{
+  "asset": "ETH",
+  "timestamp": "2026-03-21T22:10:57.989251",
+  "spot_price": 2151.53,
+  "mark_price": 2151.24,
+  "index_price": 2151.42,
+  "open_interest": 28005.0522,
+  "funding_rate": -4e-06,
+  "funding_annual_pct": -3.504,
+  "candle_count": 288,
+  "funding_entries": 48
+}

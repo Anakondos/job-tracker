@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ETH/USD — NY Open Candle Analysis</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0d1117; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #c9d1d9; display: flex; justify-content: center; padding: 30px; }
+.container { max-width: 1100px; width: 100%; }
+h1 { color: #fff; font-size: 24px; margin-bottom: 6px; }
+.subtitle { color: #8b949e; font-size: 14px; margin-bottom: 30px; }
+.grid { display: grid; grid-template-columns: 400px 1fr; gap: 30px; }
+.candle-box { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 30px; display: flex; flex-direction: column; align-items: center; }
+canvas { border-radius: 8px; }
+.analysis { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; }
+.section { margin-bottom: 20px; }
+.section-title { color: #58a6ff; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid #21262d; padding-bottom: 6px; }
+.row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
+.row .label { color: #8b949e; }
+.row .value { color: #fff; font-weight: 600; font-family: monospace; }
+.bull { color: #26a69a; } .bear { color: #ef5350; }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin: 2px; }
+.tag-bull { background: rgba(38,166,154,0.15); color: #26a69a; border: 1px solid rgba(38,166,154,0.3); }
+.tag-bear { background: rgba(239,83,80,0.15); color: #ef5350; border: 1px solid rgba(239,83,80,0.3); }
+.tag-neutral { background: rgba(255,171,0,0.15); color: #ffab00; border: 1px solid rgba(255,171,0,0.3); }
+.verdict { background: rgba(38,166,154,0.08); border: 1px solid rgba(38,166,154,0.2); border-radius: 10px; padding: 16px; margin-top: 10px; }
+.verdict h3 { color: #26a69a; margin-bottom: 8px; font-size: 16px; }
+.verdict p { font-size: 13px; line-height: 1.6; color: #b0b8c1; }
+.bar { height: 8px; border-radius: 4px; margin-top: 4px; margin-bottom: 12px; }
+.context-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.mini-candle { flex: 1; background: #0d1117; border-radius: 6px; padding: 8px; text-align: center; font-size: 11px; }
+.mini-candle .price { font-family: monospace; font-size: 13px; font-weight: bold; color: #fff; }
+.mini-candle .time { color: #8b949e; font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>ETH/USD — NY Open Candle (1H)</h1>
+  <div class="subtitle">23 марта 2026 | 09:00 - 10:00 AM ET (13:00-14:00 UTC) | Coinbase</div>
+
+  <div class="grid">
+    <div class="candle-box">
+      <canvas id="candle" width="360" height="520"></canvas>
+    </div>
+
+    <div class="analysis">
+      <div class="section">
+        <div class="section-title">OHLCV</div>
+        <div class="row"><span class="label">Open</span><span class="value">$2,143.98</span></div>
+        <div class="row"><span class="label">High</span><span class="value">$2,189.08</span></div>
+        <div class="row"><span class="label">Low</span><span class="value">$2,139.61</span></div>
+        <div class="row"><span class="label">Close</span><span class="value bull">$2,185.54</span></div>
+        <div class="row"><span class="label">Volume</span><span class="value">19,039.5 ETH</span></div>
+        <div class="row"><span class="label">Change</span><span class="value bull">+$41.56 (+1.94%)</span></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Анатомия свечи</div>
+        <div class="row"><span class="label">Диапазон (H-L)</span><span class="value">$49.47</span></div>
+        <div class="row"><span class="label">Тело (|C-O|)</span><span class="value bull">$41.56 (84.0%)</span></div>
+        <div class="bar" style="background: linear-gradient(90deg, #26a69a 84%, #30363d 84%)"></div>
+        <div class="row"><span class="label">Верхняя тень</span><span class="value">$3.54 (7.2%)</span></div>
+        <div class="bar" style="background: linear-gradient(90deg, #8b949e 7.2%, #30363d 7.2%); width: 50%"></div>
+        <div class="row"><span class="label">Нижняя тень</span><span class="value">$4.37 (8.8%)</span></div>
+        <div class="bar" style="background: linear-gradient(90deg, #8b949e 8.8%, #30363d 8.8%); width: 50%"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Паттерн Price Action</div>
+        <div style="margin-bottom: 10px">
+          <span class="tag tag-bull">BULLISH MARUBOZU-TYPE</span>
+          <span class="tag tag-bull">STRONG MOMENTUM</span>
+          <span class="tag tag-bull">HIGH VOLUME</span>
+        </div>
+        <p style="font-size: 13px; line-height: 1.6; color: #b0b8c1">
+          Свеча с телом <b style="color:#fff">84%</b> от диапазона — почти Marubozu.
+          Минимальные тени сверху (7.2%) и снизу (8.8%) говорят о том, что быки контролировали всё движение от открытия до закрытия.
+          Цена открылась у минимума и закрылась у максимума — классический признак сильного бычьего давления.
+        </p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Контекст: свечи вокруг NY Open</div>
+        <div class="context-row">
+          <div class="mini-candle">
+            <div class="time">07:00 ET</div>
+            <div class="price bull">$2,134.19</div>
+            <div style="color:#26a69a;font-size:10px">+$85.88 PUMP</div>
+          </div>
+          <div class="mini-candle">
+            <div class="time">08:00 ET</div>
+            <div class="price bull">$2,143.70</div>
+            <div style="color:#26a69a;font-size:10px">+$9.63</div>
+          </div>
+          <div class="mini-candle" style="border: 1px solid #26a69a">
+            <div class="time" style="color:#26a69a">09:00 ET ★</div>
+            <div class="price bull">$2,185.54</div>
+            <div style="color:#26a69a;font-size:10px">+$41.56 NY OPEN</div>
+          </div>
+          <div class="mini-candle">
+            <div class="time">10:00 ET</div>
+            <div class="price bear">$2,182.96</div>
+            <div style="color:#ef5350;font-size:10px">-$2.44</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="verdict">
+        <h3>Вердикт</h3>
+        <p>
+          <b>Сильная бычья свеча на NY Open.</b> Тело 84% диапазона с микроскопическими тенями — покупатели доминировали.
+          Объём <b>19,039 ETH</b> — самый высокий в этот день (кроме памп-свечи в 07:00 ET).
+          Контекст: после мощного скачка +$86 в 07:00 ET (вероятно новость/ликвидация), NY Open продолжил бычий импульс.
+          Следующая свеча (10:00 ET) уже слабее — консолидация после агрессивного роста.
+          <br><br>
+          <b style="color:#26a69a">Сигнал: BULLISH CONTINUATION.</b> Открытие NY поддержало momentum.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('candle');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const O = 2143.98, Hi = 2189.08, Lo = 2139.61, C = 2185.54;
+const range = Hi - Lo;
+const pad = range * 0.4;
+const minP = Lo - pad, maxP = Hi + pad;
+
+function py(p) { return 40 + (1 - (p - minP) / (maxP - minP)) * (H - 80); }
+
+// Background
+ctx.fillStyle = '#0d1117';
+ctx.fillRect(0, 0, W, H);
+
+// Price grid
+ctx.font = '11px monospace';
+ctx.textAlign = 'left';
+[Lo, O, C, Hi].forEach(p => {
+  let y = py(p);
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(60, y); ctx.lineTo(W - 10, y); ctx.stroke();
+  ctx.setLineDash([]);
+});
+
+let cx = W / 2;
+let candleW = 80;
+
+// Wick
+ctx.strokeStyle = '#26a69a';
+ctx.lineWidth = 3;
+ctx.beginPath();
+ctx.moveTo(cx, py(Hi));
+ctx.lineTo(cx, py(Lo));
+ctx.stroke();
+
+// Body
+let yTop = py(C); // close > open, close is top
+let yBot = py(O);
+let bodyH = yBot - yTop;
+
+// Body gradient
+let grad = ctx.createLinearGradient(0, yTop, 0, yBot);
+grad.addColorStop(0, '#2dd4a8');
+grad.addColorStop(1, '#1a9a7a');
+ctx.fillStyle = grad;
+ctx.beginPath();
+ctx.roundRect(cx - candleW/2, yTop, candleW, bodyH, 4);
+ctx.fill();
+
+// Body border
+ctx.strokeStyle = '#26a69a';
+ctx.lineWidth = 1.5;
+ctx.beginPath();
+ctx.roundRect(cx - candleW/2, yTop, candleW, bodyH, 4);
+ctx.stroke();
+
+// Labels with arrows
+ctx.font = 'bold 12px monospace';
+
+// High
+ctx.fillStyle = '#fff';
+ctx.textAlign = 'right';
+ctx.fillText('HIGH', cx - candleW/2 - 12, py(Hi) + 4);
+ctx.fillStyle = '#26a69a';
+ctx.textAlign = 'left';
+ctx.fillText('$2,189.08', cx + candleW/2 + 12, py(Hi) + 4);
+
+// Low
+ctx.fillStyle = '#fff';
+ctx.textAlign = 'right';
+ctx.fillText('LOW', cx - candleW/2 - 12, py(Lo) + 4);
+ctx.fillStyle = '#ef5350';
+ctx.textAlign = 'left';
+ctx.fillText('$2,139.61', cx + candleW/2 + 12, py(Lo) + 4);
+
+// Close
+ctx.fillStyle = '#8b949e';
+ctx.textAlign = 'right';
+ctx.fillText('CLOSE', cx - candleW/2 - 12, py(C) + 4);
+ctx.fillStyle = '#26a69a';
+ctx.font = 'bold 14px monospace';
+ctx.textAlign = 'left';
+ctx.fillText('$2,185.54', cx + candleW/2 + 12, py(C) + 4);
+
+// Open
+ctx.fillStyle = '#8b949e';
+ctx.font = 'bold 12px monospace';
+ctx.textAlign = 'right';
+ctx.fillText('OPEN', cx - candleW/2 - 12, py(O) + 4);
+ctx.fillStyle = '#fff';
+ctx.textAlign = 'left';
+ctx.fillText('$2,143.98', cx + candleW/2 + 12, py(O) + 4);
+
+// Dimension arrows for body, upper wick, lower wick
+// Body dimension
+let dimX = cx + candleW/2 + 100;
+ctx.strokeStyle = '#26a69a';
+ctx.lineWidth = 1;
+ctx.setLineDash([]);
+ctx.beginPath(); ctx.moveTo(dimX, yTop); ctx.lineTo(dimX, yBot); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(dimX-4, yTop); ctx.lineTo(dimX+4, yTop); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(dimX-4, yBot); ctx.lineTo(dimX+4, yBot); ctx.stroke();
+ctx.fillStyle = '#26a69a';
+ctx.font = '10px monospace';
+ctx.textAlign = 'center';
+ctx.fillText('$41.56', dimX, (yTop+yBot)/2 + 3);
+ctx.fillText('84%', dimX, (yTop+yBot)/2 + 15);
+
+// Upper wick dimension
+let uwX = cx - candleW/2 - 50;
+ctx.strokeStyle = '#8b949e';
+ctx.beginPath(); ctx.moveTo(uwX, py(Hi)); ctx.lineTo(uwX, yTop); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(uwX-4, py(Hi)); ctx.lineTo(uwX+4, py(Hi)); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(uwX-4, yTop); ctx.lineTo(uwX+4, yTop); ctx.stroke();
+ctx.fillStyle = '#8b949e';
+ctx.fillText('$3.54', uwX, (py(Hi)+yTop)/2 + 3);
+ctx.fillText('7.2%', uwX, (py(Hi)+yTop)/2 + 14);
+
+// Lower wick dimension
+ctx.beginPath(); ctx.moveTo(uwX, yBot); ctx.lineTo(uwX, py(Lo)); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(uwX-4, yBot); ctx.lineTo(uwX+4, yBot); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(uwX-4, py(Lo)); ctx.lineTo(uwX+4, py(Lo)); ctx.stroke();
+ctx.fillText('$4.37', uwX, (yBot+py(Lo))/2 + 3);
+ctx.fillText('8.8%', uwX, (yBot+py(Lo))/2 + 14);
+
+// Title on canvas
+ctx.fillStyle = '#26a69a';
+ctx.font = 'bold 16px sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText('BULLISH', cx, 24);
+ctx.fillStyle = '#8b949e';
+ctx.font = '11px sans-serif';
+ctx.fillText('+$41.56 (+1.94%)', cx, H - 15);
+ctx.fillText('Vol: 19,039 ETH', cx, H - 2);
+</script>
+</body>
+</html>
