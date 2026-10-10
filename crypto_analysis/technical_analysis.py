@@ -210,6 +210,8 @@ def compute_all_indicators(candles: list[dict]) -> dict:
         "volumes": volumes,
         "sma_20": sma(closes, 20),
         "sma_50": sma(closes, 50),
+        "sma_200": sma(closes, 200),
+        "ema_9": ema(closes, 9),
         "ema_12": ema(closes, 12),
         "ema_26": ema(closes, 26),
         "rsi_14": rsi(closes, 14),
@@ -241,22 +243,41 @@ def generate_summary(pair: str, candles: list[dict], indicators: dict) -> str:
     period_low = min(c["low"] for c in candles)
     lines.append(f"Period high: ${period_high:,.2f}  |  Period low: ${period_low:,.2f}")
 
-    # SMA signals
+    # EMA / SMA signals
+    ema9 = indicators["ema_9"][-1]
     sma20 = indicators["sma_20"][-1]
-    sma50 = indicators["sma_50"][-1]
+    sma200 = indicators["sma_200"][-1]
+
+    if ema9 is not None:
+        pos = "above" if current_price > ema9 else "below"
+        lines.append(f"EMA(9):   ${ema9:,.2f} — price is {pos}")
     if sma20 is not None:
         pos = "above" if current_price > sma20 else "below"
-        lines.append(f"SMA(20): ${sma20:,.2f} — price is {pos}")
-    if sma50 is not None:
-        pos = "above" if current_price > sma50 else "below"
-        lines.append(f"SMA(50): ${sma50:,.2f} — price is {pos}")
+        lines.append(f"SMA(20):  ${sma20:,.2f} — price is {pos}")
+    if sma200 is not None:
+        pos = "above" if current_price > sma200 else "below"
+        lines.append(f"SMA(200): ${sma200:,.2f} — price is {pos}")
 
-    # Golden/Death cross
-    if sma20 is not None and sma50 is not None:
-        if sma20 > sma50:
-            lines.append("SMA cross: BULLISH (SMA20 > SMA50)")
+    # EMA9 vs SMA20 momentum
+    if ema9 is not None and sma20 is not None:
+        if ema9 > sma20:
+            lines.append("EMA9/SMA20: BULLISH momentum (EMA9 > SMA20)")
         else:
-            lines.append("SMA cross: BEARISH (SMA20 < SMA50)")
+            lines.append("EMA9/SMA20: BEARISH momentum (EMA9 < SMA20)")
+
+    # Global trend filter (SMA 200)
+    if sma200 is not None:
+        if current_price > sma200:
+            lines.append("SMA(200) trend: BULL MARKET (price above)")
+        else:
+            lines.append("SMA(200) trend: BEAR MARKET (price below)")
+
+    # Pullback detection
+    if ema9 is not None and sma20 is not None and sma200 is not None:
+        if current_price > sma200 and current_price <= ema9 * 1.005 and current_price >= ema9 * 0.995:
+            lines.append("SETUP: Pullback to EMA9 in uptrend — watch for bounce")
+        elif current_price < sma200 and current_price <= ema9 * 1.005 and current_price >= ema9 * 0.995:
+            lines.append("SETUP: Pullback to EMA9 in downtrend — watch for rejection")
 
     # RSI
     rsi_val = indicators["rsi_14"][-1]

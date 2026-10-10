@@ -216,7 +216,7 @@ function resize() {
   draw();
 }
 
-function calcMA(data, period) {
+function calcSMA(data, period) {
   let ma = [];
   for (let i = 0; i < data.length; i++) {
     if (i < period - 1) { ma.push(null); continue; }
@@ -225,6 +225,22 @@ function calcMA(data, period) {
     ma.push(sum / period);
   }
   return ma;
+}
+
+function calcEMA(data, period) {
+  let ema = [];
+  let k = 2 / (period + 1);
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) { ema.push(null); continue; }
+    if (i === period - 1) {
+      let sum = 0;
+      for (let j = 0; j < period; j++) sum += data[j].c;
+      ema.push(sum / period);
+      continue;
+    }
+    ema.push(data[i].c * k + ema[i - 1] * (1 - k));
+  }
+  return ema;
 }
 
 let mouseX = -1, mouseY = -1;
@@ -253,8 +269,9 @@ function draw() {
   minP -= pad; maxP += pad;
   let maxV = Math.max(...vis.map(c => c.v));
   
-  let ma7 = calcMA(candles, 7);
-  let ma25 = calcMA(candles, 25);
+  let ema9 = calcEMA(candles, 9);
+  let sma20 = calcSMA(candles, 20);
+  let sma200 = calcSMA(candles, 200);
   
   function priceY(p) { return 20 + (1 - (p - minP) / (maxP - minP)) * chartH; }
   function volY(v) { return H - (v / maxV) * volH; }
@@ -551,9 +568,9 @@ function draw() {
   });
 
   // MA lines
-  function drawMA(maArr, color) {
+  function drawMA(maArr, color, lineW) {
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = lineW || 1.5;
     ctx.beginPath();
     let started = false;
     vis.forEach((c, i) => {
@@ -567,8 +584,9 @@ function draw() {
     });
     ctx.stroke();
   }
-  drawMA(ma7, COLORS.ma7);
-  drawMA(ma25, COLORS.ma25);
+  drawMA(ema9, '#ffeb3b', 2);   // EMA 9 — yellow, thick
+  drawMA(sma20, '#2196f3', 1.5); // SMA 20 — blue
+  drawMA(sma200, '#e040fb', 1);  // SMA 200 — pink, thinner
   
   // Last price dashed line
   let lastP = vis[vis.length-1].c;
@@ -606,12 +624,29 @@ function draw() {
     tooltip.style.display = 'block';
     tooltip.style.left = Math.min(mouseX + 15, W - 200) + 'px';
     tooltip.style.top = Math.max(mouseY - 100, 10) + 'px';
+    // MA values at hovered candle
+    let gi = startIdx + hoverIdx;
+    let maInfo = '';
+    let e9v = ema9[gi], s20v = sma20[gi], s200v = sma200[gi];
+    maInfo += '<div style="margin-top:4px;padding-top:4px;border-top:1px solid #2a2e39;font-size:10px">';
+    if (e9v !== null) maInfo += '<span style="color:#ffeb3b">EMA9 $' + e9v.toFixed(2) + '</span> ';
+    if (s20v !== null) maInfo += '<span style="color:#2196f3">SMA20 $' + s20v.toFixed(2) + '</span> ';
+    if (s200v !== null) maInfo += '<span style="color:#e040fb">SMA200 $' + s200v.toFixed(2) + '</span>';
+    maInfo += '</div>';
+    // Trend signal
+    if (e9v && s20v && s200v) {
+      let trend = c.c > s200v ? 'BULL' : 'BEAR';
+      let momentum = e9v > s20v ? 'UP' : 'DOWN';
+      let tColor = trend === 'BULL' ? '#26a69a' : '#ef5350';
+      maInfo += '<div style="color:' + tColor + ';font-size:10px;font-weight:bold">' + trend + ' trend / ' + momentum + ' momentum</div>';
+    }
+
     let patInfo = '';
-    let hovPat = patterns[startIdx + hoverIdx];
+    let hovPat = patterns[gi];
     if (hovPat) {
       let patColor = hovPat.type === 'bull' ? COLORS.bullSignal : hovPat.type === 'bear' ? COLORS.bearSignal : COLORS.neutralSignal;
       let typeLabel = hovPat.type === 'bull' ? 'BULLISH' : hovPat.type === 'bear' ? 'BEARISH' : 'NEUTRAL';
-      patInfo = '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #2a2e39;color:' + patColor + ';font-weight:bold">' +
+      patInfo = '<div style="margin-top:4px;padding-top:4px;border-top:1px solid #2a2e39;color:' + patColor + ';font-weight:bold">' +
         hovPat.icon + ' ' + hovPat.name + '</div>' +
         '<div style="color:' + patColor + ';font-size:10px">' + typeLabel + ' signal</div>';
     }
@@ -623,7 +658,7 @@ function draw() {
       '<div>C: <b style="color:' + (bull?COLORS.up:COLORS.down) + '">$' + c.c.toFixed(2) + '</b></div>' +
       '<div style="color:' + (bull?COLORS.up:COLORS.down) + '">' + (chg>0?'+':'') + chg.toFixed(2) + ' (' + pct + '%)</div>' +
       '<div style="color:#787b86">Vol: ' + (c.v>1000?(c.v/1000).toFixed(1)+'K':c.v.toFixed(0)) + '</div>' +
-      patInfo;
+      maInfo + patInfo;
   } else {
     tooltip.style.display = 'none';
   }
@@ -640,7 +675,7 @@ function draw() {
     '<span>L <b>' + last.l.toFixed(2) + '</b></span>' +
     '<span>C <b class="'+cls+'">' + last.c.toFixed(2) + '</b></span>' +
     '<span class="'+cls+'">24h: ' + (ch>0?'+':'') + ch.toFixed(2) + ' (' + cp + '%)</span>' +
-    '<span style="color:#2196f3">━ MA7</span> <span style="color:#e040fb">━ MA25</span>' +
+    '<span style="color:#ffeb3b">━ EMA9</span> <span style="color:#2196f3">━ SMA20</span> <span style="color:#e040fb">━ SMA200</span>' +
     '<span style="color:#00e676"> ▲ Bull</span> <span style="color:#ff1744"> ▼ Bear</span> <span style="color:#ffab00"> ◎ Neutral</span>';
 }
 
