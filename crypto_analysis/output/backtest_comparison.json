@@ -1,0 +1,528 @@
+{
+  "raw": {
+    "stats": {
+      "trades": 30,
+      "wins": 8,
+      "losses": 22,
+      "wr": 0.26666666666666666,
+      "pnl": 0.25331421659713343,
+      "dd": 9.164538650867495,
+      "equity": 100.00562011062605
+    },
+    "trades": [
+      {
+        "type": "LONG",
+        "entry": 2638.6,
+        "exit": 2627.16,
+        "pnl": -0.4335632532403568,
+        "entry_time": "2026-09-19 11:00",
+        "exit_time": "2026-09-19 21:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2640.3,
+        "exit": 2739.23,
+        "pnl": 3.746922698178231,
+        "entry_time": "2026-09-20 16:00",
+        "exit_time": "2026-09-22 02:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2754.05,
+        "exit": 2754.04,
+        "pnl": -0.0003631016139945999,
+        "entry_time": "2026-09-22 17:00",
+        "exit_time": "2026-09-23 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2668.36,
+        "pnl": -0.9142288468536673,
+        "entry_time": "2026-09-24 07:00",
+        "exit_time": "2026-09-24 08:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2689.14,
+        "exit": 2674.09,
+        "pnl": -0.5596584781751686,
+        "entry_time": "2026-09-24 18:00",
+        "exit_time": "2026-09-25 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2704.06,
+        "exit": 2686.42,
+        "pnl": -0.6523523886304251,
+        "entry_time": "2026-09-25 09:00",
+        "exit_time": "2026-09-25 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2683.84,
+        "pnl": -0.33940096101715844,
+        "entry_time": "2026-09-25 18:00",
+        "exit_time": "2026-09-25 20:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2690.43,
+        "exit": 2682.22,
+        "pnl": -0.3051556814338242,
+        "entry_time": "2026-09-26 08:00",
+        "exit_time": "2026-09-26 09:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.5,
+        "exit": 2684.76,
+        "pnl": -0.28746518105848773,
+        "entry_time": "2026-09-26 15:00",
+        "exit_time": "2026-09-26 18:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2695.53,
+        "exit": 2687.43,
+        "pnl": -0.30049749028949274,
+        "entry_time": "2026-09-26 23:00",
+        "exit_time": "2026-09-27 14:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2685.9,
+        "exit": 2668.01,
+        "pnl": 0.6660709631780733,
+        "entry_time": "2026-09-27 16:00",
+        "exit_time": "2026-09-28 11:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2664.16,
+        "exit": 2705.71,
+        "pnl": -1.5595910155546282,
+        "entry_time": "2026-09-29 03:00",
+        "exit_time": "2026-09-29 06:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2711.1,
+        "exit": 2673.67,
+        "pnl": -1.3806204123787331,
+        "entry_time": "2026-09-29 07:00",
+        "exit_time": "2026-09-29 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2688.99,
+        "exit": 2687.39,
+        "pnl": 0.059501894763458,
+        "entry_time": "2026-09-29 19:00",
+        "exit_time": "2026-09-30 09:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2694.27,
+        "exit": 2681.76,
+        "pnl": -0.46431872084088693,
+        "entry_time": "2026-09-30 16:00",
+        "exit_time": "2026-09-30 17:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2682.58,
+        "exit": 2685.36,
+        "pnl": -0.10363157855498065,
+        "entry_time": "2026-09-30 21:00",
+        "exit_time": "2026-09-30 22:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2682.93,
+        "exit": 2688.04,
+        "pnl": -0.19046341127051872,
+        "entry_time": "2026-10-01 00:00",
+        "exit_time": "2026-10-01 01:00",
+        "reason_in": "Rejection EMA9",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2705.37,
+        "exit": 2675.85,
+        "pnl": -1.091163131105911,
+        "entry_time": "2026-10-01 04:00",
+        "exit_time": "2026-10-01 07:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2700.75,
+        "exit": 2689.19,
+        "pnl": -0.4280292511339423,
+        "entry_time": "2026-10-01 10:00",
+        "exit_time": "2026-10-01 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2679.12,
+        "exit": 2699.94,
+        "pnl": -0.7771208456508168,
+        "entry_time": "2026-10-01 16:00",
+        "exit_time": "2026-10-01 17:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2699.37,
+        "exit": 2692.52,
+        "pnl": -0.2537629150505455,
+        "entry_time": "2026-10-01 19:00",
+        "exit_time": "2026-10-01 21:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2702.03,
+        "exit": 2708.97,
+        "pnl": 0.2568439284537773,
+        "entry_time": "2026-10-01 22:00",
+        "exit_time": "2026-10-02 14:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2689.29,
+        "exit": 2682.43,
+        "pnl": 0.2550859148697287,
+        "entry_time": "2026-10-02 16:00",
+        "exit_time": "2026-10-03 08:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.84,
+        "exit": 2701.88,
+        "pnl": 0.3357050548862897,
+        "entry_time": "2026-10-04 00:00",
+        "exit_time": "2026-10-05 04:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2725.3,
+        "exit": 2710.41,
+        "pnl": -0.5463618684181677,
+        "entry_time": "2026-10-05 07:00",
+        "exit_time": "2026-10-05 12:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2722.05,
+        "exit": 2703.67,
+        "pnl": -0.6752263918737755,
+        "entry_time": "2026-10-05 13:00",
+        "exit_time": "2026-10-05 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2709.79,
+        "exit": 2701.53,
+        "pnl": -0.3048206687603011,
+        "entry_time": "2026-10-06 09:00",
+        "exit_time": "2026-10-06 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2695.36,
+        "exit": 2578.59,
+        "pnl": 4.332259883651904,
+        "entry_time": "2026-10-06 16:00",
+        "exit_time": "2026-10-08 02:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2559.7,
+        "exit": 2491.57,
+        "pnl": 2.6616400359416987,
+        "entry_time": "2026-10-08 05:00",
+        "exit_time": "2026-10-09 03:00",
+        "reason_in": "Rejection EMA9",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2481.13,
+        "exit": 2493.36,
+        "pnl": -0.49292056442024473,
+        "entry_time": "2026-10-09 18:00",
+        "exit_time": "2026-10-10 01:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      }
+    ]
+  },
+  "filtered": {
+    "stats": {
+      "trades": 20,
+      "wins": 5,
+      "losses": 15,
+      "wr": 0.25,
+      "pnl": 1.2518216855243944,
+      "dd": 6.165522876679139,
+      "equity": 101.06720517137522
+    },
+    "trades": [
+      {
+        "type": "LONG",
+        "entry": 2640.3,
+        "exit": 2739.23,
+        "pnl": 3.746922698178231,
+        "entry_time": "2026-09-20 16:00",
+        "exit_time": "2026-09-22 02:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2754.05,
+        "exit": 2754.04,
+        "pnl": -0.0003631016139945999,
+        "entry_time": "2026-09-22 17:00",
+        "exit_time": "2026-09-23 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2668.36,
+        "pnl": -0.9142288468536673,
+        "entry_time": "2026-09-24 07:00",
+        "exit_time": "2026-09-24 08:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2689.14,
+        "exit": 2674.09,
+        "pnl": -0.5596584781751686,
+        "entry_time": "2026-09-24 18:00",
+        "exit_time": "2026-09-25 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2704.06,
+        "exit": 2686.42,
+        "pnl": -0.6523523886304251,
+        "entry_time": "2026-09-25 09:00",
+        "exit_time": "2026-09-25 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.5,
+        "exit": 2684.76,
+        "pnl": -0.28746518105848773,
+        "entry_time": "2026-09-26 15:00",
+        "exit_time": "2026-09-26 18:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2695.53,
+        "exit": 2687.43,
+        "pnl": -0.30049749028949274,
+        "entry_time": "2026-09-26 23:00",
+        "exit_time": "2026-09-27 14:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2684.07,
+        "exit": 2668.01,
+        "pnl": 0.598345050613432,
+        "entry_time": "2026-09-27 21:00",
+        "exit_time": "2026-09-28 11:00",
+        "reason_in": "Rejection EMA9",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2711.1,
+        "exit": 2673.67,
+        "pnl": -1.3806204123787331,
+        "entry_time": "2026-09-29 07:00",
+        "exit_time": "2026-09-29 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2688.99,
+        "exit": 2687.39,
+        "pnl": 0.059501894763458,
+        "entry_time": "2026-09-29 19:00",
+        "exit_time": "2026-09-30 09:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2694.27,
+        "exit": 2681.76,
+        "pnl": -0.46431872084088693,
+        "entry_time": "2026-09-30 16:00",
+        "exit_time": "2026-09-30 17:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2682.58,
+        "exit": 2685.36,
+        "pnl": -0.10363157855498065,
+        "entry_time": "2026-09-30 21:00",
+        "exit_time": "2026-09-30 22:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2696.76,
+        "exit": 2689.19,
+        "pnl": -0.28070721903321627,
+        "entry_time": "2026-10-01 13:00",
+        "exit_time": "2026-10-01 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2679.12,
+        "exit": 2699.94,
+        "pnl": -0.7771208456508168,
+        "entry_time": "2026-10-01 16:00",
+        "exit_time": "2026-10-01 17:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2689.29,
+        "exit": 2682.43,
+        "pnl": 0.2550859148697287,
+        "entry_time": "2026-10-02 16:00",
+        "exit_time": "2026-10-03 08:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2725.3,
+        "exit": 2710.41,
+        "pnl": -0.5463618684181677,
+        "entry_time": "2026-10-05 07:00",
+        "exit_time": "2026-10-05 12:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2722.05,
+        "exit": 2703.67,
+        "pnl": -0.6752263918737755,
+        "entry_time": "2026-10-05 13:00",
+        "exit_time": "2026-10-05 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2709.79,
+        "exit": 2701.53,
+        "pnl": -0.3048206687603011,
+        "entry_time": "2026-10-06 09:00",
+        "exit_time": "2026-10-06 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop: price<SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2695.36,
+        "exit": 2578.59,
+        "pnl": 4.332259883651904,
+        "entry_time": "2026-10-06 16:00",
+        "exit_time": "2026-10-08 02:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2481.13,
+        "exit": 2493.36,
+        "pnl": -0.49292056442024473,
+        "entry_time": "2026-10-09 18:00",
+        "exit_time": "2026-10-10 01:00",
+        "reason_in": "EMA9xSMA20 DOWN",
+        "reason_out": "Stop: price>SMA20"
+      }
+    ]
+  }
+}
