@@ -1,0 +1,1136 @@
+{
+  "trades": [
+    {
+      "type": "LONG",
+      "entry": 2411.18,
+      "exit": 2444.58,
+      "pnl": 1.3852138786818111,
+      "entry_time": "2026-08-23 09:00",
+      "exit_time": "2026-08-23 19:00",
+      "reason_in": "Bull reversal score 12",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2475.28,
+      "exit": 2484.11,
+      "pnl": 0.35672731973756205,
+      "entry_time": "2026-08-24 20:00",
+      "exit_time": "2026-08-25 08:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 10",
+      "exit_score": 10
+    },
+    {
+      "type": "LONG",
+      "entry": 2484.11,
+      "exit": 2474.03,
+      "pnl": -0.40577913216403166,
+      "entry_time": "2026-08-25 08:00",
+      "exit_time": "2026-08-25 09:00",
+      "reason_in": "Bull reversal score 14",
+      "reason_out": "Reversal score 12",
+      "exit_score": 12
+    },
+    {
+      "type": "SHORT",
+      "entry": 2474.03,
+      "exit": 2481.47,
+      "pnl": -0.30072392008179366,
+      "entry_time": "2026-08-25 09:00",
+      "exit_time": "2026-08-25 10:00",
+      "reason_in": "Bear reversal score 12",
+      "reason_out": "Reversal score 10",
+      "exit_score": 10
+    },
+    {
+      "type": "LONG",
+      "entry": 2465.1,
+      "exit": 2471.97,
+      "pnl": 0.2786905196543707,
+      "entry_time": "2026-08-26 02:00",
+      "exit_time": "2026-08-26 20:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 11",
+      "exit_score": 11
+    },
+    {
+      "type": "SHORT",
+      "entry": 2453.44,
+      "exit": 2452.34,
+      "pnl": 0.04483500717359744,
+      "entry_time": "2026-08-29 19:00",
+      "exit_time": "2026-08-29 22:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2452.34,
+      "exit": 2477.03,
+      "pnl": -1.006793511503301,
+      "entry_time": "2026-08-29 22:00",
+      "exit_time": "2026-08-30 14:00",
+      "reason_in": "Bear reversal score 13",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2416.86,
+      "exit": 2446.14,
+      "pnl": -1.2114892877535208,
+      "entry_time": "2026-08-30 23:00",
+      "exit_time": "2026-08-31 09:00",
+      "reason_in": "Bear reversal score 13",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2450.82,
+      "exit": 2439.37,
+      "pnl": -0.467190572951105,
+      "entry_time": "2026-08-31 12:00",
+      "exit_time": "2026-08-31 13:00",
+      "reason_in": "Bull reversal score 12",
+      "reason_out": "Reversal score 12",
+      "exit_score": 12
+    },
+    {
+      "type": "SHORT",
+      "entry": 2439.37,
+      "exit": 2466.56,
+      "pnl": -1.1146320566375767,
+      "entry_time": "2026-08-31 13:00",
+      "exit_time": "2026-08-31 14:00",
+      "reason_in": "Bear reversal score 12",
+      "reason_out": "Reversal score 12",
+      "exit_score": 12
+    },
+    {
+      "type": "LONG",
+      "entry": 2466.56,
+      "exit": 2467.29,
+      "pnl": 0.029595874416191707,
+      "entry_time": "2026-08-31 14:00",
+      "exit_time": "2026-08-31 23:00",
+      "reason_in": "Bull reversal score 12",
+      "reason_out": "Reversal score 11",
+      "exit_score": 11
+    },
+    {
+      "type": "SHORT",
+      "entry": 2402.3,
+      "exit": 2397.37,
+      "pnl": 0.20521999750240566,
+      "entry_time": "2026-09-03 03:00",
+      "exit_time": "2026-09-03 07:00",
+      "reason_in": "Bear reversal score 12",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2405.95,
+      "exit": 2422.41,
+      "pnl": -0.6841372430848537,
+      "entry_time": "2026-09-03 11:00",
+      "exit_time": "2026-09-03 12:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "SHORT",
+      "entry": 2451.35,
+      "exit": 2460.46,
+      "pnl": -0.37163195790075376,
+      "entry_time": "2026-09-04 12:00",
+      "exit_time": "2026-09-04 16:00",
+      "reason_in": "Bear reversal score 16",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "SHORT",
+      "entry": 2452.28,
+      "exit": 2453.3,
+      "pnl": -0.04159394522648237,
+      "entry_time": "2026-09-05 01:00",
+      "exit_time": "2026-09-05 02:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 11",
+      "exit_score": 11
+    },
+    {
+      "type": "LONG",
+      "entry": 2453.3,
+      "exit": 2449.2,
+      "pnl": -0.16712183589452426,
+      "entry_time": "2026-09-05 02:00",
+      "exit_time": "2026-09-05 04:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 10",
+      "exit_score": 10
+    },
+    {
+      "type": "LONG",
+      "entry": 2457.86,
+      "exit": 2456.92,
+      "pnl": -0.03824465185161297,
+      "entry_time": "2026-09-05 07:00",
+      "exit_time": "2026-09-05 08:00",
+      "reason_in": "Bull reversal score 13",
+      "reason_out": "Reversal score 9",
+      "exit_score": 9
+    },
+    {
+      "type": "LONG",
+      "entry": 2479.85,
+      "exit": 2490.53,
+      "pnl": 0.43067120995222663,
+      "entry_time": "2026-09-06 15:00",
+      "exit_time": "2026-09-06 19:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 9",
+      "exit_score": 9
+    },
+    {
+      "type": "LONG",
+      "entry": 2490.53,
+      "exit": 2489.1,
+      "pnl": -0.05741749748046766,
+      "entry_time": "2026-09-06 19:00",
+      "exit_time": "2026-09-07 07:00",
+      "reason_in": "Bull reversal score 13",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "SHORT",
+      "entry": 2460.78,
+      "exit": 2453.64,
+      "pnl": 0.29015190305514216,
+      "entry_time": "2026-09-10 20:00",
+      "exit_time": "2026-09-11 01:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "SHORT",
+      "entry": 2453.64,
+      "exit": 2458.27,
+      "pnl": -0.1886992386821257,
+      "entry_time": "2026-09-11 01:00",
+      "exit_time": "2026-09-11 04:00",
+      "reason_in": "Bear reversal score 12",
+      "reason_out": "Reversal score 9",
+      "exit_score": 9
+    },
+    {
+      "type": "LONG",
+      "entry": 2510.28,
+      "exit": 2514.39,
+      "pnl": 0.16372675558103766,
+      "entry_time": "2026-09-12 00:00",
+      "exit_time": "2026-09-12 02:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "LONG",
+      "entry": 2513.11,
+      "exit": 2512.43,
+      "pnl": -0.027058107285406967,
+      "entry_time": "2026-09-12 03:00",
+      "exit_time": "2026-09-12 04:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2512.43,
+      "exit": 2511.46,
+      "pnl": -0.03860804082102984,
+      "entry_time": "2026-09-12 04:00",
+      "exit_time": "2026-09-12 05:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2511.46,
+      "exit": 2523.36,
+      "pnl": 0.47382797257372566,
+      "entry_time": "2026-09-12 05:00",
+      "exit_time": "2026-09-12 21:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "LONG",
+      "entry": 2505.1,
+      "exit": 2474.57,
+      "pnl": -1.218713823799439,
+      "entry_time": "2026-09-13 19:00",
+      "exit_time": "2026-09-13 22:00",
+      "reason_in": "Bull reversal score 14",
+      "reason_out": "Reversal score 15",
+      "exit_score": 15
+    },
+    {
+      "type": "SHORT",
+      "entry": 2474.57,
+      "exit": 2510.31,
+      "pnl": -1.4442913314232282,
+      "entry_time": "2026-09-13 22:00",
+      "exit_time": "2026-09-14 02:00",
+      "reason_in": "Bear reversal score 15",
+      "reason_out": "Reversal score 18",
+      "exit_score": 18
+    },
+    {
+      "type": "LONG",
+      "entry": 2510.31,
+      "exit": 2515.49,
+      "pnl": 0.20634901665530697,
+      "entry_time": "2026-09-14 02:00",
+      "exit_time": "2026-09-14 05:00",
+      "reason_in": "Bull reversal score 18",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2495.97,
+      "exit": 2485.52,
+      "pnl": 0.4186749039451524,
+      "entry_time": "2026-09-15 05:00",
+      "exit_time": "2026-09-15 06:00",
+      "reason_in": "Bear reversal score 13",
+      "reason_out": "Reversal score 9",
+      "exit_score": 9
+    },
+    {
+      "type": "SHORT",
+      "entry": 2388.6,
+      "exit": 2395.54,
+      "pnl": -0.29054676379469374,
+      "entry_time": "2026-09-16 14:00",
+      "exit_time": "2026-09-16 18:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2408.58,
+      "exit": 2416.57,
+      "pnl": -0.33173072930939546,
+      "entry_time": "2026-09-16 20:00",
+      "exit_time": "2026-09-16 23:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 11",
+      "exit_score": 11
+    },
+    {
+      "type": "LONG",
+      "entry": 2416.57,
+      "exit": 2416.6,
+      "pnl": 0.0012414289674929897,
+      "entry_time": "2026-09-16 23:00",
+      "exit_time": "2026-09-17 00:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 9",
+      "exit_score": 9
+    },
+    {
+      "type": "SHORT",
+      "entry": 2447.37,
+      "exit": 2445.44,
+      "pnl": 0.07886016417623148,
+      "entry_time": "2026-09-17 19:00",
+      "exit_time": "2026-09-17 23:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2446.18,
+      "exit": 2454.85,
+      "pnl": -0.35443017275916217,
+      "entry_time": "2026-09-18 00:00",
+      "exit_time": "2026-09-18 01:00",
+      "reason_in": "Bear reversal score 13",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2626.24,
+      "exit": 2630.3,
+      "pnl": 0.15459363957598699,
+      "entry_time": "2026-09-19 07:00",
+      "exit_time": "2026-09-19 22:00",
+      "reason_in": "Bull reversal score 12",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2573.26,
+      "exit": 2728.8,
+      "pnl": 6.044472769949401,
+      "entry_time": "2026-09-20 06:00",
+      "exit_time": "2026-09-22 04:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2730.01,
+      "exit": 2741.99,
+      "pnl": 0.4388262314057297,
+      "entry_time": "2026-09-22 06:00",
+      "exit_time": "2026-09-22 14:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "LONG",
+      "entry": 2754.05,
+      "exit": 2742.78,
+      "pnl": -0.4092155189629811,
+      "entry_time": "2026-09-22 17:00",
+      "exit_time": "2026-09-23 07:00",
+      "reason_in": "Bull reversal score 12",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "SHORT",
+      "entry": 2734.64,
+      "exit": 2733.15,
+      "pnl": 0.05448614808529758,
+      "entry_time": "2026-09-23 08:00",
+      "exit_time": "2026-09-23 09:00",
+      "reason_in": "Bear reversal score 14",
+      "reason_out": "Reversal score 10",
+      "exit_score": 10
+    },
+    {
+      "type": "LONG",
+      "entry": 2689.53,
+      "exit": 2685.61,
+      "pnl": -0.1457503727417085,
+      "entry_time": "2026-09-23 22:00",
+      "exit_time": "2026-09-24 06:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2685.61,
+      "exit": 2641.73,
+      "pnl": -1.6338932309605678,
+      "entry_time": "2026-09-24 06:00",
+      "exit_time": "2026-09-24 09:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "LONG",
+      "entry": 2656.91,
+      "exit": 2684.75,
+      "pnl": 1.047833761775903,
+      "entry_time": "2026-09-24 14:00",
+      "exit_time": "2026-09-24 22:00",
+      "reason_in": "Bull reversal score 16",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2684.75,
+      "exit": 2687.28,
+      "pnl": 0.09423596238011733,
+      "entry_time": "2026-09-24 22:00",
+      "exit_time": "2026-09-24 23:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2690.22,
+      "exit": 2666.53,
+      "pnl": -0.8805971258856006,
+      "entry_time": "2026-09-28 12:00",
+      "exit_time": "2026-09-28 14:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 10",
+      "exit_score": 10
+    },
+    {
+      "type": "SHORT",
+      "entry": 2689.29,
+      "exit": 2675.99,
+      "pnl": 0.4945543247474308,
+      "entry_time": "2026-10-02 16:00",
+      "exit_time": "2026-10-03 00:00",
+      "reason_in": "Bear reversal score 12",
+      "reason_out": "Reversal score 9",
+      "exit_score": 9
+    },
+    {
+      "type": "SHORT",
+      "entry": 2675.99,
+      "exit": 2678.97,
+      "pnl": -0.11136065530887704,
+      "entry_time": "2026-10-03 00:00",
+      "exit_time": "2026-10-03 01:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2697.44,
+      "exit": 2701.88,
+      "pnl": 0.16460051011329463,
+      "entry_time": "2026-10-04 14:00",
+      "exit_time": "2026-10-05 04:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 8",
+      "exit_score": 8
+    },
+    {
+      "type": "LONG",
+      "entry": 2720.43,
+      "exit": 2716.92,
+      "pnl": -0.12902372051476288,
+      "entry_time": "2026-10-05 08:00",
+      "exit_time": "2026-10-05 10:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "LONG",
+      "entry": 2716.92,
+      "exit": 2710.41,
+      "pnl": -0.23960955788172703,
+      "entry_time": "2026-10-05 10:00",
+      "exit_time": "2026-10-05 12:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 9",
+      "exit_score": 9
+    },
+    {
+      "type": "LONG",
+      "entry": 2710.41,
+      "exit": 2703.67,
+      "pnl": -0.24867086529343466,
+      "entry_time": "2026-10-05 12:00",
+      "exit_time": "2026-10-05 14:00",
+      "reason_in": "Bull reversal score 11",
+      "reason_out": "Reversal score 12",
+      "exit_score": 12
+    },
+    {
+      "type": "SHORT",
+      "entry": 2703.67,
+      "exit": 2696.77,
+      "pnl": 0.2552086608202958,
+      "entry_time": "2026-10-05 14:00",
+      "exit_time": "2026-10-05 15:00",
+      "reason_in": "Bear reversal score 12",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2560.82,
+      "exit": 2559.7,
+      "pnl": 0.04373599081545542,
+      "entry_time": "2026-10-08 04:00",
+      "exit_time": "2026-10-08 05:00",
+      "reason_in": "Bear reversal score 11",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    },
+    {
+      "type": "SHORT",
+      "entry": 2481.13,
+      "exit": 2487,
+      "pnl": -0.23658574923522308,
+      "entry_time": "2026-10-09 18:00",
+      "exit_time": "2026-10-10 00:00",
+      "reason_in": "Trend + cross (score 10)",
+      "reason_out": "Reversal score 7",
+      "exit_score": 7
+    }
+  ],
+  "score_events": [
+    {
+      "time": "2026-10-10 02:00",
+      "price": 2490.85,
+      "bear_score": 8,
+      "bull_score": 6,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-10 03:00",
+      "price": 2489.14,
+      "bear_score": 10,
+      "bull_score": 6,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-10 04:00",
+      "price": 2492.64,
+      "bear_score": 10,
+      "bull_score": 9,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 RSI bearish divergence",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low",
+        "+3 EMA9 crossed above SMA20"
+      ]
+    },
+    {
+      "time": "2026-10-10 05:00",
+      "price": 2495.88,
+      "bear_score": 8,
+      "bull_score": 9,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low",
+        "+3 +DI/-DI crossed (bulls took over)"
+      ]
+    },
+    {
+      "time": "2026-10-10 06:00",
+      "price": 2491.34,
+      "bear_score": 11,
+      "bull_score": 6,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+3 +DI/-DI crossed (bears took over)",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-10 07:00",
+      "price": 2493.14,
+      "bear_score": 10,
+      "bull_score": 4,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging"
+      ]
+    },
+    {
+      "time": "2026-10-10 08:00",
+      "price": 2493.66,
+      "bear_score": 11,
+      "bull_score": 10,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 RSI bearish divergence",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low",
+        "+3 +DI/-DI crossed (bulls took over)"
+      ]
+    },
+    {
+      "time": "2026-10-10 09:00",
+      "price": 2494.55,
+      "bear_score": 11,
+      "bull_score": 10,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 RSI bearish divergence",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low",
+        "+3 SAR flipped bullish"
+      ]
+    },
+    {
+      "time": "2026-10-10 10:00",
+      "price": 2493.67,
+      "bear_score": 14,
+      "bull_score": 5,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 RSI bearish divergence",
+        "+2 +DI/-DI converging",
+        "+3 +DI/-DI crossed (bears took over)",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging"
+      ]
+    },
+    {
+      "time": "2026-10-10 11:00",
+      "price": 2494.9,
+      "bear_score": 11,
+      "bull_score": 10,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 RSI bearish divergence",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low",
+        "+3 +DI/-DI crossed (bulls took over)"
+      ]
+    },
+    {
+      "time": "2026-10-10 12:00",
+      "price": 2494.13,
+      "bear_score": 11,
+      "bull_score": 7,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 RSI bearish divergence",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-10 13:00",
+      "price": 2497.15,
+      "bear_score": 7,
+      "bull_score": 5,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-10 18:00",
+      "price": 2509.46,
+      "bear_score": 8,
+      "bull_score": 2,
+      "bear_signals": [
+        "+2 RSI bearish divergence",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-10 19:00",
+      "price": 2510.86,
+      "bear_score": 7,
+      "bull_score": 3,
+      "bear_signals": [
+        "+1 Small candle body",
+        "+2 RSI bearish divergence",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 Small candle body",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-10 21:00",
+      "price": 2507.57,
+      "bear_score": 7,
+      "bull_score": 1,
+      "bear_signals": [
+        "+1 Small candle body",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 Small candle body"
+      ]
+    },
+    {
+      "time": "2026-10-10 22:00",
+      "price": 2507.67,
+      "bear_score": 7,
+      "bull_score": 1,
+      "bear_signals": [
+        "+1 Small candle body",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 Small candle body"
+      ]
+    },
+    {
+      "time": "2026-10-11 00:00",
+      "price": 2501.85,
+      "bear_score": 10,
+      "bull_score": 1,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 Failed to make new high",
+        "+3 SAR flipped bearish",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling"
+      ]
+    },
+    {
+      "time": "2026-10-11 01:00",
+      "price": 2508.18,
+      "bear_score": 7,
+      "bull_score": 1,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling"
+      ]
+    },
+    {
+      "time": "2026-10-11 03:00",
+      "price": 2497.32,
+      "bear_score": 12,
+      "bull_score": 3,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+3 +DI/-DI crossed (bears took over)",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging"
+      ]
+    },
+    {
+      "time": "2026-10-11 04:00",
+      "price": 2504.69,
+      "bear_score": 9,
+      "bull_score": 3,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging"
+      ]
+    },
+    {
+      "time": "2026-10-11 05:00",
+      "price": 2501.78,
+      "bear_score": 9,
+      "bull_score": 5,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-11 06:00",
+      "price": 2503.61,
+      "bear_score": 14,
+      "bull_score": 7,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+3 EMA9 crossed below SMA20",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-11 07:00",
+      "price": 2498.41,
+      "bear_score": 9,
+      "bull_score": 5,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+2 RSI bullish divergence",
+        "+2 +DI/-DI converging"
+      ]
+    },
+    {
+      "time": "2026-10-11 08:00",
+      "price": 2498.46,
+      "bear_score": 9,
+      "bull_score": 5,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+1 Small candle body",
+        "+2 RSI bullish divergence"
+      ]
+    },
+    {
+      "time": "2026-10-11 09:00",
+      "price": 2500.2,
+      "bear_score": 10,
+      "bull_score": 4,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging"
+      ]
+    },
+    {
+      "time": "2026-10-11 10:00",
+      "price": 2498.33,
+      "bear_score": 10,
+      "bull_score": 6,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Small candle body",
+        "+2 RSI bullish divergence",
+        "+2 +DI/-DI converging"
+      ]
+    },
+    {
+      "time": "2026-10-11 11:00",
+      "price": 2503.66,
+      "bear_score": 7,
+      "bull_score": 11,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low",
+        "+3 SAR flipped bullish",
+        "+3 +DI/-DI crossed (bulls took over)"
+      ]
+    },
+    {
+      "time": "2026-10-11 12:00",
+      "price": 2502.49,
+      "bear_score": 8,
+      "bull_score": 6,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Small candle body",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-11 13:00",
+      "price": 2500.05,
+      "bear_score": 12,
+      "bull_score": 5,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+3 +DI/-DI crossed (bears took over)",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    },
+    {
+      "time": "2026-10-11 14:00",
+      "price": 2499.38,
+      "bear_score": 10,
+      "bull_score": 8,
+      "bear_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new high",
+        "+4 Price below SMA200"
+      ],
+      "bull_signals": [
+        "+1 ADX falling",
+        "+1 Volume dropping",
+        "+2 RSI bullish divergence",
+        "+2 +DI/-DI converging",
+        "+2 Failed to make new low"
+      ]
+    }
+  ],
+  "total_pnl": -0.6392066654482207,
+  "wins": 24,
+  "losses": 29,
+  "max_dd": 6.935256662340484,
+  "equity": 99.10293335776429
+}
