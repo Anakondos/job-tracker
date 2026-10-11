@@ -148,6 +148,96 @@ def atr(
     return result
 
 
+def adx(
+    highs: list[float],
+    lows: list[float],
+    closes: list[float],
+    period: int = 14,
+) -> dict[str, list[Optional[float]]]:
+    """Average Directional Index (ADX) with +DI and -DI.
+
+    Returns dict with 'adx', 'plus_di', 'minus_di' arrays.
+    ADX < 20 = no trend (sideways), ADX > 25 = trending, ADX > 40 = strong trend.
+    """
+    n = len(closes)
+    adx_result: list[Optional[float]] = [None] * n
+    plus_di: list[Optional[float]] = [None] * n
+    minus_di: list[Optional[float]] = [None] * n
+
+    if n < period + 1:
+        return {"adx": adx_result, "plus_di": plus_di, "minus_di": minus_di}
+
+    # True Range, +DM, -DM
+    tr_list = []
+    plus_dm_list = []
+    minus_dm_list = []
+
+    for i in range(1, n):
+        tr = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]),
+        )
+        tr_list.append(tr)
+
+        up_move = highs[i] - highs[i - 1]
+        down_move = lows[i - 1] - lows[i]
+
+        if up_move > down_move and up_move > 0:
+            plus_dm_list.append(up_move)
+        else:
+            plus_dm_list.append(0.0)
+
+        if down_move > up_move and down_move > 0:
+            minus_dm_list.append(down_move)
+        else:
+            minus_dm_list.append(0.0)
+
+    # Smoothed TR, +DM, -DM (Wilder's smoothing)
+    smooth_tr = sum(tr_list[:period])
+    smooth_plus = sum(plus_dm_list[:period])
+    smooth_minus = sum(minus_dm_list[:period])
+
+    dx_list = []
+
+    for i in range(period - 1, len(tr_list)):
+        if i == period - 1:
+            pass  # already initialized
+        else:
+            smooth_tr = smooth_tr - smooth_tr / period + tr_list[i]
+            smooth_plus = smooth_plus - smooth_plus / period + plus_dm_list[i]
+            smooth_minus = smooth_minus - smooth_minus / period + minus_dm_list[i]
+
+        if smooth_tr == 0:
+            pdi = 0.0
+            mdi = 0.0
+        else:
+            pdi = (smooth_plus / smooth_tr) * 100
+            mdi = (smooth_minus / smooth_tr) * 100
+
+        # i in tr_list corresponds to candle i+1
+        candle_idx = i + 1
+        plus_di[candle_idx] = pdi
+        minus_di[candle_idx] = mdi
+
+        if pdi + mdi == 0:
+            dx = 0.0
+        else:
+            dx = abs(pdi - mdi) / (pdi + mdi) * 100
+        dx_list.append((candle_idx, dx))
+
+    # ADX = smoothed DX over `period`
+    if len(dx_list) >= period:
+        adx_val = sum(d for _, d in dx_list[:period]) / period
+        adx_result[dx_list[period - 1][0]] = adx_val
+
+        for j in range(period, len(dx_list)):
+            adx_val = (adx_val * (period - 1) + dx_list[j][1]) / period
+            adx_result[dx_list[j][0]] = adx_val
+
+    return {"adx": adx_result, "plus_di": plus_di, "minus_di": minus_di}
+
+
 def vwap(
     highs: list[float],
     lows: list[float],
@@ -218,6 +308,7 @@ def compute_all_indicators(candles: list[dict]) -> dict:
         "macd": macd(closes),
         "bollinger": bollinger_bands(closes, 20),
         "atr_14": atr(highs, lows, closes, 14),
+        "adx_14": adx(highs, lows, closes, 14),
         "vwap": vwap(highs, lows, closes, volumes),
     }
 
@@ -278,6 +369,25 @@ def generate_summary(pair: str, candles: list[dict], indicators: dict) -> str:
             lines.append("SETUP: Pullback to EMA9 in uptrend — watch for bounce")
         elif current_price < sma200 and current_price <= ema9 * 1.005 and current_price >= ema9 * 0.995:
             lines.append("SETUP: Pullback to EMA9 in downtrend — watch for rejection")
+
+    # ADX (trend strength)
+    adx_data = indicators["adx_14"]
+    adx_val = adx_data["adx"][-1]
+    plus_di = adx_data["plus_di"][-1]
+    minus_di = adx_data["minus_di"][-1]
+    if adx_val is not None:
+        if adx_val < 20:
+            regime = "SIDEWAYS — no trend, avoid MA/SAR strategies"
+        elif adx_val < 25:
+            regime = "WEAK TREND — use caution"
+        elif adx_val < 40:
+            regime = "TRENDING — MA/SAR strategies work"
+        else:
+            regime = "STRONG TREND — aggressive positioning OK"
+        lines.append(f"ADX(14):  {adx_val:.1f} — {regime}")
+        if plus_di is not None and minus_di is not None:
+            di_signal = "+DI dominant (bullish)" if plus_di > minus_di else "-DI dominant (bearish)"
+            lines.append(f"+DI: {plus_di:.1f}  -DI: {minus_di:.1f} — {di_signal}")
 
     # RSI
     rsi_val = indicators["rsi_14"][-1]
