@@ -1,33 +1,37 @@
 """
-System v1 — regime-switching system built from everything measured so far.
+System v1 — 6H trend follower. Defaults are the minimal configuration that
+survived 9 years on ETH and BTC; every extra rule is kept as a switch for
+ablation because each one was tested and made things worse.
 
-Timeframe: 6H only (1H dies to fees, 1D walks the band).
+Core (defaults)
+  Direction  price vs SMA200
+  Entry      EMA9/SMA20 cross in trend direction, or pullback to EMA9 with a
+             momentum candle while EMA9 is on the trend side of SMA20
+  Stop       2 x ATR14, hard
+  Exit       opposite EMA9/SMA20 cross, or close through SMA20
+  Sizing     risk_pct of equity per trade from stop distance; equity compounds
+  Fees       fee_rt_pct of notional per round trip (0.10 = perp maker-ish)
 
-Regime (ADX14):
-  RANGE  ADX < split
-  TREND  ADX >= split AND ADX rising vs `adx_rising_bars` ago
-  (ADX >= split but falling = fading trend -> no new entries)
+Results, 2017-06 .. 2026-10, 1% risk, 0.1% fees
+  ETH  547 trades, 28% WR, PF 1.59, +209%, max DD 11.7%, t=2.9, 8/8 full years positive
+  BTC  598 trades, 27% WR, PF 1.45, +242%, max DD 14.0%, t=2.5, 6/8
 
-RANGE leg  Bollinger(20,2) pierce, wait for close back inside, enter against.
-           Stop 2xATR. Target = entry + target_frac * (SMA20 - entry).
-           Rationale: measured retracements reach ~60-70% of the move; the
-           half-way target has higher expectancy and half the drawdown.
-TREND leg  Direction by SMA200. Entry on EMA9/SMA20 cross or pullback to EMA9.
-           Hard stop 2xATR, then trail with Parabolic SAR.
+Switches that were tested and hurt (all off by default)
+  adx_split>0         trade only when ADX >= level: ETH +209% -> +61%, BTC +242% -> +31%
+  adx_rising_bars>0   require ADX rising: fewer, cleaner trades (ETH +70% PF 1.93 DD 5.7%,
+                      BTC +194% PF 2.33 DD 8.1%) -- a legitimate lower-variance variant
+  trend_exit='sar'    SAR trail: exits before trends pay, PF 0.36 on 3y ETH
+  range_leg=1         Bollinger mean-reversion leg: 0 to -16% over 3y, -11..-14% in 2024
+  vol_spike_mult      never triggered
+  loss_pause_after    neutral on ETH, cut BTC 3y return by two thirds
 
-Filters    No entry when ATR14 > vol_spike_mult x ATR(50-bar avg): the quiet
-           range that precedes a crash is where mean reversion dies.
-           After `loss_pause_after` consecutive losses, no entries for
-           `loss_pause_bars` bars.
-
-Risk       Fixed fractional: risk_pct of current equity per trade, sized by
-           stop distance. Fees on notional both ways. Equity compounds.
-
-Validation Per-year breakdown, buy&hold benchmark, parameter grid, second asset.
+Known limits: 7 of 10 trades lose and losing streaks run long; returns trail
+buy-and-hold in bull years (this is absolute-return with ~12% DD, not beta);
+edge halves at 0.3% fees and is gone at 0.6% -- spot fees kill it.
 
 Usage:
-    python -m crypto_analysis.system_v1 --pair ETH-USD --days 1095
-    python -m crypto_analysis.system_v1 --pair BTC-USD --days 1095 --grid
+    python -m crypto_analysis.system_v1 --pair ETH-USD --days 3400
+    python -m crypto_analysis.system_v1 --pair BTC-USD --days 3400 --adx-rising-bars 3
 """
 
 import argparse
@@ -40,12 +44,13 @@ from crypto_analysis.data_fetcher import get_candles
 from crypto_analysis.technical_analysis import sma, ema, atr, adx, bollinger_bands, parabolic_sar
 
 DEFAULTS = dict(
-    adx_split=25, adx_rising_bars=3,
-    atr_mult=2.0, target_frac=0.5, bb_max_bars=20,
-    vol_spike_mult=2.0,
-    loss_pause_after=3, loss_pause_bars=10,
+    adx_split=0, adx_rising_bars=0,          # 0/0 = no ADX gating at all
+    atr_mult=2.0, target_frac=1.0, bb_max_bars=20,
+    vol_spike_mult=99.0,                     # 99 = off
+    loss_pause_after=999, loss_pause_bars=10,  # 999 = off
     risk_pct=1.0, fee_rt_pct=0.10,
-    trend_exit="sar",  # 'sar' (trail on SAR flip) or 'sma20' (EMA9/SMA20 cross or close through SMA20)
+    trend_exit="sma20",  # 'sma20' (opposite cross / close through SMA20) or 'sar' (trail on SAR flip)
+    range_leg=0,         # 1 enables the BB mean-reversion leg below adx_split
 )
 
 
@@ -82,7 +87,7 @@ def run_system(candles, F, p):
         px = c[i]
         if X[i] < p["adx_split"]:
             regime = "RANGE"
-        elif X[i] > X[i - rb]:
+        elif rb == 0 or X[i] > X[i - rb]:  # rb=0: no rising requirement
             regime = "TREND"
         else:
             regime = "FADE"
@@ -153,7 +158,7 @@ def run_system(candles, F, p):
                 side, leg = "LONG", "TREND"
             elif px < s200[i] and (cross_dn or (near and px < o[i] and e9[i] < s20[i])):
                 side, leg = "SHORT", "TREND"
-        elif regime == "RANGE":
+        elif regime == "RANGE" and p["range_leg"]:
             if px < lo:
                 pierced = "low"
             elif px > up:
