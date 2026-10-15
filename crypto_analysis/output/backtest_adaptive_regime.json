@@ -1,0 +1,575 @@
+{
+  "trades": [
+    {
+      "type": "LONG",
+      "entry": 2449.29,
+      "exit": 2484.11,
+      "pnl": 1.421636474243563,
+      "entry_time": "2026-08-24 05:00",
+      "exit_time": "2026-08-25 08:00",
+      "reason_in": "Squeeze breakout UP",
+      "reason_out": "Below SMA20",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "RANGE"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2460.81,
+      "exit": 2465.1,
+      "pnl": -0.174332841625317,
+      "entry_time": "2026-08-25 13:00",
+      "exit_time": "2026-08-26 02:00",
+      "reason_in": "Squeeze breakout DN",
+      "reason_out": "SAR reversal",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2439.29,
+      "exit": 2460.92,
+      "pnl": -0.8867334347289625,
+      "entry_time": "2026-08-26 14:00",
+      "exit_time": "2026-08-26 17:00",
+      "reason_in": "Breakout SHORT confirmed",
+      "reason_out": "Above SMA20",
+      "entry_regime": "BREAKOUT",
+      "exit_regime": "RANGE"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2442.49,
+      "exit": 2435.76,
+      "pnl": 0.2755384873632876,
+      "entry_time": "2026-08-29 00:00",
+      "exit_time": "2026-08-29 13:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "EMA9>SMA20",
+      "entry_regime": "TREND",
+      "exit_regime": "TREND"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2431.92,
+      "exit": 2417.25,
+      "pnl": 0.6032270798381556,
+      "entry_time": "2026-09-01 16:00",
+      "exit_time": "2026-09-01 23:00",
+      "reason_in": "Squeeze breakout DN",
+      "reason_out": "SAR reversal",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "TREND"
+    },
+    {
+      "type": "LONG",
+      "entry": 2506.64,
+      "exit": 2507.58,
+      "pnl": 0.037500398940416436,
+      "entry_time": "2026-09-04 01:00",
+      "exit_time": "2026-09-04 06:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "TREND"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2440.59,
+      "exit": 2465.59,
+      "pnl": -1.0243424745655765,
+      "entry_time": "2026-09-10 15:00",
+      "exit_time": "2026-09-10 17:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "LONG",
+      "entry": 2510.21,
+      "exit": 2530.06,
+      "pnl": 0.7907704933053374,
+      "entry_time": "2026-09-11 12:00",
+      "exit_time": "2026-09-11 20:00",
+      "reason_in": "Squeeze breakout UP",
+      "reason_out": "SAR reversal",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2490.2,
+      "exit": 2504.02,
+      "pnl": -0.5549755039755909,
+      "entry_time": "2026-09-13 15:00",
+      "exit_time": "2026-09-13 16:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2474.57,
+      "exit": 2510.31,
+      "pnl": -1.4442913314232282,
+      "entry_time": "2026-09-13 22:00",
+      "exit_time": "2026-09-14 02:00",
+      "reason_in": "Breakout SHORT confirmed",
+      "reason_out": "Above SMA20",
+      "entry_regime": "BREAKOUT",
+      "exit_regime": "RANGE"
+    },
+    {
+      "type": "LONG",
+      "entry": 2539.05,
+      "exit": 2515.43,
+      "pnl": -0.9302691951714358,
+      "entry_time": "2026-09-14 18:00",
+      "exit_time": "2026-09-14 23:00",
+      "reason_in": "Squeeze breakout UP",
+      "reason_out": "SAR reversal",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "TREND"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2400.09,
+      "exit": 2401.99,
+      "pnl": -0.07916369802797546,
+      "entry_time": "2026-09-16 03:00",
+      "exit_time": "2026-09-16 04:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "TREND"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2404.53,
+      "exit": 2394.9,
+      "pnl": 0.400494067447697,
+      "entry_time": "2026-09-16 06:00",
+      "exit_time": "2026-09-16 07:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "TREND"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2394.9,
+      "exit": 2400.99,
+      "pnl": -0.2542903670299257,
+      "entry_time": "2026-09-16 07:00",
+      "exit_time": "2026-09-16 08:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "TREND"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2387.34,
+      "exit": 2395.54,
+      "pnl": -0.34347851583770295,
+      "entry_time": "2026-09-16 17:00",
+      "exit_time": "2026-09-16 18:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "LONG",
+      "entry": 2640.3,
+      "exit": 2644.31,
+      "pnl": 0.15187668068021676,
+      "entry_time": "2026-09-20 16:00",
+      "exit_time": "2026-09-20 23:00",
+      "reason_in": "Trend EMA9xSMA20 UP",
+      "reason_out": "RSI divergence + trend weakening",
+      "entry_regime": "TREND",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "LONG",
+      "entry": 2664.64,
+      "exit": 2754,
+      "pnl": 3.3535486970097326,
+      "entry_time": "2026-09-21 05:00",
+      "exit_time": "2026-09-22 00:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "SHORT",
+      "entry": 2656.72,
+      "exit": 2652.79,
+      "pnl": 0.14792676684030823,
+      "entry_time": "2026-09-28 01:00",
+      "exit_time": "2026-09-28 02:00",
+      "reason_in": "Squeeze breakout DN",
+      "reason_out": "Range bottom reached",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "RANGE"
+    },
+    {
+      "type": "LONG",
+      "entry": 2730.01,
+      "exit": 2676.86,
+      "pnl": -1.9468793154603863,
+      "entry_time": "2026-09-30 12:00",
+      "exit_time": "2026-09-30 14:00",
+      "reason_in": "Squeeze breakout UP",
+      "reason_out": "Below SMA20",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "SQUEEZE"
+    },
+    {
+      "type": "LONG",
+      "entry": 2688.04,
+      "exit": 2685.33,
+      "pnl": -0.10081695212868992,
+      "entry_time": "2026-10-01 01:00",
+      "exit_time": "2026-10-01 02:00",
+      "reason_in": "Squeeze breakout UP",
+      "reason_out": "Below SMA20",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "SQUEEZE"
+    },
+    {
+      "type": "LONG",
+      "entry": 2741.77,
+      "exit": 2708.97,
+      "pnl": -1.196307494793516,
+      "entry_time": "2026-10-02 04:00",
+      "exit_time": "2026-10-02 14:00",
+      "reason_in": "Squeeze breakout UP",
+      "reason_out": "SAR reversal",
+      "entry_regime": "SQUEEZE",
+      "exit_regime": "WEAKENING"
+    },
+    {
+      "type": "LONG",
+      "entry": 2701.13,
+      "exit": 2701.88,
+      "pnl": 0.0277661571268321,
+      "entry_time": "2026-10-04 19:00",
+      "exit_time": "2026-10-05 04:00",
+      "reason_in": "Trend pullback EMA9",
+      "reason_out": "SAR reversal",
+      "entry_regime": "TREND",
+      "exit_regime": "WEAKENING"
+    }
+  ],
+  "regime_log": [
+    {
+      "time": "2026-09-23 12:00",
+      "regime": "BREAKOUT",
+      "adx": 21.3,
+      "bb_w": 2.02
+    },
+    {
+      "time": "2026-09-23 15:00",
+      "regime": "TREND",
+      "adx": 26.2,
+      "bb_w": 4.27
+    },
+    {
+      "time": "2026-09-23 22:00",
+      "regime": "WEAKENING",
+      "adx": 34.5,
+      "bb_w": 5.76
+    },
+    {
+      "time": "2026-09-24 02:00",
+      "regime": "TREND",
+      "adx": 33.1,
+      "bb_w": 4.17
+    },
+    {
+      "time": "2026-09-24 03:00",
+      "regime": "WEAKENING",
+      "adx": 33.1,
+      "bb_w": 3.86
+    },
+    {
+      "time": "2026-09-24 04:00",
+      "regime": "TREND",
+      "adx": 33.1,
+      "bb_w": 3.57
+    },
+    {
+      "time": "2026-09-24 05:00",
+      "regime": "WEAKENING",
+      "adx": 31.4,
+      "bb_w": 3.23
+    },
+    {
+      "time": "2026-09-24 09:00",
+      "regime": "TREND",
+      "adx": 28.3,
+      "bb_w": 1.77
+    },
+    {
+      "time": "2026-09-24 13:00",
+      "regime": "WEAKENING",
+      "adx": 28.3,
+      "bb_w": 2.21
+    },
+    {
+      "time": "2026-09-24 16:00",
+      "regime": "RANGE",
+      "adx": 24.5,
+      "bb_w": 2.34
+    },
+    {
+      "time": "2026-09-25 05:00",
+      "regime": "SQUEEZE",
+      "adx": 14.4,
+      "bb_w": 2.24
+    },
+    {
+      "time": "2026-09-28 02:00",
+      "regime": "RANGE",
+      "adx": 14.3,
+      "bb_w": 2.66
+    },
+    {
+      "time": "2026-09-28 07:00",
+      "regime": "BREAKOUT",
+      "adx": 20.9,
+      "bb_w": 2.98
+    },
+    {
+      "time": "2026-09-28 11:00",
+      "regime": "RANGE",
+      "adx": 24.4,
+      "bb_w": 2.72
+    },
+    {
+      "time": "2026-09-28 17:00",
+      "regime": "BREAKOUT",
+      "adx": 20.3,
+      "bb_w": 2.56
+    },
+    {
+      "time": "2026-09-28 19:00",
+      "regime": "RANGE",
+      "adx": 18.9,
+      "bb_w": 2.67
+    },
+    {
+      "time": "2026-09-29 03:00",
+      "regime": "SQUEEZE",
+      "adx": 15.1,
+      "bb_w": 2.33
+    },
+    {
+      "time": "2026-09-29 09:00",
+      "regime": "RANGE",
+      "adx": 15.9,
+      "bb_w": 2.54
+    },
+    {
+      "time": "2026-09-30 08:00",
+      "regime": "SQUEEZE",
+      "adx": 13.4,
+      "bb_w": 2.24
+    },
+    {
+      "time": "2026-10-02 07:00",
+      "regime": "BREAKOUT",
+      "adx": 20.9,
+      "bb_w": 2.47
+    },
+    {
+      "time": "2026-10-02 09:00",
+      "regime": "TREND",
+      "adx": 26.7,
+      "bb_w": 3.05
+    },
+    {
+      "time": "2026-10-02 14:00",
+      "regime": "WEAKENING",
+      "adx": 32.5,
+      "bb_w": 2.91
+    },
+    {
+      "time": "2026-10-03 00:00",
+      "regime": "RANGE",
+      "adx": 24.2,
+      "bb_w": 5.1
+    },
+    {
+      "time": "2026-10-03 09:00",
+      "regime": "SQUEEZE",
+      "adx": 14.4,
+      "bb_w": 1.67
+    },
+    {
+      "time": "2026-10-04 07:00",
+      "regime": "BREAKOUT",
+      "adx": 20.7,
+      "bb_w": 0.91
+    },
+    {
+      "time": "2026-10-04 10:00",
+      "regime": "TREND",
+      "adx": 25.6,
+      "bb_w": 1.0
+    },
+    {
+      "time": "2026-10-04 12:00",
+      "regime": "WEAKENING",
+      "adx": 26.1,
+      "bb_w": 0.9
+    },
+    {
+      "time": "2026-10-04 14:00",
+      "regime": "RANGE",
+      "adx": 24.6,
+      "bb_w": 0.86
+    },
+    {
+      "time": "2026-10-04 16:00",
+      "regime": "BREAKOUT",
+      "adx": 24.8,
+      "bb_w": 0.8
+    },
+    {
+      "time": "2026-10-04 17:00",
+      "regime": "TREND",
+      "adx": 25.1,
+      "bb_w": 0.73
+    },
+    {
+      "time": "2026-10-04 18:00",
+      "regime": "WEAKENING",
+      "adx": 25.0,
+      "bb_w": 0.65
+    },
+    {
+      "time": "2026-10-04 19:00",
+      "regime": "TREND",
+      "adx": 25.4,
+      "bb_w": 0.56
+    },
+    {
+      "time": "2026-10-05 03:00",
+      "regime": "WEAKENING",
+      "adx": 36.1,
+      "bb_w": 1.81
+    },
+    {
+      "time": "2026-10-05 12:00",
+      "regime": "RANGE",
+      "adx": 23.9,
+      "bb_w": 1.57
+    },
+    {
+      "time": "2026-10-05 16:00",
+      "regime": "BREAKOUT",
+      "adx": 21.2,
+      "bb_w": 1.63
+    },
+    {
+      "time": "2026-10-05 17:00",
+      "regime": "RANGE",
+      "adx": 20.7,
+      "bb_w": 1.6
+    },
+    {
+      "time": "2026-10-05 18:00",
+      "regime": "SQUEEZE",
+      "adx": 19.8,
+      "bb_w": 1.54
+    },
+    {
+      "time": "2026-10-07 01:00",
+      "regime": "BREAKOUT",
+      "adx": 20.4,
+      "bb_w": 2.03
+    },
+    {
+      "time": "2026-10-07 03:00",
+      "regime": "TREND",
+      "adx": 28.1,
+      "bb_w": 4.5
+    },
+    {
+      "time": "2026-10-07 20:00",
+      "regime": "WEAKENING",
+      "adx": 57.8,
+      "bb_w": 4.15
+    },
+    {
+      "time": "2026-10-08 06:00",
+      "regime": "TREND",
+      "adx": 51.3,
+      "bb_w": 1.08
+    },
+    {
+      "time": "2026-10-08 07:00",
+      "regime": "WEAKENING",
+      "adx": 50.7,
+      "bb_w": 1.02
+    },
+    {
+      "time": "2026-10-08 10:00",
+      "regime": "TREND",
+      "adx": 50.1,
+      "bb_w": 1.19
+    },
+    {
+      "time": "2026-10-08 19:00",
+      "regime": "WEAKENING",
+      "adx": 59.9,
+      "bb_w": 8.78
+    },
+    {
+      "time": "2026-10-09 20:00",
+      "regime": "RANGE",
+      "adx": 25.0,
+      "bb_w": 1.31
+    },
+    {
+      "time": "2026-10-10 02:00",
+      "regime": "SQUEEZE",
+      "adx": 19.7,
+      "bb_w": 1.27
+    },
+    {
+      "time": "2026-10-10 21:00",
+      "regime": "BREAKOUT",
+      "adx": 20.6,
+      "bb_w": 1.15
+    },
+    {
+      "time": "2026-10-11 00:00",
+      "regime": "RANGE",
+      "adx": 20.2,
+      "bb_w": 1.04
+    },
+    {
+      "time": "2026-10-11 02:00",
+      "regime": "BREAKOUT",
+      "adx": 20.4,
+      "bb_w": 1.01
+    },
+    {
+      "time": "2026-10-11 03:00",
+      "regime": "SQUEEZE",
+      "adx": 19.2,
+      "bb_w": 0.97
+    }
+  ],
+  "equity_final": 98.1668302539938,
+  "total_pnl": -1.7255958219727605,
+  "wins": 10,
+  "losses": 12,
+  "max_dd": 3.552582325799521
+}

@@ -1,0 +1,721 @@
+{
+  "v1": {
+    "stats": {
+      "n": 30,
+      "w": 9,
+      "l": 21,
+      "wr": 0.3,
+      "pnl": 0.7096445941100465,
+      "avg": 0.02365481980366822,
+      "best": 4.332259883651904,
+      "worst": -1.5595910155546282,
+      "avgw": 1.3707552775773018,
+      "avgl": -0.5536739478136034,
+      "dd": 9.164538650867454,
+      "eq": 100.46396334223702
+    },
+    "trades": [
+      {
+        "type": "LONG",
+        "entry": 2640.3,
+        "exit": 2739.23,
+        "pnl": 3.746922698178231,
+        "entry_time": "2026-09-20 16:00",
+        "exit_time": "2026-09-22 02:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2754.05,
+        "exit": 2754.04,
+        "pnl": -0.0003631016139945999,
+        "entry_time": "2026-09-22 17:00",
+        "exit_time": "2026-09-23 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2668.36,
+        "pnl": -0.9142288468536673,
+        "entry_time": "2026-09-24 07:00",
+        "exit_time": "2026-09-24 08:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2689.14,
+        "exit": 2674.09,
+        "pnl": -0.5596584781751686,
+        "entry_time": "2026-09-24 18:00",
+        "exit_time": "2026-09-25 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2704.06,
+        "exit": 2686.42,
+        "pnl": -0.6523523886304251,
+        "entry_time": "2026-09-25 09:00",
+        "exit_time": "2026-09-25 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2683.84,
+        "pnl": -0.33940096101715844,
+        "entry_time": "2026-09-25 18:00",
+        "exit_time": "2026-09-25 20:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2690.43,
+        "exit": 2682.22,
+        "pnl": -0.3051556814338242,
+        "entry_time": "2026-09-26 08:00",
+        "exit_time": "2026-09-26 09:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.5,
+        "exit": 2684.76,
+        "pnl": -0.28746518105848773,
+        "entry_time": "2026-09-26 15:00",
+        "exit_time": "2026-09-26 18:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2695.53,
+        "exit": 2687.43,
+        "pnl": -0.30049749028949274,
+        "entry_time": "2026-09-26 23:00",
+        "exit_time": "2026-09-27 14:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2685.9,
+        "exit": 2668.01,
+        "pnl": 0.6660709631780733,
+        "entry_time": "2026-09-27 16:00",
+        "exit_time": "2026-09-28 11:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2664.16,
+        "exit": 2705.71,
+        "pnl": -1.5595910155546282,
+        "entry_time": "2026-09-29 03:00",
+        "exit_time": "2026-09-29 06:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2711.1,
+        "exit": 2673.67,
+        "pnl": -1.3806204123787331,
+        "entry_time": "2026-09-29 07:00",
+        "exit_time": "2026-09-29 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2688.99,
+        "exit": 2687.39,
+        "pnl": 0.059501894763458,
+        "entry_time": "2026-09-29 19:00",
+        "exit_time": "2026-09-30 09:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2694.27,
+        "exit": 2681.76,
+        "pnl": -0.46431872084088693,
+        "entry_time": "2026-09-30 16:00",
+        "exit_time": "2026-09-30 17:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2682.58,
+        "exit": 2685.36,
+        "pnl": -0.10363157855498065,
+        "entry_time": "2026-09-30 21:00",
+        "exit_time": "2026-09-30 22:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2682.93,
+        "exit": 2688.04,
+        "pnl": -0.19046341127051872,
+        "entry_time": "2026-10-01 00:00",
+        "exit_time": "2026-10-01 01:00",
+        "reason_in": "Reject EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2705.37,
+        "exit": 2675.85,
+        "pnl": -1.091163131105911,
+        "entry_time": "2026-10-01 04:00",
+        "exit_time": "2026-10-01 07:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2700.75,
+        "exit": 2689.19,
+        "pnl": -0.4280292511339423,
+        "entry_time": "2026-10-01 10:00",
+        "exit_time": "2026-10-01 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2679.12,
+        "exit": 2699.94,
+        "pnl": -0.7771208456508168,
+        "entry_time": "2026-10-01 16:00",
+        "exit_time": "2026-10-01 17:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2699.37,
+        "exit": 2692.52,
+        "pnl": -0.2537629150505455,
+        "entry_time": "2026-10-01 19:00",
+        "exit_time": "2026-10-01 21:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2702.03,
+        "exit": 2708.97,
+        "pnl": 0.2568439284537773,
+        "entry_time": "2026-10-01 22:00",
+        "exit_time": "2026-10-02 14:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2689.29,
+        "exit": 2682.43,
+        "pnl": 0.2550859148697287,
+        "entry_time": "2026-10-02 16:00",
+        "exit_time": "2026-10-03 08:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.84,
+        "exit": 2701.88,
+        "pnl": 0.3357050548862897,
+        "entry_time": "2026-10-04 00:00",
+        "exit_time": "2026-10-05 04:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2725.3,
+        "exit": 2710.41,
+        "pnl": -0.5463618684181677,
+        "entry_time": "2026-10-05 07:00",
+        "exit_time": "2026-10-05 12:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2722.05,
+        "exit": 2703.67,
+        "pnl": -0.6752263918737755,
+        "entry_time": "2026-10-05 13:00",
+        "exit_time": "2026-10-05 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2709.79,
+        "exit": 2701.53,
+        "pnl": -0.3048206687603011,
+        "entry_time": "2026-10-06 09:00",
+        "exit_time": "2026-10-06 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2695.36,
+        "exit": 2578.59,
+        "pnl": 4.332259883651904,
+        "entry_time": "2026-10-06 16:00",
+        "exit_time": "2026-10-08 02:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2559.7,
+        "exit": 2491.57,
+        "pnl": 2.6616400359416987,
+        "entry_time": "2026-10-08 05:00",
+        "exit_time": "2026-10-09 03:00",
+        "reason_in": "Reject EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2481.13,
+        "exit": 2493.36,
+        "pnl": -0.49292056442024473,
+        "entry_time": "2026-10-09 18:00",
+        "exit_time": "2026-10-10 01:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2503.61,
+        "exit": 2503.04,
+        "pnl": 0.022767124272556973,
+        "entry_time": "2026-10-11 06:00",
+        "exit_time": "2026-10-11 12:00 (open)",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Open"
+      }
+    ]
+  },
+  "v2": {
+    "stats": 2603.343100000001,
+    "trades": [
+      {
+        "type": "LONG",
+        "entry": 2640.3,
+        "exit": 2739.23,
+        "pnl": 3.746922698178231,
+        "entry_time": "2026-09-20 16:00",
+        "exit_time": "2026-09-22 02:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2754.05,
+        "exit": 2754.04,
+        "pnl": -0.0003631016139945999,
+        "entry_time": "2026-09-22 17:00",
+        "exit_time": "2026-09-23 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2668.36,
+        "pnl": -0.9142288468536673,
+        "entry_time": "2026-09-24 07:00",
+        "exit_time": "2026-09-24 08:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2689.14,
+        "exit": 2674.09,
+        "pnl": -0.5596584781751686,
+        "entry_time": "2026-09-24 18:00",
+        "exit_time": "2026-09-25 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2704.06,
+        "exit": 2686.42,
+        "pnl": -0.6523523886304251,
+        "entry_time": "2026-09-25 09:00",
+        "exit_time": "2026-09-25 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.5,
+        "exit": 2684.76,
+        "pnl": -0.28746518105848773,
+        "entry_time": "2026-09-26 15:00",
+        "exit_time": "2026-09-26 18:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2695.53,
+        "exit": 2687.43,
+        "pnl": -0.30049749028949274,
+        "entry_time": "2026-09-26 23:00",
+        "exit_time": "2026-09-27 14:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2684.07,
+        "exit": 2668.01,
+        "pnl": 0.598345050613432,
+        "entry_time": "2026-09-27 21:00",
+        "exit_time": "2026-09-28 11:00",
+        "reason_in": "Reject EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2711.1,
+        "exit": 2673.67,
+        "pnl": -1.3806204123787331,
+        "entry_time": "2026-09-29 07:00",
+        "exit_time": "2026-09-29 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2688.99,
+        "exit": 2687.39,
+        "pnl": 0.059501894763458,
+        "entry_time": "2026-09-29 19:00",
+        "exit_time": "2026-09-30 09:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2694.27,
+        "exit": 2681.76,
+        "pnl": -0.46431872084088693,
+        "entry_time": "2026-09-30 16:00",
+        "exit_time": "2026-09-30 17:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2682.58,
+        "exit": 2685.36,
+        "pnl": -0.10363157855498065,
+        "entry_time": "2026-09-30 21:00",
+        "exit_time": "2026-09-30 22:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2696.76,
+        "exit": 2689.19,
+        "pnl": -0.28070721903321627,
+        "entry_time": "2026-10-01 13:00",
+        "exit_time": "2026-10-01 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2679.12,
+        "exit": 2699.94,
+        "pnl": -0.7771208456508168,
+        "entry_time": "2026-10-01 16:00",
+        "exit_time": "2026-10-01 17:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2689.29,
+        "exit": 2682.43,
+        "pnl": 0.2550859148697287,
+        "entry_time": "2026-10-02 16:00",
+        "exit_time": "2026-10-03 08:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2725.3,
+        "exit": 2710.41,
+        "pnl": -0.5463618684181677,
+        "entry_time": "2026-10-05 07:00",
+        "exit_time": "2026-10-05 12:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2722.05,
+        "exit": 2703.67,
+        "pnl": -0.6752263918737755,
+        "entry_time": "2026-10-05 13:00",
+        "exit_time": "2026-10-05 14:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "EMA9<SMA20"
+      },
+      {
+        "type": "LONG",
+        "entry": 2709.79,
+        "exit": 2701.53,
+        "pnl": -0.3048206687603011,
+        "entry_time": "2026-10-06 09:00",
+        "exit_time": "2026-10-06 15:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2695.36,
+        "exit": 2578.59,
+        "pnl": 4.332259883651904,
+        "entry_time": "2026-10-06 16:00",
+        "exit_time": "2026-10-08 02:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2481.13,
+        "exit": 2493.36,
+        "pnl": -0.49292056442024473,
+        "entry_time": "2026-10-09 18:00",
+        "exit_time": "2026-10-10 01:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2498.33,
+        "exit": 2503.04,
+        "pnl": -0.18852593532479842,
+        "entry_time": "2026-10-11 10:00",
+        "exit_time": "2026-10-11 12:00 (open)",
+        "reason_in": "Reject EMA9",
+        "reason_out": "Open"
+      }
+    ]
+  },
+  "v3": {
+    "stats": {
+      "n": 9,
+      "w": 4,
+      "l": 5,
+      "wr": 0.4444444444444444,
+      "pnl": 4.337498352818456,
+      "avg": 0.48194426142427294,
+      "best": 3.746922698178231,
+      "worst": -0.9142288468536673,
+      "avgw": 1.692959617563537,
+      "avgl": -0.4868680234871384,
+      "dd": 1.5728866526070344,
+      "eq": 104.31629401410169
+    },
+    "trades": [
+      {
+        "type": "LONG",
+        "entry": 2640.3,
+        "exit": 2739.23,
+        "pnl": 3.746922698178231,
+        "entry_time": "2026-09-20 16:00",
+        "exit_time": "2026-09-22 02:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2754.05,
+        "exit": 2754.04,
+        "pnl": -0.0003631016139945999,
+        "entry_time": "2026-09-22 17:00",
+        "exit_time": "2026-09-23 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2668.36,
+        "pnl": -0.9142288468536673,
+        "entry_time": "2026-09-24 07:00",
+        "exit_time": "2026-09-24 08:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2689.29,
+        "exit": 2682.43,
+        "pnl": 0.2550859148697287,
+        "entry_time": "2026-10-02 16:00",
+        "exit_time": "2026-10-03 08:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2698.96,
+        "exit": 2701.88,
+        "pnl": 0.10818982126448976,
+        "entry_time": "2026-10-04 13:00",
+        "exit_time": "2026-10-05 04:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2725.3,
+        "exit": 2710.41,
+        "pnl": -0.5463618684181677,
+        "entry_time": "2026-10-05 07:00",
+        "exit_time": "2026-10-05 12:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2566.26,
+        "exit": 2578.59,
+        "pnl": -0.4804657361296176,
+        "entry_time": "2026-10-07 21:00",
+        "exit_time": "2026-10-08 02:00",
+        "reason_in": "Reject EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2559.7,
+        "exit": 2491.57,
+        "pnl": 2.6616400359416987,
+        "entry_time": "2026-10-08 05:00",
+        "exit_time": "2026-10-09 03:00",
+        "reason_in": "Reject EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2481.13,
+        "exit": 2493.36,
+        "pnl": -0.49292056442024473,
+        "entry_time": "2026-10-09 18:00",
+        "exit_time": "2026-10-10 01:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      }
+    ]
+  },
+  "v4": {
+    "stats": {
+      "n": 6,
+      "w": 2,
+      "l": 4,
+      "wr": 0.3333333333333333,
+      "pnl": 2.0481342317418854,
+      "avg": 0.3413557052903142,
+      "best": 3.746922698178231,
+      "worst": -0.9142288468536673,
+      "avgw": 2.00100430652398,
+      "avgl": -0.4884685953265186,
+      "dd": 1.6915644855456344,
+      "eq": 101.99197659896936
+    },
+    "trades": [
+      {
+        "type": "LONG",
+        "entry": 2640.3,
+        "exit": 2739.23,
+        "pnl": 3.746922698178231,
+        "entry_time": "2026-09-20 16:00",
+        "exit_time": "2026-09-22 02:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2754.05,
+        "exit": 2754.04,
+        "pnl": -0.0003631016139945999,
+        "entry_time": "2026-09-22 17:00",
+        "exit_time": "2026-09-23 06:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2692.98,
+        "exit": 2668.36,
+        "pnl": -0.9142288468536673,
+        "entry_time": "2026-09-24 07:00",
+        "exit_time": "2026-09-24 08:00",
+        "reason_in": "EMA9xSMA20 UP",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2689.29,
+        "exit": 2682.43,
+        "pnl": 0.2550859148697287,
+        "entry_time": "2026-10-02 16:00",
+        "exit_time": "2026-10-03 08:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "LONG",
+        "entry": 2725.3,
+        "exit": 2710.41,
+        "pnl": -0.5463618684181677,
+        "entry_time": "2026-10-05 07:00",
+        "exit_time": "2026-10-05 12:00",
+        "reason_in": "Pullback EMA9",
+        "reason_out": "Stop"
+      },
+      {
+        "type": "SHORT",
+        "entry": 2481.13,
+        "exit": 2493.36,
+        "pnl": -0.49292056442024473,
+        "entry_time": "2026-10-09 18:00",
+        "exit_time": "2026-10-10 01:00",
+        "reason_in": "EMA9xSMA20 DN",
+        "reason_out": "Stop"
+      }
+    ]
+  }
+}

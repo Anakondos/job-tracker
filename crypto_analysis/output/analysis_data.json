@@ -1,0 +1,14 @@
+{
+  "ETH-USD": {
+    "candle_count": 24,
+    "first_candle": "2026-03-20T23:00:00",
+    "last_candle": "2026-03-21T22:00:00",
+    "current_price": 2151.48,
+    "sma_20": 2153.4495,
+    "sma_50": null,
+    "rsi_14": 52.96890603001391,
+    "macd": null,
+    "macd_signal": null,
+    "atr_14": 7.711528277722067
+  }
+}
