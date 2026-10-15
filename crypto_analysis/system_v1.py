@@ -47,6 +47,7 @@ DEFAULTS = dict(
     adx_split=0, adx_rising_bars=0,          # 0/0 = no ADX gating at all
     atr_mult=2.0, target_frac=1.0, bb_max_bars=20,
     vol_spike_mult=99.0,                     # 99 = off
+    vol_floor_mult=0.0,                      # skip entries when ATR14 < floor x 50-bar ATR avg; 0 = off
     loss_pause_after=999, loss_pause_bars=10,  # 999 = off
     risk_pct=1.0, fee_rt_pct=0.10,
     trend_exit="sma20",  # 'sma20' (opposite cross / close through SMA20) or 'sar' (trail on SAR flip)
@@ -147,7 +148,7 @@ def run_system(candles, F, p):
             pierced = None
         if i < pause_until:
             continue
-        if a14[i] > p["vol_spike_mult"] * a_avg[i]:
+        if a14[i] > p["vol_spike_mult"] * a_avg[i] or a14[i] < p["vol_floor_mult"] * a_avg[i]:
             pierced = None
             continue
 
