@@ -238,6 +238,37 @@ def adx(
     return {"adx": adx_result, "plus_di": plus_di, "minus_di": minus_di}
 
 
+def parabolic_sar(
+    highs: list[float],
+    lows: list[float],
+    af_start: float = 0.02,
+    af_step: float = 0.02,
+    af_max: float = 0.20,
+) -> list[Optional[dict]]:
+    """Parabolic SAR. Each element is {'value': sar, 'trend': 'bull'|'bear'} or None."""
+    n = len(highs)
+    result: list[Optional[dict]] = [None] * n
+    if n < 2:
+        return result
+    trend, sar, ep, af = "bull", lows[0], highs[0], af_start
+    for i in range(1, n):
+        sar = sar + af * (ep - sar)
+        if trend == "bull":
+            sar = min(sar, lows[i - 1], lows[i - 2] if i >= 2 else lows[i - 1])
+            if lows[i] < sar:
+                trend, sar, ep, af = "bear", ep, lows[i], af_start
+            elif highs[i] > ep:
+                ep, af = highs[i], min(af + af_step, af_max)
+        else:
+            sar = max(sar, highs[i - 1], highs[i - 2] if i >= 2 else highs[i - 1])
+            if highs[i] > sar:
+                trend, sar, ep, af = "bull", ep, highs[i], af_start
+            elif lows[i] < ep:
+                ep, af = lows[i], min(af + af_step, af_max)
+        result[i] = {"value": sar, "trend": trend}
+    return result
+
+
 def vwap(
     highs: list[float],
     lows: list[float],
